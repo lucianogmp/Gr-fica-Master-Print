@@ -2,7 +2,7 @@ name: Deploy no GitHub Pages
 
 on:
   push:
-    branches: [main] # troque para "master" se o seu branch principal for master
+   branches: [master]
 
 permissions:
   contents: read
