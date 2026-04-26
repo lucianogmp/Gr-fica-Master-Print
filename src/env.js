@@ -1,6 +1,5 @@
-// As variáveis VITE_* são injetadas pelo Vite durante o build.
-// Localmente: crie um arquivo .env na raiz com esses valores.
-// No GitHub: configure em Settings > Secrets and variables > Actions.
+# Copie este arquivo para ".env" (sem o .example) e preencha com seus dados.
+# Encontre esses valores em: supabase.com > seu projeto > Settings > API
 
-export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-export const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+VITE_SUPABASE_URL=https://xxxxxxxxxxx.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
