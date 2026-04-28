@@ -76,9 +76,33 @@ function calcPrecoUnitario(form) {
   const { tipo, largura, altura, quantidade, folhaTipo, precoUnitario } = form;
   if (tipo === "unidade") return Number(precoUnitario) || 0;
   if (tipo === "m2") {
-    const m2 = (Number(largura) / 100) * (Number(altura) / 100);
-    return m2 * (Number(precoUnitario) || 0); // precoUnitario = preço/m²
+  largura = parseFloat(container.querySelector("#ai-larg")?.value) || 0;
+  altura  = parseFloat(container.querySelector("#ai-alt")?.value) || 0;
+  const pm2 = parseFloat(container.querySelector("#ai-pm2")?.value) || 0;
+
+  const m2  = (largura / 100) * (altura / 100);
+  let precoBase = m2 * pm2;
+
+  // 🔥 NOVO: preço mínimo
+  const PRECO_MINIMO = 10; // você pode ajustar
+  if (precoBase < PRECO_MINIMO) {
+    precoBase = PRECO_MINIMO;
   }
+
+  // 🔥 NOVO: margem automática mínima
+  const custo = parseFloat(container.querySelector("#ai-custo")?.value) || 0;
+  const MARGEM_MIN = 0.3; // 30%
+
+  let precoFinal = precoBase;
+  if (custo > 0) {
+    const precoComMargem = custo / (1 - MARGEM_MIN);
+    if (precoFinal < precoComMargem) {
+      precoFinal = precoComMargem;
+    }
+  }
+
+  precoUn = precoFinal;
+}
   if (tipo === "folha") {
     const ipf = calcItensPorFolha(Number(largura), Number(altura), folhaTipo);
     if (!ipf) return 0;
