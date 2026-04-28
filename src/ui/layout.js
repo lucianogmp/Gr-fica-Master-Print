@@ -1,62 +1,143 @@
 export function renderLayout(pages) {
   const root = document.getElementById("app");
+
+  // Recupera estado do sidebar do localStorage
+  let sidebarCollapsed = localStorage.getItem("sidebar_collapsed") === "true";
+
+  const NAV_GROUPS = [
+    {
+      label: "Visão Geral",
+      items: ["dashboard"],
+    },
+    {
+      label: "Comercial",
+      items: ["orcamento", "vendas", "clientes"],
+    },
+    {
+      label: "Operacional",
+      items: ["producao", "estoque"],
+    },
+    {
+      label: "Gestão",
+      items: ["financeiro", "produtos"],
+    },
+    {
+      label: "Sistema",
+      items: ["configuracoes"],
+    },
+  ];
+
+  const PAGE_META = {
+    dashboard:     { icon: "📊", label: "Dashboard"     },
+    financeiro:    { icon: "💰", label: "Financeiro"     },
+    orcamento:     { icon: "📋", label: "Orçamentos"     },
+    vendas:        { icon: "🛒", label: "Vendas"         },
+    clientes:      { icon: "👥", label: "Clientes"       },
+    produtos:      { icon: "📦", label: "Produtos"       },
+    estoque:       { icon: "🗄️", label: "Estoque"        },
+    producao:      { icon: "🖨️", label: "Produção"       },
+    configuracoes: { icon: "⚙️", label: "Configurações"  },
+  };
+
   root.innerHTML = `
     <div class="app-shell">
-      <aside class="sidebar">
-        <div class="brand">Meu Sistema</div>
-        <nav class="nav" id="nav"></nav>
-        <div class="hint" id="hint"></div>
-      </aside>
-      <main class="main">
-        <div class="topbar">
-          <div class="tabs" id="tabs"></div>
+      <!-- Sidebar -->
+      <aside class="sidebar ${sidebarCollapsed ? "collapsed" : ""}" id="sidebar">
+
+        <!-- Brand -->
+        <div class="sidebar-brand">
+          <div class="sidebar-brand-icon">🖨️</div>
+          <div class="sidebar-brand-text">
+            <div class="sidebar-brand-name">Master Print</div>
+            <div class="sidebar-brand-sub">Gráfica</div>
+          </div>
         </div>
+
+        <!-- Nav -->
+        <nav class="sidebar-nav" id="sidebar-nav">
+          ${NAV_GROUPS.map(group => `
+            <div class="nav-section-label">${group.label}</div>
+            ${group.items.map(key => {
+              const meta = PAGE_META[key] || { icon: "•", label: key };
+              return `
+                <button class="nav-btn" data-key="${key}" title="${meta.label}">
+                  <span class="nav-btn-icon">${meta.icon}</span>
+                  <span class="nav-btn-label">${meta.label}</span>
+                </button>
+              `;
+            }).join("")}
+          `).join("")}
+        </nav>
+
+        <!-- Footer / Toggle -->
+        <div class="sidebar-footer">
+          <button class="sidebar-toggle" id="sidebar-toggle">
+            <span id="toggle-icon">${sidebarCollapsed ? "→" : "←"}</span>
+            <span class="sidebar-toggle-label">${sidebarCollapsed ? "" : "Recolher"}</span>
+          </button>
+        </div>
+      </aside>
+
+      <!-- Main -->
+      <div class="main">
+        <!-- Topbar com tabs -->
+        <header class="topbar">
+          <div class="topbar-tabs" id="tabs">
+            ${Object.entries(PAGE_META).map(([key, meta]) => `
+              <button class="tab-btn" data-key="${key}">${meta.icon} ${meta.label}</button>
+            `).join("")}
+          </div>
+        </header>
+
+        <!-- Page content -->
         <section class="content" id="content"></section>
-      </main>
+      </div>
     </div>
   `;
 
-  const nav = root.querySelector("#nav");
-  const tabs = root.querySelector("#tabs");
-  const content = root.querySelector("#content");
-  const hint = root.querySelector("#hint");
+  const sidebar     = root.querySelector("#sidebar");
+  const toggleBtn   = root.querySelector("#sidebar-toggle");
+  const toggleIcon  = root.querySelector("#toggle-icon");
+  const content     = root.querySelector("#content");
 
-  const order = [
-    "dashboard",
-    "financeiro",
-    "orcamento",
-    "vendas",
-    "clientes",
-    "produtos",
-    "estoque",
-    "producao",
-    "configuracoes",
-  ];
+  // ── Toggle sidebar ──────────────────────────────────────────────────────────
+  toggleBtn.addEventListener("click", () => {
+    sidebarCollapsed = !sidebarCollapsed;
+    sidebar.classList.toggle("collapsed", sidebarCollapsed);
+    toggleIcon.textContent = sidebarCollapsed ? "→" : "←";
+    toggleBtn.querySelector(".sidebar-toggle-label").textContent = sidebarCollapsed ? "" : "Recolher";
+    localStorage.setItem("sidebar_collapsed", sidebarCollapsed);
+  });
 
-  nav.innerHTML = order.map((k) => `<button class="nav-btn" data-key="${k}">${pages[k].label}</button>`).join("");
-  tabs.innerHTML = order.map((k) => `<button class="tab-btn" data-key="${k}">${pages[k].label}</button>`).join("");
-
+  // ── Monta página ────────────────────────────────────────────────────────────
   function mountPage(key) {
+    if (!pages[key]) key = "dashboard";
+
     content.innerHTML = `<div class="loading">Carregando...</div>`;
-    const page = pages[key];
-    page.mount(content);
-    order.forEach((k) => {
-      nav.querySelectorAll(".nav-btn").forEach((b) => b.classList.toggle("active", b.dataset.key === key));
-      tabs.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("active", b.dataset.key === key));
+    pages[key].mount(content);
+
+    // Atualiza nav buttons ativos
+    root.querySelectorAll(".nav-btn").forEach(btn => {
+      btn.classList.toggle("active", btn.dataset.key === key);
+    });
+
+    // Atualiza tabs ativos
+    root.querySelectorAll(".tab-btn").forEach(btn => {
+      btn.classList.toggle("active", btn.dataset.key === key);
     });
   }
 
+  // ── Click em qualquer [data-key] ────────────────────────────────────────────
   root.addEventListener("click", (e) => {
     const btn = e.target.closest("[data-key]");
     if (!btn) return;
-    const key = btn.dataset.key;
-    window.location.hash = key;
+    window.location.hash = btn.dataset.key;
   });
 
-  // default / restore
-  const initial = window.location.hash.replace("#", "") || "dashboard";
-  mountPage(initial);
+  // ── Roteamento por hash ─────────────────────────────────────────────────────
+  const getHash = () => window.location.hash.replace("#", "") || "dashboard";
 
-  window.addEventListener("hashchange", () => mountPage(window.location.hash.replace("#", "") || "dashboard"));
-  hint.textContent = "Starter pronto — vamos preencher as telas e integrações.";
+  mountPage(getHash());
+
+  window.addEventListener("hashchange", () => mountPage(getHash()));
 }
