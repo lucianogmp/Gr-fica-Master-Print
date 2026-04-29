@@ -15,7 +15,7 @@ export function renderLayout(pages) {
     vendas:        { icon: "fi-rr-shopping-cart",     label: "Vendas"        },
     clientes:      { icon: "fi-rr-users",             label: "Clientes"      },
     produtos:      { icon: "fi-rr-box-open",          label: "Produtos"      },
-    estoque:       { icon: "fi-rr-warehouse",         label: "Estoque"       },
+    estoque:       { icon: "fi-rr-shelves",            label: "Estoque"       },
     producao:      { icon: "fi-rr-print",             label: "Produção"      },
     configuracoes: { icon: "fi-rr-settings",          label: "Configurações" },
   };
