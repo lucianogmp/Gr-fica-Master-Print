@@ -71,7 +71,7 @@ function render(container) {
 
     ${state.aba === "historico" ? renderHistorico() : renderForm()}
 
-    <div id="modal-area"></div>
+    
   `;
 
   bindEvents(container);
@@ -491,7 +491,7 @@ function atualizarResultadoDOM(container) {
 // MODAL: CONVERTER EM VENDA
 // ══════════════════════════════════════════════════════════════════════════════
 function abrirModalConverter(container) {
-  const area = container.querySelector("#modal-area");
+  const area = document.getElementById("app-modal-root");
   const r    = state.resultado;
   const mat  = MATERIAIS.find(m => m.id === state.materialId);
 
@@ -648,7 +648,7 @@ function abrirModalConverter(container) {
 // MODAL: CADASTRAR CLIENTE RÁPIDO
 // ══════════════════════════════════════════════════════════════════════════════
 function abrirModalCadCliente(container, nomeInicial, callback) {
-  const area = container.querySelector("#modal-area");
+  const area = document.getElementById("app-modal-root");
   const prev = area.innerHTML;
 
   area.innerHTML = `

@@ -93,7 +93,7 @@ function render(container) {
 
     <!-- Conteúdo da aba -->
     <div id="est-body"></div>
-    <div id="modal-area"></div>
+    
   `;
 
   container.querySelectorAll("[data-aba]").forEach(btn =>
@@ -389,7 +389,7 @@ function renderHistorico(body, container) {
 // MODAL: NOVA / EDITAR MATÉRIA-PRIMA
 // ══════════════════════════════════════════════════════════════════════════════
 function abrirModalMP(container, mp) {
-  const area = container.querySelector("#modal-area");
+  const area = document.getElementById("app-modal-root");
   const editando = !!mp?.id;
 
   area.innerHTML = `
@@ -544,7 +544,7 @@ function abrirModalMP(container, mp) {
 // MODAL: MOVIMENTO (ENTRADA / SAÍDA)
 // ══════════════════════════════════════════════════════════════════════════════
 function abrirModalMov(container, tipo, mp) {
-  const area = container.querySelector("#modal-area");
+  const area = document.getElementById("app-modal-root");
   const isEnt = tipo === "entrada";
   const cor   = isEnt ? "var(--success)" : "var(--error)";
   const icon  = isEnt ? "fi-rr-arrow-up" : "fi-rr-arrow-down";

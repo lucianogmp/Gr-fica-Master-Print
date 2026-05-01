@@ -1,6 +1,13 @@
 export function renderLayout(pages) {
   const root = document.getElementById("app");
 
+  // ── Modal root global (fora do app shell, evita bug de position:fixed) ───────
+  if (!document.getElementById("app-modal-root")) {
+    const mr = document.createElement("div");
+    mr.id = "app-modal-root";
+    document.body.appendChild(mr);
+  }
+
   // ── Estado persistido ────────────────────────────────────────────────────────
   let sidebarCollapsed = localStorage.getItem("sidebar_collapsed") === "true";
   let isDark = localStorage.getItem("theme") !== "light";
