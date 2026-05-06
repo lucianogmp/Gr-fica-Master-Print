@@ -9,24 +9,33 @@ const MATERIAIS = [
   { id: "lona",         label: "Lona",              preco: 90  },
 ];
 
-const ACRESCIMO_SEM_ARTE = 0.20; // 20% oculto
+const ACRESCIMO_SEM_ARTE = 0.20;
+
+// ─── Papéis para calculadora de folhas ────────────────────────────────────────
+const PAPEIS_CFG = {
+  A4:  { w: 21,   h: 29.7, margem: 0.8, label: "A4",   desc: "21×29,7cm" },
+  A3:  { w: 29.7, h: 42,   margem: 0.8, label: "A3",   desc: "29,7×42cm" },
+  SRA3:{ w: 32,   h: 45,   margem: 2.0, label: "SRA3", desc: "32×45cm"   },
+};
 
 // ─── Estado ───────────────────────────────────────────────────────────────────
 let state = {
-  aba: "form",           // "form" | "historico"
+  aba: "form",
   materialId: "adesivo_vinil",
   temArte: true,
   largura: "",
   altura: "",
   quantidade: 1,
-  itens: [],             // produtos/serviços adicionados na tabela
+  itens: [],
   observacoes: "",
   clientes: [],
   produtos: [],
   orcamentos: [],
-  aberto: null,          // orçamento aberto p/ edição
-  // resultado calculado
+  aberto: null,
   resultado: { area: 0, unitario: 0, total: 0, totalItens: 0, grand: 0 },
+  // calculadora de folhas
+  calcFolhasAberto: false,
+  calcFolhas: { papel: "A4", larg: "", alt: "", qtd: "", tipo: "adesivo" },
 };
 
 // ─── Entry point ──────────────────────────────────────────────────────────────
@@ -52,13 +61,16 @@ function render(container) {
   container.innerHTML = `
     <style>${css()}</style>
 
-    <!-- Cabeçalho -->
     <div class="orc-topbar">
       <div>
         <h2 style="margin:0;font-size:18px;font-weight:700">Orçamentos</h2>
         <span style="font-size:12px;color:var(--muted)">${state.orcamentos.length} orçamento${state.orcamentos.length!==1?"s":""} salvos</span>
       </div>
-      <div style="display:flex;gap:8px;align-items:center">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        ${state.aba !== "historico" ? `
+        <button class="btn-calc-folhas ${state.calcFolhasAberto?"active":""}" id="btn-calc-folhas">
+          <i class="fi fi-rr-ruler-triangle"></i> Calc. Folhas
+        </button>` : ""}
         <button class="btn-hist ${state.aba==="historico"?"active":""}" id="btn-historico">
           <i class="fi fi-rr-clock"></i> Histórico
           ${state.orcamentos.length>0?`<span class="hist-badge">${state.orcamentos.length}</span>`:""}
@@ -78,13 +90,157 @@ function render(container) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
+// CALCULADORA DE FOLHAS
+// ══════════════════════════════════════════════════════════════════════════════
+function calcularFolhas() {
+  const cf = state.calcFolhas;
+  const papel = PAPEIS_CFG[cf.papel];
+  const m2 = papel.margem * 2;
+  const uw = +(papel.w - m2).toFixed(2);
+  const uh = +(papel.h - m2).toFixed(2);
+  const iw = parseFloat(cf.larg) || 0;
+  const ih = parseFloat(cf.alt) || 0;
+  const qtd = parseInt(cf.qtd) || 0;
+  // Espaçamento entre itens conforme tipo
+  const esp = cf.tipo === "tag" ? 0.5 : 0.15;
+  if (iw <= 0 || ih <= 0) return { uw, uh, esp, pronto: false };
+  // Fórmula: (área_útil + 1_espaço) / (item + espaço)
+  // Isso garante que o último item da fila não precisa de espaço após ele
+  const c1 = Math.floor((uw + esp) / (iw + esp));
+  const r1 = Math.floor((uh + esp) / (ih + esp));
+  const p1 = c1 * r1;
+  // Rotacionado
+  const c2 = Math.floor((uw + esp) / (ih + esp));
+  const r2 = Math.floor((uh + esp) / (iw + esp));
+  const p2 = c2 * r2;
+  const rotated = p2 > p1;
+  const cols = rotated ? c2 : c1, rows = rotated ? r2 : r1;
+  const perSheet = Math.max(p1, p2);
+  const sheetsNeeded = (qtd > 0 && perSheet > 0) ? Math.ceil(qtd / perSheet) : 0;
+  return { uw, uh, esp, cols, rows, perSheet, sheetsNeeded, rotated, qtd, pronto: true };
+}
+
+function atualizarCalcFolhasDOM(container) {
+  const resEl = container.querySelector("#cf-resultado");
+  if (!resEl) return;
+  const res = calcularFolhas();
+  const cf  = state.calcFolhas;
+  // atualiza info área útil
+  const papel = PAPEIS_CFG[cf.papel];
+  const utilEl = container.querySelector(".cf-util-info");
+  if (utilEl) utilEl.innerHTML = `Área útil: <strong>${res.uw}×${res.uh}cm</strong> · espaçamento entre itens: <strong>${res.esp}cm</strong>`;
+  if (!res.pronto) {
+    resEl.innerHTML = `<div class="cf-hint"><i class="fi fi-rr-info"></i> Preencha largura e altura para calcular automaticamente.</div>`;
+    return;
+  }
+  if (res.perSheet === 0) {
+    resEl.innerHTML = `<div class="cf-sem-fit">⚠️ O item é maior que a área útil desta folha.</div>`;
+    return;
+  }
+  resEl.innerHTML = `
+    <div class="cf-res-cards">
+      <div class="cf-res-card">
+        <div class="cf-res-num">${res.cols} × ${res.rows}</div>
+        <div class="cf-res-label">colunas × linhas</div>
+        ${res.rotated ? `<div class="cf-rotated"><i class="fi fi-rr-rotate-right"></i> melhor rotacionado</div>` : ""}
+      </div>
+      <div class="cf-res-card primary">
+        <div class="cf-res-num">${res.perSheet}</div>
+        <div class="cf-res-label">por folha</div>
+      </div>
+      ${res.qtd > 0 ? `
+      <div class="cf-res-card">
+        <div class="cf-res-num">${res.sheetsNeeded}</div>
+        <div class="cf-res-label">folha${res.sheetsNeeded!==1?"s":""} p/ ${res.qtd} un.</div>
+      </div>` : `<div class="cf-res-card muted"><div class="cf-res-num">—</div><div class="cf-res-label">informe qty</div></div>`}
+    </div>`;
+}
+
+function renderCalculadoraFolhas() {
+  const cf = state.calcFolhas;
+  const res = calcularFolhas();
+  const papel = PAPEIS_CFG[cf.papel];
+
+  return `
+  <div class="calc-folhas-wrap" id="calc-folhas-wrap">
+    <div class="calc-folhas-header">
+      <div style="display:flex;align-items:center;gap:8px">
+        <i class="fi fi-rr-ruler-triangle" style="color:var(--primary-light)"></i>
+        <span style="font-weight:700;font-size:14px">Calculadora de Folhas</span>
+        <span style="font-size:11px;color:var(--muted)">Quantos adesivos / etiquetas cabem por folha</span>
+      </div>
+      <button class="cf-close-btn" id="cf-close" title="Fechar calculadora">✕</button>
+    </div>
+
+    <div class="calc-folhas-body">
+      <!-- Seleção de papel -->
+      <div class="cf-section">
+        <div class="cf-section-label">Tamanho da folha</div>
+        <div class="cf-papeis-row">
+          ${Object.entries(PAPEIS_CFG).map(([k, p]) => `
+            <button class="cf-papel-btn ${cf.papel===k?"active":""}" data-cf-papel="${k}">
+              <div class="cf-papel-nome">${p.label}</div>
+              <div class="cf-papel-dim">${p.desc}</div>
+              <div class="cf-papel-margem">margem ${p.margem}cm</div>
+            </button>`).join("")}
+        </div>
+        <div class="cf-util-info">
+          Área útil: <strong>${res.uw}×${res.uh}cm</strong>
+        </div>
+      </div>
+
+      <!-- Tipo + Inputs -->
+      <div class="cf-section">
+        <div class="cf-section-label">Tipo de material</div>
+        <div class="cf-tipo-switch">
+          <button class="cf-tipo-btn ${cf.tipo==="adesivo"?"active":""}" data-cf-tipo="adesivo">
+            <span class="cf-tipo-icon">🏷️</span>
+            <span class="cf-tipo-nome">Adesivo</span>
+            <span class="cf-tipo-esp">esp. 0,15cm</span>
+          </button>
+          <button class="cf-tipo-btn ${cf.tipo==="tag"?"active tag":""}" data-cf-tipo="tag">
+            <span class="cf-tipo-icon">🔖</span>
+            <span class="cf-tipo-nome">Tag / Etiqueta</span>
+            <span class="cf-tipo-esp">esp. 0,50cm</span>
+          </button>
+        </div>
+
+        <div class="cf-section-label" style="margin-top:10px">Dimensões</div>
+        <div class="cf-inputs-row">
+          <div class="cf-field">
+            <label>Largura (cm)</label>
+            <input id="cf-larg" type="number" min="0.1" step="0.1" value="${esc(cf.larg)}" placeholder="5" />
+          </div>
+          <div class="cf-field">
+            <label>Altura (cm)</label>
+            <input id="cf-alt" type="number" min="0.1" step="0.1" value="${esc(cf.alt)}" placeholder="5" />
+          </div>
+          <div class="cf-field">
+            <label>Quantidade total</label>
+            <input id="cf-qtd" type="number" min="1" step="1" value="${esc(cf.qtd)}" placeholder="100" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Resultado (sempre visível, atualizado via DOM) -->
+      <div class="cf-section" id="cf-resultado">
+        <div class="cf-hint"><i class="fi fi-rr-info"></i> Preencha largura e altura para calcular automaticamente.</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 // FORMULÁRIO PRINCIPAL
 // ══════════════════════════════════════════════════════════════════════════════
 function renderForm() {
   const r = state.resultado;
   const mat = MATERIAIS.find(m => m.id === state.materialId) || MATERIAIS[0];
+  const podeAdicionarLista = state.largura && state.altura && r.unitario > 0;
 
   return `
+  ${state.calcFolhasAberto ? renderCalculadoraFolhas() : ""}
+
   <div class="orc-layout">
 
     <!-- ── COLUNA ESQUERDA ──────────────────────────────────────────────── -->
@@ -119,7 +275,6 @@ function renderForm() {
           </div>
         </div>
 
-        <!-- Tem arte? -->
         <div class="arte-row">
           <span class="arte-label"><i class="fi fi-rr-pencil"></i> Tem arte?</span>
           <div class="arte-opts">
@@ -139,7 +294,6 @@ function renderForm() {
       <div class="orc-card">
         <div class="orc-card-title"><i class="fi fi-rr-box-open"></i> Produtos / Serviços</div>
 
-        <!-- Linha de adição -->
         <div class="add-item-row">
           <div class="field-group" style="flex:2;min-width:0">
             <label>Produto / Serviço</label>
@@ -161,7 +315,6 @@ function renderForm() {
           </button>
         </div>
 
-        <!-- Tabela de itens -->
         ${state.itens.length > 0 ? `
         <div class="itens-tabela-wrap">
           <table class="itens-tabela">
@@ -232,6 +385,15 @@ function renderForm() {
           <span>Total</span>
           <span id="r-total">R$ ${r.grand.toFixed(2)}</span>
         </div>
+
+        <!-- Botão adicionar impressão à lista -->
+        ${podeAdicionarLista ? `
+        <button class="btn-add-m2-lista" id="btn-add-m2-lista">
+          <i class="fi fi-rr-add"></i> Adicionar impressão à lista
+        </button>` : `
+        <div class="add-m2-hint">
+          <i class="fi fi-rr-info"></i> Preencha as medidas para adicionar à lista
+        </div>`}
       </div>
 
       <!-- Ações -->
@@ -310,6 +472,16 @@ function renderHistorico() {
 // EVENTOS
 // ══════════════════════════════════════════════════════════════════════════════
 function bindEvents(container) {
+  // Botão calculadora de folhas
+  container.querySelector("#btn-calc-folhas")?.addEventListener("click", () => {
+    state.calcFolhasAberto = !state.calcFolhasAberto;
+    render(container);
+    // após render, inicializar cálculo se tiver dados
+    if (state.calcFolhasAberto) {
+      atualizarCalcFolhasDOM(container);
+    }
+  });
+
   // Abas
   container.querySelector("#btn-historico")?.addEventListener("click", () => {
     state.aba = state.aba === "historico" ? "form" : "historico";
@@ -326,6 +498,13 @@ function bindEvents(container) {
     return;
   }
 
+  // ── Calculadora de folhas (eventos internos) ──
+  if (state.calcFolhasAberto) {
+    bindCalcFolhasEvents(container);
+    // Calcula resultado inicial se já tiver dados
+    atualizarCalcFolhasDOM(container);
+  }
+
   // ── Materiais ──
   container.querySelectorAll("[data-mat]").forEach(btn =>
     btn.addEventListener("click", () => {
@@ -335,7 +514,7 @@ function bindEvents(container) {
     })
   );
 
-  // ── Inputs de medidas — cálculo em tempo real ──
+  // ── Inputs de medidas ──
   ["f-larg","f-alt","f-qtd"].forEach(id => {
     container.querySelector(`#${id}`)?.addEventListener("input", e => {
       if (id === "f-larg") state.largura = e.target.value;
@@ -350,12 +529,10 @@ function bindEvents(container) {
     inp.addEventListener("change", () => {
       state.temArte = inp.value === "sim";
       calcular(container);
-      // Atualiza chips sem re-render completo
       container.querySelectorAll(".arte-chip").forEach(c => c.classList.remove("active","nao"));
       const chips = container.querySelectorAll(".arte-chip");
       if (state.temArte) { chips[0].classList.add("active"); }
       else               { chips[1].classList.add("active","nao"); }
-      // Atualiza resultado
       atualizarResultadoDOM(container);
     })
   );
@@ -385,9 +562,6 @@ function bindEvents(container) {
       aiProd.value = it.dataset.nome;
       acList.style.display = "none";
     });
-    document.addEventListener("click", e => {
-      if (!aiProd.contains(e.target)) acList.style.display = "none";
-    }, { once: false });
   }
 
   // ── Add item ──
@@ -414,6 +588,11 @@ function bindEvents(container) {
     })
   );
 
+  // ── Adicionar impressão m² à lista ──
+  container.querySelector("#btn-add-m2-lista")?.addEventListener("click", () => {
+    adicionarImpressaoNaLista(container);
+  });
+
   // ── Ações ──
   container.querySelector("#btn-salvar")?.addEventListener("click", () => salvarOrcamento(container));
   container.querySelector("#btn-limpar")?.addEventListener("click", () => { limparForm(); render(container); });
@@ -421,8 +600,50 @@ function bindEvents(container) {
   container.querySelector("#btn-imprimir")?.addEventListener("click", () => imprimir());
   container.querySelector("#btn-converter")?.addEventListener("click", () => abrirModalConverter(container));
 
-  // ── Calculo inicial ──
+  // ── Cálculo inicial ──
   calcular(container);
+}
+
+// ─── Eventos internos da calculadora de folhas ────────────────────────────────
+function bindCalcFolhasEvents(container) {
+  // Fechar
+  container.querySelector("#cf-close")?.addEventListener("click", () => {
+    state.calcFolhasAberto = false;
+    render(container);
+  });
+
+  // Selecionar tipo (adesivo / tag)
+  container.querySelectorAll("[data-cf-tipo]").forEach(btn =>
+    btn.addEventListener("click", () => {
+      state.calcFolhas.tipo = btn.dataset.cfTipo;
+      container.querySelectorAll("[data-cf-tipo]").forEach(b => {
+        b.classList.remove("active","tag");
+      });
+      btn.classList.add("active");
+      if (btn.dataset.cfTipo === "tag") btn.classList.add("tag");
+      atualizarCalcFolhasDOM(container);
+    })
+  );
+
+  // Selecionar papel
+  container.querySelectorAll("[data-cf-papel]").forEach(btn =>
+    btn.addEventListener("click", () => {
+      state.calcFolhas.papel = btn.dataset.cfPapel;
+      // Atualiza botões ativos
+      container.querySelectorAll("[data-cf-papel]").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      atualizarCalcFolhasDOM(container);
+    })
+  );
+
+  // Inputs largura / altura / qtd
+  ["cf-larg", "cf-alt", "cf-qtd"].forEach(id => {
+    container.querySelector(`#${id}`)?.addEventListener("input", e => {
+      const key = id.replace("cf-", ""); // larg | alt | qtd
+      state.calcFolhas[key] = e.target.value;
+      atualizarCalcFolhasDOM(container);
+    });
+  });
 }
 
 function bindHistoricoEvents(container) {
@@ -430,7 +651,6 @@ function bindHistoricoEvents(container) {
     btn.addEventListener("click", async () => {
       const orc = state.orcamentos.find(o => o.id === btn.dataset.abrir);
       if (!orc) return;
-      // Carrega itens do orçamento
       const { data: itens } = await supabase.from("orcamento_itens").select("*").eq("orcamento_id", orc.id);
       state.itens = (itens||[]).map(i => ({ descricao: i.descricao, preco: Number(i.preco_unitario), qtd: Number(i.quantidade) }));
       state.observacoes = orc.observacoes || "";
@@ -455,6 +675,35 @@ function bindHistoricoEvents(container) {
       if (orc) { state.aberto = orc; state.aba = "form"; render(container); abrirModalConverter(container); }
     })
   );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ADICIONAR IMPRESSÃO M² À LISTA
+// ══════════════════════════════════════════════════════════════════════════════
+function adicionarImpressaoNaLista(container) {
+  const r   = state.resultado;
+  const mat = MATERIAIS.find(m => m.id === state.materialId) || MATERIAIS[0];
+  if (!state.largura || !state.altura || r.unitario <= 0) return;
+
+  const descricao = `${mat.label} ${state.largura}×${state.altura}cm${!state.temArte ? " (+Arte 20%)" : ""}`;
+  const qtd = parseInt(state.quantidade) || 1;
+
+  // Tenta encontrar produto correspondente no catálogo
+  const produtoMatch = state.produtos.find(p =>
+    p.nome.toLowerCase().includes(mat.label.toLowerCase().split(" ")[0]) ||
+    mat.label.toLowerCase().includes(p.nome.toLowerCase().slice(0, 8))
+  );
+
+  state.itens.push({
+    descricao,
+    produtoId: produtoMatch?.id || null,
+    preco: r.unitario,
+    qtd,
+  });
+
+  calcular(container);
+  render(container);
+  showToast(container, `✅ "${descricao}" adicionado à lista!`);
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -553,7 +802,6 @@ function abrirModalConverter(container) {
       </div>
     </div>`;
 
-  // Autocomplete de clientes no modal
   const mcCli  = area.querySelector("#mc-cliente");
   const acCli  = area.querySelector("#ac-cli");
   mcCli.addEventListener("input", () => {
@@ -587,14 +835,11 @@ function abrirModalConverter(container) {
 
   area.querySelector("#mc-ok").addEventListener("click", async () => {
     const clienteNome = mcCli.value.trim();
-    const tel   = area.querySelector("#mc-tel").value.trim();
-    const vend  = area.querySelector("#mc-vendedor").value.trim();
     const obs   = area.querySelector("#mc-obs").value.trim();
 
     const mat = MATERIAIS.find(m => m.id === state.materialId);
     const descricaoPrincipal = `${mat?.label||"Impressão"} ${state.largura||0}×${state.altura||0}cm${!state.temArte?" (+Arte)":""}`;
 
-    // Cria venda
     const { data: venda, error } = await supabase.from("vendas").insert({
       cliente_nome: clienteNome||null,
       observacoes: obs||null,
@@ -604,7 +849,6 @@ function abrirModalConverter(container) {
 
     if (error) { alert("Erro ao criar venda: "+error.message); return; }
 
-    // Adiciona item principal (impressão)
     const vendaItens = [];
     if (state.resultado.total > 0) {
       vendaItens.push({
@@ -615,10 +859,9 @@ function abrirModalConverter(container) {
         total: state.resultado.total,
       });
     }
-    // Adiciona itens extras
     state.itens.forEach(it => {
       vendaItens.push({
-        venda_id: venda.id, produto_id: null,
+        venda_id: venda.id, produto_id: it.produtoId||null,
         descricao: it.descricao,
         quantidade: it.qtd,
         preco_unitario: it.preco,
@@ -627,7 +870,6 @@ function abrirModalConverter(container) {
     });
     if (vendaItens.length) await supabase.from("venda_itens").insert(vendaItens);
 
-    // Salva orçamento vinculado
     await supabase.from("orcamentos").insert({
       cliente_nome: clienteNome||null,
       observacoes: obs||null,
@@ -699,7 +941,6 @@ async function salvarOrcamento(container) {
 
   if (error) { alert("Erro ao salvar: "+error.message); return; }
 
-  // Itens
   const itensDb = [];
   if (state.resultado.total > 0) {
     itensDb.push({
@@ -715,7 +956,7 @@ async function salvarOrcamento(container) {
   }
   state.itens.forEach(it => {
     itensDb.push({
-      orcamento_id: orc.id, produto_id: null,
+      orcamento_id: orc.id, produto_id: it.produtoId||null,
       descricao: it.descricao,
       tipo_calculo: "unidade",
       quantidade: it.qtd,
@@ -731,7 +972,7 @@ async function salvarOrcamento(container) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// PDF
+// PDF / IMPRESSÃO
 // ══════════════════════════════════════════════════════════════════════════════
 function gerarPDF() {
   const r   = state.resultado;
@@ -746,7 +987,6 @@ function gerarPDF() {
   }
   state.itens.forEach(it => linhas.push({ desc: it.descricao, qtd: it.qtd, preco: it.preco, total: it.preco*it.qtd }));
 
-  // Cria janela de impressão HTML
   const html = `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -878,6 +1118,188 @@ function css() { return `
 }
 .btn-novo-orc:hover { opacity:.88; }
 
+/* ── Botão calculadora de folhas ── */
+.btn-calc-folhas {
+  display:inline-flex; align-items:center; gap:6px;
+  background:transparent; border:1px solid var(--border-md);
+  color:var(--muted); border-radius:var(--radius-md);
+  padding:7px 13px; font-size:12px; font-weight:500; cursor:pointer;
+  transition:all var(--t);
+}
+.btn-calc-folhas:hover { background:rgba(0,172,23,0.08); color:var(--info); border-color:var(--info); }
+.btn-calc-folhas.active { background:rgba(0,172,23,0.1); color:var(--info); border-color:var(--info); font-weight:700; }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   CALCULADORA DE FOLHAS
+══════════════════════════════════════════════════════════════════════════════ */
+.calc-folhas-wrap {
+  background:var(--panel2);
+  border:1px solid rgba(0,172,23,0.25);
+  border-left:4px solid var(--info);
+  border-radius:var(--radius-lg);
+  margin-bottom:16px;
+  overflow:hidden;
+  animation:slideUp .15s ease;
+}
+
+.calc-folhas-header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:12px 16px;
+  background:rgba(0,172,23,0.06);
+  border-bottom:1px solid rgba(0,172,23,0.15);
+}
+
+.cf-close-btn {
+  background:transparent; border:1px solid var(--border-md);
+  color:var(--muted); border-radius:var(--radius-sm);
+  padding:3px 8px; cursor:pointer; font-size:13px;
+  transition:all var(--t);
+}
+.cf-close-btn:hover { background:var(--error-bg); color:var(--error); border-color:var(--error-border); }
+
+.calc-folhas-body {
+  padding:16px;
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  gap:16px;
+  align-items:start;
+}
+@media(max-width:900px){ .calc-folhas-body { grid-template-columns:1fr 1fr; } }
+@media(max-width:600px){ .calc-folhas-body { grid-template-columns:1fr; } }
+
+.cf-section { display:flex; flex-direction:column; gap:8px; }
+
+.cf-section-label {
+  font-size:11px; font-weight:700; text-transform:uppercase;
+  letter-spacing:.06em; color:var(--muted); margin-bottom:2px;
+}
+
+/* ── Tipo switch (adesivo / tag) ── */
+.cf-tipo-switch {
+  display:flex; gap:8px;
+}
+.cf-tipo-btn {
+  display:flex; flex-direction:column; align-items:center; gap:3px;
+  padding:10px 18px; border-radius:var(--radius-md);
+  border:1px solid var(--border-md); background:var(--panel);
+  color:var(--muted); cursor:pointer; transition:all var(--t);
+  flex:1;
+}
+.cf-tipo-btn:hover { border-color:var(--primary); color:var(--text); }
+.cf-tipo-btn.active {
+  background:rgba(0,124,190,0.12); border-color:var(--primary);
+  color:var(--primary-light);
+  box-shadow:0 0 0 3px rgba(0,124,190,0.10);
+}
+.cf-tipo-btn.active.tag {
+  background:rgba(232,160,16,0.10); border-color:var(--warning);
+  color:var(--warning);
+  box-shadow:0 0 0 3px rgba(232,160,16,0.10);
+}
+.cf-tipo-icon { font-size:18px; line-height:1; }
+.cf-tipo-nome { font-size:13px; font-weight:700; }
+.cf-tipo-esp  { font-size:10px; color:inherit; opacity:.75; }
+
+/* ── Botões de papel ── */
+.cf-papeis-row { display:flex; gap:6px; }
+.cf-papel-btn {
+  display:flex; flex-direction:column; align-items:center; gap:2px;
+  padding:10px 14px; border-radius:var(--radius-md);
+  border:1px solid var(--border-md); background:var(--panel);
+  color:var(--muted); cursor:pointer; transition:all var(--t);
+  min-width:80px;
+}
+.cf-papel-btn:hover { border-color:var(--info); color:var(--text); }
+.cf-papel-btn.active {
+  background:rgba(0,172,23,0.10); border-color:var(--info);
+  color:var(--info);
+  box-shadow:0 0 0 3px rgba(0,172,23,0.10);
+}
+.cf-papel-nome { font-size:14px; font-weight:800; }
+.cf-papel-dim  { font-size:10px; color:inherit; opacity:.8; }
+.cf-papel-margem { font-size:10px; color:var(--muted); }
+.cf-papel-btn.active .cf-papel-margem { color:rgba(0,172,23,0.7); }
+
+.cf-util-info {
+  font-size:12px; color:var(--muted);
+  background:var(--panel); border:1px solid var(--border);
+  border-radius:var(--radius-sm); padding:5px 10px;
+  display:inline-block;
+}
+.cf-util-info strong { color:var(--info); }
+
+/* Inputs da calculadora */
+.cf-inputs-row {
+  display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;
+}
+.cf-field { display:flex; flex-direction:column; gap:4px; width:100px; }
+.cf-field label { font-size:11px; color:var(--muted); font-weight:500; }
+.cf-field input {
+  background:var(--panel); border:1px solid var(--border-md);
+  color:var(--text); border-radius:var(--radius-md);
+  padding:9px 10px; font-size:14px; font-weight:700;
+  text-align:center;
+  transition:border-color var(--t);
+}
+.cf-field input:focus { border-color:var(--info); box-shadow:0 0 0 3px rgba(0,172,23,0.10); }
+
+/* Resultado da calculadora */
+.cf-hint {
+  display:flex; align-items:center; gap:6px;
+  font-size:12px; color:var(--muted); padding:12px;
+  background:var(--panel); border-radius:var(--radius-md);
+  border:1px dashed var(--border-md);
+}
+
+.cf-sem-fit {
+  font-size:12px; color:var(--warning); padding:12px;
+  background:var(--warning-bg); border-radius:var(--radius-md);
+  border:1px solid rgba(232,160,16,0.25);
+}
+
+.cf-res-cards {
+  display:flex; gap:10px; flex-wrap:wrap;
+}
+.cf-res-card {
+  background:var(--panel); border:1px solid var(--border);
+  border-radius:var(--radius-md); padding:12px 16px;
+  text-align:center; min-width:90px; flex:1;
+}
+.cf-res-card.primary {
+  background:rgba(0,172,23,0.10);
+  border-color:rgba(0,172,23,0.3);
+}
+.cf-res-card.muted { opacity:.5; }
+.cf-res-num {
+  font-size:22px; font-weight:800; color:var(--text); line-height:1;
+}
+.cf-res-card.primary .cf-res-num { color:var(--info); font-size:26px; }
+.cf-res-label {
+  font-size:11px; color:var(--muted); margin-top:3px;
+}
+.cf-rotated {
+  font-size:10px; color:var(--primary-light); margin-top:4px;
+  display:flex; align-items:center; gap:3px; justify-content:center;
+}
+
+/* ── Botão adicionar impressão à lista ── */
+.btn-add-m2-lista {
+  display:flex; align-items:center; justify-content:center; gap:7px;
+  width:100%; margin-top:10px; padding:10px 14px;
+  background:rgba(0,124,190,0.12); border:1px solid var(--primary-border);
+  color:var(--primary-light); border-radius:var(--radius-md);
+  font-family:var(--font); font-size:13px; font-weight:600;
+  cursor:pointer; transition:all var(--t);
+}
+.btn-add-m2-lista:hover { background:var(--primary); color:#fff; }
+
+.add-m2-hint {
+  display:flex; align-items:center; gap:6px; justify-content:center;
+  margin-top:10px; font-size:11px; color:var(--muted);
+  padding:8px; background:var(--panel); border-radius:var(--radius-sm);
+  border:1px dashed var(--border-md);
+}
+
 /* ── Materiais ── */
 .mat-grid {
   display:grid; grid-template-columns:repeat(3,1fr); gap:8px;
@@ -997,7 +1419,6 @@ function css() { return `
 .res-total span:last-child  { font-size:22px; font-weight:800; color:var(--primary-light); }
 
 /* ── Ações ── */
-.acoes-card { }
 .acoes-grid { display:flex; flex-direction:column; gap:8px; }
 .btn-acao {
   display:flex; align-items:center; justify-content:center; gap:8px;
