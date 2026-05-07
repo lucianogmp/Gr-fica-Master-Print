@@ -13,9 +13,9 @@ const ACRESCIMO_SEM_ARTE = 0.20;
 
 // ─── Papéis para calculadora de folhas ────────────────────────────────────────
 const PAPEIS_CFG = {
-  A4:  { w: 21,   h: 29.7, margem: 0.8, label: "A4",   desc: "21×29,7cm" },
-  A3:  { w: 29.7, h: 42,   margem: 0.8, label: "A3",   desc: "29,7×42cm" },
-  SRA3:{ w: 32,   h: 45,   margem: 2.0, label: "SRA3", desc: "32×45cm"   },
+  A4:  { w: 21,   h: 29.7, margem: 1.0, label: "A4",   desc: "21×29,7cm" },
+  A3:  { w: 42,   h: 29.7, margem: 1.0, label: "A3",   desc: "42×29,7cm" },
+  SRA3:{ w: 32,   h: 45,   margem: 1.0, label: "SRA3", desc: "32×45cm"   },
 };
 
 // ─── Estado ───────────────────────────────────────────────────────────────────
@@ -103,7 +103,7 @@ function calcularFolhas() {
   const ih = parseFloat(cf.alt) || 0;
   const qtd = parseInt(cf.qtd) || 0;
   // Espaçamento entre itens conforme tipo
-  const esp = cf.tipo === "tag" ? 0.5 : 0.15;
+  const esp = cf.tipo === "tag" ? 0.30 : 0.15;
   if (iw <= 0 || ih <= 0) return { uw, uh, esp, pronto: false };
   // Fórmula: (área_útil + 1_espaço) / (item + espaço)
   // Isso garante que o último item da fila não precisa de espaço após ele
@@ -202,7 +202,7 @@ function renderCalculadoraFolhas() {
           <button class="cf-tipo-btn ${cf.tipo==="tag"?"active tag":""}" data-cf-tipo="tag">
             <span class="cf-tipo-icon">🔖</span>
             <span class="cf-tipo-nome">Tag / Etiqueta</span>
-            <span class="cf-tipo-esp">esp. 0,50cm</span>
+            <span class="cf-tipo-esp">esp. 0,30cm</span>
           </button>
         </div>
 
