@@ -32,7 +32,8 @@ let state = {
   produtos: [],
   orcamentos: [],
   aberto: null,
-  resultado: { area: 0, unitario: 0, total: 0, totalItens: 0, grand: 0 },
+  arredondar: false, // [ALTERAÇÃO 1] opção de arredondamento
+  resultado: { area: 0, unitario: 0, total: 0, totalItens: 0, grand: 0, grandArredondado: 0 },
   // calculadora de folhas
   calcFolhasAberto: false,
   calcFolhas: { papel: "A4", larg: "", alt: "", qtd: "", tipo: "adesivo" },
@@ -238,6 +239,12 @@ function renderForm() {
   const mat = MATERIAIS.find(m => m.id === state.materialId) || MATERIAIS[0];
   const podeAdicionarLista = state.largura && state.altura && r.unitario > 0;
 
+  // [ALTERAÇÃO 1] valor exibido: arredondado ou normal
+  const valorExibido = state.arredondar ? r.grandArredondado : r.grand;
+
+  // [ALTERAÇÃO 3] total dos itens da tabela
+  const totalItensTabela = state.itens.reduce((s, i) => s + i.preco * i.qtd, 0);
+
   return `
   ${state.calcFolhasAberto ? renderCalculadoraFolhas() : ""}
 
@@ -337,6 +344,14 @@ function renderForm() {
                   <td><button class="del-item" data-del="${i}">✕</button></td>
                 </tr>`).join("")}
             </tbody>
+            <!-- [ALTERAÇÃO 3] Linha de total em tempo real -->
+            <tfoot>
+              <tr class="itens-total-row">
+                <td colspan="3" style="text-align:right;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)">Total produtos/serviços</td>
+                <td style="text-align:right;font-weight:800;font-size:15px;color:var(--primary-light)" id="itens-total-live">R$ ${totalItensTabela.toFixed(2)}</td>
+                <td></td>
+              </tr>
+            </tfoot>
           </table>
         </div>` : `<div class="itens-vazio"><i class="fi fi-rr-inbox"></i> Nenhum item adicionado</div>`}
       </div>
@@ -383,8 +398,29 @@ function renderForm() {
 
         <div class="res-total">
           <span>Total</span>
-          <span id="r-total">R$ ${r.grand.toFixed(2)}</span>
+          <span id="r-total">R$ ${valorExibido.toFixed(2)}</span>
         </div>
+
+        <!-- [ALTERAÇÃO 1] Toggle de arredondamento -->
+        <div class="arredondar-row">
+          <span class="arredondar-label"><i class="fi fi-rr-arrows-repeat-1"></i> Arredondar valor?</span>
+          <div class="arte-opts">
+            <label class="arte-opt">
+              <input type="radio" name="arredondar" value="sim" ${state.arredondar?"checked":""} />
+              <span class="arte-chip ${state.arredondar?"active":""}">Sim</span>
+            </label>
+            <label class="arte-opt">
+              <input type="radio" name="arredondar" value="nao" ${!state.arredondar?"checked":""} />
+              <span class="arte-chip ${!state.arredondar?"active":""}">Não</span>
+            </label>
+          </div>
+        </div>
+        ${state.arredondar && r.grand !== r.grandArredondado ? `
+        <div class="arredondar-info">
+          <i class="fi fi-rr-info"></i>
+          Valor original: <strong>R$ ${r.grand.toFixed(2)}</strong>
+          → arredondado para <strong>R$ ${r.grandArredondado.toFixed(2)}</strong>
+        </div>` : ""}
 
         <!-- Botão adicionar impressão à lista -->
         ${podeAdicionarLista ? `
@@ -537,6 +573,15 @@ function bindEvents(container) {
     })
   );
 
+  // [ALTERAÇÃO 1] ── Arredondar? ──
+  container.querySelectorAll("input[name='arredondar']").forEach(inp =>
+    inp.addEventListener("change", () => {
+      state.arredondar = inp.value === "sim";
+      calcular(container);
+      render(container);
+    })
+  );
+
   // ── Observações ──
   container.querySelector("#f-obs")?.addEventListener("input", e => {
     state.observacoes = e.target.value;
@@ -685,7 +730,8 @@ function adicionarImpressaoNaLista(container) {
   const mat = MATERIAIS.find(m => m.id === state.materialId) || MATERIAIS[0];
   if (!state.largura || !state.altura || r.unitario <= 0) return;
 
-  const descricao = `${mat.label} ${state.largura}×${state.altura}cm${!state.temArte ? " (+Arte 20%)" : ""}`;
+  // [ALTERAÇÃO 2] sem menção a arte na descrição do item da lista
+  const descricao = `${mat.label} ${state.largura}×${state.altura}cm`;
   const qtd = parseInt(state.quantidade) || 1;
 
   // Tenta encontrar produto correspondente no catálogo
@@ -724,16 +770,21 @@ function calcular(container) {
   const totalItens = state.itens.reduce((s, i) => s + i.preco * i.qtd, 0);
   const grand      = total + totalItens;
 
-  state.resultado = { area, unitario, total, totalItens, grand };
+  // [ALTERAÇÃO 1] arredondar para cima no múltiplo de 5 mais próximo
+  const grandArredondado = Math.ceil(grand / 5) * 5;
+
+  state.resultado = { area, unitario, total, totalItens, grand, grandArredondado };
   atualizarResultadoDOM(container);
 }
 
 function atualizarResultadoDOM(container) {
   const r = state.resultado;
+  // [ALTERAÇÃO 1] exibe valor arredondado se ativo
+  const valorExibido = state.arredondar ? r.grandArredondado : r.grand;
   const setEl = (id, val) => { const el = container?.querySelector(`#${id}`); if (el) el.textContent = val; };
   setEl("r-area",  r.area.toFixed(4) + " m²");
   setEl("r-unit",  "R$ " + r.unitario.toFixed(2));
-  setEl("r-total", "R$ " + r.grand.toFixed(2));
+  setEl("r-total", "R$ " + valorExibido.toFixed(2));
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -743,6 +794,9 @@ function abrirModalConverter(container) {
   const area = document.getElementById("app-modal-root");
   const r    = state.resultado;
   const mat  = MATERIAIS.find(m => m.id === state.materialId);
+
+  // [ALTERAÇÃO 1] usar valor arredondado se ativo
+  const totalFinal = state.arredondar ? r.grandArredondado : r.grand;
 
   const clienteOptions = state.clientes.map(c =>
     `<option value="${esc(c.id)}" data-nome="${esc(c.nome)}">${esc(c.nome)}</option>`
@@ -758,7 +812,7 @@ function abrirModalConverter(container) {
           <div class="conv-res-linha"><span>Dimensões</span><strong>${state.largura||0}×${state.altura||0} cm</strong></div>
           <div class="conv-res-linha"><span>Quantidade</span><strong>${state.quantidade}</strong></div>
           ${state.itens.length>0?`<div class="conv-res-linha"><span>Itens adicionais</span><strong>${state.itens.length} item(s)</strong></div>`:""}
-          <div class="conv-res-linha total"><span>Total</span><strong>R$ ${r.grand.toFixed(2)}</strong></div>
+          <div class="conv-res-linha total"><span>Total</span><strong>R$ ${totalFinal.toFixed(2)}</strong></div>
         </div>
 
         <div class="modal-sep"></div>
@@ -838,13 +892,14 @@ function abrirModalConverter(container) {
     const obs   = area.querySelector("#mc-obs").value.trim();
 
     const mat = MATERIAIS.find(m => m.id === state.materialId);
-    const descricaoPrincipal = `${mat?.label||"Impressão"} ${state.largura||0}×${state.altura||0}cm${!state.temArte?" (+Arte)":""}`;
+    // [ALTERAÇÃO 2] sem info de arte na descrição do pedido confirmado
+    const descricaoPrincipal = `${mat?.label||"Impressão"} ${state.largura||0}×${state.altura||0}cm`;
 
     const { data: venda, error } = await supabase.from("vendas").insert({
       cliente_nome: clienteNome||null,
       observacoes: obs||null,
       status: "pendente",
-      total: state.resultado.grand,
+      total: totalFinal,
     }).select().single();
 
     if (error) { alert("Erro ao criar venda: "+error.message); return; }
@@ -874,12 +929,12 @@ function abrirModalConverter(container) {
       cliente_nome: clienteNome||null,
       observacoes: obs||null,
       status: "aprovado",
-      total: state.resultado.grand,
+      total: totalFinal,
       venda_id: venda.id,
     });
 
     area.innerHTML = "";
-    alert(`✅ Venda criada com sucesso!\nCliente: ${clienteNome||"Não informado"}\nTotal: R$ ${state.resultado.grand.toFixed(2)}`);
+    alert(`✅ Venda criada com sucesso!\nCliente: ${clienteNome||"Não informado"}\nTotal: R$ ${totalFinal.toFixed(2)}`);
     limparForm();
     await carregar();
     render(container);
@@ -930,13 +985,17 @@ function abrirModalCadCliente(container, nomeInicial, callback) {
 // ══════════════════════════════════════════════════════════════════════════════
 async function salvarOrcamento(container) {
   const mat = MATERIAIS.find(m => m.id === state.materialId);
+  // [ALTERAÇÃO 2] sem info de arte na descrição salva
   const desc = `${mat?.label||"Impressão"} ${state.largura||0}×${state.altura||0}cm`;
+
+  // [ALTERAÇÃO 1] usar valor arredondado se ativo
+  const totalFinal = state.arredondar ? state.resultado.grandArredondado : state.resultado.grand;
 
   const { data: orc, error } = await supabase.from("orcamentos").insert({
     cliente_nome: null,
     observacoes:  state.observacoes||null,
     status:       "rascunho",
-    total:        state.resultado.grand,
+    total:        totalFinal,
   }).select().single();
 
   if (error) { alert("Erro ao salvar: "+error.message); return; }
@@ -978,8 +1037,12 @@ function gerarPDF() {
   const r   = state.resultado;
   const mat = MATERIAIS.find(m => m.id === state.materialId);
 
+  // [ALTERAÇÃO 1] usar valor arredondado se ativo
+  const totalFinal = state.arredondar ? r.grandArredondado : r.grand;
+
   const linhas = [];
   if (r.total > 0) {
+    // [ALTERAÇÃO 2] sem info de arte na descrição do PDF
     linhas.push({
       desc: `${mat?.label||"Impressão"} ${state.largura||0}×${state.altura||0}cm`,
       qtd: state.quantidade, preco: r.unitario, total: r.total,
@@ -1021,7 +1084,7 @@ function gerarPDF() {
       </tr>`).join("")}
     <tr class="total-row">
       <td colspan="3" style="text-align:right">TOTAL</td>
-      <td>R$ ${r.grand.toFixed(2)}</td>
+      <td>R$ ${totalFinal.toFixed(2)}</td>
     </tr>
   </tbody>
 </table>
@@ -1048,7 +1111,8 @@ function limparForm() {
   state.itens       = [];
   state.observacoes = "";
   state.aberto      = null;
-  state.resultado   = { area:0, unitario:0, total:0, totalItens:0, grand:0 };
+  state.arredondar  = false; // [ALTERAÇÃO 1] resetar arredondamento
+  state.resultado   = { area:0, unitario:0, total:0, totalItens:0, grand:0, grandArredondado:0 };
 }
 
 function flashInput(el) {
@@ -1392,6 +1456,14 @@ function css() { return `
 }
 .itens-vazio i { font-size:22px; opacity:.4; }
 
+/* [ALTERAÇÃO 3] Linha de total da tabela */
+.itens-total-row td {
+  background:var(--primary-bg) !important;
+  border-top:2px solid var(--primary-border) !important;
+  border-bottom:none !important;
+  padding:10px 12px;
+}
+
 /* ── Resultado ── */
 .resultado-card { border-top:3px solid var(--primary); }
 .material-sel-info { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; }
@@ -1417,6 +1489,23 @@ function css() { return `
 }
 .res-total span:first-child { font-size:13px; color:var(--muted); font-weight:600; }
 .res-total span:last-child  { font-size:22px; font-weight:800; color:var(--primary-light); }
+
+/* [ALTERAÇÃO 1] Linha de arredondamento */
+.arredondar-row {
+  display:flex; align-items:center; justify-content:space-between;
+  background:var(--panel); border:1px solid var(--border);
+  border-radius:var(--radius-md); padding:8px 14px; margin-top:10px;
+}
+.arredondar-label {
+  font-size:12px; font-weight:600; color:var(--muted);
+  display:flex; align-items:center; gap:6px;
+}
+.arredondar-info {
+  font-size:11px; color:var(--muted); margin-top:6px;
+  padding:6px 10px; background:var(--panel); border-radius:var(--radius-sm);
+  border:1px dashed var(--border-md); text-align:center;
+}
+.arredondar-info strong { color:var(--primary-light); }
 
 /* ── Ações ── */
 .acoes-grid { display:flex; flex-direction:column; gap:8px; }
