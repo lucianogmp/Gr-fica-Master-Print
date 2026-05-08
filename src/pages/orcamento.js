@@ -33,7 +33,8 @@ let state = {
   orcamentos: [],
   aberto: null,
   arredondar: false, // [ALTERAÇÃO 1] opção de arredondamento
-  resultado: { area: 0, unitario: 0, total: 0, totalItens: 0, grand: 0, grandArredondado: 0 },
+  custoOperacionalPct: 0, // % de custo operacional vindo da gestão de custos
+  resultado: { area: 0, unitario: 0, total: 0, acrescimoCustoOp: 0, totalItens: 0, grand: 0, grandArredondado: 0 },
   // calculadora de folhas
   calcFolhasAberto: false,
   calcFolhas: { papel: "A4", larg: "", alt: "", qtd: "", tipo: "adesivo" },
@@ -47,14 +48,16 @@ export async function Orcamento(container) {
 }
 
 async function carregar() {
-  const [{ data: orcs }, { data: clientes }, { data: produtos }] = await Promise.all([
+  const [{ data: orcs }, { data: clientes }, { data: produtos }, { data: config }] = await Promise.all([
     supabase.from("orcamentos").select("*, orcamento_itens(*)").order("created_at", { ascending: false }),
     supabase.from("clientes").select("id, nome, telefone, email").order("nome"),
     supabase.from("produtos").select("id, nome").order("nome"),
+    supabase.from("configuracoes").select("valor").eq("chave", "custo_operacional_pct").maybeSingle(),
   ]);
   state.orcamentos = orcs || [];
   state.clientes   = clientes || [];
   state.produtos   = produtos || [];
+  state.custoOperacionalPct = parseFloat(config?.valor || 0);
 }
 
 // ─── Render principal ─────────────────────────────────────────────────────────
@@ -385,14 +388,20 @@ function renderForm() {
             <span>Valor unitário</span>
             <span id="r-unit">R$ ${r.unitario.toFixed(2)}</span>
           </div>
-          ${state.itens.length > 0 ? `
+          ${r.total > 0 ? `
           <div class="res-linha">
             <span>Subtotal impressão</span>
-            <span>R$ ${r.total.toFixed(2)}</span>
-          </div>
+            <span id="r-subtotal">R$ ${r.total.toFixed(2)}</span>
+          </div>` : ""}
+          ${state.custoOperacionalPct > 0 && r.total > 0 ? `
+          <div class="res-linha custo-op-linha">
+            <span><i class="fi fi-rr-settings"></i> Custo operacional (${state.custoOperacionalPct}%)</span>
+            <span id="r-custo-op" class="custo-op-val">+ R$ ${r.acrescimoCustoOp.toFixed(2)}</span>
+          </div>` : ""}
+          ${state.itens.length > 0 ? `
           <div class="res-linha">
             <span>Produtos/Serviços</span>
-            <span>R$ ${r.totalItens.toFixed(2)}</span>
+            <span id="r-itens">R$ ${r.totalItens.toFixed(2)}</span>
           </div>` : ""}
         </div>
 
@@ -768,12 +777,18 @@ function calcular(container) {
 
   const total      = unitario * qtd;
   const totalItens = state.itens.reduce((s, i) => s + i.preco * i.qtd, 0);
-  const grand      = total + totalItens;
+
+  // Custo operacional aplicado somente sobre o subtotal de m² (material)
+  const acrescimoCustoOp = (state.custoOperacionalPct > 0 && total > 0)
+    ? total * (state.custoOperacionalPct / 100)
+    : 0;
+
+  const grand = total + acrescimoCustoOp + totalItens;
 
   // [ALTERAÇÃO 1] arredondar para cima no múltiplo de 5 mais próximo
   const grandArredondado = Math.ceil(grand / 5) * 5;
 
-  state.resultado = { area, unitario, total, totalItens, grand, grandArredondado };
+  state.resultado = { area, unitario, total, acrescimoCustoOp, totalItens, grand, grandArredondado };
   atualizarResultadoDOM(container);
 }
 
@@ -782,9 +797,12 @@ function atualizarResultadoDOM(container) {
   // [ALTERAÇÃO 1] exibe valor arredondado se ativo
   const valorExibido = state.arredondar ? r.grandArredondado : r.grand;
   const setEl = (id, val) => { const el = container?.querySelector(`#${id}`); if (el) el.textContent = val; };
-  setEl("r-area",  r.area.toFixed(4) + " m²");
-  setEl("r-unit",  "R$ " + r.unitario.toFixed(2));
-  setEl("r-total", "R$ " + valorExibido.toFixed(2));
+  setEl("r-area",     r.area.toFixed(4) + " m²");
+  setEl("r-unit",     "R$ " + r.unitario.toFixed(2));
+  setEl("r-subtotal", "R$ " + r.total.toFixed(2));
+  setEl("r-custo-op", "+ R$ " + r.acrescimoCustoOp.toFixed(2));
+  setEl("r-itens",    "R$ " + r.totalItens.toFixed(2));
+  setEl("r-total",    "R$ " + valorExibido.toFixed(2));
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1112,7 +1130,7 @@ function limparForm() {
   state.observacoes = "";
   state.aberto      = null;
   state.arredondar  = false; // [ALTERAÇÃO 1] resetar arredondamento
-  state.resultado   = { area:0, unitario:0, total:0, totalItens:0, grand:0, grandArredondado:0 };
+  state.resultado   = { area:0, unitario:0, total:0, acrescimoCustoOp:0, totalItens:0, grand:0, grandArredondado:0 };
 }
 
 function flashInput(el) {
@@ -1490,7 +1508,24 @@ function css() { return `
 .res-total span:first-child { font-size:13px; color:var(--muted); font-weight:600; }
 .res-total span:last-child  { font-size:22px; font-weight:800; color:var(--primary-light); }
 
-/* [ALTERAÇÃO 1] Linha de arredondamento */
+/* [ALTERAÇÃO 4] Linha de custo operacional no resultado */
+.custo-op-linha {
+  background:rgba(232,160,16,0.06);
+  border-radius:var(--radius-sm);
+  padding:5px 8px !important;
+  border-bottom:1px solid rgba(232,160,16,0.2) !important;
+}
+.custo-op-linha span:first-child {
+  color:var(--warning) !important;
+  font-weight:600;
+  display:flex; align-items:center; gap:5px;
+}
+.custo-op-val {
+  color:var(--warning) !important;
+  font-weight:700 !important;
+}
+
+/* ── Linha de arredondamento */
 .arredondar-row {
   display:flex; align-items:center; justify-content:space-between;
   background:var(--panel); border:1px solid var(--border);

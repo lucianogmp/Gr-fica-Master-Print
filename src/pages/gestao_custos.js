@@ -5,6 +5,7 @@ let state = {
   aba: "resumo",
   equipamentos: [],
   custos: [],
+  custoOpPct: 0, // % repassado para orçamentos
   salvando: false,
   msg: null,
 };
@@ -22,12 +23,14 @@ export async function GestaoCustos(container) {
 }
 
 async function carregar() {
-  const [{ data: equip }, { data: custos }] = await Promise.all([
+  const [{ data: equip }, { data: custos }, { data: config }] = await Promise.all([
     supabase.from("depreciacao").select("*").order("nome"),
     supabase.from("custos_fixos").select("*").order("nome"),
+    supabase.from("configuracoes").select("valor").eq("chave", "custo_operacional_pct").maybeSingle(),
   ]);
   state.equipamentos = equip || [];
   state.custos       = custos || [];
+  state.custoOpPct   = parseFloat(config?.valor || 0);
 }
 
 // ─── Render principal ─────────────────────────────────────────────────────────
@@ -236,20 +239,69 @@ function renderResumo(body, container, totalDepr, totalFixo, totalMensal) {
       </table>
     </div>` : ""}
 
-    <!-- Alerta de integração com orçamento -->
-    <div class="integracao-card">
-      <div class="integracao-icon">💡</div>
-      <div>
-        <div class="integracao-titulo">Integração com Orçamentos e Vendas</div>
-        <div class="integracao-desc">
-          Custo por hora: <strong style="color:var(--info)">R$ ${(totalMensal / 30 / 8).toFixed(4)}</strong> —
-          Esses valores são calculados automaticamente com base nos seus custos cadastrados.
-          Ao criar orçamentos, considere adicionar o custo operacional de
-          <strong style="color:var(--primary-light)">R$ ${(totalMensal / 30).toFixed(2)}/dia</strong> na precificação.
+    <!-- ── INTEGRAÇÃO COM ORÇAMENTOS ── -->
+    <div class="integracao-card" style="margin-top:14px">
+      <div class="integracao-icon">⚙️</div>
+      <div style="flex:1">
+        <div class="integracao-titulo">Repasse de Custo Operacional para Orçamentos</div>
+        <div class="integracao-desc" style="margin-bottom:12px">
+          Define o percentual dos custos operacionais que será automaticamente acrescentado
+          no subtotal de impressão (m²) em todos os orçamentos.
+          Custo por hora atual: <strong style="color:var(--info)">R$ ${(totalMensal / 30 / 8).toFixed(4)}</strong>
+        </div>
+        <div class="custo-op-config">
+          <div class="custo-op-input-wrap">
+            <label>Percentual de acréscimo nos orçamentos</label>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
+              <div class="input-suffix-wrap" style="width:140px">
+                <input id="custo-op-pct" type="number" min="0" max="100" step="0.1"
+                  value="${state.custoOpPct}" placeholder="0" />
+                <span>%</span>
+              </div>
+              <button class="btn-primary" id="btn-salvar-pct">
+                <i class="fi fi-rr-disk"></i> Salvar
+              </button>
+            </div>
+            <div class="custo-op-exemplos" id="custo-op-exemplos">
+              ${renderExemplosCustoOp(state.custoOpPct)}
+            </div>
+          </div>
         </div>
       </div>
     </div>
   `;
+
+  // Preview em tempo real ao digitar
+  body.querySelector("#custo-op-pct")?.addEventListener("input", e => {
+    const pct = parseFloat(e.target.value) || 0;
+    const el = body.querySelector("#custo-op-exemplos");
+    if (el) el.innerHTML = renderExemplosCustoOp(pct);
+  });
+
+  // Salvar percentual
+  body.querySelector("#btn-salvar-pct")?.addEventListener("click", async () => {
+    const pct = parseFloat(body.querySelector("#custo-op-pct").value) || 0;
+    await supabase.from("configuracoes").upsert(
+      { chave: "custo_operacional_pct", valor: String(pct) },
+      { onConflict: "chave" }
+    );
+    state.custoOpPct = pct;
+    state.msg = { tipo: "ok", texto: `Percentual de ${pct}% salvo! Será aplicado automaticamente nos orçamentos.` };
+    render(container);
+  });
+}
+
+function renderExemplosCustoOp(pct) {
+  if (!pct || pct <= 0) return `<span style="color:var(--muted);font-size:12px">Nenhum acréscimo será aplicado.</span>`;
+  const exemplos = [50, 100, 200];
+  return `
+    <div style="font-size:11px;color:var(--muted);margin-top:8px">
+      Exemplos com ${pct}% de acréscimo:
+      ${exemplos.map(v => {
+        const acr = v * (pct / 100);
+        return `<span class="custo-op-ex">R$ ${v},00 → <strong>R$ ${(v + acr).toFixed(2)}</strong></span>`;
+      }).join("")}
+    </div>`;
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -322,7 +374,6 @@ function renderDepreciacao(body, container) {
                   <span>Anual: R$ ${deprAno.toFixed(2)}</span>
                 </div>
 
-                <!-- Barra de progresso -->
                 <div class="equip-prog-label">
                   <span>Depreciação acumulada</span>
                   <span>${pct.toFixed(0)}% · ${mesesUsados}/${vidaTotal} meses</span>
@@ -342,7 +393,6 @@ function renderDepreciacao(body, container) {
           }).join("")}
         </div>`}
 
-    <!-- Totalizador -->
     ${state.equipamentos.length > 0 ? `
     <div class="gc-total-bar">
       <span>Total de depreciação mensal:</span>
@@ -496,7 +546,6 @@ function abrirModalEquip(container, equip) {
           </div>
         </div>
 
-        <!-- Preview da depreciação -->
         <div class="depr-preview" id="depr-preview">
           <div class="depr-preview-title">📊 Prévia da depreciação</div>
           <div id="depr-preview-valores"></div>
@@ -514,7 +563,6 @@ function abrirModalEquip(container, equip) {
       </div>
     </div>`;
 
-  // Preview em tempo real
   const atualizarPreview = () => {
     const valor = parseFloat(area.querySelector("#eq-valor").value) || 0;
     const anos  = parseFloat(area.querySelector("#eq-vida").value)  || 0;
@@ -817,10 +865,18 @@ function css() { return `
 .periodo-label { font-size:11px; color:var(--muted); margin-bottom:2px; }
 .periodo-val   { font-size:14px; font-weight:700; color:var(--primary-light); }
 
-.integracao-card { display:flex; align-items:flex-start; gap:12px; background:rgba(0,124,190,0.08); border:1px solid var(--primary-border); border-radius:var(--radius-lg); padding:14px 16px; margin-top:14px; }
+/* ── Integração com orçamentos ── */
+.integracao-card { display:flex; align-items:flex-start; gap:12px; background:rgba(0,124,190,0.08); border:1px solid var(--primary-border); border-radius:var(--radius-lg); padding:14px 16px; }
 .integracao-icon { font-size:20px; flex-shrink:0; }
 .integracao-titulo { font-size:13px; font-weight:700; margin-bottom:4px; }
 .integracao-desc { font-size:12px; color:var(--muted); line-height:1.6; }
+.custo-op-config { margin-top:4px; }
+.custo-op-ex {
+  display:inline-block; background:var(--panel); border:1px solid var(--border);
+  border-radius:var(--radius-sm); padding:3px 8px; margin:3px 4px 0 0;
+  font-size:11px; color:var(--muted);
+}
+.custo-op-ex strong { color:var(--primary-light); }
 
 /* ── Modal ── */
 .modal-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
