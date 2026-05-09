@@ -1,4 +1,5 @@
 import { supabase } from "../supabase/client.js";
+import { fmtBRL } from "../format/brl.js";
 
 // ── Carrega Chart.js via CDN se necessário ────────────────────────────────────
 function loadChartJS() {
@@ -187,13 +188,24 @@ function render(container) {
   const d = state.dados;
   if (!d) return;
 
-  const fmt  = v => `R$ ${Number(v).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const fmt  = fmtBRL;
   const fmtK = v => {
-    const abs = Math.abs(v);
-    const sign = v < 0 ? "-" : "";
-    if (abs >= 1e6) return `${sign}R$ ${(abs / 1e6).toFixed(1)}M`;
-    if (abs >= 1000) return `${sign}R$ ${(abs / 1000).toFixed(1)}K`;
-    return fmt(v);
+    const n = Number(v);
+    const abs = Math.abs(n);
+    const sign = n < 0 ? "-" : "";
+    if (abs >= 1e6) {
+      return `${sign}R$ ${(abs / 1e6).toLocaleString("pt-BR", {
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1,
+      })}M`;
+    }
+    if (abs >= 1000) {
+      return `${sign}R$ ${(abs / 1000).toLocaleString("pt-BR", {
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1,
+      })}K`;
+    }
+    return fmt(n);
   };
 
   const catKeys   = Object.keys(d.vendasPorCat);
@@ -402,14 +414,14 @@ function renderAvisos(d) {
     const dias = Math.floor((new Date() - new Date(l.data_vencimento)) / (1000 * 60 * 60 * 24));
     items.push(aviso("danger", "!",
       `${l.tipo === "receita" ? "Recebimento" : "Pagamento"} em atraso — ${l.descricao}`,
-      `R$ ${Number(l.valor).toFixed(2)} · venceu há ${dias} dia${dias !== 1 ? "s" : ""}`));
+      `${fmtBRL(l.valor)} · venceu há ${dias} dia${dias !== 1 ? "s" : ""}`));
   });
 
   d.proximos7.slice(0, 3).forEach(l => {
     const dias = Math.ceil((new Date(l.data_vencimento) - new Date()) / (1000 * 60 * 60 * 24));
     items.push(aviso("warn", "▲",
       `${l.tipo === "receita" ? "Recebimento" : "Pagamento"} vence em ${dias} dia${dias !== 1 ? "s" : ""}`,
-      `${l.descricao} · R$ ${Number(l.valor).toFixed(2)}`));
+      `${l.descricao} · ${fmtBRL(l.valor)}`));
   });
 
   d.estoqueZerado.slice(0, 2).forEach(m =>
@@ -498,7 +510,7 @@ function initCharts(container, d, catKeys, catColors) {
         responsive: false, cutout: "72%",
         plugins: {
           legend: { display: false },
-          tooltip: { callbacks: { label: ctx => isReal ? `${ctx.label}: R$ ${Number(ctx.raw).toFixed(2)}` : `${ctx.label}: ${ctx.raw}%` } }
+          tooltip: { callbacks: { label: ctx => isReal ? `${ctx.label}: ${fmtBRL(ctx.raw)}` : `${ctx.label}: ${ctx.raw}%` } }
         },
         animation: { animateRotate: true, duration: 900 },
       }
@@ -531,13 +543,22 @@ function initCharts(container, d, catKeys, catColors) {
         scales: {
           x: { ticks: { color: txtColor, font: { size: 11 } }, grid: { color: "transparent" } },
           y: {
-            ticks: { color: txtColor, font: { size: 10 }, callback: v => v >= 1000 ? `R$${(v / 1000).toFixed(0)}K` : `R$${v}` },
+            ticks: {
+              color: txtColor,
+              font: { size: 10 },
+              callback: v =>
+                v >= 1000
+                  ? `R$ ${(v / 1000).toLocaleString("pt-BR", {
+                      maximumFractionDigits: 1,
+                    })}K`
+                  : fmtBRL(v),
+            },
             grid: { color: gridCol }
           }
         },
         plugins: {
           legend: { display: false },
-          tooltip: { callbacks: { label: ctx => `R$ ${Number(ctx.raw).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` } }
+          tooltip: { callbacks: { label: ctx => fmtBRL(ctx.raw) } }
         }
       }
     });
@@ -566,7 +587,7 @@ function initCharts(container, d, catKeys, catColors) {
           tooltip: {
             callbacks: {
               label: ctx => hasData
-                ? `${ctx.label}: R$ ${Number(ctx.raw).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+                ? `${ctx.label}: ${fmtBRL(ctx.raw)}`
                 : "Sem dados"
             }
           }
@@ -598,7 +619,7 @@ function initCharts(container, d, catKeys, catColors) {
             padding:9px 12px;background:var(--panel2);border-radius:var(--radius-md);
             margin-bottom:6px;font-size:13px">
             <span>${nome}</span>
-            <span style="font-weight:600;color:var(--primary-light)">R$ ${Number(val).toFixed(2)}</span>
+            <span style="font-weight:600;color:var(--primary-light)">${fmtBRL(val)}</span>
           </div>`).join("") ||
         `<div style="color:var(--muted);font-size:13px;padding:8px 0">Nenhum produto identificado.</div>`;
       modal.style.display = "flex";

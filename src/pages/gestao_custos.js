@@ -1,4 +1,5 @@
 import { supabase } from "../supabase/client.js";
+import { fmtBRL } from "../format/brl.js";
 
 // ─── Estado ───────────────────────────────────────────────────────────────────
 let state = {
@@ -62,22 +63,22 @@ function render(container) {
     <div class="gc-kpis">
       <div class="kpi-card">
         <div class="kpi-label">Depreciação mensal</div>
-        <div class="kpi-val" style="color:var(--warning)">R$ ${totalDeprMensal.toFixed(2)}</div>
+        <div class="kpi-val" style="color:var(--warning)">${fmtBRL(totalDeprMensal)}</div>
         <div class="kpi-sub">${state.equipamentos.length} equipamento${state.equipamentos.length !== 1 ? "s" : ""}</div>
       </div>
       <div class="kpi-card">
         <div class="kpi-label">Custos fixos/mês</div>
-        <div class="kpi-val" style="color:var(--error)">R$ ${totalCustoFixo.toFixed(2)}</div>
+        <div class="kpi-val" style="color:var(--error)">${fmtBRL(totalCustoFixo)}</div>
         <div class="kpi-sub">${custosAtivos.length} item${custosAtivos.length !== 1 ? "s" : ""} ativo${custosAtivos.length !== 1 ? "s" : ""}</div>
       </div>
       <div class="kpi-card kpi-destaque">
         <div class="kpi-label">Total mensal</div>
-        <div class="kpi-val" style="color:var(--primary-light)">R$ ${totalMensal.toFixed(2)}</div>
+        <div class="kpi-val" style="color:var(--primary-light)">${fmtBRL(totalMensal)}</div>
         <div class="kpi-sub">Custo operacional total</div>
       </div>
       <div class="kpi-card">
         <div class="kpi-label">Custo por hora</div>
-        <div class="kpi-val" style="color:var(--info)">R$ ${totalHora.toFixed(2)}</div>
+        <div class="kpi-val" style="color:var(--info)">${fmtBRL(totalHora)}</div>
         <div class="kpi-sub">Base: 8h/dia · 30 dias</div>
       </div>
     </div>
@@ -124,7 +125,7 @@ function render(container) {
 // ABA: RESUMO
 // ══════════════════════════════════════════════════════════════════════════════
 function renderResumo(body, container, totalDepr, totalFixo, totalMensal) {
-  const fmt = v => `R$ ${Number(v).toFixed(2)}`;
+  const fmt = fmtBRL;
 
   // Custos fixos por categoria
   const porCat = {};
@@ -164,7 +165,7 @@ function renderResumo(body, container, totalDepr, totalFixo, totalMensal) {
         </div>
         <div class="comp-total">
           <span>Total mensal</span>
-          <strong>R$ ${totalMensal.toFixed(2)}</strong>
+          <strong>${fmtBRL(totalMensal)}</strong>
         </div>
 
         <!-- Custo por período -->
@@ -177,7 +178,7 @@ function renderResumo(body, container, totalDepr, totalFixo, totalMensal) {
           ].map(p => `
             <div class="periodo-item">
               <div class="periodo-label">${p.label}</div>
-              <div class="periodo-val">R$ ${p.val.toFixed(2)}</div>
+              <div class="periodo-val">${fmtBRL(p.val)}</div>
             </div>`).join("")}
         </div>
       </div>
@@ -223,10 +224,10 @@ function renderResumo(body, container, totalDepr, totalFixo, totalMensal) {
             return `
               <tr>
                 <td><strong>${esc(e.nome)}</strong></td>
-                <td style="text-align:right">R$ ${Number(e.valor || 0).toFixed(2)}</td>
+                <td style="text-align:right">${fmtBRL(e.valor || 0)}</td>
                 <td style="text-align:center">${e.vida_util_anos} ano${e.vida_util_anos != 1 ? "s" : ""}</td>
-                <td style="text-align:right;font-weight:700;color:var(--warning)">R$ ${deprMes.toFixed(2)}</td>
-                <td style="text-align:right;color:var(--muted);font-size:12px">R$ ${deprHora.toFixed(4)}</td>
+                <td style="text-align:right;font-weight:700;color:var(--warning)">${fmtBRL(deprMes)}</td>
+                <td style="text-align:right;color:var(--muted);font-size:12px">${fmtBRL(deprHora, 4)}</td>
                 <td style="text-align:center">
                   <div class="prog-wrap">
                     <div class="prog-bar ${status}" style="width:${pct.toFixed(0)}%"></div>
@@ -247,7 +248,7 @@ function renderResumo(body, container, totalDepr, totalFixo, totalMensal) {
         <div class="integracao-desc" style="margin-bottom:12px">
           Define o percentual dos custos operacionais que será automaticamente acrescentado
           no subtotal de impressão (m²) em todos os orçamentos.
-          Custo por hora atual: <strong style="color:var(--info)">R$ ${(totalMensal / 30 / 8).toFixed(4)}</strong>
+          Custo por hora atual: <strong style="color:var(--info)">${fmtBRL(totalMensal / 30 / 8, 4)}</strong>
         </div>
         <div class="custo-op-config">
           <div class="custo-op-input-wrap">
@@ -299,7 +300,7 @@ function renderExemplosCustoOp(pct) {
       Exemplos com ${pct}% de acréscimo:
       ${exemplos.map(v => {
         const acr = v * (pct / 100);
-        return `<span class="custo-op-ex">R$ ${v},00 → <strong>R$ ${(v + acr).toFixed(2)}</strong></span>`;
+        return `<span class="custo-op-ex">${fmtBRL(v)} → <strong>${fmtBRL(v + acr)}</strong></span>`;
       }).join("")}
     </div>`;
 }
@@ -346,7 +347,7 @@ function renderDepreciacao(body, container) {
                 <div class="equip-valores">
                   <div class="equip-val-item">
                     <span>Valor de compra</span>
-                    <strong>R$ ${Number(e.valor || 0).toFixed(2)}</strong>
+                    <strong>${fmtBRL(e.valor || 0)}</strong>
                   </div>
                   <div class="equip-val-item">
                     <span>Vida útil</span>
@@ -354,24 +355,24 @@ function renderDepreciacao(body, container) {
                   </div>
                   <div class="equip-val-item">
                     <span>Valor residual</span>
-                    <strong style="color:var(--muted)">R$ ${valorResidual.toFixed(2)}</strong>
+                    <strong style="color:var(--muted)">${fmtBRL(valorResidual)}</strong>
                   </div>
                 </div>
 
                 <div class="equip-depr-destaque">
                   <div>
                     <div class="depr-label">Depreciação mensal</div>
-                    <div class="depr-valor">R$ ${deprMes.toFixed(2)}</div>
+                    <div class="depr-valor">${fmtBRL(deprMes)}</div>
                   </div>
                   <div style="text-align:right">
                     <div class="depr-label">Por hora (8h)</div>
-                    <div class="depr-valor" style="font-size:14px;color:var(--info)">R$ ${deprHora.toFixed(4)}</div>
+                    <div class="depr-valor" style="font-size:14px;color:var(--info)">${fmtBRL(deprHora, 4)}</div>
                   </div>
                 </div>
 
                 <div class="equip-secundarios">
-                  <span>Diária: R$ ${deprDia.toFixed(4)}</span>
-                  <span>Anual: R$ ${deprAno.toFixed(2)}</span>
+                  <span>Diária: ${fmtBRL(deprDia, 4)}</span>
+                  <span>Anual: ${fmtBRL(deprAno)}</span>
                 </div>
 
                 <div class="equip-prog-label">
@@ -396,7 +397,7 @@ function renderDepreciacao(body, container) {
     ${state.equipamentos.length > 0 ? `
     <div class="gc-total-bar">
       <span>Total de depreciação mensal:</span>
-      <strong>R$ ${state.equipamentos.reduce((s, e) => s + calcDeprMensal(e), 0).toFixed(2)}</strong>
+      <strong>${fmtBRL(state.equipamentos.reduce((s, e) => s + calcDeprMensal(e), 0))}</strong>
     </div>` : ""}
   `;
 
@@ -459,9 +460,9 @@ function renderFixos(body, container) {
                   <tr class="${ativo ? "" : "row-inativo"}">
                     <td><strong>${esc(c.nome)}</strong>${c.observacoes ? `<div style="font-size:11px;color:var(--muted)">${esc(c.observacoes)}</div>` : ""}</td>
                     <td style="font-size:12px;color:var(--muted)">${esc(c.categoria) || "—"}</td>
-                    <td style="text-align:right;font-weight:700;color:${ativo ? "var(--error)" : "var(--muted)"}">R$ ${Number(c.valor_mensal || 0).toFixed(2)}</td>
-                    <td style="text-align:right;font-size:12px;color:var(--muted)">R$ ${dia.toFixed(4)}</td>
-                    <td style="text-align:right;font-size:12px;color:var(--muted)">R$ ${hora.toFixed(4)}</td>
+                    <td style="text-align:right;font-weight:700;color:${ativo ? "var(--error)" : "var(--muted)"}">${fmtBRL(c.valor_mensal || 0)}</td>
+                    <td style="text-align:right;font-size:12px;color:var(--muted)">${fmtBRL(dia, 4)}</td>
+                    <td style="text-align:right;font-size:12px;color:var(--muted)">${fmtBRL(hora, 4)}</td>
                     <td style="text-align:center">
                       <span class="tag-status ${ativo ? "ativo" : "inativo"}">${ativo ? "● Ativo" : "○ Inativo"}</span>
                     </td>
@@ -480,7 +481,7 @@ function renderFixos(body, container) {
     ${state.custos.length > 0 ? `
     <div class="gc-total-bar">
       <span>Total de custos fixos ativos/mês:</span>
-      <strong style="color:var(--error)">R$ ${totalAtivo.toFixed(2)}</strong>
+      <strong style="color:var(--error)">${fmtBRL(totalAtivo)}</strong>
       ${inativos.length > 0 ? `<span style="font-size:12px;color:var(--muted);margin-left:12px">(${inativos.length} inativo${inativos.length > 1 ? "s" : ""})</span>` : ""}
     </div>` : ""}
   `;
@@ -574,10 +575,10 @@ function abrirModalEquip(container, equip) {
       const ano  = mes * 12;
       el.innerHTML = `
         <div class="depr-prev-grid">
-          <div><span>Por mês</span><strong>R$ ${mes.toFixed(2)}</strong></div>
-          <div><span>Por dia</span><strong>R$ ${dia.toFixed(4)}</strong></div>
-          <div><span>Por hora (8h)</span><strong>R$ ${hora.toFixed(4)}</strong></div>
-          <div><span>Por ano</span><strong>R$ ${ano.toFixed(2)}</strong></div>
+          <div><span>Por mês</span><strong>${fmtBRL(mes)}</strong></div>
+          <div><span>Por dia</span><strong>${fmtBRL(dia, 4)}</strong></div>
+          <div><span>Por hora (8h)</span><strong>${fmtBRL(hora, 4)}</strong></div>
+          <div><span>Por ano</span><strong>${fmtBRL(ano)}</strong></div>
         </div>`;
     } else {
       el.innerHTML = `<div style="color:var(--muted);font-size:12px">Preencha valor e vida útil para ver o cálculo.</div>`;

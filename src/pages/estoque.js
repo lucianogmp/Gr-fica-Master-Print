@@ -1,4 +1,5 @@
 import { supabase } from "../supabase/client.js";
+import { fmtBRL } from "../format/brl.js";
 
 // ─── Estado ───────────────────────────────────────────────────────────────────
 let state = {
@@ -51,7 +52,7 @@ function render(container) {
     <div class="est-topbar">
       <div>
         <h2 style="margin:0;font-size:18px;font-weight:700">Estoque</h2>
-        <span style="font-size:12px;color:var(--muted)">${state.materias.length} matérias-primas · Custo total: R$ ${custoTotal.toFixed(2)}</span>
+        <span style="font-size:12px;color:var(--muted)">${state.materias.length} matérias-primas · Custo total: ${fmtBRL(custoTotal)}</span>
       </div>
       <button class="btn-nova-mp" id="btn-nova-mp">
         <i class="fi fi-rr-add"></i> Nova Matéria-Prima
@@ -74,7 +75,7 @@ function render(container) {
       </div>
       <div class="kpi-card">
         <div class="kpi-k">Custo em estoque</div>
-        <div class="kpi-v" style="color:var(--primary-light)">R$ ${custoTotal.toFixed(2)}</div>
+        <div class="kpi-v" style="color:var(--primary-light)">${fmtBRL(custoTotal)}</div>
       </div>
     </div>
 
@@ -171,10 +172,10 @@ function renderSaldo(body, container) {
                     ${Number(mp.estoque_minimo||0).toFixed(3)}
                   </td>
                   <td style="text-align:right;font-size:12px">
-                    R$ ${Number(mp.custo_unitario||0).toFixed(4)}
+                    ${fmtBRL(mp.custo_unitario || 0, 4)}
                   </td>
                   <td style="text-align:right;font-weight:600;color:var(--primary-light)">
-                    R$ ${val.toFixed(2)}
+                    ${fmtBRL(val)}
                   </td>
                   <td style="text-align:center">
                     <span class="status-pill" style="background:${cfg.cor}22;color:${cfg.cor}">
@@ -265,7 +266,7 @@ function renderMaterias(body, container) {
                 <td style="text-align:center"><span class="unit-tag">${esc(mp.unidade||"un")}</span></td>
                 <td style="text-align:right;color:var(--muted)">${Number(mp.estoque_minimo||0).toFixed(3)}</td>
                 <td style="text-align:right;font-weight:600;color:var(--primary-light)">
-                  R$ ${Number(mp.custo_unitario||0).toFixed(4)}
+                  ${fmtBRL(mp.custo_unitario || 0, 4)}
                 </td>
                 <td style="text-align:right;font-weight:700;color:${STATUS_CFG[statusSaldo(mp)].cor}">
                   ${Number(mp.saldo).toFixed(3)} ${esc(mp.unidade||"un")}

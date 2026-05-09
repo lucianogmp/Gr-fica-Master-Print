@@ -1,4 +1,5 @@
 import { supabase } from "../supabase/client.js";
+import { fmtBRL } from "../format/brl.js";
 
 // ─── Preços por material (ocultos para o cliente) ─────────────────────────────
 const MATERIAIS = [
@@ -341,9 +342,9 @@ function renderForm() {
               ${state.itens.map((it, i) => `
                 <tr>
                   <td>${esc(it.descricao)}</td>
-                  <td style="text-align:center">R$ ${Number(it.preco).toFixed(2)}</td>
+                  <td style="text-align:center">${fmtBRL(it.preco)}</td>
                   <td style="text-align:center">${it.qtd}</td>
-                  <td style="text-align:right;font-weight:600;color:var(--primary)">R$ ${(it.preco*it.qtd).toFixed(2)}</td>
+                  <td style="text-align:right;font-weight:600;color:var(--primary)">${fmtBRL(it.preco * it.qtd)}</td>
                   <td><button class="del-item" data-del="${i}">✕</button></td>
                 </tr>`).join("")}
             </tbody>
@@ -351,7 +352,7 @@ function renderForm() {
             <tfoot>
               <tr class="itens-total-row">
                 <td colspan="3" style="text-align:right;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)">Total produtos/serviços</td>
-                <td style="text-align:right;font-weight:800;font-size:15px;color:var(--primary-light)" id="itens-total-live">R$ ${totalItensTabela.toFixed(2)}</td>
+                <td style="text-align:right;font-weight:800;font-size:15px;color:var(--primary-light)" id="itens-total-live">${fmtBRL(totalItensTabela)}</td>
                 <td></td>
               </tr>
             </tfoot>
@@ -386,28 +387,28 @@ function renderForm() {
           </div>
           <div class="res-linha">
             <span>Valor unitário</span>
-            <span id="r-unit">R$ ${r.unitario.toFixed(2)}</span>
+            <span id="r-unit">${fmtBRL(r.unitario)}</span>
           </div>
           ${r.total > 0 ? `
           <div class="res-linha">
             <span>Subtotal impressão</span>
-            <span id="r-subtotal">R$ ${r.total.toFixed(2)}</span>
+            <span id="r-subtotal">${fmtBRL(r.total)}</span>
           </div>` : ""}
           ${state.custoOperacionalPct > 0 && r.total > 0 ? `
           <div class="res-linha custo-op-linha">
             <span><i class="fi fi-rr-settings"></i> Custo operacional (${state.custoOperacionalPct}%)</span>
-            <span id="r-custo-op" class="custo-op-val">+ R$ ${r.acrescimoCustoOp.toFixed(2)}</span>
+            <span id="r-custo-op" class="custo-op-val">+ ${fmtBRL(r.acrescimoCustoOp)}</span>
           </div>` : ""}
           ${state.itens.length > 0 ? `
           <div class="res-linha">
             <span>Produtos/Serviços</span>
-            <span id="r-itens">R$ ${r.totalItens.toFixed(2)}</span>
+            <span id="r-itens">${fmtBRL(r.totalItens)}</span>
           </div>` : ""}
         </div>
 
         <div class="res-total">
           <span>Total</span>
-          <span id="r-total">R$ ${valorExibido.toFixed(2)}</span>
+          <span id="r-total">${fmtBRL(valorExibido)}</span>
         </div>
 
         <!-- [ALTERAÇÃO 1] Toggle de arredondamento -->
@@ -427,8 +428,8 @@ function renderForm() {
         ${state.arredondar && r.grand !== r.grandArredondado ? `
         <div class="arredondar-info">
           <i class="fi fi-rr-info"></i>
-          Valor original: <strong>R$ ${r.grand.toFixed(2)}</strong>
-          → arredondado para <strong>R$ ${r.grandArredondado.toFixed(2)}</strong>
+          Valor original: <strong>${fmtBRL(r.grand)}</strong>
+          → arredondado para <strong>${fmtBRL(r.grandArredondado)}</strong>
         </div>` : ""}
 
         <!-- Botão adicionar impressão à lista -->
@@ -496,7 +497,7 @@ function renderHistorico() {
               <div class="hist-data">${data}</div>
             </div>
             <div style="text-align:right">
-              <div class="hist-valor">R$ ${Number(o.total||0).toFixed(2)}</div>
+              <div class="hist-valor">${fmtBRL(o.total||0)}</div>
               <span class="hist-badge-st" style="color:${st.cor}">${st.label}</span>
             </div>
           </div>
@@ -798,11 +799,11 @@ function atualizarResultadoDOM(container) {
   const valorExibido = state.arredondar ? r.grandArredondado : r.grand;
   const setEl = (id, val) => { const el = container?.querySelector(`#${id}`); if (el) el.textContent = val; };
   setEl("r-area",     r.area.toFixed(4) + " m²");
-  setEl("r-unit",     "R$ " + r.unitario.toFixed(2));
-  setEl("r-subtotal", "R$ " + r.total.toFixed(2));
-  setEl("r-custo-op", "+ R$ " + r.acrescimoCustoOp.toFixed(2));
-  setEl("r-itens",    "R$ " + r.totalItens.toFixed(2));
-  setEl("r-total",    "R$ " + valorExibido.toFixed(2));
+  setEl("r-unit",     fmtBRL(r.unitario));
+  setEl("r-subtotal", fmtBRL(r.total));
+  setEl("r-custo-op", "+ " + fmtBRL(r.acrescimoCustoOp));
+  setEl("r-itens",    fmtBRL(r.totalItens));
+  setEl("r-total",    fmtBRL(valorExibido));
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -830,7 +831,7 @@ function abrirModalConverter(container) {
           <div class="conv-res-linha"><span>Dimensões</span><strong>${state.largura||0}×${state.altura||0} cm</strong></div>
           <div class="conv-res-linha"><span>Quantidade</span><strong>${state.quantidade}</strong></div>
           ${state.itens.length>0?`<div class="conv-res-linha"><span>Itens adicionais</span><strong>${state.itens.length} item(s)</strong></div>`:""}
-          <div class="conv-res-linha total"><span>Total</span><strong>R$ ${totalFinal.toFixed(2)}</strong></div>
+          <div class="conv-res-linha total"><span>Total</span><strong>${fmtBRL(totalFinal)}</strong></div>
         </div>
 
         <div class="modal-sep"></div>
@@ -952,7 +953,7 @@ function abrirModalConverter(container) {
     });
 
     area.innerHTML = "";
-    alert(`✅ Venda criada com sucesso!\nCliente: ${clienteNome||"Não informado"}\nTotal: R$ ${totalFinal.toFixed(2)}`);
+    alert(`✅ Venda criada com sucesso!\nCliente: ${clienteNome||"Não informado"}\nTotal: ${fmtBRL(totalFinal)}`);
     limparForm();
     await carregar();
     render(container);
@@ -1097,12 +1098,12 @@ function gerarPDF() {
       <tr>
         <td>${l.desc}</td>
         <td>${l.qtd}</td>
-        <td>R$ ${l.preco.toFixed(2)}</td>
-        <td>R$ ${l.total.toFixed(2)}</td>
+        <td>${fmtBRL(l.preco)}</td>
+        <td>${fmtBRL(l.total)}</td>
       </tr>`).join("")}
     <tr class="total-row">
       <td colspan="3" style="text-align:right">TOTAL</td>
-      <td>R$ ${totalFinal.toFixed(2)}</td>
+      <td>${fmtBRL(totalFinal)}</td>
     </tr>
   </tbody>
 </table>

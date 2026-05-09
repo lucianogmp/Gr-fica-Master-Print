@@ -1,4 +1,5 @@
 import { supabase } from "../supabase/client.js";
+import { fmtBRL } from "../format/brl.js";
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 const SITUACOES = [
@@ -76,7 +77,7 @@ function renderLista() {
   <div class="vnd-topbar">
     <div>
       <h2 style="margin:0;font-size:18px;font-weight:700">Vendas</h2>
-      <span style="font-size:12px;color:var(--muted)">${state.vendas.length} venda${state.vendas.length!==1?"s":""} · R$ ${total.toFixed(2)}</span>
+      <span style="font-size:12px;color:var(--muted)">${state.vendas.length} venda${state.vendas.length!==1?"s":""} · ${fmtBRL(total)}</span>
     </div>
     <button class="btn-nova-venda" id="btn-nova"><i class="fi fi-rr-add"></i> Nova Venda</button>
   </div>
@@ -109,7 +110,7 @@ function renderLista() {
                 <td style="font-size:12px">${data}</td>
                 <td style="font-size:12px;color:var(--muted)">${v.data_entrega?fmtData(v.data_entrega):"—"}</td>
                 <td><span class="sit-badge" style="background:${sit.cor}22;color:${sit.cor}">${sit.label}</span></td>
-                <td style="text-align:right;font-weight:700;color:var(--primary-light)">R$ ${Number(v.total||0).toFixed(2)}</td>
+                <td style="text-align:right;font-weight:700;color:var(--primary-light)">${fmtBRL(v.total||0)}</td>
                 <td><div style="display:flex;gap:4px">
                   <button class="btn-icon" data-editar="${v.id}"><i class="fi fi-rr-pencil"></i></button>
                   <button class="btn-icon danger" data-del="${v.id}" data-del-nome="${esc(v.cliente_nome||"esta venda")}"><i class="fi fi-rr-trash"></i></button>
@@ -235,8 +236,8 @@ function renderForm() {
           <tr class="carrinho-total-row">
             <td colspan="2" style="text-align:right;color:var(--muted);font-size:12px;font-weight:600">TOTAL</td>
             <td style="text-align:center;font-weight:700" id="r-qtd">${t.qtdTotal.toFixed(3)}</td>
-            <td style="text-align:right;font-weight:700;color:var(--error)" id="r-desc">R$ ${t.descontoTotal.toFixed(2)}</td>
-            <td style="text-align:right;font-weight:800;font-size:15px;color:var(--primary-light)" id="r-total">R$ ${t.totalGeral.toFixed(2)}</td>
+            <td style="text-align:right;font-weight:700;color:var(--error)" id="r-desc">${fmtBRL(t.descontoTotal)}</td>
+            <td style="text-align:right;font-weight:800;font-size:15px;color:var(--primary-light)" id="r-total">${fmtBRL(t.totalGeral)}</td>
             <td></td>
           </tr>
         </tfoot>
@@ -271,7 +272,7 @@ function renderForm() {
         </tbody>
         <tfoot><tr class="financeiro-total-row">
           <td style="font-weight:600;color:var(--muted)">TOTAL</td>
-          <td><strong id="r-parc-total">R$ ${f.parcelas.reduce((s,p)=>s+Number(p.valor||0),0).toFixed(2)}</strong></td>
+          <td><strong id="r-parc-total">${fmtBRL(f.parcelas.reduce((s,p)=>s+Number(p.valor||0),0))}</strong></td>
           <td colspan="4"></td>
         </tr></tfoot>
       </table>
@@ -309,7 +310,7 @@ function renderForm() {
       <button class="btn-troco" id="btn-troco"><i class="fi fi-rr-money-bill-wave"></i> Troco</button>
     </div>
     <div style="display:flex;gap:8px;align-items:center">
-      <div class="total-bottom">Total: <strong>R$ ${t.totalGeral.toFixed(2)}</strong></div>
+      <div class="total-bottom">Total: <strong>${fmtBRL(t.totalGeral)}</strong></div>
       <button class="btn-salvar-vnd" id="btn-salvar2"><i class="fi fi-rr-disk"></i> Salvar</button>
       <button class="btn-secondary" id="btn-voltar2">Voltar</button>
     </div>
@@ -333,7 +334,7 @@ function renderItemRow(it, i) {
     </div></td>
     <td><input type="number" class="td-inp center" data-item-qtd="${i}" value="${Number(it.qtd).toFixed(3)}" min="0.001" step="0.001" /></td>
     <td><input type="number" class="td-inp right" data-item-desc-val="${i}" value="${it.desconto}" min="0" step="0.01" /></td>
-    <td class="td-total" style="text-align:right;font-weight:700;color:${total>0?"var(--primary-light)":"var(--muted)"}">R$ ${total.toFixed(2)}</td>
+    <td class="td-total" style="text-align:right;font-weight:700;color:${total>0?"var(--primary-light)":"var(--muted)"}">${fmtBRL(total)}</td>
     <td><button class="del-row" data-del-item="${i}">✕</button></td>
   </tr>`;
 }
@@ -378,23 +379,23 @@ function atualizarTotaisDOM(container) {
   const t = calcularTotais();
   const s = (id,v) => { const el=container.querySelector(id); if(el) el.textContent=v; };
   s("#r-qtd",   t.qtdTotal.toFixed(3));
-  s("#r-desc",  `R$ ${t.descontoTotal.toFixed(2)}`);
-  s("#r-total", `R$ ${t.totalGeral.toFixed(2)}`);
+  s("#r-desc",  fmtBRL(t.descontoTotal));
+  s("#r-total", fmtBRL(t.totalGeral));
   // barra inferior
   const tb = container.querySelector(".total-bottom strong");
-  if (tb) tb.textContent = `R$ ${t.totalGeral.toFixed(2)}`;
+  if (tb) tb.textContent = fmtBRL(t.totalGeral);
   // totais de cada linha
   state.form.itens.forEach((it,i)=>{
     const tot=(Number(it.preco)||0)*(Number(it.qtd)||0)-(Number(it.desconto)||0);
     const el=container.querySelector(`.item-row[data-row="${i}"] .td-total`);
-    if(el){ el.textContent=`R$ ${tot.toFixed(2)}`; el.style.color=tot>0?"var(--primary-light)":"var(--muted)"; }
+    if(el){ el.textContent=fmtBRL(tot); el.style.color=tot>0?"var(--primary-light)":"var(--muted)"; }
   });
 }
 
 function atualizarParcelasDOM(container) {
   const total = state.form.parcelas.reduce((s,p)=>s+Number(p.valor||0),0);
   const el = container.querySelector("#r-parc-total");
-  if (el) el.textContent = `R$ ${total.toFixed(2)}`;
+  if (el) el.textContent = fmtBRL(total);
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -672,13 +673,13 @@ td{padding:7px 10px;border-bottom:1px solid #eee}
 <table><thead><tr><th>Produto/Serviço</th><th>Qtd</th><th>Preço</th><th>Desconto</th><th>Total</th></tr></thead>
 <tbody>${f.itens.filter(it=>it.descricao).map(it=>{
   const tot=(Number(it.preco)||0)*(Number(it.qtd)||0)-(Number(it.desconto)||0);
-  return `<tr><td>${esc(it.descricao)}${it.obs?`<br><small style="color:#888">${esc(it.obs)}</small>`:""}</td><td>${Number(it.qtd).toFixed(3)}</td><td>R$ ${Number(it.preco).toFixed(2)}</td><td>R$ ${Number(it.desconto).toFixed(2)}</td><td>R$ ${tot.toFixed(2)}</td></tr>`;
+  return `<tr><td>${esc(it.descricao)}${it.obs?`<br><small style="color:#888">${esc(it.obs)}</small>`:""}</td><td>${Number(it.qtd).toFixed(3)}</td><td>${fmtBRL(it.preco)}</td><td>${fmtBRL(it.desconto)}</td><td>${fmtBRL(tot)}</td></tr>`;
 }).join("")}
-<tr class="tr"><td colspan="4" style="text-align:right">TOTAL</td><td>R$ ${t.totalGeral.toFixed(2)}</td></tr>
+<tr class="tr"><td colspan="4" style="text-align:right">TOTAL</td><td>${fmtBRL(t.totalGeral)}</td></tr>
 </tbody></table>
 ${f.observacoes?`<div class="obs"><strong>Obs:</strong> ${esc(f.observacoes)}</div>`:""}
 ${f.parcelas.length?`<table><thead><tr><th>Parcela</th><th>Valor</th><th>Vencimento</th><th>Forma</th><th>Status</th></tr></thead><tbody>
-${f.parcelas.map((p,i)=>`<tr><td>${i+1}/${f.parcelas.length}</td><td>R$ ${Number(p.valor).toFixed(2)}</td><td>${fmtData(p.data)}</td><td>${p.forma}</td><td>${p.recebido?"✔ Recebido":"Pendente"}</td></tr>`).join("")}
+${f.parcelas.map((p,i)=>`<tr><td>${i+1}/${f.parcelas.length}</td><td>${fmtBRL(p.valor)}</td><td>${fmtData(p.data)}</td><td>${p.forma}</td><td>${p.recebido?"✔ Recebido":"Pendente"}</td></tr>`).join("")}
 </tbody></table>`:""}
 <div class="footer">Gerado em ${new Date().toLocaleString("pt-BR")} · Gráfica Master Print</div>
 </body></html>`;
@@ -698,7 +699,7 @@ function abrirModalTroco(container) {
     <div class="modal" style="max-width:320px;text-align:center">
       <h3><i class="fi fi-rr-money-bill-wave"></i> Calcular Troco</h3>
       <div style="font-size:13px;color:var(--muted);margin-bottom:12px">
-        Total: <strong style="color:var(--primary-light)">R$ ${t.totalGeral.toFixed(2)}</strong>
+        Total: <strong style="color:var(--primary-light)">${fmtBRL(t.totalGeral)}</strong>
       </div>
       <label>Valor recebido (R$)</label>
       <input id="troco-inp" type="number" min="0" step="0.01" placeholder="0,00" autofocus style="font-size:18px;text-align:center;margin-bottom:12px" />
@@ -716,8 +717,8 @@ function abrirModalTroco(container) {
     const troco=rec-t.totalGeral;
     const el=area.querySelector("#troco-res");
     el.style.display="block";
-    if(troco<0){ el.style.background="var(--error-bg)"; el.style.color="var(--error)"; el.innerHTML=`Faltam <strong>R$ ${Math.abs(troco).toFixed(2)}</strong>`; }
-    else { el.style.background="var(--success-bg)"; el.style.color="var(--success)"; el.innerHTML=`Troco: <strong style="font-size:22px">R$ ${troco.toFixed(2)}</strong>`; }
+    if(troco<0){ el.style.background="var(--error-bg)"; el.style.color="var(--error)"; el.innerHTML=`Faltam <strong>${fmtBRL(Math.abs(troco))}</strong>`; }
+    else { el.style.background="var(--success-bg)"; el.style.color="var(--success)"; el.innerHTML=`Troco: <strong style="font-size:22px">${fmtBRL(troco)}</strong>`; }
   };
   area.querySelector("#t-calc").addEventListener("click",calc);
   area.querySelector("#troco-inp").addEventListener("keydown",e=>{ if(e.key==="Enter") calc(); });

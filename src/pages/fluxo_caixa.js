@@ -1,4 +1,5 @@
 import { supabase } from "../supabase/client.js";
+import { fmtBRL } from "../format/brl.js";
 
 // ─── Estado ───────────────────────────────────────────────────────────────────
 let state = {
@@ -86,18 +87,18 @@ function render(container) {
     <div class="cx-kpis">
       <div class="cx-kpi">
         <div class="cx-kpi-label">Entradas do dia</div>
-        <div class="cx-kpi-val entrada">R$ ${totalEntradas.toFixed(2)}</div>
+        <div class="cx-kpi-val entrada">${fmtBRL(totalEntradas)}</div>
         <div class="cx-kpi-sub">${doDia.filter(m=>m.tipo==="entrada").length} lançamento(s)</div>
       </div>
       <div class="cx-kpi">
         <div class="cx-kpi-label">Saídas do dia</div>
-        <div class="cx-kpi-val saida">R$ ${totalSaidas.toFixed(2)}</div>
+        <div class="cx-kpi-val saida">${fmtBRL(totalSaidas)}</div>
         <div class="cx-kpi-sub">${doDia.filter(m=>m.tipo==="saida").length} lançamento(s)</div>
       </div>
       <div class="cx-kpi destaque">
         <div class="cx-kpi-label">Saldo do caixa</div>
         <div class="cx-kpi-val ${saldoDia >= 0 ? "positivo" : "negativo"}">
-          R$ ${saldoDia.toFixed(2)}
+          ${fmtBRL(saldoDia)}
         </div>
         <div class="cx-kpi-sub">${saldoDia >= 0 ? "Positivo" : "Negativo"}</div>
       </div>
@@ -145,10 +146,10 @@ function render(container) {
                 </td>
                 <td class="cx-cliente">${esc(m.cliente_nome) || "—"}</td>
                 <td class="cx-valor ${m.tipo}">
-                  ${m.tipo === "entrada" ? "+" : "−"}R$ ${Number(m.valor).toFixed(2)}
+                  ${m.tipo === "entrada" ? "+" : "−"}${fmtBRL(m.valor)}
                 </td>
                 <td class="cx-saldo ${m.saldoCorrido >= 0 ? "positivo" : "negativo"}">
-                  R$ ${Number(m.saldoCorrido).toFixed(2)}
+                  ${fmtBRL(m.saldoCorrido)}
                 </td>
                 <td class="cx-acoes">
                   <button class="btn-icon-cx" data-edit="${m.id}" title="Editar">
@@ -559,7 +560,7 @@ async function abrirModalImportar(container) {
                       <div style="font-weight:600">${esc(v.cliente_nome)||"Sem cliente"}</div>
                       <div style="font-size:12px;color:var(--muted)">${data} · ${v.tipo||"Venda/O.S."}</div>
                     </div>
-                    <div class="imp-valor">R$ ${Number(v.total||0).toFixed(2)}</div>
+                    <div class="imp-valor">${fmtBRL(v.total||0)}</div>
                   </label>`;
               }).join("")}
              </div>`}

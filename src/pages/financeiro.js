@@ -1,4 +1,5 @@
 import { supabase } from "../supabase/client.js";
+import { fmtBRL } from "../format/brl.js";
 
 const CATEGORIAS_RECEITA = ["Venda","Serviço","Outros"];
 const CATEGORIAS_DESPESA = ["Fornecedor","Aluguel","Salário","Material","Imposto","Outros"];
@@ -73,7 +74,7 @@ function render(container) {
     ${vencidos.length ? `
       <div class="alerta-venc">
         ⚠️ <b>${vencidos.length} lançamento${vencidos.length>1?"s":""} vencido${vencidos.length>1?"s":""}</b> —
-        ${vencidos.slice(0,3).map(l=>`${l.descricao} (R$ ${Number(l.valor).toFixed(2)})`).join(", ")}
+        ${vencidos.slice(0,3).map(l=>`${l.descricao} (${fmtBRL(l.valor)})`).join(", ")}
         ${vencidos.length>3?`e mais ${vencidos.length-3}...`:""}
       </div>` : ""}
 
@@ -81,18 +82,18 @@ function render(container) {
     <div class="kpi-grid">
       <div class="kpi-card receita">
         <div class="k">Receitas do mês</div>
-        <div class="v">R$ ${totalRec.toFixed(2)}</div>
-        <div class="sub">Recebido: R$ ${recebido.toFixed(2)} · A receber: R$ ${aReceber.toFixed(2)}</div>
+        <div class="v">${fmtBRL(totalRec)}</div>
+        <div class="sub">Recebido: ${fmtBRL(recebido)} · A receber: ${fmtBRL(aReceber)}</div>
       </div>
       <div class="kpi-card despesa">
         <div class="k">Despesas do mês</div>
-        <div class="v">R$ ${totalDesp.toFixed(2)}</div>
-        <div class="sub">Pago: R$ ${pago.toFixed(2)} · A pagar: R$ ${aPagar.toFixed(2)}</div>
+        <div class="v">${fmtBRL(totalDesp)}</div>
+        <div class="sub">Pago: ${fmtBRL(pago)} · A pagar: ${fmtBRL(aPagar)}</div>
       </div>
       <div class="kpi-card ${saldo>=0?"saldo-pos":"saldo-neg"}">
         <div class="k">Saldo do mês</div>
-        <div class="v">${saldo>=0?"+":""}R$ ${saldo.toFixed(2)}</div>
-        <div class="sub">Realizado: R$ ${(recebido-pago).toFixed(2)}</div>
+        <div class="v">${saldo>=0?"+":""}${fmtBRL(saldo)}</div>
+        <div class="sub">Realizado: ${fmtBRL(recebido - pago)}</div>
       </div>
     </div>
 
@@ -148,7 +149,7 @@ function renderResumo(body, doMes, receitas, despesas) {
       <div class="barra-wrap">
         <div class="barra-fill" style="width:${(val/max*100).toFixed(1)}%;background:${cor}"></div>
       </div>
-      <span class="barra-val">R$ ${val.toFixed(2)}</span>
+      <span class="barra-val">${fmtBRL(val)}</span>
     </div>`).join("") || `<div style="color:var(--muted);font-size:13px">Nenhum lançamento.</div>`;
 
   // Próximos vencimentos
@@ -181,7 +182,7 @@ function renderResumo(body, doMes, receitas, despesas) {
                 <span class="venc-tipo ${l.tipo}">${l.tipo === "receita" ? "▲" : "▼"}</span>
                 <span class="venc-desc">${l.descricao}</span>
                 <span class="venc-data ${atrasado?"atrasado":""}">${formatData(l.data_vencimento)}</span>
-                <span class="venc-val">R$ ${Number(l.valor).toFixed(2)}</span>
+                <span class="venc-val">${fmtBRL(l.valor)}</span>
               </div>`;
           }).join("")
       }
@@ -217,7 +218,7 @@ function renderTabela(body, container, lista, tipo) {
                 </td>
                 <td style="color:var(--muted);font-size:12px">${l.categoria||"—"}</td>
                 <td style="font-size:12px${atrasado?";color:#ff6b6b;font-weight:700":""}">${l.data_vencimento?formatData(l.data_vencimento):"—"}</td>
-                <td style="font-weight:600;color:${tipo==="receita"?"#69db7c":"#ff6b6b"}">R$ ${Number(l.valor).toFixed(2)}</td>
+                <td style="font-weight:600;color:${tipo==="receita"?"#69db7c":"#ff6b6b"}">${fmtBRL(l.valor)}</td>
                 <td>${badgeStatus(l.status)}</td>
                 <td style="display:flex;gap:4px">
                   ${l.status==="pendente"?`<button class="btn-pagar" data-pagar="${l.id}">✔ Baixar</button>`:""}
@@ -291,8 +292,8 @@ function renderFluxo(body, container) {
         ${dados.map(d => `
           <div class="fluxo-col">
             <div class="fluxo-barras">
-              <div class="fb-rec"  style="height:${(d.rec /maxVal*120).toFixed(0)}px" title="Receita: R$ ${d.rec.toFixed(2)}"></div>
-              <div class="fb-desp" style="height:${(d.desp/maxVal*120).toFixed(0)}px" title="Despesa: R$ ${d.desp.toFixed(2)}"></div>
+              <div class="fb-rec"  style="height:${(d.rec /maxVal*120).toFixed(0)}px" title="Receita: ${fmtBRL(d.rec)}"></div>
+              <div class="fb-desp" style="height:${(d.desp/maxVal*120).toFixed(0)}px" title="Despesa: ${fmtBRL(d.desp)}"></div>
             </div>
             <div class="fluxo-mes">${nomeMes(d.mes)}</div>
           </div>`).join("")}
@@ -311,10 +312,10 @@ function renderFluxo(body, container) {
           ${dados.map(d => `
             <tr>
               <td>${nomeMes(d.mes)}</td>
-              <td style="color:#69db7c">R$ ${d.rec.toFixed(2)}</td>
-              <td style="color:#ff6b6b">R$ ${d.desp.toFixed(2)}</td>
-              <td style="font-weight:600;color:${d.saldo>=0?"#69db7c":"#ff6b6b"}">${d.saldo>=0?"+":""}R$ ${d.saldo.toFixed(2)}</td>
-              <td style="color:var(--muted)">R$ ${d.real.toFixed(2)}</td>
+              <td style="color:#69db7c">${fmtBRL(d.rec)}</td>
+              <td style="color:#ff6b6b">${fmtBRL(d.desp)}</td>
+              <td style="font-weight:600;color:${d.saldo>=0?"#69db7c":"#ff6b6b"}">${d.saldo>=0?"+":""}${fmtBRL(d.saldo)}</td>
+              <td style="color:var(--muted)">${fmtBRL(d.real)}</td>
             </tr>`).join("")}
         </tbody>
       </table>
