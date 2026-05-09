@@ -113,7 +113,7 @@ async function carregar() {
   const custoVariavel = despesasMes * 0.40;
   const margContrib   = receitasMes > 0 ? (receitasMes - custoVariavel) / receitasMes : 0.60;
   const pontEq        = margContrib > 0 ? custoFixo / margContrib : despesasMes || 1;
-  const bePercent     = Math.min((receitasMes / pontEq) * 100, 100);
+  const bePercent     = (receitasMes / pontEq) * 100;
   const beAtingido    = receitasMes >= pontEq;
 
   // ── Vendas últimos 12 meses ───────────────────────────────────────────────
