@@ -5,7 +5,7 @@ import { Orcamento } from "./orcamento.js";
 import { Vendas } from "./vendas.js";
 import { Clientes } from "./clientes.js";
 import { Produtos } from "./produtos.js";
-import { Estoque } from "./estoque.js";
+import { Estoque } from "./estoque.jsx";
 import { Producao } from "./producao.js";
 import { GestaoCustos } from "./gestao_custos.js";
 import { Configuracoes } from "./configuracoes.js";
