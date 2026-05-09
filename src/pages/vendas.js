@@ -428,24 +428,52 @@ function bindListaEvents(container) {
 }
 
 async function abrirVenda(container, id) {
-  const v = state.vendas.find(v=>v.id===id); if(!v) return;
-  const { data: itens } = await supabase.from("venda_itens").select("*").eq("venda_id",id);
+  const v = state.vendas.find(v => v.id === id);
+  if (!v) return;
+
+  // Carrega itens + tenta carregar parcelas/gastos se existirem
+  const [{ data: itens }, { data: parcelasDb }, { data: gastosDb }] = await Promise.all([
+    supabase.from("venda_itens").select("*").eq("venda_id", id),
+    supabase.from("venda_parcelas").select("*").eq("venda_id", id),   // ajuste o nome da tabela se for diferente
+    supabase.from("venda_gastos").select("*").eq("venda_id", id)      // ajuste o nome da tabela se for diferente
+  ]);
+
   state.form = {
-    ...novoForm(),
-    clienteNome:    v.cliente_nome||"",
-    tipo:           v.tipo||"Venda/O.S.",
-    data:           v.data_venda||hoje(),
-    situacao:       v.status||"pendente",
-    entrega:        v.data_entrega||"",
-    palavraChave:   v.palavra_chave||"",
-    vendedor:       v.vendedor||"",
-    consumidorFinal:v.consumidor_final!==false,
-    observacoes:    v.observacoes||"",
-    itens:(itens||[]).map(i=>({ descricao:i.descricao, produtoId:i.produto_id, preco:Number(i.preco_unitario), qtd:Number(i.quantidade), desconto:Number(i.desconto||0), obs:i.obs||"" }))||[novoItem()],
-    parcelas:[], gastos:[],
+    clienteNome:     v.cliente_nome || "",
+    clienteId:       v.cliente_id || null,
+    vendedor:        v.vendedor || "",
+    tipo:            v.tipo || "Venda/O.S.",
+    data:            v.data_venda || hoje(),
+    situacao:        v.status || "pendente",
+    entrega:         v.data_entrega || "",
+    palavraChave:    v.palavra_chave || "",
+    consumidorFinal: v.consumidor_final !== false,
+    observacoes:     v.observacoes || "",
+    itens: (itens || []).map(i => ({
+      descricao: i.descricao,
+      produtoId: i.produto_id,
+      preco: Number(i.preco_unitario) || 0,
+      qtd: Number(i.quantidade) || 1,
+      desconto: Number(i.desconto) || 0,
+      obs: i.obs || ""
+    })),
+    parcelas: (parcelasDb || []).map(p => ({
+      valor: Number(p.valor),
+      data: p.data_vencimento || p.data,
+      forma: p.forma_pagamento || p.forma,
+      recebido: !!p.recebido
+    })),
+    gastos: (gastosDb || []).map(g => ({
+      descricao: g.descricao,
+      valor: Number(g.valor)
+    }))
   };
-  if(!state.form.itens.length) state.form.itens=[novoItem()];
-  state.vendaAberta=v; state.aba="form"; render(container);
+
+  if (!state.form.itens.length) state.form.itens = [novoItem()];
+
+  state.vendaAberta = v;
+  state.aba = "form";
+  render(container);
 }
 
 function bindFormEvents(container) {
@@ -568,35 +596,62 @@ function bindItemAC(container, i) {
 // SALVAR
 // ══════════════════════════════════════════════════════════════════════════════
 async function salvar(container) {
-  const f=state.form, t=calcularTotais();
-  const payload={
-    cliente_nome:    f.clienteNome||null, vendedor:f.vendedor||null,
-    tipo:            f.tipo, data_venda:f.data, data_entrega:f.entrega||null,
-    status:          f.situacao, consumidor_final:f.consumidorFinal,
-    palavra_chave:   f.palavraChave||null, observacoes:f.observacoes||null,
-    total:           t.totalGeral, updated_at:new Date(),
+  const f = state.form;
+  const t = calcularTotais();
+
+  const payload = {
+    cliente_nome: f.clienteNome || null,
+    cliente_id: f.clienteId || null,
+    vendedor: f.vendedor || null,
+    tipo: f.tipo,
+    data_venda: f.data,
+    data_entrega: f.entrega || null,
+    status: f.situacao,
+    consumidor_final: f.consumidorFinal,
+    palavra_chave: f.palavraChave || null,
+    observacoes: f.observacoes || null,
+    total: t.totalGeral,
+    updated_at: new Date().toISOString(),
   };
+
   let vendaId;
-  if(state.vendaAberta){
-    await supabase.from("vendas").update(payload).eq("id",state.vendaAberta.id);
-    vendaId=state.vendaAberta.id;
-    await supabase.from("venda_itens").delete().eq("venda_id",vendaId);
+
+  if (state.vendaAberta) {
+    const { error } = await supabase.from("vendas").update(payload).eq("id", state.vendaAberta.id);
+    if (error) { alert("Erro ao atualizar: " + error.message); return; }
+    vendaId = state.vendaAberta.id;
+    
+    // Limpa dados filhos
+    await supabase.from("venda_itens").delete().eq("venda_id", vendaId);
+    await supabase.from("venda_parcelas").delete().eq("venda_id", vendaId); // ajuste nome
+    await supabase.from("venda_gastos").delete().eq("venda_id", vendaId);   // ajuste nome
   } else {
-    const { data:v, error }=await supabase.from("vendas").insert(payload).select().single();
-    if(error){ alert("Erro: "+error.message); return; }
-    vendaId=v.id;
+    const { data: v, error } = await supabase.from("vendas").insert(payload).select().single();
+    if (error) { alert("Erro ao inserir: " + error.message); return; }
+    vendaId = v.id;
   }
-  const itensDb=f.itens.filter(it=>it.descricao).map(it=>({
-    venda_id:vendaId, produto_id:it.produtoId||null, descricao:it.descricao,
-    quantidade:Number(it.qtd)||1, preco_unitario:Number(it.preco)||0,
-    desconto:Number(it.desconto)||0,
-    total:(Number(it.preco)||0)*(Number(it.qtd)||0)-(Number(it.desconto)||0),
-    obs:it.obs||null,
+
+  // === ITENS ===
+  const itensDb = f.itens.filter(it => it.descricao?.trim()).map(it => ({
+    venda_id: vendaId,
+    produto_id: it.produtoId || null,
+    descricao: it.descricao,
+    quantidade: Number(it.qtd) || 1,
+    preco_unitario: Number(it.preco) || 0,
+    desconto: Number(it.desconto) || 0,
+    total: (Number(it.preco)||0) * (Number(it.qtd)||0) - (Number(it.desconto)||0),
+    obs: it.obs || null,
   }));
-  if(itensDb.length) await supabase.from("venda_itens").insert(itensDb);
+
+  if (itensDb.length) await supabase.from("venda_itens").insert(itensDb);
+
+  // === PARCELAS e GASTOS (implementar similarmente) ===
+
+  showToast(container, "✅ Venda salva com sucesso!");
   await carregar();
-  showToast(container,"✅ Venda salva com sucesso!");
-  state.aba="lista"; state.vendaAberta=null; render(container);
+  state.aba = "lista";
+  state.vendaAberta = null;
+  render(container);
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
