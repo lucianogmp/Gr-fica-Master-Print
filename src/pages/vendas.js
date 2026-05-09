@@ -593,7 +593,7 @@ async function salvar(container) {
     data_venda:      f.data,
     data_entrega:    f.entrega || null,
     status:          f.situacao,
-    consumidor_final: f.consumidorFinal,
+    // consumidor_final: removido (coluna não existe na tabela)
     palavra_chave:   f.palavraChave || null,
     observacoes:     f.observacoes || null,
     total:           t.totalGeral,
@@ -633,9 +633,9 @@ async function salvar(container) {
 
   if (itensDb.length) await supabase.from("venda_itens").insert(itensDb);
 
-  // Nova tela bonita de sucesso
+  // Tela bonita de sucesso
   showSuccessScreen(container);
-  
+
   await carregar();
   state.aba = "lista"; 
   state.vendaAberta = null; 
@@ -760,17 +760,17 @@ function showSuccessScreen(container) {
   if (!area) return;
 
   area.innerHTML = `
-  <div class="modal-bg" style="display:flex;align-items:center;justify-content:center;">
-    <div class="modal" style="max-width:380px; text-align:center; padding:40px 30px;">
-      <div style="font-size:64px;margin-bottom:16px;">✅</div>
-      <h2 style="margin:0 0 8px 0; color:var(--success); font-size:24px;">Venda Concluída!</h2>
-      <p style="color:var(--muted); margin-bottom:24px; font-size:15px;">
-        A venda foi salva com sucesso.
+  <div class="modal-bg" style="display:flex; align-items:center; justify-content:center; z-index:999;">
+    <div class="modal" style="max-width:380px; text-align:center; padding:40px 30px; border-radius:16px;">
+      <div style="font-size:72px; margin-bottom:20px;">✅</div>
+      <h2 style="margin:0 0 12px 0; color:#00AC17; font-size:26px;">Venda Salva com Sucesso!</h2>
+      <p style="color:var(--muted); font-size:15px; margin-bottom:30px;">
+        A venda foi registrada corretamente.
       </p>
       <button onclick="this.closest('.modal-bg').remove()" 
               class="btn-salvar-vnd" 
-              style="width:100%; padding:14px; font-size:16px;">
-        Voltar para Lista
+              style="width:100%; padding:14px; font-size:16px; font-weight:600;">
+        Voltar para a Lista de Vendas
       </button>
     </div>
   </div>`;
