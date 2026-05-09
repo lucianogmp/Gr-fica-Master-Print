@@ -908,5 +908,6 @@ function css() { return `
   color:var(--text); border-radius:var(--radius-lg); padding:12px 24px;
   font-size:13px; font-weight:600; box-shadow:var(--shadow-lg);
   z-index:999; animation:slideUp .2s ease; white-space:nowrap;
+}}
+  `;   // ← Este backtick deve estar aqui, bem fechado
 }
-`; }
