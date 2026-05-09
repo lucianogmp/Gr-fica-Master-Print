@@ -388,13 +388,14 @@ function renderHistorico(body, container) {
 // ══════════════════════════════════════════════════════════════════════════════
 // MODAL: NOVA / EDITAR MATÉRIA-PRIMA
 // ══════════════════════════════════════════════════════════════════════════════
+// === SUBSTITUA TODA A FUNÇÃO abrirModalMP ===
 function abrirModalMP(container, mp) {
   const area = document.getElementById("app-modal-root");
   const editando = !!mp?.id;
 
   area.innerHTML = `
     <div class="modal-bg" id="modal-bg">
-      <div class="modal" style="max-width:500px">
+      <div class="modal" style="max-width:520px">
         <h3>
           <i class="fi fi-rr-${editando?"pencil":"add"}" style="color:var(--primary)"></i>
           ${editando ? "Editar Matéria-Prima" : "Nova Matéria-Prima"}
@@ -404,16 +405,16 @@ function abrirModalMP(container, mp) {
 
           <div class="modal-field full">
             <label>Nome *</label>
-            <input id="mp-nome" value="${esc(mp?.nome)}" placeholder="Ex: Adesivo Vinil A4, Lona..." autofocus />
+            <input id="mp-nome" value="${esc(mp?.nome||'')}" placeholder="Ex: Adesivo Vinil A4..." autofocus />
           </div>
 
           <div class="modal-field">
             <label>Categoria</label>
-            <input id="mp-cat" value="${esc(mp?.categoria)}" placeholder="Ex: Papel, Vinil, Lona..." />
+            <input id="mp-cat" value="${esc(mp?.categoria||'')}" placeholder="Ex: Vinil, Papel..." />
           </div>
 
           <div class="modal-field">
-            <label>Unidade de medida</label>
+            <label>Unidade</label>
             <select id="mp-un">
               ${["un","m²","m","folha","kg","g","l","ml","rolo","caixa"].map(u =>
                 `<option value="${u}" ${(mp?.unidade||"un")===u?"selected":""}>${u}</option>`
@@ -425,7 +426,7 @@ function abrirModalMP(container, mp) {
             <label>Estoque mínimo</label>
             <div class="modal-input-icon">
               <input id="mp-min" type="number" min="0" step="0.001" value="${mp?.estoque_minimo||0}" />
-              <span id="mp-un-label" class="input-suffix">${mp?.unidade||"un"}</span>
+              <span class="input-suffix">${esc(mp?.unidade||"un")}</span>
             </div>
           </div>
 
@@ -437,46 +438,49 @@ function abrirModalMP(container, mp) {
             </div>
           </div>
 
+          <!-- NOVO CAMPO -->
+          <div class="modal-field">
+            <label><strong>Preço de Venda (R$)</strong></label>
+            <div class="modal-input-icon">
+              <span class="input-prefix">R$</span>
+              <input id="mp-preco-venda" type="number" min="0" step="0.01" 
+                     value="${Number(mp?.preco_venda||0).toFixed(2)}" />
+            </div>
+          </div>
+
           ${editando ? `
           <div class="modal-field">
             <label>Saldo atual</label>
             <div class="modal-input-icon readonly">
-              <input type="text" value="${Number(mp?.saldo||0).toFixed(3)} ${esc(mp?.unidade||"un")}" readonly style="opacity:.7" />
+              <input type="text" value="${Number(mp?.saldo||0).toFixed(3)} ${esc(mp?.unidade||"un")}" readonly />
             </div>
           </div>` : `
           <div class="modal-field">
-            <label>Saldo inicial (opcional)</label>
+            <label>Saldo inicial</label>
             <div class="modal-input-icon">
-              <input id="mp-saldo-ini" type="number" min="0" step="0.001" value="0" placeholder="0" />
-              <span class="input-suffix">${mp?.unidade||"un"}</span>
+              <input id="mp-saldo-ini" type="number" min="0" step="0.001" value="0" />
+              <span class="input-suffix">${esc(mp?.unidade||"un")}</span>
             </div>
           </div>`}
 
         </div>
 
         ${editando ? `
-        <div class="modal-sep"></div>
-        <div style="display:flex;gap:8px">
-          <button class="btn-mov-modal entrada" id="mp-entrada">
-            <i class="fi fi-rr-arrow-up"></i> Lançar Entrada
-          </button>
-          <button class="btn-mov-modal saida" id="mp-saida">
-            <i class="fi fi-rr-arrow-down"></i> Lançar Saída
-          </button>
+        <div style="margin-top:16px;display:flex;gap:8px">
+          <button class="btn-mov-modal entrada" id="mp-entrada">Entrada</button>
+          <button class="btn-mov-modal saida" id="mp-saida">Saída</button>
         </div>` : ""}
 
         <div class="modal-btns">
-          ${editando ? `<button class="btn-danger" id="mp-del">
-            <i class="fi fi-rr-trash"></i> Excluir
-          </button>` : ""}
+          ${editando ? `<button class="btn-danger" id="mp-del">Excluir</button>` : ""}
           <div style="flex:1"></div>
           <button class="btn-secondary" id="mp-cancel">Cancelar</button>
-          <button class="btn-primary" id="mp-ok">
-            <i class="fi fi-rr-disk"></i> Salvar
-          </button>
+          <button class="btn-primary" id="mp-ok">Salvar</button>
         </div>
       </div>
     </div>`;
+
+  // ... (o resto do event listener continua igual, só vamos ajustar o save)
 
   // Atualiza label da unidade ao mudar select
   area.querySelector("#mp-un")?.addEventListener("change", e => {
@@ -507,38 +511,96 @@ function abrirModalMP(container, mp) {
     abrirModalMov(container, "saida", { id: mp.id, nome: mp.nome, unidade: mp.unidade||"un", saldo: mp.saldo });
   });
 
-  // Salvar
-  area.querySelector("#mp-ok").addEventListener("click", async () => {
-    const nome  = area.querySelector("#mp-nome").value.trim();
-    const un    = area.querySelector("#mp-un").value;
-    const cat   = area.querySelector("#mp-cat").value.trim() || null;
-    const min   = parseFloat(area.querySelector("#mp-min").value) || 0;
-    const custo = parseFloat(area.querySelector("#mp-custo").value) || 0;
+// Salvar
+area.querySelector("#mp-ok").addEventListener("click", async () => {
+  const nome       = area.querySelector("#mp-nome").value.trim();
+  const un         = area.querySelector("#mp-un").value;
+  const cat        = area.querySelector("#mp-cat").value.trim() || null;
+  const min        = parseFloat(area.querySelector("#mp-min").value) || 0;
+  const custo      = parseFloat(area.querySelector("#mp-custo").value) || 0;
+  const precoVenda = parseFloat(area.querySelector("#mp-preco-venda").value) || 0;
 
-    if (!nome) { flashInput(area.querySelector("#mp-nome")); return; }
+  // ==================== VALIDAÇÕES ====================
 
-    const payload = { nome, unidade: un, categoria: cat, estoque_minimo: min, custo_unitario: custo };
+  if (!nome || nome.length < 3) {
+    flashInput(area.querySelector("#mp-nome"));
+    alert("❌ O nome deve ter pelo menos 3 caracteres.");
+    return;
+  }
 
+  if (custo < 0) {
+    flashInput(area.querySelector("#mp-custo"));
+    alert("❌ Custo unitário não pode ser negativo.");
+    return;
+  }
+
+  if (precoVenda < 0) {
+    flashInput(area.querySelector("#mp-preco-venda"));
+    alert("❌ Preço de venda não pode ser negativo.");
+    return;
+  }
+
+  // Validação de margem de lucro (opcional mas recomendada)
+  if (precoVenda > 0 && custo > 0 && precoVenda <= custo) {
+    if (!confirm("⚠️ O Preço de Venda está menor ou igual ao Custo.\n\nDeseja continuar mesmo assim?")) {
+      return;
+    }
+  }
+
+  if (min < 0) {
+    flashInput(area.querySelector("#mp-min"));
+    alert("❌ Estoque mínimo não pode ser negativo.");
+    return;
+  }
+
+  // ==================== SALVAR ====================
+  const payload = { 
+    nome, 
+    unidade: un, 
+    categoria: cat, 
+    estoque_minimo: min, 
+    custo_unitario: custo,
+    preco_venda: precoVenda
+  };
+
+  try {
     if (editando) {
-      await supabase.from("materias_primas").update({ ...payload, updated_at: new Date() }).eq("id", mp.id);
+      await supabase.from("materias_primas").update({ 
+        ...payload, 
+        updated_at: new Date().toISOString() 
+      }).eq("id", mp.id);
     } else {
-      const { data: nova } = await supabase.from("materias_primas").insert(payload).select().single();
+      const { data: nova, error } = await supabase.from("materias_primas")
+        .insert(payload)
+        .select()
+        .single();
+
+      if (error) throw error;
+
       // Saldo inicial
       const saldoIni = parseFloat(area.querySelector("#mp-saldo-ini")?.value) || 0;
       if (saldoIni > 0) {
         await supabase.from("estoque_movimentos").insert({
-          materia_prima_id: nova.id, tipo: "entrada",
-          quantidade: saldoIni, motivo: "Saldo inicial", origem: "manual",
+          materia_prima_id: nova.id, 
+          tipo: "entrada",
+          quantidade: saldoIni, 
+          motivo: "Saldo inicial", 
+          origem: "manual",
         });
       }
     }
 
     area.innerHTML = "";
-    showToast(container, editando ? "✅ Matéria-prima atualizada!" : "✅ Matéria-prima cadastrada!");
+    showToast(container, editando ? "✅ Matéria-prima atualizada com sucesso!" : "✅ Matéria-prima cadastrada com sucesso!");
+    
     await carregar();
     render(container);
-  });
-}
+
+  } catch (err) {
+    console.error(err);
+    alert("❌ Erro ao salvar: " + (err.message || err));
+  }
+});
 
 // ══════════════════════════════════════════════════════════════════════════════
 // MODAL: MOVIMENTO (ENTRADA / SAÍDA)
