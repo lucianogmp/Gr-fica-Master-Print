@@ -512,8 +512,8 @@ function abrirModalMP(container, mp) {
     abrirModalMov(container, "saida", { id: mp.id, nome: mp.nome, unidade: mp.unidade||"un", saldo: mp.saldo });
   });
 
-// Salvar
-area.querySelector("#mp-ok").addEventListener("click", async () => {
+  // Salvar
+  area.querySelector("#mp-ok").addEventListener("click", async () => {
   const nome       = area.querySelector("#mp-nome").value.trim();
   const un         = area.querySelector("#mp-un").value;
   const cat        = area.querySelector("#mp-cat").value.trim() || null;
@@ -601,7 +601,8 @@ area.querySelector("#mp-ok").addEventListener("click", async () => {
     console.error(err);
     alert("❌ Erro ao salvar: " + (err.message || err));
   }
-});
+  });
+}
 
 // ══════════════════════════════════════════════════════════════════════════════
 // MODAL: MOVIMENTO (ENTRADA / SAÍDA)
