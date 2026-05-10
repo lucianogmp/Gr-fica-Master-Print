@@ -1,5 +1,4 @@
 import { supabase } from "../supabase/client.js";
-import { fmtBRL } from "../utils/fmt.js";
 import { fmtBRL, fmtBRL4, fmtBRLK, fmtQtd } from "../utils/fmt.js";
 
 let state = {
