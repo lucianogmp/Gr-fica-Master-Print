@@ -556,35 +556,81 @@ function bindItemAC(container, i) {
 // SALVAR
 // ══════════════════════════════════════════════════════════════════════════════
 async function salvar(container) {
-  const f=state.form, t=calcularTotais();
-  const payload={
-    cliente_nome:    f.clienteNome||null, vendedor:f.vendedor||null,
-    tipo:            f.tipo, data_venda:f.data, data_entrega:f.entrega||null,
-    status:          f.situacao, consumidor_final:f.consumidorFinal,
-    palavra_chave:   f.palavraChave||null, observacoes:f.observacoes||null,
-    total:           t.totalGeral, updated_at:new Date(),
-  };
-  let vendaId;
-  if(state.vendaAberta){
-    await supabase.from("vendas").update(payload).eq("id",state.vendaAberta.id);
-    vendaId=state.vendaAberta.id;
-    await supabase.from("venda_itens").delete().eq("venda_id",vendaId);
-  } else {
-    const { data:v, error }=await supabase.from("vendas").insert(payload).select().single();
-    if(error){ alert("Erro: "+error.message); return; }
-    vendaId=v.id;
+  const f = state.form, t = calcularTotais();
+
+  // Validação mínima
+  const itensValidos = f.itens.filter(it => it.descricao.trim());
+  if (!itensValidos.length) {
+    alert("Adicione ao menos um item com descrição antes de salvar.");
+    return;
   }
-  const itensDb=f.itens.filter(it=>it.descricao).map(it=>({
-    venda_id:vendaId, produto_id:it.produtoId||null, descricao:it.descricao,
-    quantidade:Number(it.qtd)||1, preco_unitario:Number(it.preco)||0,
-    desconto:Number(it.desconto)||0,
-    total:(Number(it.preco)||0)*(Number(it.qtd)||0)-(Number(it.desconto)||0),
-    obs:it.obs||null,
+
+  const payload = {
+    cliente_nome:    f.clienteNome  || null,
+    vendedor:        f.vendedor     || null,
+    tipo:            f.tipo,
+    data_venda:      f.data,
+    data_entrega:    f.entrega      || null,
+    status:          f.situacao,
+    consumidor_final: f.consumidorFinal,
+    palavra_chave:   f.palavraChave || null,
+    observacoes:     f.observacoes  || null,
+    total:           t.totalGeral,
+    updated_at:      new Date().toISOString(),   // ← fix: string ISO
+  };
+
+  let vendaId;
+
+  if (state.vendaAberta) {
+    // ← fix: verificar erro no update
+    const { error } = await supabase
+      .from("vendas")
+      .update(payload)
+      .eq("id", state.vendaAberta.id);
+
+    if (error) { alert("Erro ao atualizar venda: " + error.message); return; }
+
+    vendaId = state.vendaAberta.id;
+
+    // ← fix: verificar erro no delete
+    const { error: delErr } = await supabase
+      .from("venda_itens")
+      .delete()
+      .eq("venda_id", vendaId);
+
+    if (delErr) { alert("Erro ao limpar itens: " + delErr.message); return; }
+
+  } else {
+    const { data: v, error } = await supabase
+      .from("vendas")
+      .insert(payload)
+      .select()
+      .single();
+
+    if (error) { alert("Erro ao criar venda: " + error.message); return; }
+    vendaId = v.id;
+  }
+
+  // ← fix: verificar erro no insert dos itens
+  const itensDb = itensValidos.map(it => ({
+    venda_id:        vendaId,
+    produto_id:      it.produtoId || null,
+    descricao:       it.descricao,
+    quantidade:      Number(it.qtd)      || 1,
+    preco_unitario:  Number(it.preco)    || 0,
+    desconto:        Number(it.desconto) || 0,
+    total: (Number(it.preco) || 0) * (Number(it.qtd) || 0) - (Number(it.desconto) || 0),
+    obs: it.obs || null,
   }));
-  if(itensDb.length) await supabase.from("venda_itens").insert(itensDb);
+
+  const { error: itErr } = await supabase.from("venda_itens").insert(itensDb);
+  if (itErr) { alert("Erro ao salvar itens: " + itErr.message); return; }
+
   await carregar();
-  showToast(container,"✅ Venda salva com sucesso!");
-  state.aba="lista"; state.vendaAberta=null; render(container);
+  showToast(container, "✅ Venda salva com sucesso!");
+  state.aba = "lista";
+  state.vendaAberta = null;
+  render(container);
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
