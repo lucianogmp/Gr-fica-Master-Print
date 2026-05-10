@@ -876,7 +876,6 @@ area.querySelector("#mc-ok").addEventListener("click", async () => {
       renderLista(container);
     }
   });
-  });
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
