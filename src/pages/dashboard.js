@@ -69,7 +69,7 @@ async function carregar() {
   const aPagarMes    = lancMes.filter(l => l.tipo === "despesa" && l.status === "pendente").reduce((s, l) => s + Number(l.valor), 0);
   const margem       = receitasMes > 0 ? (lucroMes / receitasMes * 100).toFixed(1) : "0.0";
 
-  // ── Custo Produtivo por tipo ───────────────────────────────────────────────
+// ── Custo Produtivo por tipo ───────────────────────────────────────────────
   const MAPA_MO   = ["salário","salario","mão de obra","mao de obra","funcionário","funcionario","pessoal","rh"];
   const MAPA_MP   = ["material","matéria","materia","fornecedor","insumo","papel","lona","vinil","tinta","adesivo"];
   const MAPA_TERC = ["terceiro","terceirização","terceirizacao","serviço","servico","freelancer","outsourc","prestador"];
@@ -79,19 +79,50 @@ async function carregar() {
 
   lancMes.filter(l => l.tipo === "despesa").forEach(l => {
     const txt = ((l.categoria || "") + " " + (l.descricao || "")).toLowerCase();
-    if      (MAPA_MO.some(k => txt.includes(k)))   custoMO    += Number(l.valor);
-    else if (MAPA_MP.some(k => txt.includes(k)))   custoMP    += Number(l.valor);
-    else if (MAPA_TERC.some(k => txt.includes(k))) custoTerc  += Number(l.valor);
+    if      (MAPA_MO.some(k => txt.includes(k)))   custoMO     += Number(l.valor);
+    else if (MAPA_MP.some(k => txt.includes(k)))   custoMP     += Number(l.valor);
+    else if (MAPA_TERC.some(k => txt.includes(k))) custoTerc   += Number(l.valor);
     else                                            custoOutros += Number(l.valor);
   });
 
   // Fallback proporcional quando não há categorias mapeadas
   if (custoTotal > 0 && (custoMO + custoMP + custoTerc + custoOutros) < custoTotal * 0.01) {
-    custoMO    = custoTotal * 0.45;
-    custoMP    = custoTotal * 0.38;
-    custoTerc  = custoTotal * 0.17;
+    custoMO     = custoTotal * 0.45;
+    custoMP     = custoTotal * 0.38;
+    custoTerc   = custoTotal * 0.17;
     custoOutros = 0;
   }
+
+  // ── Ponto de Equilíbrio ───────────────────────────────────────────────────
+  const MAPA_FIXO = [
+    "aluguel","energia","água","agua","telefone","internet",
+    "seguro","contador","contabilidade","depreciação","depreciacao",
+    "licença","licenca","mensalidade","fixo"
+  ];
+
+  let custoFixoReal = 0;
+  let custoVariavelReal = 0;
+
+  lancMes.filter(l => l.tipo === "despesa").forEach(l => {
+    const txt = ((l.categoria || "") + " " + (l.descricao || "")).toLowerCase();
+    const isMO   = MAPA_MO.some(k => txt.includes(k));
+    const isFixo = MAPA_FIXO.some(k => txt.includes(k));
+    const isMP   = MAPA_MP.some(k => txt.includes(k));
+    const isTerc = MAPA_TERC.some(k => txt.includes(k));
+
+    if (isMO || isFixo)      custoFixoReal     += Number(l.valor);
+    else if (isMP || isTerc) custoVariavelReal  += Number(l.valor);
+    else                     custoFixoReal     += Number(l.valor);
+  });
+
+  const temCategorizacao = (custoFixoReal + custoVariavelReal) >= despesasMes * 0.5;
+  const custoFixo     = temCategorizacao ? custoFixoReal     : despesasMes * 0.60;
+  const custoVariavel = temCategorizacao ? custoVariavelReal : despesasMes * 0.40;
+
+  const margContrib = receitasMes > 0 ? (receitasMes - custoVariavel) / receitasMes : 0.60;
+  const pontEq      = margContrib > 0 ? custoFixo / margContrib : despesasMes || 1;
+  const bePercent   = (receitasMes / pontEq) * 100;
+  const beAtingido  = receitasMes >= pontEq;
 
   // ── DRE real a partir de lancamentos ─────────────────────────────────────
   const getDesp = (...cats) =>
@@ -109,13 +140,24 @@ async function carregar() {
                              .reduce((s, l) => s + Number(l.valor), 0);
   const lucroLiq   = lucroOp + outrasRD;
 
-  // ── Ponto de Equilíbrio ───────────────────────────────────────────────────
-  const custoFixo     = despesasMes * 0.60;
-  const custoVariavel = despesasMes * 0.40;
-  const margContrib   = receitasMes > 0 ? (receitasMes - custoVariavel) / receitasMes : 0.60;
-  const pontEq        = margContrib > 0 ? custoFixo / margContrib : despesasMes || 1;
-  const bePercent     = (receitasMes / pontEq) * 100;
-  const beAtingido    = receitasMes >= pontEq;
+ // ── Ponto de Equilíbrio ───────────────────────────────────────────────────
+const custoFixoReal = lancMes
+  .filter(l => l.tipo === "despesa")
+  .filter(l => {
+    const txt = ((l.categoria || "") + " " + (l.descricao || "")).toLowerCase();
+    return MAPA_MO.some(k => txt.includes(k)) ||
+           ["aluguel","energia","internet","telefone","fixo"].some(k => txt.includes(k));
+  })
+  .reduce((s, l) => s + Number(l.valor), 0);
+
+// Fallback: se nada foi categorizado, usa estimativa 60/40
+const custoFixo     = custoFixoReal > 0 ? custoFixoReal : despesasMes * 0.60;
+const custoVariavel = despesasMes - custoFixo;
+
+const margContrib = receitasMes > 0 ? (receitasMes - custoVariavel) / receitasMes : 0.60;
+const pontEq      = margContrib > 0 ? custoFixo / margContrib : despesasMes || 1;
+const bePercent   = (receitasMes / pontEq) * 100;
+const beAtingido  = receitasMes >= pontEq;
 
   // ── Vendas últimos 12 meses ───────────────────────────────────────────────
   const ultimos12 = [];
