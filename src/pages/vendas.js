@@ -31,10 +31,14 @@ function novoForm() {
     consumidorFinal:true, situacao:"pendente",
     entrega:"", palavraChave:"",
     itens:[novoItem()],
-    observacoes:"", parcelas:[], gastos:[],
+    observacoes:"", parcelas:[],
+    // FIX 3: gasto agora tem fornecedor
+    gastos:[],
   };
 }
 function novoItem() { return { descricao:"", produtoId:null, preco:0, qtd:1.000, desconto:0, obs:"" }; }
+// FIX 3: novo gasto com fornecedor
+function novoGasto() { return { fornecedor:"", descricao:"", valor:0 }; }
 function hoje() { return new Date().toISOString().split("T")[0]; }
 
 // ─── Entry point ──────────────────────────────────────────────────────────────
@@ -48,7 +52,8 @@ async function carregar() {
   const [{ data: vendas }, { data: clientes }, { data: produtos }, { data: cfg }] = await Promise.all([
     supabase.from("vendas").select("*, venda_itens(*)").order("created_at", { ascending: false }),
     supabase.from("clientes").select("id, nome, telefone").order("nome"),
-    supabase.from("produtos").select("id, nome").order("nome"),
+    // FIX 1: buscar preco junto com id e nome
+    supabase.from("produtos").select("id, nome, preco").order("nome"),
     supabase.from("configuracoes").select("formas_pagamento").eq("id","global").single(),
   ]);
   state.vendas   = vendas   || [];
@@ -286,13 +291,24 @@ function renderForm() {
   <!-- GASTOS -->
   <div class="vnd-card">
     <div class="vnd-card-title"><i class="fi fi-rr-receipt"></i> Gastos na venda</div>
+
+    <!-- FIX 3: cabeçalho das colunas de gastos -->
+    ${f.gastos.length > 0 ? `
+    <div class="gastos-header">
+      <span style="flex:1.2">Fornecedor</span>
+      <span style="flex:2">Descrição</span>
+      <span style="width:140px">Valor R$</span>
+      <span style="width:28px"></span>
+    </div>` : ""}
+
     <div id="gastos-lista">
       ${f.gastos.length===0
         ? `<div style="color:var(--muted);font-size:13px;padding:4px 0">Nenhum gasto adicionado.</div>`
         : f.gastos.map((g,i)=>`
           <div class="gasto-row">
-            <input class="gasto-desc" data-gasto-desc="${i}" value="${esc(g.descricao)}" placeholder="Descrição do gasto" />
-            <div class="input-icon-wrap" style="width:150px">
+            <input class="gasto-fornecedor" data-gasto-forn="${i}" value="${esc(g.fornecedor)}" placeholder="Fornecedor..." />
+            <input class="gasto-desc" data-gasto-desc="${i}" value="${esc(g.descricao)}" placeholder="Descrição do gasto..." />
+            <div class="input-icon-wrap" style="width:140px;flex-shrink:0">
               <span class="input-icon" style="font-size:11px">R$</span>
               <input type="number" class="gasto-val" data-gasto-val="${i}" value="${g.valor}" min="0" step="0.01" style="border:none;background:transparent" />
             </div>
@@ -388,12 +404,46 @@ function atualizarTotaisDOM(container) {
     const el=container.querySelector(`.item-row[data-row="${i}"] .td-total`);
     if(el){ el.textContent=fmtBRL(tot); el.style.color=tot>0?"var(--primary-light)":"var(--muted)"; }
   });
+
+  // FIX 2: sincronizar parcela automática com o total do carrinho
+  // Se há 0 ou 1 parcela (gerada automaticamente), manter em sincronia
+  autoSincronizarParcela(container, t.totalGeral);
+}
+
+// FIX 2: cria ou atualiza 1 parcela quando o total muda (se o usuário não customizou)
+function autoSincronizarParcela(container, totalGeral) {
+  const p = state.form.parcelas;
+  if (p.length === 0) {
+    // Criar primeira parcela automaticamente
+    state.form.parcelas = [{
+      valor: totalGeral.toFixed(2),
+      data: hoje(),
+      forma: state.formasPag[0] || "Dinheiro",
+      recebido: false,
+    }];
+  } else if (p.length === 1) {
+    // Atualizar valor da parcela única
+    state.form.parcelas[0].valor = totalGeral.toFixed(2);
+  }
+  // Se há 2+ parcelas o usuário está controlando manualmente → não mexer
+
+  atualizarParcelasDOM(container);
 }
 
 function atualizarParcelasDOM(container) {
   const total = state.form.parcelas.reduce((s,p)=>s+Number(p.valor||0),0);
   const el = container.querySelector("#r-parc-total");
   if (el) el.textContent = fmtBRL(total);
+
+  // Re-renderizar tbody de parcelas para refletir novo valor
+  const tbody = container.querySelector("#tbody-parcelas");
+  if (tbody) {
+    tbody.innerHTML = state.form.parcelas.length === 0
+      ? `<tr><td colspan="6" class="td-vazio" style="padding:16px">Nenhuma parcela. Use os botões abaixo.</td></tr>`
+      : state.form.parcelas.map((p,i)=>renderParcelaRow(p,i)).join("");
+    // Re-bind eventos das parcelas
+    bindParcelasEvents(container);
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -490,6 +540,26 @@ function bindFormEvents(container) {
 
   state.form.itens.forEach((_,i)=>bindItemAC(container,i));
 
+  bindParcelasEvents(container);
+  container.querySelector("#btn-add-parcela")?.addEventListener("click",()=>{ state.form.parcelas.push({valor:0,data:hoje(),forma:state.formasPag[0]||"Dinheiro",recebido:false}); render(container); });
+  container.querySelector("#btn-parcela-auto")?.addEventListener("click",()=>{ const t=calcularTotais(); state.form.parcelas=[{valor:t.totalGeral.toFixed(2),data:hoje(),forma:state.formasPag[0]||"Dinheiro",recebido:false}]; render(container); });
+
+  // FIX 3: eventos dos gastos com fornecedor
+  container.querySelector("#btn-add-gasto")?.addEventListener("click",()=>{ state.form.gastos.push(novoGasto()); render(container); });
+  container.querySelector("#gastos-lista")?.addEventListener("input",e=>{
+    const t=e.target;
+    if(t.dataset.gastoForn!==undefined){ state.form.gastos[+t.dataset.gastoForn].fornecedor=t.value; }
+    if(t.dataset.gastoDesc!==undefined){ state.form.gastos[+t.dataset.gastoDesc].descricao=t.value; }
+    if(t.dataset.gastoVal !==undefined){ state.form.gastos[+t.dataset.gastoVal].valor=t.value; atualizarTotaisDOM(container); }
+  });
+  container.querySelector("#gastos-lista")?.addEventListener("click",e=>{
+    const del=e.target.closest("[data-del-gasto]");
+    if(del){ state.form.gastos.splice(+del.dataset.delGasto,1); render(container); }
+  });
+}
+
+// Extraído para poder ser chamado após re-render do tbody de parcelas
+function bindParcelasEvents(container) {
   const tbodyParc = container.querySelector("#tbody-parcelas");
   tbodyParc?.addEventListener("input",e=>{
     const t=e.target;
@@ -505,19 +575,6 @@ function bindFormEvents(container) {
     if(st){ const i=+st.dataset.parcStatus; state.form.parcelas[i].recebido=!state.form.parcelas[i].recebido; st.className=`parc-status ${state.form.parcelas[i].recebido?"recebido":"pendente"}`; st.textContent=state.form.parcelas[i].recebido?"✔ Recebido":"⏳ Pendente"; }
     const del=e.target.closest("[data-del-parc]");
     if(del){ state.form.parcelas.splice(+del.dataset.delParc,1); render(container); }
-  });
-  container.querySelector("#btn-add-parcela")?.addEventListener("click",()=>{ state.form.parcelas.push({valor:0,data:hoje(),forma:state.formasPag[0]||"Dinheiro",recebido:false}); render(container); });
-  container.querySelector("#btn-parcela-auto")?.addEventListener("click",()=>{ const t=calcularTotais(); state.form.parcelas=[{valor:t.totalGeral.toFixed(2),data:hoje(),forma:state.formasPag[0]||"Dinheiro",recebido:false}]; render(container); });
-
-  container.querySelector("#btn-add-gasto")?.addEventListener("click",()=>{ state.form.gastos.push({descricao:"",valor:0}); render(container); });
-  container.querySelector("#gastos-lista")?.addEventListener("input",e=>{
-    const t=e.target;
-    if(t.dataset.gastoDesc!==undefined){ state.form.gastos[+t.dataset.gastoDesc].descricao=t.value; }
-    if(t.dataset.gastoVal !==undefined){ state.form.gastos[+t.dataset.gastoVal].valor=t.value; atualizarTotaisDOM(container); }
-  });
-  container.querySelector("#gastos-lista")?.addEventListener("click",e=>{
-    const del=e.target.closest("[data-del-gasto]");
-    if(del){ state.form.gastos.splice(+del.dataset.delGasto,1); render(container); }
   });
 }
 
@@ -537,6 +594,7 @@ function bindAutocompleteCli(container) {
   container.querySelector("#btn-cad-cli")?.addEventListener("click",()=>abrirModalCadCliente(container,inp.value.trim(),c=>{ inp.value=c.nome; state.form.clienteNome=c.nome; state.form.clienteId=c.id; }));
 }
 
+// FIX 1: ao selecionar produto no autocomplete, preencher preço automaticamente
 function bindItemAC(container, i) {
   const inp=container.querySelector(`[data-item-desc="${i}"]`);
   const ac=container.querySelector(`#ac-item-${i}`);
@@ -546,10 +604,24 @@ function bindItemAC(container, i) {
     if(!q){ ac.style.display="none"; return; }
     const m=state.produtos.filter(p=>p.nome.toLowerCase().includes(q)).slice(0,6);
     if(!m.length){ ac.style.display="none"; return; }
-    ac.innerHTML=m.map(p=>`<div class="ac-item" data-nome="${esc(p.nome)}">${esc(p.nome)}</div>`).join("");
+    // FIX 1: guardar preco no data-preco do item do autocomplete
+    ac.innerHTML=m.map(p=>`<div class="ac-item" data-nome="${esc(p.nome)}" data-preco="${Number(p.preco)||0}">${esc(p.nome)}</div>`).join("");
     ac.style.display="block";
   });
-  ac.addEventListener("click",e=>{ const it=e.target.closest(".ac-item"); if(!it) return; inp.value=it.dataset.nome; state.form.itens[i].descricao=it.dataset.nome; ac.style.display="none"; });
+  ac.addEventListener("click",e=>{
+    const it=e.target.closest(".ac-item");
+    if(!it) return;
+    inp.value=it.dataset.nome;
+    state.form.itens[i].descricao=it.dataset.nome;
+    // FIX 1: aplicar preço do produto cadastrado
+    const preco = Number(it.dataset.preco) || 0;
+    state.form.itens[i].preco = preco;
+    // Atualizar o input de preço na linha
+    const precoInp = container.querySelector(`[data-item-preco="${i}"]`);
+    if(precoInp) precoInp.value = preco;
+    atualizarTotaisDOM(container);
+    ac.style.display="none";
+  });
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -558,7 +630,6 @@ function bindItemAC(container, i) {
 async function salvar(container) {
   const f = state.form, t = calcularTotais();
 
-  // Validação mínima
   const itensValidos = f.itens.filter(it => it.descricao.trim());
   if (!itensValidos.length) {
     alert("Adicione ao menos um item com descrição antes de salvar.");
@@ -576,13 +647,12 @@ async function salvar(container) {
     palavra_chave:   f.palavraChave || null,
     observacoes:     f.observacoes  || null,
     total:           t.totalGeral,
-    updated_at:      new Date().toISOString(),   // ← fix: string ISO
+    updated_at:      new Date().toISOString(),
   };
 
   let vendaId;
 
   if (state.vendaAberta) {
-    // ← fix: verificar erro no update
     const { error } = await supabase
       .from("vendas")
       .update(payload)
@@ -592,7 +662,6 @@ async function salvar(container) {
 
     vendaId = state.vendaAberta.id;
 
-    // ← fix: verificar erro no delete
     const { error: delErr } = await supabase
       .from("venda_itens")
       .delete()
@@ -611,7 +680,6 @@ async function salvar(container) {
     vendaId = v.id;
   }
 
-  // ← fix: verificar erro no insert dos itens
   const itensDb = itensValidos.map(it => ({
     venda_id:       vendaId,
     produto_id:     it.produtoId || null,
@@ -620,8 +688,7 @@ async function salvar(container) {
     preco_unitario: Number(it.preco)    || 0,
     desconto:       Number(it.desconto) || 0,
     obs:            it.obs || null,
-    // ← total removido, o banco calcula automaticamente
-}));
+  }));
 
   const { error: itErr } = await supabase.from("venda_itens").insert(itensDb);
   if (itErr) { alert("Erro ao salvar itens: " + itErr.message); return; }
@@ -670,6 +737,10 @@ td{padding:7px 10px;border-bottom:1px solid #eee}
 ${f.observacoes?`<div class="obs"><strong>Obs:</strong> ${esc(f.observacoes)}</div>`:""}
 ${f.parcelas.length?`<table><thead><tr><th>Parcela</th><th>Valor</th><th>Vencimento</th><th>Forma</th><th>Status</th></tr></thead><tbody>
 ${f.parcelas.map((p,i)=>`<tr><td>${i+1}/${f.parcelas.length}</td><td>${fmtBRL(p.valor)}</td><td>${fmtData(p.data)}</td><td>${p.forma}</td><td>${p.recebido?"✔ Recebido":"Pendente"}</td></tr>`).join("")}
+</tbody></table>`:""}
+${f.gastos.length?`<table><thead><tr><th>Fornecedor</th><th>Descrição</th><th>Valor</th></tr></thead><tbody>
+${f.gastos.map(g=>`<tr><td>${esc(g.fornecedor)||"—"}</td><td>${esc(g.descricao)||"—"}</td><td>${fmtBRL(g.valor)}</td></tr>`).join("")}
+<tr class="tr"><td colspan="2" style="text-align:right">Total gastos</td><td>${fmtBRL(f.gastos.reduce((s,g)=>s+Number(g.valor||0),0))}</td></tr>
 </tbody></table>`:""}
 <div class="footer">Gerado em ${new Date().toLocaleString("pt-BR")} · Gráfica Master Print</div>
 </body></html>`;
@@ -818,8 +889,12 @@ function css(){ return `
 .btn-add-parcela:hover{background:var(--primary);color:#fff}
 .btn-add-parcela.secondary{background:var(--panel);color:var(--muted);border-color:var(--border-md)}
 .btn-add-parcela.secondary:hover{background:var(--panel2);color:var(--text)}
+/* FIX 3: gastos com 3 colunas */
+.gastos-header{display:flex;gap:8px;align-items:center;padding:0 0 6px 0;border-bottom:1px solid var(--border);margin-bottom:8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
 .gasto-row{display:flex;gap:8px;align-items:center;margin-bottom:6px}
-.gasto-desc{flex:1;background:var(--panel);border:1px solid var(--border-md);color:var(--text);border-radius:var(--radius-md);padding:8px 10px;font-size:13px;font-family:var(--font)}
+.gasto-fornecedor{flex:1.2;background:var(--panel);border:1px solid var(--border-md);color:var(--text);border-radius:var(--radius-md);padding:8px 10px;font-size:13px;font-family:var(--font)}
+.gasto-desc{flex:2;background:var(--panel);border:1px solid var(--border-md);color:var(--text);border-radius:var(--radius-md);padding:8px 10px;font-size:13px;font-family:var(--font)}
+.gasto-fornecedor:focus,.gasto-desc:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 2px rgba(0,124,190,0.08)}
 .bottom-bar{position:sticky;bottom:0;background:var(--panel);border-top:1px solid var(--border);padding:12px 0;margin-top:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;z-index:8}
 .total-bottom{font-size:14px;color:var(--muted);padding:8px 16px;background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius-md)}
 .total-bottom strong{color:var(--primary-light);font-size:16px}
