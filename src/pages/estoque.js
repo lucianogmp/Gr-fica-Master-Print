@@ -504,27 +504,48 @@ function abrirModalMP(container, mp) {
     abrirModalMov(container, "saida", { id: mp.id, nome: mp.nome, unidade: mp.unidade||"un", saldo: mp.saldo });
   });
 
-  area.querySelector("#mp-ok").addEventListener("click", async () => {
-    const nome  = area.querySelector("#mp-nome").value.trim();
-    const un    = area.querySelector("#mp-un").value;
-    const cat   = area.querySelector("#mp-cat").value.trim() || null;
-    const min   = parseFloat(area.querySelector("#mp-min").value) || 0;
-    const custo = parseFloat(area.querySelector("#mp-custo").value) || 0;
+area.querySelector("#mp-ok").addEventListener("click", async () => {
+  const nome  = area.querySelector("#mp-nome").value.trim();
+  const un    = area.querySelector("#mp-un").value;
+  const cat   = area.querySelector("#mp-cat").value.trim() || null;
+  const min   = parseFloat(area.querySelector("#mp-min").value) || 0;
+  const custo = parseFloat(area.querySelector("#mp-custo").value) || 0;
 
-    if (!nome) { flashInput(area.querySelector("#mp-nome")); return; }
+  if (!nome) { flashInput(area.querySelector("#mp-nome")); return; }
 
-    const payload = { nome, unidade: un, categoria: cat, estoque_minimo: min, custo_unitario: custo };
+  const btnOk = area.querySelector("#mp-ok");
+  btnOk.disabled = true;
+  btnOk.textContent = "Salvando...";
 
+  const payload = { nome, unidade: un, categoria: cat, estoque_minimo: min, custo_unitario: custo };
+
+  try {
     if (editando) {
-      await supabase.from("materias_primas").update({ ...payload, updated_at: new Date() }).eq("id", mp.id);
+      const { error } = await supabase
+        .from("materias_primas")
+        .update(payload)
+        .eq("id", mp.id);
+      if (error) throw error;
     } else {
-      const { data: nova } = await supabase.from("materias_primas").insert(payload).select().single();
+      const { data: nova, error } = await supabase
+        .from("materias_primas")
+        .insert(payload)
+        .select()
+        .single();
+      if (error) throw error;
+
       const saldoIni = parseFloat(area.querySelector("#mp-saldo-ini")?.value) || 0;
-      if (saldoIni > 0) {
-        await supabase.from("estoque_movimentos").insert({
-          materia_prima_id: nova.id, tipo: "entrada",
-          quantidade: saldoIni, motivo: "Saldo inicial", origem: "manual",
-        });
+      if (saldoIni > 0 && nova?.id) {
+        const { error: errMov } = await supabase
+          .from("estoque_movimentos")
+          .insert({
+            materia_prima_id: nova.id,
+            tipo: "entrada",
+            quantidade: saldoIni,
+            motivo: "Saldo inicial",
+            origem: "manual",
+          });
+        if (errMov) throw errMov;
       }
     }
 
@@ -532,8 +553,14 @@ function abrirModalMP(container, mp) {
     showToast(container, editando ? "✅ Matéria-prima atualizada!" : "✅ Matéria-prima cadastrada!");
     await carregar();
     render(container);
-  });
-}
+
+  } catch (err) {
+    console.error("Erro ao salvar matéria-prima:", err);
+    showToast(container, `❌ Erro: ${err?.message || "verifique o console"}`);
+    btnOk.disabled = false;
+    btnOk.innerHTML = `<i class="fi fi-rr-disk"></i> Salvar`;
+  }
+});
 
 // ══════════════════════════════════════════════════════════════════════════════
 // MODAL: MOVIMENTO (ENTRADA / SAÍDA)
