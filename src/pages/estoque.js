@@ -561,6 +561,7 @@ area.querySelector("#mp-ok").addEventListener("click", async () => {
     btnOk.innerHTML = `<i class="fi fi-rr-disk"></i> Salvar`;
   }
 });
+}
 
 // ══════════════════════════════════════════════════════════════════════════════
 // MODAL: MOVIMENTO (ENTRADA / SAÍDA)
