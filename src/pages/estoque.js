@@ -7,6 +7,7 @@ let state = {
   materias: [],
   movimentos: [],
   filtroMp: "",
+  filtroCategoria: "",
   buscaSaldo: "",
   buscaMaterias: "",
 };
@@ -111,13 +112,32 @@ function render(container) {
   else                               renderHistorico(body, container);
 }
 
+function getCategorias() {
+  return [...new Set(state.materias.map(m => m.categoria).filter(Boolean))].sort();
+}
+
+function renderFiltroCategoria() {
+  const cats = getCategorias();
+  if (!cats.length) return "";
+  return `
+    <div class="cat-filtros">
+      <button class="cat-btn ${!state.filtroCategoria ? "active" : ""}" data-cat="">Todas</button>
+      ${cats.map(c => `
+        <button class="cat-btn ${state.filtroCategoria === c ? "active" : ""}" data-cat="${esc(c)}">
+          ${esc(c)}
+        </button>`).join("")}
+    </div>`;
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 // ABA: SALDO ATUAL
 // ══════════════════════════════════════════════════════════════════════════════
 function renderSaldo(body, container) {
-  const filtradas = state.buscaSaldo
-    ? state.materias.filter(m => m.nome.toLowerCase().includes(state.buscaSaldo.toLowerCase()))
-    : state.materias;
+const filtradas = state.materias.filter(m => {
+  const okNome = !state.buscaSaldo || m.nome.toLowerCase().includes(state.buscaSaldo.toLowerCase());
+  const okCat  = !state.filtroCategoria || m.categoria === state.filtroCategoria;
+  return okNome && okCat;
+});
 
   const ordenadas = [...filtradas].sort((a, b) => {
     const sa = statusSaldo(a), sb = statusSaldo(b);
@@ -201,6 +221,15 @@ function renderSaldo(body, container) {
     </div>
   `;
 
+const catHtml = renderFiltroCategoria();
+  if (catHtml) body.insertAdjacentHTML("afterbegin", catHtml);
+  body.querySelectorAll(".cat-btn").forEach(btn =>
+    btn.addEventListener("click", () => {
+      state.filtroCategoria = btn.dataset.cat;
+      renderSaldo(body, container);
+    })
+  );  
+
   body.querySelector("#busca-saldo")?.addEventListener("input", e => {
     state.buscaSaldo = e.target.value;
     renderSaldo(body, container);
@@ -227,9 +256,11 @@ function renderSaldo(body, container) {
 // ABA: GERENCIAR MATÉRIAS-PRIMAS
 // ══════════════════════════════════════════════════════════════════════════════
 function renderMaterias(body, container) {
-  const filtradas = state.buscaMaterias
-    ? state.materias.filter(m => m.nome.toLowerCase().includes(state.buscaMaterias.toLowerCase()))
-    : state.materias;
+const filtradas = state.materias.filter(m => {
+  const okNome = !state.buscaMaterias || m.nome.toLowerCase().includes(state.buscaMaterias.toLowerCase());
+  const okCat  = !state.filtroCategoria || m.categoria === state.filtroCategoria;
+  return okNome && okCat;
+});
 
   body.innerHTML = `
     <div class="table-actions">
@@ -285,6 +316,15 @@ function renderMaterias(body, container) {
       </table>
     </div>
   `;
+
+const catHtml = renderFiltroCategoria();
+  if (catHtml) body.insertAdjacentHTML("afterbegin", catHtml);
+  body.querySelectorAll(".cat-btn").forEach(btn =>
+    btn.addEventListener("click", () => {
+      state.filtroCategoria = btn.dataset.cat;
+      renderMaterias(body, container);
+    })
+  );
 
   body.querySelector("#busca-mats")?.addEventListener("input", e => {
     state.buscaMaterias = e.target.value;
@@ -408,9 +448,13 @@ function abrirModalMP(container, mp) {
           </div>
 
           <div class="modal-field">
-            <label>Categoria</label>
-            <input id="mp-cat" value="${esc(mp?.categoria)}" placeholder="Ex: Papel, Vinil, Lona..." />
-          </div>
+  <label>Categoria</label>
+  <input id="mp-cat" value="${esc(mp?.categoria)}" placeholder="Ex: Papel, Vinil, Lona..."
+    list="mp-cat-list" autocomplete="off" />
+  <datalist id="mp-cat-list">
+    ${getCategorias().map(c => `<option value="${esc(c)}">`).join("")}
+  </datalist>
+</div>
 
           <div class="modal-field">
             <label>Unidade de medida</label>
@@ -484,7 +528,10 @@ function abrirModalMP(container, mp) {
   });
 
   area.querySelector("#mp-cancel").addEventListener("click", () => area.innerHTML = "");
-  area.querySelector("#modal-bg").addEventListener("click", e => { if (e.target.id==="modal-bg") area.innerHTML=""; });
+  const _bg = area.querySelector("#modal-bg");
+let _bgDown = false;
+_bg.addEventListener("mousedown", e => { _bgDown = e.target.id === "modal-bg"; });
+_bg.addEventListener("mouseup",   e => { if (_bgDown && e.target.id === "modal-bg") area.innerHTML = ""; });
 
   area.querySelector("#mp-del")?.addEventListener("click", async () => {
     if (!confirm(`Excluir "${mp.nome}"?\n\nTodos os movimentos serão removidos.`)) return;
@@ -495,13 +542,24 @@ function abrirModalMP(container, mp) {
     render(container);
   });
 
+  const reabrirEdicao = async () => {
+    const mpAtual = state.materias.find(m => m.id === mp.id) || mp;
+    abrirModalMP(container, mpAtual);
+  };
+
   area.querySelector("#mp-entrada")?.addEventListener("click", () => {
     area.innerHTML = "";
-    abrirModalMov(container, "entrada", { id: mp.id, nome: mp.nome, unidade: mp.unidade||"un", saldo: mp.saldo });
+    abrirModalMov(container, "entrada",
+      { id: mp.id, nome: mp.nome, unidade: mp.unidade||"un", saldo: mp.saldo },
+      reabrirEdicao
+    );
   });
   area.querySelector("#mp-saida")?.addEventListener("click", () => {
     area.innerHTML = "";
-    abrirModalMov(container, "saida", { id: mp.id, nome: mp.nome, unidade: mp.unidade||"un", saldo: mp.saldo });
+    abrirModalMov(container, "saida",
+      { id: mp.id, nome: mp.nome, unidade: mp.unidade||"un", saldo: mp.saldo },
+      reabrirEdicao
+    );
   });
 
 area.querySelector("#mp-ok").addEventListener("click", async () => {
@@ -566,7 +624,7 @@ area.querySelector("#mp-ok").addEventListener("click", async () => {
 // ══════════════════════════════════════════════════════════════════════════════
 // MODAL: MOVIMENTO (ENTRADA / SAÍDA)
 // ══════════════════════════════════════════════════════════════════════════════
-function abrirModalMov(container, tipo, mp) {
+function abrirModalMov(container, tipo, mp, onSuccess) {
   const area = document.getElementById("app-modal-root");
   const isEnt = tipo === "entrada";
   const cor   = isEnt ? "var(--success)" : "var(--error)";
@@ -620,7 +678,10 @@ function abrirModalMov(container, tipo, mp) {
   }
 
   area.querySelector("#mov-cancel").addEventListener("click", () => area.innerHTML = "");
-  area.querySelector("#modal-bg").addEventListener("click", e => { if (e.target.id==="modal-bg") area.innerHTML=""; });
+ const _bg = area.querySelector("#modal-bg");
+let _bgDown = false;
+_bg.addEventListener("mousedown", e => { _bgDown = e.target.id === "modal-bg"; });
+_bg.addEventListener("mouseup",   e => { if (_bgDown && e.target.id === "modal-bg") area.innerHTML = ""; });
 
   area.querySelector("#mov-ok").addEventListener("click", async () => {
     const qtd = parseFloat(qtdInput.value);
@@ -636,10 +697,14 @@ function abrirModalMov(container, tipo, mp) {
       motivo: motivo || null, origem: "manual",
     });
 
-    area.innerHTML = "";
+area.innerHTML = "";
     showToast(container, `✅ ${isEnt ? "Entrada" : "Saída"} de ${qtd.toLocaleString("pt-BR",{minimumFractionDigits:3,maximumFractionDigits:3})} ${mp.unidade} registrada!`);
     await carregar();
-    render(container);
+    if (onSuccess) {
+      onSuccess();
+    } else {
+      render(container);
+    }
   });
 }
 
@@ -867,5 +932,20 @@ function css() { return `
   color:var(--text); border-radius:var(--radius-lg); padding:12px 24px;
   font-size:13px; font-weight:600; box-shadow:var(--shadow-lg);
   z-index:999; animation:slideUp .2s ease; white-space:nowrap;
+}
+  /* ── Filtro de categorias ── */
+.cat-filtros {
+  display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;
+}
+.cat-btn {
+  padding:4px 12px; border-radius:999px; font-size:12px; font-weight:600;
+  border:1px solid var(--border-md); background:transparent;
+  color:var(--muted); cursor:pointer; transition:all var(--t);
+  font-family:var(--font);
+}
+.cat-btn:hover { background:var(--panel2); color:var(--text); }
+.cat-btn.active {
+  background:var(--primary-bg); border-color:var(--primary-border);
+  color:var(--primary-light);
 }
 `; }
