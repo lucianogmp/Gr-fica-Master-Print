@@ -140,25 +140,6 @@ async function carregar() {
                              .reduce((s, l) => s + Number(l.valor), 0);
   const lucroLiq   = lucroOp + outrasRD;
 
- // ── Ponto de Equilíbrio ───────────────────────────────────────────────────
-const custoFixoReal = lancMes
-  .filter(l => l.tipo === "despesa")
-  .filter(l => {
-    const txt = ((l.categoria || "") + " " + (l.descricao || "")).toLowerCase();
-    return MAPA_MO.some(k => txt.includes(k)) ||
-           ["aluguel","energia","internet","telefone","fixo"].some(k => txt.includes(k));
-  })
-  .reduce((s, l) => s + Number(l.valor), 0);
-
-// Fallback: se nada foi categorizado, usa estimativa 60/40
-const custoFixo     = custoFixoReal > 0 ? custoFixoReal : despesasMes * 0.60;
-const custoVariavel = despesasMes - custoFixo;
-
-const margContrib = receitasMes > 0 ? (receitasMes - custoVariavel) / receitasMes : 0.60;
-const pontEq      = margContrib > 0 ? custoFixo / margContrib : despesasMes || 1;
-const bePercent   = (receitasMes / pontEq) * 100;
-const beAtingido  = receitasMes >= pontEq;
-
   // ── Vendas últimos 12 meses ───────────────────────────────────────────────
   const ultimos12 = [];
   for (let i = 11; i >= 0; i--) {
