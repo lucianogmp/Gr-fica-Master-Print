@@ -549,7 +549,8 @@ function renderImpressao(content, container) {
 // ══════════════════════════════════════════════════════════════════════════════
 function renderTrello(content, container) {
   const c = state.cfg;
-  const temConfig = c.trello_api_key && c.trello_token && c.trello_board_id;
+  const temCredenciais = c.trello_api_key && c.trello_token;
+  const temConfig = temCredenciais && c.trello_board_id;
 
   content.innerHTML = `
     <div class="cfg-section-title">🔗 Integração Trello</div>
@@ -559,8 +560,8 @@ function renderTrello(content, container) {
     </div>
 
     ${temConfig
-      ? `<div class="trello-ok">✅ Trello configurado e ativo. Cards são criados/movidos automaticamente na aba Produção.</div>`
-      : `<div class="trello-warn">⚠️ Trello não configurado. Preencha os campos abaixo para ativar a integração.</div>`
+      ? `<div class="trello-ok">✅ Trello configurado e ativo.</div>`
+      : `<div class="trello-warn">⚠️ Preencha as credenciais e clique em "Carregar Quadros".</div>`
     }
 
     <div class="cfg-card">
@@ -568,38 +569,55 @@ function renderTrello(content, container) {
       <div class="cfg-grid">
         <div class="cfg-group">
           <label>API Key</label>
-          <input id="t-key"   type="password" value="${esc(c.trello_api_key)}"   placeholder="Cole sua API Key aqui" />
+          <input id="t-key" type="password" value="${esc(c.trello_api_key)}" placeholder="Cole sua API Key aqui" />
         </div>
         <div class="cfg-group">
           <label>Token</label>
-          <input id="t-token" type="password" value="${esc(c.trello_token)}"     placeholder="Cole o Token aqui" />
+          <input id="t-token" type="password" value="${esc(c.trello_token)}" placeholder="Cole o Token aqui" />
         </div>
-        <div class="cfg-group full">
-          <label>Board ID (pegue da URL do seu quadro Trello)</label>
-          <input id="t-board" value="${esc(c.trello_board_id)}"  placeholder="Ex: aBcDeFgH" />
-        </div>
+      </div>
+      <div class="cfg-acoes" style="margin-top:10px">
+        <button class="btn-primary" id="btn-carregar-quadros">
+          🔄 Carregar Quadros
+        </button>
       </div>
     </div>
 
-    <div class="cfg-card">
+    <div class="cfg-card" id="card-quadros" style="${temCredenciais ? "" : "display:none"}">
+      <div class="cfg-card-title">📋 Selecionar Quadro</div>
+      <div class="cfg-group full">
+        <label>Quadro do Trello</label>
+        <select id="t-board">
+          <option value="">Clique em "Carregar Quadros" primeiro...</option>
+          ${c.trello_board_id ? `<option value="${esc(c.trello_board_id)}" selected>Quadro atual: ${esc(c.trello_board_id)}</option>` : ""}
+        </select>
+      </div>
+      <div class="cfg-acoes" style="margin-top:10px">
+        <button class="btn-primary" id="btn-carregar-listas" ${c.trello_board_id ? "" : "disabled"}>
+          📋 Carregar Listas do Quadro
+        </button>
+      </div>
+    </div>
+
+    <div class="cfg-card" id="card-listas" style="${c.trello_board_id ? "" : "display:none"}">
       <div class="cfg-card-title">📋 IDs das Listas (colunas do quadro)</div>
-      <div class="cfg-hint" style="margin-bottom:12px">Cada etapa da produção deve corresponder a uma lista no seu quadro Trello.</div>
+      <div class="cfg-hint" style="margin-bottom:12px">Selecione qual lista corresponde a cada etapa da produção.</div>
       <div class="cfg-grid">
         <div class="cfg-group">
           <label>🕐 Fila</label>
-          <input id="t-l1" value="${esc(c.trello_list_fila)}"       placeholder="ID da lista Fila" />
+          <select id="t-l1"><option value="${esc(c.trello_list_fila||"")}">Carregar listas...</option></select>
         </div>
         <div class="cfg-group">
           <label>🖨️ Imprimindo</label>
-          <input id="t-l2" value="${esc(c.trello_list_imprimindo)}" placeholder="ID da lista Imprimindo" />
+          <select id="t-l2"><option value="${esc(c.trello_list_imprimindo||"")}">Carregar listas...</option></select>
         </div>
         <div class="cfg-group">
           <label>✂️ Acabamento</label>
-          <input id="t-l3" value="${esc(c.trello_list_acabamento)}" placeholder="ID da lista Acabamento" />
+          <select id="t-l3"><option value="${esc(c.trello_list_acabamento||"")}">Carregar listas...</option></select>
         </div>
         <div class="cfg-group">
           <label>✅ Pronto</label>
-          <input id="t-l4" value="${esc(c.trello_list_pronto)}"     placeholder="ID da lista Pronto" />
+          <select id="t-l4"><option value="${esc(c.trello_list_pronto||"")}">Carregar listas...</option></select>
         </div>
       </div>
     </div>
@@ -610,15 +628,57 @@ function renderTrello(content, container) {
     </div>
   `;
 
+  // ── Carregar quadros ──
+  content.querySelector("#btn-carregar-quadros").addEventListener("click", async () => {
+    const key   = content.querySelector("#t-key").value.trim();
+    const token = content.querySelector("#t-token").value.trim();
+    if (!key || !token) { alert("Preencha a API Key e o Token primeiro."); return; }
+
+    const btn = content.querySelector("#btn-carregar-quadros");
+    btn.textContent = "⏳ Carregando..."; btn.disabled = true;
+
+    try {
+      const res  = await fetch(`https://api.trello.com/1/members/me/boards?key=${key}&token=${token}&filter=open&fields=id,name`);
+      if (!res.ok) throw new Error("Credenciais inválidas ou sem acesso.");
+      const boards = await res.json();
+
+      const select = content.querySelector("#t-board");
+      select.innerHTML = `<option value="">Selecione um quadro...</option>` +
+        boards.map(b => `<option value="${b.id}" ${b.id === c.trello_board_id ? "selected" : ""}>${b.name}</option>`).join("");
+
+      content.querySelector("#card-quadros").style.display = "";
+      content.querySelector("#btn-carregar-listas").disabled = false;
+
+      // Se já tem board salvo, carregar listas automaticamente
+      if (c.trello_board_id) {
+        await carregarListas(key, token, c.trello_board_id, content, c);
+      }
+    } catch (err) {
+      alert("Erro ao conectar com o Trello: " + err.message);
+    } finally {
+      btn.textContent = "🔄 Carregar Quadros"; btn.disabled = false;
+    }
+  });
+
+  // ── Carregar listas ao selecionar quadro ──
+  content.querySelector("#btn-carregar-listas").addEventListener("click", async () => {
+    const key     = content.querySelector("#t-key").value.trim();
+    const token   = content.querySelector("#t-token").value.trim();
+    const boardId = content.querySelector("#t-board").value;
+    if (!boardId) { alert("Selecione um quadro primeiro."); return; }
+    await carregarListas(key, token, boardId, content, c);
+  });
+
+  // ── Salvar ──
   content.querySelector("#btn-salvar-trello").addEventListener("click", async () => {
     await salvarCfg(container, {
-      trello_api_key:         v("#t-key"),
-      trello_token:           v("#t-token"),
-      trello_board_id:        v("#t-board"),
-      trello_list_fila:       v("#t-l1"),
-      trello_list_imprimindo: v("#t-l2"),
-      trello_list_acabamento: v("#t-l3"),
-      trello_list_pronto:     v("#t-l4"),
+      trello_api_key:         content.querySelector("#t-key").value.trim()   || null,
+      trello_token:           content.querySelector("#t-token").value.trim() || null,
+      trello_board_id:        content.querySelector("#t-board").value        || null,
+      trello_list_fila:       content.querySelector("#t-l1").value           || null,
+      trello_list_imprimindo: content.querySelector("#t-l2").value           || null,
+      trello_list_acabamento: content.querySelector("#t-l3").value           || null,
+      trello_list_pronto:     content.querySelector("#t-l4").value           || null,
     }, content);
   });
 
@@ -630,6 +690,33 @@ function renderTrello(content, container) {
       trello_list_acabamento: null, trello_list_pronto: null,
     }, content);
   });
+}
+
+async function carregarListas(key, token, boardId, content, cfgAtual) {
+  const btn = content.querySelector("#btn-carregar-listas");
+  if (btn) { btn.textContent = "⏳ Carregando..."; btn.disabled = true; }
+
+  try {
+    const res   = await fetch(`https://api.trello.com/1/boards/${boardId}/lists?key=${key}&token=${token}&filter=open&fields=id,name`);
+    if (!res.ok) throw new Error("Não foi possível carregar as listas.");
+    const listas = await res.json();
+
+    const IDS = ["t-l1","t-l2","t-l3","t-l4"];
+    const VALS = [cfgAtual.trello_list_fila, cfgAtual.trello_list_imprimindo, cfgAtual.trello_list_acabamento, cfgAtual.trello_list_pronto];
+
+    IDS.forEach((id, i) => {
+      const sel = content.querySelector(`#${id}`);
+      if (!sel) return;
+      sel.innerHTML = `<option value="">Selecione uma lista...</option>` +
+        listas.map(l => `<option value="${l.id}" ${l.id === VALS[i] ? "selected" : ""}>${l.name}</option>`).join("");
+    });
+
+    content.querySelector("#card-listas").style.display = "";
+  } catch (err) {
+    alert("Erro ao carregar listas: " + err.message);
+  } finally {
+    if (btn) { btn.textContent = "📋 Carregar Listas do Quadro"; btn.disabled = false; }
+  }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
