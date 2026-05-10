@@ -430,13 +430,23 @@ function renderAbaInfo(p) {
         <input id="f-nome" value="${esc(p.nome)}" placeholder="Ex: Banner 90×120, Adesivo A4..." autofocus />
       </div>
 
-      <div class="p-field">
+<div class="p-field">
         <label>Categoria</label>
-        <select id="f-cat">
-          <option value="">Sem categoria</option>
-          ${catOptions}
-        </select>
+        <div class="p-cat-field-wrap">
+          <select id="f-cat">
+            <option value="">Sem categoria</option>
+            ${catOptions}
+          </select>
+          <button class="btn-icon" id="btn-inline-edit-cat" title="Editar categoria"
+            ${!p.categoria_id ? 'disabled style="opacity:.4;cursor:not-allowed"' : ''}>
+            <i class="fi fi-rr-pencil"></i>
+          </button>
+          <button class="btn-icon" id="btn-inline-add-cat" title="Nova categoria">
+            <i class="fi fi-rr-add"></i>
+          </button>
+        </div>
       </div>
+
 
       <div class="p-field">
         <label>SKU / Código</label>
@@ -666,6 +676,37 @@ function renderAbaProducao(p) {
 
 // ─── Bind Eventos da Aba ──────────────────────────────────────────────────────
 function bindAbaEvents(container, p, bom) {
+// ── Categoria inline ──
+  container.querySelector("#btn-inline-add-cat")?.addEventListener("click", () => {
+    coletarFormulario(container);
+    abrirModalCategoria(container, null, (novaId) => {
+      if (novaId) state.produtoAberto.categoria_id = novaId;
+      state.abaDetalhe = "info";
+      renderDetalhe(container);
+    });
+  });
+
+  container.querySelector("#btn-inline-edit-cat")?.addEventListener("click", () => {
+    coletarFormulario(container);
+    const catId = container.querySelector("#f-cat")?.value;
+    if (!catId) return;
+    const cat = state.categorias.find(c => c.id === catId);
+    if (!cat) return;
+    abrirModalCategoria(container, cat, () => {
+      state.abaDetalhe = "info";
+      renderDetalhe(container);
+    });
+  });
+
+  container.querySelector("#f-cat")?.addEventListener("change", e => {
+    const editBtn = container.querySelector("#btn-inline-edit-cat");
+    if (editBtn) {
+      editBtn.disabled = !e.target.value;
+      editBtn.style.opacity = e.target.value ? "1" : ".4";
+      editBtn.style.cursor  = e.target.value ? "pointer" : "not-allowed";
+    }
+  });
+
   // Preview SVG ao vivo
   container.querySelector("#f-svg")?.addEventListener("input", e => {
     const prev = container.querySelector("#svg-preview");
@@ -798,7 +839,7 @@ async function salvarProduto(container) {
 }
 
 // ─── Modal Categoria ──────────────────────────────────────────────────────────
-function abrirModalCategoria(container, edit = null) {
+function abrirModalCategoria(container, edit = null, onSuccess = null) {
   const area = container.querySelector("#modal-area");
   const editando = !!edit?.id;
   area.innerHTML = `
@@ -816,17 +857,25 @@ function abrirModalCategoria(container, edit = null) {
 
   area.querySelector("#mc-cancel").addEventListener("click", () => area.innerHTML = "");
   area.querySelector("#modal-bg").addEventListener("click", e => { if (e.target.id === "modal-bg") area.innerHTML = ""; });
-  area.querySelector("#mc-ok").addEventListener("click", async () => {
+area.querySelector("#mc-ok").addEventListener("click", async () => {
     const nome = area.querySelector("#cat-nome").value.trim();
     if (!nome) { alert("Informe o nome."); return; }
+    let savedId = null;
     if (editando) {
       await supabase.from("categorias").update({ nome }).eq("id", edit.id);
+      savedId = edit.id;
     } else {
-      await supabase.from("categorias").insert({ nome });
+      const { data: nova } = await supabase.from("categorias").insert({ nome }).select().single();
+      savedId = nova?.id;
     }
     area.innerHTML = "";
     await recarregar(container);
-    renderLista(container);
+    if (onSuccess) {
+      onSuccess(savedId);
+    } else {
+      renderLista(container);
+    }
+  });
   });
 }
 
@@ -1084,4 +1133,7 @@ function css() { return `
   font-size:13px; font-weight:600; box-shadow:var(--shadow-lg);
   z-index:999; animation:slideUp .2s ease; white-space:nowrap;
 }
+  /* ── Campo categoria com botões ── */
+.p-cat-field-wrap { display:flex; align-items:center; gap:6px; }
+.p-cat-field-wrap select { flex:1; }
 `; }
