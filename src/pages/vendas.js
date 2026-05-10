@@ -613,15 +613,15 @@ async function salvar(container) {
 
   // ← fix: verificar erro no insert dos itens
   const itensDb = itensValidos.map(it => ({
-    venda_id:        vendaId,
-    produto_id:      it.produtoId || null,
-    descricao:       it.descricao,
-    quantidade:      Number(it.qtd)      || 1,
-    preco_unitario:  Number(it.preco)    || 0,
-    desconto:        Number(it.desconto) || 0,
-    total: (Number(it.preco) || 0) * (Number(it.qtd) || 0) - (Number(it.desconto) || 0),
-    obs: it.obs || null,
-  }));
+    venda_id:       vendaId,
+    produto_id:     it.produtoId || null,
+    descricao:      it.descricao,
+    quantidade:     Number(it.qtd)      || 1,
+    preco_unitario: Number(it.preco)    || 0,
+    desconto:       Number(it.desconto) || 0,
+    obs:            it.obs || null,
+    // ← total removido, o banco calcula automaticamente
+}));
 
   const { error: itErr } = await supabase.from("venda_itens").insert(itensDb);
   if (itErr) { alert("Erro ao salvar itens: " + itErr.message); return; }
