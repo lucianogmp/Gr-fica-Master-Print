@@ -1,5 +1,5 @@
 import { supabase } from "../supabase/client.js";
-import { fmtBRL } from "../format/brl.js";
+import { fmtBRL, fmtBRL4, fmtBRLK, fmtQtd } from "../utils/fmt.js";
 
 // ─── Preços por material (ocultos para o cliente) ─────────────────────────────
 const MATERIAIS = [
@@ -344,7 +344,7 @@ function renderForm() {
                   <td>${esc(it.descricao)}</td>
                   <td style="text-align:center">${fmtBRL(it.preco)}</td>
                   <td style="text-align:center">${it.qtd}</td>
-                  <td style="text-align:right;font-weight:600;color:var(--primary)">${fmtBRL(it.preco * it.qtd)}</td>
+                  <td style="text-align:right;font-weight:600;color:var(--primary)">${fmtBRL(it.preco*it.qtd)}</td>
                   <td><button class="del-item" data-del="${i}">✕</button></td>
                 </tr>`).join("")}
             </tbody>

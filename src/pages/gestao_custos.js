@@ -1,5 +1,5 @@
 import { supabase } from "../supabase/client.js";
-import { fmtBRL } from "../format/brl.js";
+import { fmtBRL, fmtBRL4, fmtBRLK, fmtQtd } from "../utils/fmt.js";
 
 // ─── Estado ───────────────────────────────────────────────────────────────────
 let state = {
@@ -125,7 +125,7 @@ function render(container) {
 // ABA: RESUMO
 // ══════════════════════════════════════════════════════════════════════════════
 function renderResumo(body, container, totalDepr, totalFixo, totalMensal) {
-  const fmt = fmtBRL;
+  const fmt = v => `${fmtBRL(v)}`;
 
   // Custos fixos por categoria
   const porCat = {};
@@ -227,7 +227,7 @@ function renderResumo(body, container, totalDepr, totalFixo, totalMensal) {
                 <td style="text-align:right">${fmtBRL(e.valor || 0)}</td>
                 <td style="text-align:center">${e.vida_util_anos} ano${e.vida_util_anos != 1 ? "s" : ""}</td>
                 <td style="text-align:right;font-weight:700;color:var(--warning)">${fmtBRL(deprMes)}</td>
-                <td style="text-align:right;color:var(--muted);font-size:12px">${fmtBRL(deprHora, 4)}</td>
+                <td style="text-align:right;color:var(--muted);font-size:12px">${fmtBRL4(deprHora)}</td>
                 <td style="text-align:center">
                   <div class="prog-wrap">
                     <div class="prog-bar ${status}" style="width:${pct.toFixed(0)}%"></div>
@@ -248,7 +248,7 @@ function renderResumo(body, container, totalDepr, totalFixo, totalMensal) {
         <div class="integracao-desc" style="margin-bottom:12px">
           Define o percentual dos custos operacionais que será automaticamente acrescentado
           no subtotal de impressão (m²) em todos os orçamentos.
-          Custo por hora atual: <strong style="color:var(--info)">${fmtBRL(totalMensal / 30 / 8, 4)}</strong>
+          Custo por hora atual: <strong style="color:var(--info)">${fmtBRL4(totalMensal / 30 / 8)}</strong>
         </div>
         <div class="custo-op-config">
           <div class="custo-op-input-wrap">
@@ -300,7 +300,7 @@ function renderExemplosCustoOp(pct) {
       Exemplos com ${pct}% de acréscimo:
       ${exemplos.map(v => {
         const acr = v * (pct / 100);
-        return `<span class="custo-op-ex">${fmtBRL(v)} → <strong>${fmtBRL(v + acr)}</strong></span>`;
+        return `<span class="custo-op-ex">R$ ${v},00 → <strong>${fmtBRL(v + acr)}</strong></span>`;
       }).join("")}
     </div>`;
 }
@@ -366,12 +366,12 @@ function renderDepreciacao(body, container) {
                   </div>
                   <div style="text-align:right">
                     <div class="depr-label">Por hora (8h)</div>
-                    <div class="depr-valor" style="font-size:14px;color:var(--info)">${fmtBRL(deprHora, 4)}</div>
+                    <div class="depr-valor" style="font-size:14px;color:var(--info)">${fmtBRL4(deprHora)}</div>
                   </div>
                 </div>
 
                 <div class="equip-secundarios">
-                  <span>Diária: ${fmtBRL(deprDia, 4)}</span>
+                  <span>Diária: ${fmtBRL4(deprDia)}</span>
                   <span>Anual: ${fmtBRL(deprAno)}</span>
                 </div>
 
@@ -461,8 +461,8 @@ function renderFixos(body, container) {
                     <td><strong>${esc(c.nome)}</strong>${c.observacoes ? `<div style="font-size:11px;color:var(--muted)">${esc(c.observacoes)}</div>` : ""}</td>
                     <td style="font-size:12px;color:var(--muted)">${esc(c.categoria) || "—"}</td>
                     <td style="text-align:right;font-weight:700;color:${ativo ? "var(--error)" : "var(--muted)"}">${fmtBRL(c.valor_mensal || 0)}</td>
-                    <td style="text-align:right;font-size:12px;color:var(--muted)">${fmtBRL(dia, 4)}</td>
-                    <td style="text-align:right;font-size:12px;color:var(--muted)">${fmtBRL(hora, 4)}</td>
+                    <td style="text-align:right;font-size:12px;color:var(--muted)">${fmtBRL4(dia)}</td>
+                    <td style="text-align:right;font-size:12px;color:var(--muted)">${fmtBRL4(hora)}</td>
                     <td style="text-align:center">
                       <span class="tag-status ${ativo ? "ativo" : "inativo"}">${ativo ? "● Ativo" : "○ Inativo"}</span>
                     </td>
@@ -576,8 +576,8 @@ function abrirModalEquip(container, equip) {
       el.innerHTML = `
         <div class="depr-prev-grid">
           <div><span>Por mês</span><strong>${fmtBRL(mes)}</strong></div>
-          <div><span>Por dia</span><strong>${fmtBRL(dia, 4)}</strong></div>
-          <div><span>Por hora (8h)</span><strong>${fmtBRL(hora, 4)}</strong></div>
+          <div><span>Por dia</span><strong>${fmtBRL4(dia)}</strong></div>
+          <div><span>Por hora (8h)</span><strong>${fmtBRL4(hora)}</strong></div>
           <div><span>Por ano</span><strong>${fmtBRL(ano)}</strong></div>
         </div>`;
     } else {

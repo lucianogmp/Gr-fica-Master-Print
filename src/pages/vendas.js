@@ -1,5 +1,6 @@
 import { supabase } from "../supabase/client.js";
-import { fmtBRL } from "../format/brl.js";
+import { fmtBRL } from "../utils/fmt.js";
+import { fmtBRL, fmtBRL4, fmtBRLK, fmtQtd } from "../utils/fmt.js";
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 const SITUACOES = [
@@ -235,7 +236,7 @@ function renderForm() {
         <tfoot>
           <tr class="carrinho-total-row">
             <td colspan="2" style="text-align:right;color:var(--muted);font-size:12px;font-weight:600">TOTAL</td>
-            <td style="text-align:center;font-weight:700" id="r-qtd">${t.qtdTotal.toFixed(3)}</td>
+            <td style="text-align:center;font-weight:700" id="r-qtd">${t.qtdTotal.toLocaleString("pt-BR",{minimumFractionDigits:3,maximumFractionDigits:3})}</td>
             <td style="text-align:right;font-weight:700;color:var(--error)" id="r-desc">${fmtBRL(t.descontoTotal)}</td>
             <td style="text-align:right;font-weight:800;font-size:15px;color:var(--primary-light)" id="r-total">${fmtBRL(t.totalGeral)}</td>
             <td></td>
@@ -332,7 +333,7 @@ function renderItemRow(it, i) {
       <span class="input-icon" style="font-size:11px">R$</span>
       <input type="number" class="td-inp right" data-item-preco="${i}" value="${it.preco}" min="0" step="0.01" />
     </div></td>
-    <td><input type="number" class="td-inp center" data-item-qtd="${i}" value="${Number(it.qtd).toFixed(3)}" min="0.001" step="0.001" /></td>
+    <td><input type="number" class="td-inp center" data-item-qtd="${i}" value="${Number(it.qtd).toLocaleString("pt-BR",{minimumFractionDigits:3,maximumFractionDigits:3})}" min="0.001" step="0.001" /></td>
     <td><input type="number" class="td-inp right" data-item-desc-val="${i}" value="${it.desconto}" min="0" step="0.01" /></td>
     <td class="td-total" style="text-align:right;font-weight:700;color:${total>0?"var(--primary-light)":"var(--muted)"}">${fmtBRL(total)}</td>
     <td><button class="del-row" data-del-item="${i}">✕</button></td>
@@ -378,13 +379,11 @@ function calcularTotais() {
 function atualizarTotaisDOM(container) {
   const t = calcularTotais();
   const s = (id,v) => { const el=container.querySelector(id); if(el) el.textContent=v; };
-  s("#r-qtd",   t.qtdTotal.toFixed(3));
+  s("#r-qtd",   t.qtdTotal.toLocaleString("pt-BR",{minimumFractionDigits:3,maximumFractionDigits:3}));
   s("#r-desc",  fmtBRL(t.descontoTotal));
   s("#r-total", fmtBRL(t.totalGeral));
-  // barra inferior
   const tb = container.querySelector(".total-bottom strong");
   if (tb) tb.textContent = fmtBRL(t.totalGeral);
-  // totais de cada linha
   state.form.itens.forEach((it,i)=>{
     const tot=(Number(it.preco)||0)*(Number(it.qtd)||0)-(Number(it.desconto)||0);
     const el=container.querySelector(`.item-row[data-row="${i}"] .td-total`);
@@ -429,59 +428,38 @@ function bindListaEvents(container) {
 }
 
 async function abrirVenda(container, id) {
-  const v = state.vendas.find(v => v.id === id);
-  if (!v) return;
-
-  const { data: itens } = await supabase.from("venda_itens").select("*").eq("venda_id", id);
-
+  const v = state.vendas.find(v=>v.id===id); if(!v) return;
+  const { data: itens } = await supabase.from("venda_itens").select("*").eq("venda_id",id);
   state.form = {
-    clienteNome:    v.cliente_nome || "",
-    clienteId:      null,
-    vendedor:       v.vendedor || "",
-    tipo:           v.tipo || "Venda/O.S.",
-    data:           v.data_venda || hoje(),
-    situacao:       v.status || "pendente",
-    entrega:        v.data_entrega || "",
-    palavraChave:   v.palavra_chave || "",
-    consumidorFinal: v.consumidor_final !== false,
-    observacoes:    v.observacoes || "",
-    itens: (itens || []).map(i => ({
-      descricao: i.descricao,
-      produtoId: i.produto_id,
-      preco: Number(i.preco_unitario) || 0,
-      qtd: Number(i.quantidade) || 1,
-      desconto: Number(i.desconto || 0),
-      obs: i.obs || ""
-    })) || [novoItem()],
-    parcelas: [],
-    gastos: []
+    ...novoForm(),
+    clienteNome:    v.cliente_nome||"",
+    tipo:           v.tipo||"Venda/O.S.",
+    data:           v.data_venda||hoje(),
+    situacao:       v.status||"pendente",
+    entrega:        v.data_entrega||"",
+    palavraChave:   v.palavra_chave||"",
+    vendedor:       v.vendedor||"",
+    consumidorFinal:v.consumidor_final!==false,
+    observacoes:    v.observacoes||"",
+    itens:(itens||[]).map(i=>({ descricao:i.descricao, produtoId:i.produto_id, preco:Number(i.preco_unitario), qtd:Number(i.quantidade), desconto:Number(i.desconto||0), obs:i.obs||"" }))||[novoItem()],
+    parcelas:[], gastos:[],
   };
-
-  if (!state.form.itens.length) state.form.itens = [novoItem()];
-
-  state.vendaAberta = v;
-  state.aba = "form";
-  render(container);
+  if(!state.form.itens.length) state.form.itens=[novoItem()];
+  state.vendaAberta=v; state.aba="form"; render(container);
 }
 
 function bindFormEvents(container) {
-  // Voltar / histórico
   ["#btn-voltar","#btn-voltar2"].forEach(s=>container.querySelector(s)?.addEventListener("click",()=>{ state.aba="lista"; state.vendaAberta=null; render(container); }));
   ["#btn-historico","#btn-historico2"].forEach(s=>container.querySelector(s)?.addEventListener("click",()=>{ state.aba="lista"; render(container); }));
-  // Salvar
   ["#btn-salvar","#btn-salvar2"].forEach(s=>container.querySelector(s)?.addEventListener("click",()=>salvar(container)));
-  // Imprimir
   ["#btn-imprimir","#btn-imprimir2"].forEach(s=>container.querySelector(s)?.addEventListener("click",()=>imprimir()));
-  // Troco
   container.querySelector("#btn-troco")?.addEventListener("click",()=>abrirModalTroco(container));
-  // Consumidor
   container.querySelector("#btn-consumidor")?.addEventListener("click",()=>{
     state.form.consumidorFinal=!state.form.consumidorFinal;
     const btn=container.querySelector("#btn-consumidor");
     btn.textContent=state.form.consumidorFinal?"✔ Sim":"✖ Não";
     btn.classList.toggle("ativo",state.form.consumidorFinal);
   });
-  // Campos simples
   const si=(sel,fn)=>container.querySelector(sel)?.addEventListener("input",e=>fn(e.target.value));
   si("#f-cliente", v=>{ state.form.clienteNome=v; });
   si("#f-vendedor",v=>{ state.form.vendedor=v; });
@@ -492,10 +470,8 @@ function bindFormEvents(container) {
   container.querySelector("#f-tipo")?.addEventListener("change",e=>{ state.form.tipo=e.target.value; });
   container.querySelector("#f-situacao")?.addEventListener("change",e=>{ state.form.situacao=e.target.value; });
 
-  // Autocomplete cliente
   bindAutocompleteCli(container);
 
-  // Itens — delegação no tbody
   const tbodyItens = container.querySelector("#tbody-itens");
   tbodyItens?.addEventListener("input", e=>{
     const t=e.target;
@@ -513,10 +489,8 @@ function bindFormEvents(container) {
   });
   container.querySelector("#btn-add-item")?.addEventListener("click",()=>{ state.form.itens.push(novoItem()); render(container); setTimeout(()=>{ const ins=container.querySelectorAll(".item-desc"); ins[ins.length-1]?.focus(); },50); });
 
-  // Autocomplete de itens
   state.form.itens.forEach((_,i)=>bindItemAC(container,i));
 
-  // Parcelas
   const tbodyParc = container.querySelector("#tbody-parcelas");
   tbodyParc?.addEventListener("input",e=>{
     const t=e.target;
@@ -536,7 +510,6 @@ function bindFormEvents(container) {
   container.querySelector("#btn-add-parcela")?.addEventListener("click",()=>{ state.form.parcelas.push({valor:0,data:hoje(),forma:state.formasPag[0]||"Dinheiro",recebido:false}); render(container); });
   container.querySelector("#btn-parcela-auto")?.addEventListener("click",()=>{ const t=calcularTotais(); state.form.parcelas=[{valor:t.totalGeral.toFixed(2),data:hoje(),forma:state.formasPag[0]||"Dinheiro",recebido:false}]; render(container); });
 
-  // Gastos
   container.querySelector("#btn-add-gasto")?.addEventListener("click",()=>{ state.form.gastos.push({descricao:"",valor:0}); render(container); });
   container.querySelector("#gastos-lista")?.addEventListener("input",e=>{
     const t=e.target;
@@ -584,63 +557,35 @@ function bindItemAC(container, i) {
 // SALVAR
 // ══════════════════════════════════════════════════════════════════════════════
 async function salvar(container) {
-  const f = state.form;
-  const t = calcularTotais();
-
-  const payload = {
-    cliente_nome:    f.clienteNome || null,
-    vendedor:        f.vendedor || null,
-    tipo:            f.tipo,
-    data_venda:      f.data,
-    data_entrega:    f.entrega || null,
-    status:          f.situacao,
-    // consumidor_final: removido (coluna não existe na tabela)
-    palavra_chave:   f.palavraChave || null,
-    observacoes:     f.observacoes || null,
-    total:           t.totalGeral,
-    updated_at:      new Date().toISOString(),
+  const f=state.form, t=calcularTotais();
+  const payload={
+    cliente_nome:    f.clienteNome||null, vendedor:f.vendedor||null,
+    tipo:            f.tipo, data_venda:f.data, data_entrega:f.entrega||null,
+    status:          f.situacao, consumidor_final:f.consumidorFinal,
+    palavra_chave:   f.palavraChave||null, observacoes:f.observacoes||null,
+    total:           t.totalGeral, updated_at:new Date(),
   };
-
   let vendaId;
-
-  if (state.vendaAberta) {
-    const { error } = await supabase.from("vendas").update(payload).eq("id", state.vendaAberta.id);
-    if (error) { 
-      alert("Erro ao atualizar: " + error.message); 
-      return; 
-    }
-    vendaId = state.vendaAberta.id;
-    await supabase.from("venda_itens").delete().eq("venda_id", vendaId);
+  if(state.vendaAberta){
+    await supabase.from("vendas").update(payload).eq("id",state.vendaAberta.id);
+    vendaId=state.vendaAberta.id;
+    await supabase.from("venda_itens").delete().eq("venda_id",vendaId);
   } else {
-    const { data: v, error } = await supabase.from("vendas").insert(payload).select().single();
-    if (error) { 
-      alert("Erro ao inserir: " + error.message); 
-      return; 
-    }
-    vendaId = v.id;
+    const { data:v, error }=await supabase.from("vendas").insert(payload).select().single();
+    if(error){ alert("Erro: "+error.message); return; }
+    vendaId=v.id;
   }
-
-  // Salvar itens
-  const itensDb = f.itens.filter(it => it.descricao?.trim()).map(it => ({
-    venda_id: vendaId,
-    produto_id: it.produtoId || null,
-    descricao: it.descricao,
-    quantidade: Number(it.qtd) || 1,
-    preco_unitario: Number(it.preco) || 0,
-    desconto: Number(it.desconto) || 0,
-    total: (Number(it.preco)||0) * (Number(it.qtd)||0) - (Number(it.desconto)||0),
-    obs: it.obs || null,
+  const itensDb=f.itens.filter(it=>it.descricao).map(it=>({
+    venda_id:vendaId, produto_id:it.produtoId||null, descricao:it.descricao,
+    quantidade:Number(it.qtd)||1, preco_unitario:Number(it.preco)||0,
+    desconto:Number(it.desconto)||0,
+    total:(Number(it.preco)||0)*(Number(it.qtd)||0)-(Number(it.desconto)||0),
+    obs:it.obs||null,
   }));
-
-  if (itensDb.length) await supabase.from("venda_itens").insert(itensDb);
-
-  // Tela bonita de sucesso
-  showSuccessScreen(container);
-
+  if(itensDb.length) await supabase.from("venda_itens").insert(itensDb);
   await carregar();
-  state.aba = "lista"; 
-  state.vendaAberta = null; 
-  render(container);
+  showToast(container,"✅ Venda salva com sucesso!");
+  state.aba="lista"; state.vendaAberta=null; render(container);
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -673,7 +618,7 @@ td{padding:7px 10px;border-bottom:1px solid #eee}
 <table><thead><tr><th>Produto/Serviço</th><th>Qtd</th><th>Preço</th><th>Desconto</th><th>Total</th></tr></thead>
 <tbody>${f.itens.filter(it=>it.descricao).map(it=>{
   const tot=(Number(it.preco)||0)*(Number(it.qtd)||0)-(Number(it.desconto)||0);
-  return `<tr><td>${esc(it.descricao)}${it.obs?`<br><small style="color:#888">${esc(it.obs)}</small>`:""}</td><td>${Number(it.qtd).toFixed(3)}</td><td>${fmtBRL(it.preco)}</td><td>${fmtBRL(it.desconto)}</td><td>${fmtBRL(tot)}</td></tr>`;
+  return `<tr><td>${esc(it.descricao)}${it.obs?`<br><small style="color:#888">${esc(it.obs)}</small>`:""}</td><td>${Number(it.qtd).toLocaleString("pt-BR",{minimumFractionDigits:3,maximumFractionDigits:3})}</td><td>${fmtBRL(it.preco)}</td><td>${fmtBRL(it.desconto)}</td><td>${fmtBRL(tot)}</td></tr>`;
 }).join("")}
 <tr class="tr"><td colspan="4" style="text-align:right">TOTAL</td><td>${fmtBRL(t.totalGeral)}</td></tr>
 </tbody></table>
@@ -756,26 +701,6 @@ function fmtData(d){ if(!d) return "—"; const [y,m,dia]=d.split("-"); return `
 function showToast(container, msg){ const t=document.createElement("div"); t.className="vnd-toast"; t.textContent=msg; container.appendChild(t); setTimeout(()=>t.remove(),2800); }
 function esc(s){ if(s==null) return ""; return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 
-function showSuccessScreen(container) {
-  const area = document.getElementById("app-modal-root");
-  if (!area) return;
-
-  area.innerHTML = `
-  <div class="modal-bg" style="display:flex; align-items:center; justify-content:center; z-index:999;">
-    <div class="modal" style="max-width:380px; text-align:center; padding:40px 30px; border-radius:16px;">
-      <div style="font-size:72px; margin-bottom:20px;">✅</div>
-      <h2 style="margin:0 0 12px 0; color:#00AC17; font-size:26px;">Venda Salva com Sucesso!</h2>
-      <p style="color:var(--muted); font-size:15px; margin-bottom:30px;">
-        A venda foi registrada corretamente.
-      </p>
-      <button onclick="this.closest('.modal-bg').remove()" 
-              class="btn-salvar-vnd" 
-              style="width:100%; padding:14px; font-size:16px; font-weight:600;">
-        Voltar para a Lista de Vendas
-      </button>
-    </div>
-  </div>`;
-}
 // ══════════════════════════════════════════════════════════════════════════════
 // CSS
 // ══════════════════════════════════════════════════════════════════════════════
@@ -823,7 +748,6 @@ function css(){ return `
 .item-input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 2px rgba(0,124,190,0.10)}
 .item-obs{display:block;width:100%;margin-top:4px;background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--muted);font-size:11px;padding:3px 0;font-family:var(--font);font-style:italic}
 .item-obs:focus{outline:none;border-color:var(--primary)}
-.item-obs::placeholder{color:var(--muted2)}
 .td-inpwrap{border:1px solid var(--border);border-radius:var(--radius-sm)}
 .td-inpwrap:focus-within{border-color:var(--primary);box-shadow:0 0 0 2px rgba(0,124,190,0.08)}
 .td-inp{background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:var(--radius-sm);padding:7px 8px;font-size:13px;width:100%;font-family:var(--font);transition:border-color var(--t)}

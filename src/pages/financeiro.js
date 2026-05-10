@@ -1,12 +1,12 @@
 import { supabase } from "../supabase/client.js";
-import { fmtBRL } from "../format/brl.js";
+import { fmtBRL, fmtBRL4, fmtBRLK, fmtQtd } from "../utils/fmt.js";
 
 const CATEGORIAS_RECEITA = ["Venda","Serviço","Outros"];
 const CATEGORIAS_DESPESA = ["Fornecedor","Aluguel","Salário","Material","Imposto","Outros"];
 
 let state = {
   lancamentos: [],
-  aba: "resumo",       // resumo | receitas | despesas | fluxo
+  aba: "resumo",
   filtroStatus: "",
   filtroMes: mesAtual(),
 };
@@ -30,11 +30,9 @@ async function carregar() {
   state.lancamentos = data || [];
 }
 
-// ─── Render principal ─────────────────────────────────────────────────────────
 function render(container) {
   const hoje = new Date().toISOString().split("T")[0];
 
-  // Filtra pelo mês selecionado
   const doMes = state.lancamentos.filter(l => {
     const ref = l.data_vencimento || l.created_at?.slice(0,10);
     return ref?.startsWith(state.filtroMes);
@@ -50,7 +48,6 @@ function render(container) {
   const aReceber  = receitas.filter(l=>l.status==="pendente").reduce((s,l)=>s+Number(l.valor),0);
   const aPagar    = despesas.filter(l=>l.status==="pendente").reduce((s,l)=>s+Number(l.valor),0);
 
-  // Vencidos
   const vencidos = state.lancamentos.filter(l =>
     l.status === "pendente" && l.data_vencimento && l.data_vencimento < hoje
   );
@@ -70,34 +67,31 @@ function render(container) {
       </div>
     </div>
 
-    <!-- Alertas vencidos -->
     ${vencidos.length ? `
       <div class="alerta-venc">
         ⚠️ <b>${vencidos.length} lançamento${vencidos.length>1?"s":""} vencido${vencidos.length>1?"s":""}</b> —
-        ${vencidos.slice(0,3).map(l=>`${l.descricao} (${fmtBRL(l.valor)})`).join(", ")}
+        ${vencidos.slice(0,3).map(l=>`${l.descricao} (R$ ${Number(l.valor).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})})`).join(", ")}
         ${vencidos.length>3?`e mais ${vencidos.length-3}...`:""}
       </div>` : ""}
 
-    <!-- KPIs -->
     <div class="kpi-grid">
       <div class="kpi-card receita">
         <div class="k">Receitas do mês</div>
-        <div class="v">${fmtBRL(totalRec)}</div>
-        <div class="sub">Recebido: ${fmtBRL(recebido)} · A receber: ${fmtBRL(aReceber)}</div>
+        <div class="v">R$ ${totalRec.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+        <div class="sub">Recebido: R$ ${recebido.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})} · A receber: R$ ${aReceber.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
       </div>
       <div class="kpi-card despesa">
         <div class="k">Despesas do mês</div>
-        <div class="v">${fmtBRL(totalDesp)}</div>
-        <div class="sub">Pago: ${fmtBRL(pago)} · A pagar: ${fmtBRL(aPagar)}</div>
+        <div class="v">R$ ${totalDesp.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+        <div class="sub">Pago: R$ ${pago.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})} · A pagar: R$ ${aPagar.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
       </div>
       <div class="kpi-card ${saldo>=0?"saldo-pos":"saldo-neg"}">
         <div class="k">Saldo do mês</div>
-        <div class="v">${saldo>=0?"+":""}${fmtBRL(saldo)}</div>
-        <div class="sub">Realizado: ${fmtBRL(recebido - pago)}</div>
+        <div class="v">${saldo>=0?"+":""}R$ ${saldo.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+        <div class="sub">Realizado: R$ ${(recebido-pago).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
       </div>
     </div>
 
-    <!-- Abas -->
     <div class="fin-abas">
       ${["resumo","receitas","despesas","fluxo"].map(a => `
         <button class="aba-btn ${state.aba===a?"active":""}" data-aba="${a}">
@@ -126,9 +120,9 @@ function render(container) {
   if (state.aba === "fluxo")    renderFluxo(body, container);
 }
 
-// ─── Aba Resumo ───────────────────────────────────────────────────────────────
 function renderResumo(body, doMes, receitas, despesas) {
-  // Agrupa por categoria
+  const fmtV = v => `R$ ${Number(v).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+
   const porCat = (lista) => {
     const map = {};
     lista.forEach(l => {
@@ -149,10 +143,9 @@ function renderResumo(body, doMes, receitas, despesas) {
       <div class="barra-wrap">
         <div class="barra-fill" style="width:${(val/max*100).toFixed(1)}%;background:${cor}"></div>
       </div>
-      <span class="barra-val">${fmtBRL(val)}</span>
+      <span class="barra-val">${fmtV(val)}</span>
     </div>`).join("") || `<div style="color:var(--muted);font-size:13px">Nenhum lançamento.</div>`;
 
-  // Próximos vencimentos
   const proximos = state.lancamentos
     .filter(l => l.status === "pendente" && l.data_vencimento)
     .sort((a,b) => a.data_vencimento.localeCompare(b.data_vencimento))
@@ -182,7 +175,7 @@ function renderResumo(body, doMes, receitas, despesas) {
                 <span class="venc-tipo ${l.tipo}">${l.tipo === "receita" ? "▲" : "▼"}</span>
                 <span class="venc-desc">${l.descricao}</span>
                 <span class="venc-data ${atrasado?"atrasado":""}">${formatData(l.data_vencimento)}</span>
-                <span class="venc-val">${fmtBRL(l.valor)}</span>
+                <span class="venc-val">${fmtV(l.valor)}</span>
               </div>`;
           }).join("")
       }
@@ -190,8 +183,8 @@ function renderResumo(body, doMes, receitas, despesas) {
   `;
 }
 
-// ─── Aba Tabela (Receitas / Despesas) ─────────────────────────────────────────
 function renderTabela(body, container, lista, tipo) {
+  const fmtV = v => `R$ ${Number(v).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})}`;
   const hoje = new Date().toISOString().split("T")[0];
 
   body.innerHTML = `
@@ -218,7 +211,7 @@ function renderTabela(body, container, lista, tipo) {
                 </td>
                 <td style="color:var(--muted);font-size:12px">${l.categoria||"—"}</td>
                 <td style="font-size:12px${atrasado?";color:#ff6b6b;font-weight:700":""}">${l.data_vencimento?formatData(l.data_vencimento):"—"}</td>
-                <td style="font-weight:600;color:${tipo==="receita"?"#69db7c":"#ff6b6b"}">${fmtBRL(l.valor)}</td>
+                <td style="font-weight:600;color:${tipo==="receita"?"#69db7c":"#ff6b6b"}">${fmtV(l.valor)}</td>
                 <td>${badgeStatus(l.status)}</td>
                 <td style="display:flex;gap:4px">
                   ${l.status==="pendente"?`<button class="btn-pagar" data-pagar="${l.id}">✔ Baixar</button>`:""}
@@ -257,9 +250,9 @@ function renderTabela(body, container, lista, tipo) {
   );
 }
 
-// ─── Aba Fluxo de Caixa ───────────────────────────────────────────────────────
 function renderFluxo(body, container) {
-  // Agrupa por mês últimos 6 meses
+  const fmtV = v => `R$ ${Number(v).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+
   const meses = [];
   for (let i = 5; i >= 0; i--) {
     const d = new Date();
@@ -292,8 +285,8 @@ function renderFluxo(body, container) {
         ${dados.map(d => `
           <div class="fluxo-col">
             <div class="fluxo-barras">
-              <div class="fb-rec"  style="height:${(d.rec /maxVal*120).toFixed(0)}px" title="Receita: ${fmtBRL(d.rec)}"></div>
-              <div class="fb-desp" style="height:${(d.desp/maxVal*120).toFixed(0)}px" title="Despesa: ${fmtBRL(d.desp)}"></div>
+              <div class="fb-rec"  style="height:${(d.rec /maxVal*120).toFixed(0)}px" title="Receita: ${fmtV(d.rec)}"></div>
+              <div class="fb-desp" style="height:${(d.desp/maxVal*120).toFixed(0)}px" title="Despesa: ${fmtV(d.desp)}"></div>
             </div>
             <div class="fluxo-mes">${nomeMes(d.mes)}</div>
           </div>`).join("")}
@@ -312,10 +305,10 @@ function renderFluxo(body, container) {
           ${dados.map(d => `
             <tr>
               <td>${nomeMes(d.mes)}</td>
-              <td style="color:#69db7c">${fmtBRL(d.rec)}</td>
-              <td style="color:#ff6b6b">${fmtBRL(d.desp)}</td>
-              <td style="font-weight:600;color:${d.saldo>=0?"#69db7c":"#ff6b6b"}">${d.saldo>=0?"+":""}${fmtBRL(d.saldo)}</td>
-              <td style="color:var(--muted)">${fmtBRL(d.real)}</td>
+              <td style="color:#69db7c">${fmtV(d.rec)}</td>
+              <td style="color:#ff6b6b">${fmtV(d.desp)}</td>
+              <td style="font-weight:600;color:${d.saldo>=0?"#69db7c":"#ff6b6b"}">${d.saldo>=0?"+":""}${fmtV(d.saldo)}</td>
+              <td style="color:var(--muted)">${fmtV(d.real)}</td>
             </tr>`).join("")}
         </tbody>
       </table>
@@ -323,7 +316,6 @@ function renderFluxo(body, container) {
   `;
 }
 
-// ─── Modal novo/editar lançamento ─────────────────────────────────────────────
 function abrirModal(container, tipo, dados = {}) {
   const area = container.querySelector("#modal-area");
   const editando = !!dados.id;
@@ -389,7 +381,6 @@ function abrirModal(container, tipo, dados = {}) {
   });
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 function badgeStatus(s) {
   const cfg = { pendente:["#ffa94d","🕐 Pendente"], pago:["#69db7c","✅ Pago"], cancelado:["#9fb0d0","❌ Cancelado"] };
   const [cor, label] = cfg[s] || ["#9fb0d0", s];
