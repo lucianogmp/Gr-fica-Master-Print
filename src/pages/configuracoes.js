@@ -2635,4 +2635,4 @@ function css() { return `
   .slider:before{position:absolute;content:"";height:16px;width:16px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s}
   input:checked+.slider{background:var(--accent)}
   input:checked+.slider:before{transform:translateX(18px)}
-`;
+`; }
