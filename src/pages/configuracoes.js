@@ -1199,47 +1199,290 @@ function abrirModalVendedor(container, vd={}) {
 // ABA: IMPRESSÃO
 // ══════════════════════════════════════════════════════════════════════════════
 function renderImpressao(content, container) {
-  const c=state.cfg;
-  content.innerHTML=`
-    <div class="cfg-section-title">🖨️ Configurações de Impressão</div>
-    <div class="cfg-hint">Defina o que aparece nos documentos impressos — orçamentos, vendas e ordens de serviço.</div>
-    <div class="cfg-card">
-      <div class="cfg-card-title">⚙️ Geral</div>
+  const c = state.cfg;
+  const sub = state._sub_impressao || "layout";
+  state._sub_impressao = sub;
+
+  const SUBS = [
+    { key:"layout",   label:"🎨 Layout e Design"   },
+    { key:"conteudo", label:"📝 Conteúdo"           },
+    { key:"opcoes",   label:"⚙️ Opções Avançadas"   },
+  ];
+
+  content.innerHTML = `
+    <div class="cfg-section-header">
+      <div class="cfg-section-title">🖨️ Impressão</div>
+      <button class="btn-preview" id="btn-preview-doc">
+        👁️ Visualizar documento
+      </button>
+    </div>
+    <div class="cfg-hint">Configure o layout do documento — orçamento, venda e OS usam o mesmo template mas você controla o título e conteúdo de cada um.</div>
+
+    <div class="sub-tabs">
+      ${SUBS.map(s=>`<button class="sub-tab ${sub===s.key?"active":""}" data-sub="${s.key}">${s.label}</button>`).join("")}
+    </div>
+    <div id="sub-content"></div>
+
+    <div class="cfg-acoes" style="margin-top:16px">
+      <button class="btn-primary" id="btn-salvar-imp">💾 Salvar configurações de impressão</button>
+      <button class="btn-preview" id="btn-preview-doc2">👁️ Visualizar</button>
+    </div>
+  `;
+
+  content.querySelectorAll("[data-sub]").forEach(btn =>
+    btn.addEventListener("click", () => { state._sub_impressao = btn.dataset.sub; renderImpressao(content, container); })
+  );
+
+  const sc = content.querySelector("#sub-content");
+  if (sub === "layout")   renderImpLayout(sc, c);
+  if (sub === "conteudo") renderImpConteudo(sc, c);
+  if (sub === "opcoes")   renderImpOpcoes(sc, c);
+
+  // Salvar
+  content.querySelector("#btn-salvar-imp").addEventListener("click", async () => {
+    await salvarCfg(container, coletarDadosImpressao(content, sc, sub), content);
+  });
+
+  // Preview — ambos os botões abrem o mesmo modal
+  const abrirPreview = () => abrirPreviewDoc(container, coletarCfgPreview(content, sc, sub, c));
+  content.querySelector("#btn-preview-doc").addEventListener("click", abrirPreview);
+  content.querySelector("#btn-preview-doc2").addEventListener("click", abrirPreview);
+}
+
+// ── Sub-aba: Layout e Design ──────────────────────────────────────────────────
+function renderImpLayout(sc, c) {
+  sc.innerHTML = `
+    <div class="cfg-card" style="margin-top:12px">
+      <div class="cfg-card-title">🖼️ Cabeçalho</div>
       <div class="cfg-grid">
         <div class="cfg-group">
-          <label>Tamanho do papel</label>
-          <select id="imp-papel">${["A4","A5","Letter"].map(p=>`<option value="${p}" ${(c.imp_papel||"A4")===p?"selected":""}>${p}</option>`).join("")}</select>
+          <label>Posição do logo</label>
+          <div class="logo-pos-group" id="logo-pos">
+            ${["esquerda","centro","direita"].map(p=>`
+              <button class="logo-pos-btn ${(c.imp_logo_posicao||"esquerda")===p?"active":""}" data-pos="${p}">
+                ${p==="esquerda"?"▐ Esquerda":p==="centro"?"▬ Centro":"Direita ▌"}
+              </button>`).join("")}
+          </div>
+          <input type="hidden" id="imp-logo-pos" value="${esc(c.imp_logo_posicao||"esquerda")}" />
         </div>
         <div class="cfg-group">
-          <label>Orientação</label>
-          <select id="imp-orient">
-            <option value="retrato"  ${(c.imp_orientacao||"retrato")==="retrato"?"selected":""}>Retrato</option>
-            <option value="paisagem" ${c.imp_orientacao==="paisagem"?"selected":""}>Paisagem</option>
+          <label>Tamanho do logo</label>
+          <select id="imp-logo-tam">
+            <option value="pequeno"  ${(c.imp_logo_tamanho||"medio")==="pequeno"?"selected":""}>Pequeno (40px)</option>
+            <option value="medio"    ${(c.imp_logo_tamanho||"medio")==="medio"?"selected":""}>Médio (65px)</option>
+            <option value="grande"   ${c.imp_logo_tamanho==="grande"?"selected":""}>Grande (90px)</option>
           </select>
         </div>
         <div class="cfg-group">
-          <label>Exibir logo?</label>
+          <label>Mostrar logo?</label>
           <select id="imp-logo">
             <option value="sim" ${(c.imp_mostrar_logo||"sim")==="sim"?"selected":""}>✅ Sim</option>
             <option value="nao" ${c.imp_mostrar_logo==="nao"?"selected":""}>❌ Não</option>
           </select>
         </div>
         <div class="cfg-group">
-          <label>Exibir dados da empresa?</label>
+          <label>Mostrar dados da empresa?</label>
           <select id="imp-dados-emp">
             <option value="sim" ${(c.imp_mostrar_empresa||"sim")==="sim"?"selected":""}>✅ Sim</option>
             <option value="nao" ${c.imp_mostrar_empresa==="nao"?"selected":""}>❌ Não</option>
           </select>
         </div>
-        <div class="cfg-group full"><label>Cabeçalho personalizado</label><textarea id="imp-cabecalho" rows="2">${esc(c.imp_cabecalho)}</textarea></div>
-        <div class="cfg-group full"><label>Rodapé personalizado</label><textarea id="imp-rodape-imp" rows="2">${esc(c.imp_rodape)}</textarea></div>
+        <div class="cfg-group">
+          <label>Alinhamento do cabeçalho</label>
+          <select id="imp-header-align">
+            <option value="left"   ${(c.imp_header_align||"left")==="left"?"selected":""}>◀ Esquerda</option>
+            <option value="center" ${c.imp_header_align==="center"?"selected":""}>▬ Centro</option>
+            <option value="right"  ${c.imp_header_align==="right"?"selected":""}>Direita ▶</option>
+          </select>
+        </div>
+        <div class="cfg-group">
+          <label>Cor do cabeçalho</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input id="imp-header-cor" type="color" value="${esc(c.imp_header_cor||"#1a1a2e")}" style="height:40px;width:54px;border-radius:7px;cursor:pointer" />
+            <input id="imp-header-cor-hex" value="${esc(c.imp_header_cor||"#1a1a2e")}" style="flex:1;font-family:monospace" />
+          </div>
+        </div>
+        <div class="cfg-group">
+          <label>Cor do texto do cabeçalho</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input id="imp-header-txt" type="color" value="${esc(c.imp_header_txt_cor||"#ffffff")}" style="height:40px;width:54px;border-radius:7px;cursor:pointer" />
+            <input id="imp-header-txt-hex" value="${esc(c.imp_header_txt_cor||"#ffffff")}" style="flex:1;font-family:monospace" />
+          </div>
+        </div>
+        <div class="cfg-group">
+          <label>Cor de destaque (títulos/totais)</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input id="imp-accent-cor" type="color" value="${esc(c.imp_accent_cor||"#2563eb")}" style="height:40px;width:54px;border-radius:7px;cursor:pointer" />
+            <input id="imp-accent-cor-hex" value="${esc(c.imp_accent_cor||"#2563eb")}" style="flex:1;font-family:monospace" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cfg-card">
+      <div class="cfg-card-title">📐 Papel e Layout</div>
+      <div class="cfg-grid">
+        <div class="cfg-group">
+          <label>Tamanho do papel</label>
+          <select id="imp-papel">
+            ${["A4","A5","Letter"].map(p=>`<option value="${p}" ${(c.imp_papel||"A4")===p?"selected":""}>${p}</option>`).join("")}
+          </select>
+        </div>
+        <div class="cfg-group">
+          <label>Orientação</label>
+          <select id="imp-orient">
+            <option value="retrato"  ${(c.imp_orientacao||"retrato")==="retrato"?"selected":""}>Retrato (vertical)</option>
+            <option value="paisagem" ${c.imp_orientacao==="paisagem"?"selected":""}>Paisagem (horizontal)</option>
+          </select>
+        </div>
+        <div class="cfg-group">
+          <label>Fonte</label>
+          <select id="imp-fonte">
+            ${["Arial","Helvetica","Georgia","Times New Roman","Courier New"].map(f=>
+              `<option value="${f}" ${(c.imp_fonte||"Arial")===f?"selected":""}>${f}</option>`
+            ).join("")}
+          </select>
+        </div>
+        <div class="cfg-group">
+          <label>Tamanho da fonte (px)</label>
+          <input id="imp-fonte-tam" type="number" min="8" max="16" value="${c.imp_fonte_tamanho||12}" />
+        </div>
+      </div>
+    </div>
+
+    <div class="cfg-card">
+      <div class="cfg-card-title">📋 Seções visíveis no documento</div>
+      <div class="cfg-hint">Escolha quais blocos aparecem no documento impresso.</div>
+      <div class="secoes-grid">
+        ${[
+          { id:"imp-sec-logo",     label:"🖼️ Logo da empresa",        val: c.imp_sec_logo     !== "nao" },
+          { id:"imp-sec-empresa",  label:"🏢 Dados da empresa",        val: c.imp_sec_empresa  !== "nao" },
+          { id:"imp-sec-cliente",  label:"👤 Dados do cliente",        val: c.imp_sec_cliente  !== "nao" },
+          { id:"imp-sec-itens",    label:"📦 Tabela de itens",         val: c.imp_sec_itens    !== "nao" },
+          { id:"imp-sec-totais",   label:"💰 Totais / resumo",         val: c.imp_sec_totais   !== "nao" },
+          { id:"imp-sec-pagto",    label:"💳 Forma de pagamento",      val: c.imp_sec_pagto    !== "nao" },
+          { id:"imp-sec-prazo",    label:"📅 Prazo de entrega",        val: c.imp_sec_prazo    !== "nao" },
+          { id:"imp-sec-obs",      label:"📝 Observações",             val: c.imp_sec_obs      !== "nao" },
+          { id:"imp-sec-assin",    label:"✍️ Campo de assinatura",     val: c.imp_sec_assin    !== "nao" },
+          { id:"imp-sec-garantia", label:"🛡️ Garantia",               val: c.imp_sec_garantia !== "nao" },
+          { id:"imp-sec-rodape",   label:"📄 Rodapé",                  val: c.imp_sec_rodape   !== "nao" },
+        ].map(s=>`
+          <label class="secao-toggle ${s.val?"on":"off"}">
+            <input type="checkbox" id="${s.id}" ${s.val?"checked":""} style="display:none" />
+            <span class="secao-check">${s.val?"✅":"⬜"}</span>
+            <span>${s.label}</span>
+          </label>`).join("")}
+      </div>
+    </div>
+  `;
+
+  // Bind cor hex sync
+  [["imp-header-cor","imp-header-cor-hex"],["imp-header-txt","imp-header-txt-hex"],["imp-accent-cor","imp-accent-cor-hex"]].forEach(([idColor,idHex])=>{
+    sc.querySelector(`#${idColor}`).addEventListener("input",function(){ sc.querySelector(`#${idHex}`).value=this.value; });
+    sc.querySelector(`#${idHex}`).addEventListener("input",function(){
+      if(/^#[0-9a-fA-F]{6}$/.test(this.value)) sc.querySelector(`#${idColor}`).value=this.value;
+    });
+  });
+
+  // Bind logo position buttons
+  sc.querySelectorAll(".logo-pos-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      sc.querySelectorAll(".logo-pos-btn").forEach(b=>b.classList.remove("active"));
+      btn.classList.add("active");
+      sc.querySelector("#imp-logo-pos").value = btn.dataset.pos;
+    });
+  });
+
+  // Bind seção toggles
+  sc.querySelectorAll(".secao-toggle input").forEach(cb => {
+    cb.addEventListener("change", function() {
+      const label = this.closest(".secao-toggle");
+      label.classList.toggle("on", this.checked);
+      label.classList.toggle("off", !this.checked);
+      label.querySelector(".secao-check").textContent = this.checked ? "✅" : "⬜";
+    });
+  });
+}
+
+// ── Sub-aba: Conteúdo ─────────────────────────────────────────────────────────
+function renderImpConteudo(sc, c) {
+  sc.innerHTML = `
+    <div class="cfg-card" style="margin-top:12px">
+      <div class="cfg-card-title">🎯 Títulos por tipo de documento</div>
+      <div class="cfg-hint">O mesmo template é usado para todos — apenas o título e conteúdo mudam.</div>
+      <div class="cfg-grid">
+        <div class="cfg-group">
+          <label>Título — Orçamento</label>
+          <input id="imp-orc-titulo" value="${esc(c.imp_orc_titulo)||"ORÇAMENTO"}" />
+        </div>
+        <div class="cfg-group">
+          <label>Título — Venda / Nota</label>
+          <input id="imp-vnd-titulo" value="${esc(c.imp_vnd_titulo)||"NOTA DE VENDA"}" />
+        </div>
+        <div class="cfg-group">
+          <label>Título — Ordem de Serviço</label>
+          <input id="imp-os-titulo" value="${esc(c.imp_os_titulo)||"ORDEM DE SERVIÇO"}" />
+        </div>
+        <div class="cfg-group">
+          <label>Título — Recibo</label>
+          <input id="imp-rec-titulo" value="${esc(c.imp_rec_titulo)||"RECIBO"}" />
+        </div>
+      </div>
+    </div>
+
+    <div class="cfg-card">
+      <div class="cfg-card-title">📝 Textos padrão</div>
+      <div class="cfg-grid">
+        <div class="cfg-group full">
+          <label>Cabeçalho personalizado (aparece abaixo do logo)</label>
+          <textarea id="imp-cabecalho" rows="2" placeholder="Ex: Gráfica Master Print | CNPJ: 00.000.000/0001-00">${esc(c.imp_cabecalho)}</textarea>
+        </div>
+        <div class="cfg-group full">
+          <label>Observações padrão (orçamento)</label>
+          <textarea id="imp-orc-obs" rows="3" placeholder="Ex: Aprovação de arte obrigatória. Arte em baixa resolução gera custo adicional.">${esc(c.imp_orc_obs)}</textarea>
+        </div>
+        <div class="cfg-group full">
+          <label>Observações padrão (venda / OS)</label>
+          <textarea id="imp-vnd-obs" rows="3" placeholder="Ex: Não nos responsabilizamos por erros após aprovação do cliente.">${esc(c.imp_vnd_obs)}</textarea>
+        </div>
+        <div class="cfg-group full">
+          <label>Texto de garantia</label>
+          <textarea id="imp-garantia" rows="2" placeholder="Ex: Garantia de 90 dias para defeitos de fabricação.">${esc(c.imp_garantia)}</textarea>
+        </div>
+        <div class="cfg-group full">
+          <label>Rodapé do documento</label>
+          <textarea id="imp-rodape-imp" rows="2" placeholder="Ex: Obrigado pela preferência! Dúvidas pelo WhatsApp (11) 99999-9999">${esc(c.imp_rodape)}</textarea>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ── Sub-aba: Opções Avançadas ─────────────────────────────────────────────────
+function renderImpOpcoes(sc, c) {
+  sc.innerHTML = `
+    <div class="cfg-card" style="margin-top:12px">
+      <div class="cfg-card-title">🔢 Numeração</div>
+      <div class="cfg-grid">
+        <div class="cfg-group">
+          <label>Exibir número do documento?</label>
+          <select id="imp-vnd-num">
+            <option value="sim" ${(c.imp_vnd_numero||"sim")==="sim"?"selected":""}>✅ Sim</option>
+            <option value="nao" ${c.imp_vnd_numero==="nao"?"selected":""}>❌ Não</option>
+          </select>
+        </div>
+        <div class="cfg-group">
+          <label>Exibir QR Code de pagamento?</label>
+          <select id="imp-qr">
+            <option value="nao" ${(c.imp_qr_pagamento||"nao")==="nao"?"selected":""}>❌ Não</option>
+            <option value="sim" ${c.imp_qr_pagamento==="sim"?"selected":""}>✅ Sim (requer Mercado Pago)</option>
+          </select>
+        </div>
       </div>
     </div>
     <div class="cfg-card">
-      <div class="cfg-card-title">📋 Orçamento</div>
+      <div class="cfg-card-title">👁️ Visibilidade de dados</div>
       <div class="cfg-grid">
-        <div class="cfg-group full"><label>Título do documento</label><input id="imp-orc-titulo" value="${esc(c.imp_orc_titulo)||"ORÇAMENTO"}" /></div>
-        <div class="cfg-group full"><label>Observações padrão</label><textarea id="imp-orc-obs" rows="3">${esc(c.imp_orc_obs)}</textarea></div>
         <div class="cfg-group">
           <label>Exibir custo de produção?</label>
           <select id="imp-orc-custo">
@@ -1248,21 +1491,14 @@ function renderImpressao(content, container) {
           </select>
         </div>
         <div class="cfg-group">
-          <label>Exibir margem?</label>
+          <label>Exibir margem de lucro?</label>
           <select id="imp-orc-margem">
             <option value="nao" ${(c.imp_orc_margem||"nao")==="nao"?"selected":""}>❌ Não</option>
             <option value="sim" ${c.imp_orc_margem==="sim"?"selected":""}>✅ Sim</option>
           </select>
         </div>
-      </div>
-    </div>
-    <div class="cfg-card">
-      <div class="cfg-card-title">📄 Ordem de Serviço</div>
-      <div class="cfg-grid">
-        <div class="cfg-group full"><label>Título do documento</label><input id="imp-os-titulo" value="${esc(c.imp_os_titulo)||"ORDEM DE SERVIÇO"}" /></div>
-        <div class="cfg-group full"><label>Observações padrão</label><textarea id="imp-os-obs" rows="3">${esc(c.imp_os_obs)}</textarea></div>
         <div class="cfg-group">
-          <label>Exibir assinatura?</label>
+          <label>Exibir campo de assinatura?</label>
           <select id="imp-os-assin">
             <option value="sim" ${(c.imp_os_assinatura||"sim")==="sim"?"selected":""}>✅ Sim</option>
             <option value="nao" ${c.imp_os_assinatura==="nao"?"selected":""}>❌ Não</option>
@@ -1277,27 +1513,283 @@ function renderImpressao(content, container) {
         </div>
       </div>
     </div>
-    <div class="cfg-acoes">
-      <button class="btn-primary" id="btn-salvar-imp">💾 Salvar configurações de impressão</button>
+  `;
+}
+
+// ── Coletar dados do formulário para salvar ───────────────────────────────────
+function coletarDadosImpressao(content, sc, sub) {
+  const g = (id) => {
+    const el = content.querySelector(`#${id}`) || sc.querySelector(`#${id}`);
+    return el?.value?.trim() || null;
+  };
+  const chk = (id) => {
+    const el = content.querySelector(`#${id}`) || sc.querySelector(`#${id}`);
+    return el?.checked ? "sim" : "nao";
+  };
+  return {
+    imp_papel:            g("imp-papel"),
+    imp_orientacao:       g("imp-orient"),
+    imp_logo_posicao:     g("imp-logo-pos"),
+    imp_logo_tamanho:     g("imp-logo-tam"),
+    imp_mostrar_logo:     g("imp-logo"),
+    imp_mostrar_empresa:  g("imp-dados-emp"),
+    imp_header_align:     g("imp-header-align"),
+    imp_header_cor:       g("imp-header-cor"),
+    imp_header_txt_cor:   g("imp-header-txt"),
+    imp_accent_cor:       g("imp-accent-cor"),
+    imp_fonte:            g("imp-fonte"),
+    imp_fonte_tamanho:    g("imp-fonte-tam"),
+    imp_sec_logo:         chk("imp-sec-logo"),
+    imp_sec_empresa:      chk("imp-sec-empresa"),
+    imp_sec_cliente:      chk("imp-sec-cliente"),
+    imp_sec_itens:        chk("imp-sec-itens"),
+    imp_sec_totais:       chk("imp-sec-totais"),
+    imp_sec_pagto:        chk("imp-sec-pagto"),
+    imp_sec_prazo:        chk("imp-sec-prazo"),
+    imp_sec_obs:          chk("imp-sec-obs"),
+    imp_sec_assin:        chk("imp-sec-assin"),
+    imp_sec_garantia:     chk("imp-sec-garantia"),
+    imp_sec_rodape:       chk("imp-sec-rodape"),
+    imp_orc_titulo:       g("imp-orc-titulo"),
+    imp_vnd_titulo:       g("imp-vnd-titulo"),
+    imp_os_titulo:        g("imp-os-titulo"),
+    imp_rec_titulo:       g("imp-rec-titulo"),
+    imp_cabecalho:        g("imp-cabecalho"),
+    imp_orc_obs:          g("imp-orc-obs"),
+    imp_vnd_obs:          g("imp-vnd-obs"),
+    imp_garantia:         g("imp-garantia"),
+    imp_rodape:           g("imp-rodape-imp"),
+    imp_vnd_numero:       g("imp-vnd-num"),
+    imp_qr_pagamento:     g("imp-qr"),
+    imp_orc_custo:        g("imp-orc-custo"),
+    imp_orc_margem:       g("imp-orc-margem"),
+    imp_os_assinatura:    g("imp-os-assin"),
+    imp_os_data_entrega:  g("imp-os-data"),
+  };
+}
+
+// ── Monta cfg de preview mesclando estado salvo com o que está no formulário ──
+function coletarCfgPreview(content, sc, sub, cfgSalvo) {
+  const formDados = coletarDadosImpressao(content, sc, sub);
+  return { ...cfgSalvo, ...Object.fromEntries(Object.entries(formDados).filter(([,v])=>v!==null)) };
+}
+
+// ── Modal de pré-visualização ─────────────────────────────────────────────────
+function abrirPreviewDoc(container, cfg) {
+  const area = container.querySelector("#modal-area");
+
+  const headerCor    = cfg.imp_header_cor     || "#1a1a2e";
+  const headerTxt    = cfg.imp_header_txt_cor || "#ffffff";
+  const accentCor    = cfg.imp_accent_cor     || "#2563eb";
+  const logoPos      = cfg.imp_logo_posicao   || "esquerda";
+  const logoTam      = { pequeno:"40px", medio:"65px", grande:"90px" }[cfg.imp_logo_tamanho||"medio"];
+  const hdrAlign     = cfg.imp_header_align   || "left";
+  const fonte        = cfg.imp_fonte          || "Arial";
+  const fonteTam     = cfg.imp_fonte_tamanho  || 12;
+  const mostrarLogo  = cfg.imp_mostrar_logo   !== "nao";
+  const mostrarEmp   = cfg.imp_mostrar_empresa !== "nao";
+  const logoUrl      = state.cfg.empresa_logo_url || cfg.imp_logo_url || "";
+  const empNome      = state.cfg.empresa_nome     || "Sua Empresa";
+  const empCnpj      = state.cfg.empresa_cnpj     || "00.000.000/0001-00";
+  const empTel       = state.cfg.empresa_telefone || "(11) 99999-9999";
+  const empEmail     = state.cfg.empresa_email    || "contato@empresa.com";
+  const empEnd       = state.cfg.empresa_endereco || "Rua Exemplo, 123 — Cidade/UF";
+
+  const sec = (key) => cfg[`imp_sec_${key}`] !== "nao";
+
+  // Layout do header: logo + texto empresa
+  const logoHtml = mostrarLogo && logoUrl
+    ? `<img src="${esc(logoUrl)}" style="height:${logoTam};max-width:180px;object-fit:contain" />`
+    : mostrarLogo
+      ? `<div style="width:${logoTam};height:${logoTam};background:rgba(255,255,255,0.15);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;color:${headerTxt}99">LOGO</div>`
+      : "";
+
+  const empHtml = mostrarEmp ? `
+    <div style="text-align:${hdrAlign}">
+      <div style="font-size:${fonteTam+4}px;font-weight:700;color:${headerTxt}">${esc(empNome)}</div>
+      <div style="font-size:${fonteTam-1}px;color:${headerTxt}cc;margin-top:2px">${esc(empCnpj)} | ${esc(empTel)}</div>
+      <div style="font-size:${fonteTam-1}px;color:${headerTxt}cc">${esc(empEmail)}</div>
+      <div style="font-size:${fonteTam-1}px;color:${headerTxt}cc">${esc(empEnd)}</div>
+    </div>` : "";
+
+  const headerFlex = logoPos === "direita"
+    ? `${empHtml}<div style="flex:1"></div>${logoHtml}`
+    : logoPos === "centro"
+      ? `<div style="display:flex;flex-direction:column;align-items:center;width:100%;gap:6px">${logoHtml}${empHtml}</div>`
+      : `${logoHtml}<div style="flex:1;margin-left:14px">${empHtml}</div>`;
+
+  const docTitulo  = cfg.imp_orc_titulo || "ORÇAMENTO";
+  const dataHoje   = new Date().toLocaleDateString("pt-BR");
+  const numDoc     = cfg.imp_vnd_numero !== "nao" ? "ORC-0001" : "";
+  const cabecalho  = cfg.imp_cabecalho || "";
+  const obsText    = cfg.imp_orc_obs   || "Validade: 10 dias. Prazo de produção: 3 dias úteis.";
+  const garantia   = cfg.imp_garantia  || "Garantia de 90 dias para defeitos de fabricação.";
+  const rodape     = cfg.imp_rodape    || "Obrigado pela preferência!";
+
+  area.innerHTML = `
+    <div class="modal-bg" id="modal-bg" style="align-items:flex-start;padding:20px;overflow-y:auto">
+      <div style="background:#fff;border-radius:12px;width:100%;max-width:760px;margin:0 auto;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.5)">
+
+        <!-- Toolbar de controle -->
+        <div style="background:#f8f9fa;border-bottom:1px solid #e9ecef;padding:10px 16px;display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;gap:8px;align-items:center">
+            <span style="font-size:13px;font-weight:600;color:#333">👁️ Pré-visualização</span>
+            <select id="prev-tipo" style="font-size:12px;padding:4px 8px;border:1px solid #dee2e6;border-radius:6px;background:#fff;cursor:pointer">
+              <option value="orcamento">📋 Orçamento</option>
+              <option value="venda">🛒 Venda / Nota</option>
+              <option value="os">📄 Ordem de Serviço</option>
+              <option value="recibo">🧾 Recibo</option>
+            </select>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button onclick="window.print()" style="background:#2563eb;color:#fff;border:none;border-radius:7px;padding:6px 14px;cursor:pointer;font-size:12px;font-weight:600">🖨️ Imprimir</button>
+            <button id="prev-fechar" style="background:#dc3545;color:#fff;border:none;border-radius:7px;padding:6px 14px;cursor:pointer;font-size:12px;font-weight:600">✕ Fechar</button>
+          </div>
+        </div>
+
+        <!-- Página simulada -->
+        <div id="prev-pagina" style="padding:32px 40px;font-family:${fonte},sans-serif;font-size:${fonteTam}px;color:#222;background:#fff">
+
+          <!-- CABEÇALHO -->
+          ${sec("logo") || sec("empresa") ? `
+          <div style="background:${headerCor};padding:18px 20px;border-radius:10px;margin-bottom:20px;display:flex;align-items:center">
+            ${headerFlex}
+          </div>` : ""}
+
+          ${cabecalho ? `<div style="text-align:center;font-size:${fonteTam-1}px;color:#666;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid #eee">${esc(cabecalho)}</div>` : ""}
+
+          <!-- TÍTULO + NÚMERO -->
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <div>
+              <div style="font-size:${fonteTam+8}px;font-weight:800;color:${accentCor};letter-spacing:.04em" id="prev-titulo">${esc(docTitulo)}</div>
+              ${numDoc ? `<div style="font-size:${fonteTam-1}px;color:#888;margin-top:2px">N° ${numDoc}</div>` : ""}
+            </div>
+            <div style="text-align:right;font-size:${fonteTam-1}px;color:#666">
+              <div>Data: <strong>${dataHoje}</strong></div>
+              <div>Validade: <strong>${new Date(Date.now()+10*864e5).toLocaleDateString("pt-BR")}</strong></div>
+            </div>
+          </div>
+
+          <!-- DADOS DO CLIENTE -->
+          ${sec("cliente") ? `
+          <div style="background:#f8f9fa;border:1px solid #e9ecef;border-radius:8px;padding:12px 16px;margin-bottom:16px">
+            <div style="font-size:${fonteTam-1}px;font-weight:700;color:${accentCor};margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em">Cliente</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:${fonteTam-1}px">
+              <div><span style="color:#888">Nome:</span> <strong>João da Silva</strong></div>
+              <div><span style="color:#888">CPF/CNPJ:</span> 000.000.000-00</div>
+              <div><span style="color:#888">Telefone:</span> (11) 99999-9999</div>
+              <div><span style="color:#888">E-mail:</span> joao@email.com</div>
+            </div>
+          </div>` : ""}
+
+          <!-- TABELA DE ITENS -->
+          ${sec("itens") ? `
+          <table style="width:100%;border-collapse:collapse;margin-bottom:16px;font-size:${fonteTam-1}px">
+            <thead>
+              <tr style="background:${accentCor};color:#fff">
+                <th style="padding:8px 10px;text-align:left;border-radius:6px 0 0 0">Item / Descrição</th>
+                <th style="padding:8px 10px;text-align:center">Qtd</th>
+                <th style="padding:8px 10px;text-align:center">Unid.</th>
+                <th style="padding:8px 10px;text-align:right">Unit.</th>
+                <th style="padding:8px 10px;text-align:right;border-radius:0 6px 0 0">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr style="background:#f8f9fa">
+                <td style="padding:8px 10px;border-bottom:1px solid #eee">Banner Lona 440g Fosca — 2,00 × 1,00m</td>
+                <td style="padding:8px 10px;text-align:center;border-bottom:1px solid #eee">2</td>
+                <td style="padding:8px 10px;text-align:center;border-bottom:1px solid #eee">un</td>
+                <td style="padding:8px 10px;text-align:right;border-bottom:1px solid #eee">R$ 48,00</td>
+                <td style="padding:8px 10px;text-align:right;border-bottom:1px solid #eee"><strong>R$ 96,00</strong></td>
+              </tr>
+              <tr>
+                <td style="padding:8px 10px;border-bottom:1px solid #eee">Adesivo Vinil Impresso — 0,50 × 0,30m</td>
+                <td style="padding:8px 10px;text-align:center;border-bottom:1px solid #eee">10</td>
+                <td style="padding:8px 10px;text-align:center;border-bottom:1px solid #eee">un</td>
+                <td style="padding:8px 10px;text-align:right;border-bottom:1px solid #eee">R$ 12,00</td>
+                <td style="padding:8px 10px;text-align:right;border-bottom:1px solid #eee"><strong>R$ 120,00</strong></td>
+              </tr>
+              <tr style="background:#f8f9fa">
+                <td style="padding:8px 10px">Instalação no local</td>
+                <td style="padding:8px 10px;text-align:center">1</td>
+                <td style="padding:8px 10px;text-align:center">serv.</td>
+                <td style="padding:8px 10px;text-align:right">R$ 80,00</td>
+                <td style="padding:8px 10px;text-align:right"><strong>R$ 80,00</strong></td>
+              </tr>
+            </tbody>
+          </table>` : ""}
+
+          <!-- TOTAIS -->
+          ${sec("totais") ? `
+          <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
+            <div style="min-width:240px;font-size:${fonteTam-1}px">
+              <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #eee"><span style="color:#666">Subtotal:</span><span>R$ 296,00</span></div>
+              ${sec("pagto")?`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #eee"><span style="color:#666">Desconto:</span><span style="color:#dc3545">- R$ 0,00</span></div>`:""}
+              <div style="display:flex;justify-content:space-between;padding:8px 0;background:${accentCor}11;border-radius:6px;padding:8px 10px;margin-top:6px">
+                <span style="font-weight:700;font-size:${fonteTam+1}px">TOTAL:</span>
+                <span style="font-weight:800;font-size:${fonteTam+3}px;color:${accentCor}">R$ 296,00</span>
+              </div>
+            </div>
+          </div>` : ""}
+
+          <!-- FORMA DE PAGAMENTO + PRAZO -->
+          ${sec("pagto") || sec("prazo") ? `
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;font-size:${fonteTam-1}px">
+            ${sec("pagto")?`<div style="background:#f8f9fa;border-radius:8px;padding:10px 14px"><div style="font-weight:700;color:${accentCor};margin-bottom:4px;text-transform:uppercase;font-size:${fonteTam-2}px;letter-spacing:.04em">Pagamento</div><div>PIX / Transferência</div><div style="color:#888;font-size:${fonteTam-2}px">Chave PIX: ${esc(state.cfg.empresa_cnpj||"00.000.000/0001-00")}</div></div>`:""}
+            ${sec("prazo")?`<div style="background:#f8f9fa;border-radius:8px;padding:10px 14px"><div style="font-weight:700;color:${accentCor};margin-bottom:4px;text-transform:uppercase;font-size:${fonteTam-2}px;letter-spacing:.04em">Entrega</div><div>3 dias úteis após aprovação</div><div style="color:#888;font-size:${fonteTam-2}px">Retirada no local ou entrega combinada</div></div>`:""}
+          </div>` : ""}
+
+          <!-- OBSERVAÇÕES -->
+          ${sec("obs") && obsText ? `
+          <div style="border-left:3px solid ${accentCor};padding:8px 12px;background:${accentCor}08;border-radius:0 6px 6px 0;margin-bottom:14px;font-size:${fonteTam-1}px">
+            <div style="font-weight:700;color:${accentCor};margin-bottom:4px;font-size:${fonteTam-2}px;text-transform:uppercase">Observações</div>
+            <div style="color:#555">${esc(obsText)}</div>
+          </div>` : ""}
+
+          <!-- GARANTIA -->
+          ${sec("garantia") && garantia ? `
+          <div style="border:1px solid #d4edda;background:#f8fff9;border-radius:6px;padding:8px 12px;margin-bottom:14px;font-size:${fonteTam-1}px">
+            <span style="font-weight:700;color:#28a745">🛡️ Garantia: </span>
+            <span style="color:#555">${esc(garantia)}</span>
+          </div>` : ""}
+
+          <!-- ASSINATURA -->
+          ${sec("assin") ? `
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-top:28px;font-size:${fonteTam-1}px">
+            <div style="text-align:center">
+              <div style="border-top:1px solid #999;padding-top:6px;color:#666">Assinatura do Cliente</div>
+              <div style="color:#aaa;font-size:${fonteTam-2}px;margin-top:2px">Data: ___/___/______</div>
+            </div>
+            <div style="text-align:center">
+              <div style="border-top:1px solid #999;padding-top:6px;color:#666">Responsável pela empresa</div>
+              <div style="color:#aaa;font-size:${fonteTam-2}px;margin-top:2px">${esc(empNome)}</div>
+            </div>
+          </div>` : ""}
+
+          <!-- RODAPÉ -->
+          ${sec("rodape") && rodape ? `
+          <div style="text-align:center;margin-top:24px;padding-top:12px;border-top:1px solid #eee;font-size:${fonteTam-2}px;color:#999">
+            ${esc(rodape)}
+          </div>` : ""}
+
+        </div><!-- fim prev-pagina -->
+      </div>
     </div>
   `;
-  content.querySelector("#btn-salvar-imp").addEventListener("click",async()=>{
-    await salvarCfg(container,{
-      imp_papel:           v("#imp-papel",content),
-      imp_orientacao:      v("#imp-orient",content),
-      imp_cabecalho:       v("#imp-cabecalho",content),
-      imp_rodape:          v("#imp-rodape-imp",content),
-      imp_mostrar_logo:    v("#imp-logo",content),
-      imp_mostrar_empresa: v("#imp-dados-emp",content),
-      imp_orc_titulo:      v("#imp-orc-titulo",content),
-      imp_orc_obs:         v("#imp-orc-obs",content),
-      imp_orc_custo:       v("#imp-orc-custo",content),
-      imp_orc_margem:      v("#imp-orc-margem",content),
-      imp_os_titulo:       v("#imp-os-titulo",content),
-      imp_os_obs:          v("#imp-os-obs",content),
-      imp_os_assinatura:   v("#imp-os-assin",content),
-      imp_os_data_entrega: v("#imp-os-data",content),
-    },content);
+
+  area.querySelector("#prev-fechar").addEventListener("click", () => area.innerHTML = "");
+  area.querySelector("#modal-bg").addEventListener("click", e => { if(e.target.id==="modal-bg") area.innerHTML=""; });
+
+  // Trocar título ao mudar tipo de documento
+  area.querySelector("#prev-tipo").addEventListener("change", function() {
+    const titulos = {
+      orcamento: cfg.imp_orc_titulo || "ORÇAMENTO",
+      venda:     cfg.imp_vnd_titulo || "NOTA DE VENDA",
+      os:        cfg.imp_os_titulo  || "ORDEM DE SERVIÇO",
+      recibo:    cfg.imp_rec_titulo || "RECIBO",
+    };
+    const el = area.querySelector("#prev-titulo");
+    if (el) el.textContent = titulos[this.value] || this.value.toUpperCase();
   });
 }
 
@@ -2633,6 +3125,19 @@ function css() { return `
   .switch input{opacity:0;width:0;height:0}
   .slider{position:absolute;cursor:pointer;inset:0;background:rgba(255,255,255,0.12);border-radius:22px;transition:.2s}
   .slider:before{position:absolute;content:"";height:16px;width:16px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s}
-  input:checked+.slider{background:var(--accent)}
-  input:checked+.slider:before{transform:translateX(18px)}
+  /* Impressão — botão preview */
+  .btn-preview{background:rgba(37,99,235,0.12);border:1px solid rgba(37,99,235,0.3);color:#60a5fa;border-radius:8px;padding:9px 18px;cursor:pointer;font-size:13px;font-weight:600;transition:all .15s}
+  .btn-preview:hover{background:rgba(37,99,235,0.22);border-color:rgba(37,99,235,0.5)}
+  /* Logo position picker */
+  .logo-pos-group{display:flex;gap:6px;margin-top:2px}
+  .logo-pos-btn{flex:1;padding:7px 6px;border:1px solid rgba(255,255,255,0.12);border-radius:7px;background:transparent;color:var(--muted);cursor:pointer;font-size:11px;transition:all .15s;text-align:center}
+  .logo-pos-btn:hover{border-color:rgba(106,166,255,0.3);color:var(--text)}
+  .logo-pos-btn.active{background:rgba(106,166,255,0.15);border-color:rgba(106,166,255,0.4);color:var(--accent);font-weight:600}
+  /* Seções visíveis */
+  .secoes-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px}
+  .secao-toggle{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;cursor:pointer;font-size:12px;transition:all .15s;border:1px solid transparent;user-select:none}
+  .secao-toggle.on{background:rgba(105,219,124,0.06);border-color:rgba(105,219,124,0.15);color:var(--text)}
+  .secao-toggle.off{background:rgba(255,255,255,0.02);border-color:rgba(255,255,255,0.06);color:var(--muted)}
+  .secao-toggle:hover{border-color:rgba(255,255,255,0.15)}
+  .secao-check{font-size:14px;flex-shrink:0}
 `; }
