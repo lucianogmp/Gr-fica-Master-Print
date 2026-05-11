@@ -596,7 +596,6 @@ function bindAutocompleteCli(container) {
   container.querySelector("#btn-cad-cli")?.addEventListener("click",()=>abrirModalCadCliente(container,inp.value.trim(),c=>{ inp.value=c.nome; state.form.clienteNome=c.nome; state.form.clienteId=c.id; }));
 }
 
-// FIX 1: ao selecionar produto no autocomplete, preencher preço automaticamente
 // Tenta os nomes de coluna mais comuns para preço no banco
 function resolverPreco(p) {
   return Number(
@@ -609,18 +608,29 @@ function bindItemAC(container, i) {
   const ac  = container.querySelector(`#ac-item-${i}`);
   if (!inp || !ac) return;
 
-  // Evitar listeners duplicados — marca o elemento na primeira vez
-  if (inp._acBound) return;
-  inp._acBound = true;
+  // Reposiciona o dropdown em fixed para escapar de overflow-x:auto da tabela
+  function posicionarAC() {
+    const rect = inp.getBoundingClientRect();
+    ac.style.position = "fixed";
+    ac.style.top      = (rect.bottom + 2) + "px";
+    ac.style.left     = rect.left + "px";
+    ac.style.width    = rect.width + "px";
+    ac.style.zIndex   = "9999";
+    ac.style.maxHeight = "220px";
+    ac.style.overflowY = "auto";
+  }
 
   inp.addEventListener("input", () => {
     const q = inp.value.trim().toLowerCase();
+    console.log(`[AC ${i}] q="${q}" total_produtos=${state.produtos.length}`);
     if (!q) { ac.style.display = "none"; return; }
-    const m = state.produtos.filter(p => p.nome.toLowerCase().includes(q)).slice(0, 8);
+    const m = state.produtos.filter(p => p.nome && p.nome.toLowerCase().includes(q)).slice(0, 8);
+    console.log(`[AC ${i}] encontrados:`, m.map(p => p.nome));
     if (!m.length) { ac.style.display = "none"; return; }
     ac.innerHTML = m.map(p =>
       `<div class="ac-item" data-nome="${esc(p.nome)}" data-preco="${resolverPreco(p)}">${esc(p.nome)}</div>`
     ).join("");
+    posicionarAC();
     ac.style.display = "block";
   });
 
@@ -629,7 +639,6 @@ function bindItemAC(container, i) {
     if (!it) return;
     inp.value = it.dataset.nome;
     state.form.itens[i].descricao = it.dataset.nome;
-    // Aplica preço do produto cadastrado
     const preco = Number(it.dataset.preco) || 0;
     state.form.itens[i].preco = preco;
     const precoInp = container.querySelector(`[data-item-preco="${i}"]`);
@@ -638,10 +647,9 @@ function bindItemAC(container, i) {
     ac.style.display = "none";
   });
 
-  // Fechar ao clicar fora
   document.addEventListener("click", e => {
     if (!inp.contains(e.target) && !ac.contains(e.target)) ac.style.display = "none";
-  }, { once: false });
+  });
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
