@@ -3,7 +3,7 @@
  * Importa os estilos e inicializa o app com a nova arquitetura.
  */
 import "./styles.css";
-import { initApp } from "./app.new.js";
+import { initApp } from "./app.js";
 import { injectLayoutCSS } from "./ui/layout/layout.js";
 
 // Injeta CSS extras do layout antes de montar
