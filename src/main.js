@@ -4,7 +4,7 @@
  */
 import "./styles.css";
 import { initApp } from "./app.js";
-import { injectLayoutCSS } from "./ui/layout/layout.js";
+import { injectLayoutCSS } from "./ui/views/layout.js";
 
 // Injeta CSS extras do layout antes de montar
 injectLayoutCSS();
