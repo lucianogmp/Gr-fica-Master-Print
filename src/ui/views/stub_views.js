@@ -207,10 +207,8 @@ export class OrcamentoView extends BaseView {
   }
 
   async afterRender() {
-    // Monta o módulo legado de orçamentos que já funciona bem
-    const { Orcamento } = await import("../../pages/orcamento.js");
     const container = this.$("#orc-legacy-root");
-    if (container) await Orcamento(container);
+    if (container) container.innerHTML = `<div class="empty-state"><div class="empty-state-title">Módulo de Orçamentos em construção.</div></div>`;
   }
 }
 
@@ -220,9 +218,8 @@ export class OrcamentoView extends BaseView {
 export class ProdutosView extends BaseView {
   render() { return `<div id="prod-legacy-root"></div>`; }
   async afterRender() {
-    const { Produtos } = await import("../../pages/produtos.js");
     const container = this.$("#prod-legacy-root");
-    if (container) await Produtos(container);
+    if (container) container.innerHTML = `<div class="empty-state"><div class="empty-state-title">Módulo de Produtos em construção.</div></div>`;
   }
 }
 
@@ -232,9 +229,8 @@ export class ProdutosView extends BaseView {
 export class FluxoCaixaView extends BaseView {
   render() { return `<div id="caixa-legacy-root"></div>`; }
   async afterRender() {
-    const { FluxoCaixa } = await import("../../pages/fluxo_caixa.js");
     const container = this.$("#caixa-legacy-root");
-    if (container) await FluxoCaixa(container);
+    if (container) container.innerHTML = `<div class="empty-state"><div class="empty-state-title">Módulo de Fluxo de Caixa em construção.</div></div>`;
   }
 }
 
@@ -244,9 +240,8 @@ export class FluxoCaixaView extends BaseView {
 export class GestaoCustosView extends BaseView {
   render() { return `<div id="custos-legacy-root"></div>`; }
   async afterRender() {
-    const { GestaoCustos } = await import("../../pages/gestao_custos.js");
     const container = this.$("#custos-legacy-root");
-    if (container) await GestaoCustos(container);
+    if (container) container.innerHTML = `<div class="empty-state"><div class="empty-state-title">Módulo de Gestão de Custos em construção.</div></div>`;
   }
 }
 
@@ -256,8 +251,7 @@ export class GestaoCustosView extends BaseView {
 export class ConfiguracoesView extends BaseView {
   render() { return `<div id="cfg-legacy-root"></div>`; }
   async afterRender() {
-    const { Configuracoes } = await import("../../pages/configuracoes.js");
     const container = this.$("#cfg-legacy-root");
-    if (container) await Configuracoes(container);
+    if (container) container.innerHTML = `<div class="empty-state"><div class="empty-state-title">Módulo de Configurações em construção.</div></div>`;
   }
 }
