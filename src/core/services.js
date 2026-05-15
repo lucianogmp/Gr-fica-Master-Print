@@ -39,12 +39,12 @@ export const VendaService = {
   },
 
   async criar(dados, itens = []) {
-    const erros = VendaService.#validar(dados, itens);
+    const erros = VendaService._validar(dados, itens);
     if (Object.keys(erros).length) throw new ValidationError("Dados inválidos", erros);
 
     const payload = {
       ...dados,
-      total: VendaService.#calcularTotal(itens),
+      total: VendaService._calcularTotal(itens),
       status: dados.status || "pendente",
     };
 
@@ -80,7 +80,7 @@ export const VendaService = {
   async atualizar(id, dados, itens) {
     const venda = await repositories.vendas.update(id, {
       ...dados,
-      total: VendaService.#calcularTotal(itens),
+      total: VendaService._calcularTotal(itens),
     });
 
     if (itens !== undefined) {
@@ -146,14 +146,14 @@ export const VendaService = {
     return resumo;
   },
 
-  #validar(dados, itens) {
+  _validar(dados, itens) {
     const erros = {};
     const itensValidos = itens.filter(it => it.descricao?.trim());
     if (!itensValidos.length) erros.itens = "Adicione ao menos um item";
     return erros;
   },
 
-  #calcularTotal(itens) {
+  _calcularTotal(itens) {
     return itens.reduce((s, it) => {
       const subtotal = (Number(it.preco) || 0) * (Number(it.qtd) || 0);
       return s + subtotal - (Number(it.desconto) || 0);
@@ -290,7 +290,7 @@ export const LancamentoService = {
         ? await repositories.lancamentos.findDoMes(mes)
         : await repositories.lancamentos.findAll();
 
-      const resumo = LancamentoService.#calcularResumo(lancamentos);
+      const resumo = LancamentoService._calcularResumo(lancamentos);
       actions.setLancamentos(lancamentos);
       actions.setResumo(resumo);
       return { lancamentos, resumo };
@@ -306,7 +306,7 @@ export const LancamentoService = {
     if (!payload.valor) throw new ValidationError("Informe o valor");
 
     if (isRecorrente) {
-      return LancamentoService.#criarRecorrente(payload, qtdParcelas, tipoParc);
+      return LancamentoService._criarRecorrente(payload, qtdParcelas, tipoParc);
     }
 
     const lanc = await repositories.lancamentos.create(payload);
@@ -363,7 +363,7 @@ export const LancamentoService = {
     await LancamentoService.listar(selectors.financeiro().mes);
   },
 
-  #calcularResumo(lancamentos) {
+  _calcularResumo(lancamentos) {
     const receitas = lancamentos.filter(l => l.tipo === "receita");
     const despesas = lancamentos.filter(l => l.tipo === "despesa");
     const totalRec  = receitas.reduce((s, l) => s + Number(l.valor), 0);
@@ -378,7 +378,7 @@ export const LancamentoService = {
     };
   },
 
-  async #criarRecorrente(payload, qtd, tipoParc) {
+  async _criarRecorrente(payload, qtd, tipoParc) {
     const numParc = tipoParc === "indefinido" ? 24 : (parseInt(qtd) || 12);
     const grupo = crypto.randomUUID();
     const [ano, mes, dia] = payload.data_vencimento.split("-").map(Number);
