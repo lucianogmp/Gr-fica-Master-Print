@@ -29,9 +29,7 @@ jobs:
           node-version: 20
 
       - name: Instalar dependências
-        run: |
-          rm -f package-lock.json
-          npm install
+        run: npm install --no-package-lock
 
       - name: Corrigir permissões do Vite
         run: chmod +x node_modules/.bin/vite
