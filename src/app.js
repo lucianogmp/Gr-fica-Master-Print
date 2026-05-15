@@ -8,7 +8,7 @@ import { EventBus, EVENTS } from "./core/eventBus.js";
 import { router } from "./core/router.js";
 import { services } from "./core/services.js";
 import { injectDesignSystemCSS, showToast } from "./ui/components/index.js";
-import { renderLayout } from "./ui/layout/layout.js";
+import { renderLayout } from "./ui/layout.js";
 
 // ─── Páginas (lazy-loaded via dynamic import) ──────────────────────────────
 const PAGES = {
