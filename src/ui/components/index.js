@@ -315,5 +315,64 @@ export function injectDesignSystemCSS() {
     .spinner { animation: spin 1s linear infinite; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; height: 32px; width: 32px; }
     @keyframes spin { to { transform: rotate(360deg); } }
   `;
+  const extra = document.createElement("style");
+  extra.id = "__design-system-extra__";
+  if (!document.getElementById("__design-system-extra__")) {
+    extra.textContent = `
+      .search-bar { position: relative; display: flex; align-items: center; }
+      .search-icon { position: absolute; left: 10px; font-size: 14px; pointer-events: none; }
+      .search-input { padding-left: 32px !important; }
+      .status-badge { border-radius: 999px; font-size: 11px; font-weight: 700; padding: 2px 10px; white-space: nowrap; }
+    `;
+    document.head.appendChild(extra);
+  }
   document.head.appendChild(style);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// COMPONENTES ADICIONAIS
+// ══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Barra de busca
+ * @param {{ id?: string, placeholder?: string, value?: string }} opts
+ */
+export function SearchBar({ id = "search-bar", placeholder = "Buscar...", value = "" } = {}) {
+  return `
+    <div class="search-bar">
+      <span class="search-icon">🔍</span>
+      <input
+        type="text"
+        id="${id}"
+        class="search-input"
+        placeholder="${esc(placeholder)}"
+        value="${esc(value)}"
+        autocomplete="off"
+      />
+    </div>
+  `;
+}
+
+/**
+ * Badge de status colorido
+ * @param {string} label
+ * @param {string} color  cor CSS (hex, var, etc)
+ */
+export function StatusBadge(label, color = "var(--muted)") {
+  return `<span class="status-badge" style="background:${color}22;color:${color};border:1px solid ${color}44">${esc(label)}</span>`;
+}
+
+/**
+ * Estado vazio
+ * @param {{ title?: string, subtitle?: string, icon?: string, action?: string }} opts
+ */
+export function EmptyState({ title = "Nenhum registro encontrado.", subtitle = "", icon = "📭", action = "" } = {}) {
+  return `
+    <div class="empty-state">
+      <div class="empty-state-icon">${icon}</div>
+      <div class="empty-state-title">${esc(title)}</div>
+      ${subtitle ? `<div class="empty-state-subtitle">${esc(subtitle)}</div>` : ""}
+      ${action ? `<div style="margin-top:12px">${action}</div>` : ""}
+    </div>
+  `;
 }
