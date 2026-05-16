@@ -128,6 +128,10 @@ export const Btn = {
 
   ghost: (label, id = "", extraClass = "") =>
     `<button class="btn btn-ghost ${extraClass}" ${id ? `id="${id}"` : ""}>${label}</button>`,
+
+  /** Botão ícone pequeno — usado em tabelas (editar, excluir, etc.) */
+  icon: (content, id = "", danger = false) =>
+    `<button class="btn-icon${danger ? " danger" : ""}" ${id ? `id="${id}"` : ""}>${content}</button>`,
 };
 
 // ══════════════════════════════════════════════════════════════════════════════

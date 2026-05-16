@@ -458,7 +458,8 @@ export const ProducaoService = {
 export const ConfigService = {
   async carregar() {
     const cfg = await repositories.config.getGlobal();
-    const vendedores = await repositories.vendedores.findAll();
+    // Tabela vendedores é opcional — não quebra o carregamento se não existir no Supabase
+    const vendedores = await repositories.vendedores?.findAll().catch(() => []) ?? [];
     const parse = (val, fallback) => {
       try { return JSON.parse(val || "null") ?? fallback; } catch { return fallback; }
     };

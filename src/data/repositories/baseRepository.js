@@ -138,7 +138,14 @@ export class BaseRepository {
   async count(filters = {}) {
     let q = supabase.from(this.#table).select("id", { count: "exact", head: true });
     Object.entries(filters).forEach(([col, val]) => {
-      if (val !== undefined && val !== "") q = q.eq(col, val);
+      if (val === null || val === undefined || val === "") return;
+      if (Array.isArray(val)) q = q.in(col, val);
+      else if (typeof val === "object" && val.op) {
+        // Suporte a operadores: { op: "gte", value: X } — igual ao findAll()
+        q = q[val.op](col, val.value);
+      } else {
+        q = q.eq(col, val);
+      }
     });
     const { count, error } = await q;
     if (error) throw new RepositoryError(error.message, error.code, this.#table);
