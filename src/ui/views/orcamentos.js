@@ -3,9 +3,9 @@
  * Arquitetura: class-based view consumindo OrcamentoService.
  */
 
-import { services }        from "../core/services.js";
-import { fmtBRL }          from "../utils/fmt.js";
-import { Btn, StatusBadge } from "./components/index.js";
+import { services }        from "../../core/services.js";
+import { fmtBRL }          from "../../utils/fmt.js";
+import { Btn, StatusBadge } from "../components/index.js";
 
 // ══════════════════════════════════════════════════════════════════════════════
 // CONSTANTES DE DOMÍNIO
