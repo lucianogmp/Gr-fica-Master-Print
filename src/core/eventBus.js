@@ -93,11 +93,20 @@ export const EVENTS = {
   CLIENTE_ATUALIZADO:   "cliente:atualizado",
   CLIENTE_DELETADO:     "cliente:deletado",
 
+  // Produtos
+  PRODUTO_CRIADO:       "produto:criado",
+  PRODUTO_ATUALIZADO:   "produto:atualizado",
+  PRODUTO_DELETADO:     "produto:deletado",
+
   // Estoque
   ESTOQUE_ENTRADA:      "estoque:entrada",
   ESTOQUE_SAIDA:        "estoque:saida",
   ESTOQUE_ALERTA_BAIXO: "estoque:alerta_baixo",
   ESTOQUE_ZERADO:       "estoque:zerado",
+
+  // Caixa
+  CAIXA_MOVIMENTO_CRIADO: "caixa:movimento_criado",
+  CAIXA_MOVIMENTO_EXCLUIDO: "caixa:movimento_excluido",
 
   // Financeiro
   LANCAMENTO_CRIADO:    "financeiro:lancamento_criado",

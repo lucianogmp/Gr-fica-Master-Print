@@ -17,7 +17,7 @@ const PAGES = {
   orcamento:     () => import("./ui/views/stub_views.js").then(m => m.OrcamentoView),
   clientes:      () => import("./ui/views/clientes.js").then(m => m.ClientesView),
   financeiro:    () => import("./ui/views/financeiro.js").then(m => m.FinanceiroView),
-  fluxo_caixa:   () => import("./ui/views/stub_views.js").then(m => m.FluxoCaixaView),
+  fluxo_caixa:   () => import("./ui/views/fluxo_caixa.js").then(m => m.FluxoCaixaView),
   produtos:      () => import("./ui/views/stub_views.js").then(m => m.ProdutosView),
   estoque:       () => import("./ui/views/estoque.js").then(m => m.EstoqueView),
   producao:      () => import("./ui/views/stub_views.js").then(m => m.ProducaoView),

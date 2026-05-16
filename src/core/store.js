@@ -119,6 +119,10 @@ const initialState = {
     filters: { categoria: "", busca: "" },
     loading: false,
   },
+  caixa: {
+    movimentos: [],
+    loading: false,
+  },
   financeiro: {
     lancamentos: [],
     mes: mesAtual(),
@@ -193,6 +197,7 @@ export const selectors = {
   clientesList: () => store.getState("clientes").list,
   produtos:     () => store.getState("produtos"),
   estoque:      () => store.getState("estoque"),
+  caixa:        () => store.getState("caixa"),
   financeiro:   () => store.getState("financeiro"),
   config:       () => store.getState("config"),
   auth:         () => store.getState("auth"),
@@ -229,6 +234,9 @@ export const actions = {
   // ESTOQUE
   setMaterias:    (list) => store.set("estoque", { materias: list }),
   setMovimentos:  (list) => store.set("estoque", s => ({ ...s, movimentos: list })),
+
+  // CAIXA
+  setCaixaMovimentos: (list) => store.set("caixa", { movimentos: list, loading: false }),
 
   // FINANCEIRO
   setLancamentos: (list) => store.set("financeiro", { lancamentos: list, loading: false }),

@@ -268,14 +268,16 @@ export class FinanceiroView extends BaseView {
     this.$("#btn-nova-rec")?.addEventListener("click", () => this.#abrirModal("receita"));
     this.$("#btn-nova-dep")?.addEventListener("click", () => this.#abrirModal("despesa"));
 
-    // Tabs
-    this.$$(".tab-btn").forEach(btn => {
+    // Tabs principais
+    this.$$(".tabs .tab-btn").forEach(btn => {
       if (btn.dataset.tab) {
         btn.addEventListener("click", () => { this.#aba = btn.dataset.tab; this.refresh(); });
       }
-      if (btn.dataset.fs !== undefined) {
-        btn.addEventListener("click", () => { this.#filtroStatus = btn.dataset.fs; this.refresh(); });
-      }
+    });
+
+    // Filtros de status
+    this.$$("[data-fs]").forEach(btn => {
+      btn.addEventListener("click", () => { this.#filtroStatus = btn.dataset.fs; this.refresh(); });
     });
 
     // Baixar

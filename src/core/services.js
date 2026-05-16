@@ -162,6 +162,42 @@ export const VendaService = {
 };
 
 // ══════════════════════════════════════════════════════════════════════════════
+// PRODUTO SERVICE
+// ══════════════════════════════════════════════════════════════════════════════
+export const ProdutoService = {
+  async listar() {
+    const produtos = await repositories.produtos.findAll();
+    actions.setProdutos(produtos);
+    return produtos;
+  },
+
+  async criar(dados) {
+    if (!dados.nome?.trim()) throw new ValidationError("Nome é obrigatório");
+    const produto = await repositories.produtos.create(dados);
+    EventBus.emit(EVENTS.PRODUTO_CRIADO, produto);
+    actions.setCache("produtos", null);
+    await ProdutoService.listar();
+    actions.showToast(`Produto "${produto.nome}" cadastrado!`, "ok");
+    return produto;
+  },
+
+  async atualizar(id, dados) {
+    const produto = await repositories.produtos.update(id, dados);
+    EventBus.emit(EVENTS.PRODUTO_ATUALIZADO, produto);
+    actions.setCache("produtos", null);
+    await ProdutoService.listar();
+    return produto;
+  },
+
+  async deletar(id) {
+    await repositories.produtos.delete(id);
+    EventBus.emit(EVENTS.PRODUTO_DELETADO, { id });
+    actions.setCache("produtos", null);
+    await ProdutoService.listar();
+  },
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
 // CLIENTE SERVICE
 // ══════════════════════════════════════════════════════════════════════════════
 export const ClienteService = {
@@ -276,6 +312,42 @@ export const EstoqueService = {
     await repositories.movimentos.deleteWhere({ materia_prima_id: id });
     await repositories.materias.delete(id);
     await EstoqueService.listar();
+  },
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CAIXA SERVICE — Gestão de caixa físico
+// ══════════════════════════════════════════════════════════════════════════════
+export const CaixaService = {
+  async listar() {
+    const movimentos = await repositories.caixaMovimentos.findAll();
+    actions.setCaixaMovimentos(movimentos);
+    return movimentos;
+  },
+
+  async criar(dados) {
+    if (!dados.descricao?.trim()) throw new ValidationError("Descrição é obrigatória");
+    if (!dados.valor || dados.valor <= 0) throw new ValidationError("Valor deve ser maior que zero");
+    if (!dados.data) throw new ValidationError("Data é obrigatória");
+
+    const mov = await repositories.caixaMovimentos.create(dados);
+    EventBus.emit(EVENTS.CAIXA_MOVIMENTO_CRIADO, mov);
+    await CaixaService.listar();
+    actions.showToast("Movimento registrado!", "ok");
+    return mov;
+  },
+
+  async atualizar(id, dados) {
+    const mov = await repositories.caixaMovimentos.update(id, dados);
+    await CaixaService.listar();
+    return mov;
+  },
+
+  async excluir(id) {
+    await repositories.caixaMovimentos.delete(id);
+    EventBus.emit(EVENTS.CAIXA_MOVIMENTO_EXCLUIDO, { id });
+    await CaixaService.listar();
+    actions.showToast("Movimento excluído!", "ok");
   },
 };
 
@@ -534,7 +606,9 @@ export const DashboardService = {
 export const services = {
   venda:      VendaService,
   cliente:    ClienteService,
+  produto:    ProdutoService,
   estoque:    EstoqueService,
+  caixa:      CaixaService,
   lancamento: LancamentoService,
   producao:   ProducaoService,
   config:     ConfigService,

@@ -161,6 +161,29 @@ export class EstoqueMovimentoRepository extends BaseRepository {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
+// CAIXA FÍSICO
+// ══════════════════════════════════════════════════════════════════════════════
+export class CaixaMovimentoRepository extends BaseRepository {
+  constructor() { super("caixa_movimentos", "*"); }
+
+  async findAll() {
+    return super.findAll({ 
+      order: [{ col: "data", asc: true }, { col: "created_at", asc: true }] 
+    });
+  }
+
+  async findByData(data) {
+    const { data, error } = await supabase
+      .from("caixa_movimentos")
+      .select("*")
+      .eq("data", data)
+      .order("created_at", { ascending: true });
+    if (error) throw error;
+    return data || [];
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 // FINANCEIRO
 // ══════════════════════════════════════════════════════════════════════════════
 export class LancamentoRepository extends BaseRepository {
@@ -282,6 +305,7 @@ export const repositories = {
   categorias:    new CategoriaRepository(),
   materias:      new MateriasPrimasRepository(),
   movimentos:    new EstoqueMovimentoRepository(),
+  caixaMovimentos: new CaixaMovimentoRepository(),
   lancamentos:   new LancamentoRepository(),
   producao:      new ProducaoRepository(),
   orcamentos:    new OrcamentoRepository(),
