@@ -173,13 +173,13 @@ export class CaixaMovimentoRepository extends BaseRepository {
   }
 
   async findByData(data) {
-    const { data, error } = await supabase
+    const { data: movimentos, error } = await supabase
       .from("caixa_movimentos")
       .select("*")
       .eq("data", data)
       .order("created_at", { ascending: true });
     if (error) throw error;
-    return data || [];
+    return movimentos || [];
   }
 }
 
