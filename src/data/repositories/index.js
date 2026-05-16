@@ -167,9 +167,13 @@ export class CaixaMovimentoRepository extends BaseRepository {
   constructor() { super("caixa_movimentos", "*"); }
 
   async findAll() {
-    return super.findAll({ 
-      order: [{ col: "data", asc: true }, { col: "created_at", asc: true }] 
-    });
+    const { data, error } = await supabase
+      .from("caixa_movimentos")
+      .select("*")
+      .order("data", { ascending: true })
+      .order("created_at", { ascending: true });
+    if (error) throw error;
+    return data || [];
   }
 
   async findByData(data) {
