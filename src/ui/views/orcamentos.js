@@ -63,6 +63,11 @@ export class OrcamentosView {
     this._render();
   }
 
+  /** Chamado pelo router ao sair da página */
+  unmount() {
+    this._container = null;
+  }
+
   // ─── Busca dados ─────────────────────────────────────────────────────────
   async _carregar() {
     try {
