@@ -14,7 +14,7 @@ import { renderLayout } from "./ui/layout.js";
 const PAGES = {
   dashboard:     () => import("./ui/views/dashboard.js").then(m => m.DashboardView),
   vendas:        () => import("./ui/views/vendas.js").then(m => m.VendasView),
-  orcamento:     () => import("./ui/views/stub_views.js").then(m => m.OrcamentoView),
+  orcamento:     () => import("./ui/views/orcamentos.js").then(m => m.OrcamentosView),
   clientes:      () => import("./ui/views/clientes.js").then(m => m.ClientesView),
   financeiro:    () => import("./ui/views/financeiro.js").then(m => m.FinanceiroView),
   fluxo_caixa:   () => import("./ui/views/fluxo_caixa.js").then(m => m.FluxoCaixaView),
