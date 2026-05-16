@@ -1,4 +1,9 @@
-export function renderLayout(pages) {
+/**
+ * LAYOUT — Renderiza o shell da aplicação (sidebar + topbar + content).
+ * O roteamento é gerenciado pelo router em app.js.
+ */
+
+export function renderLayout() {
   const root = document.getElementById("app");
 
   if (!document.getElementById("app-modal-root")) {
@@ -82,9 +87,7 @@ export function renderLayout(pages) {
     <div class="app-shell">
       <aside class="sidebar ${sidebarCollapsed ? "collapsed" : ""}" id="sidebar">
         <div class="sidebar-brand">
-          <div class="sidebar-brand-icon">
-            <i class="fi fi-rr-print"></i>
-          </div>
+          <div class="sidebar-brand-icon"><i class="fi fi-rr-print"></i></div>
           <div class="sidebar-brand-text">
             <div class="sidebar-brand-name">Master Print</div>
             <div class="sidebar-brand-sub">Gráfica</div>
@@ -123,50 +126,34 @@ export function renderLayout(pages) {
         <section class="content" id="content"></section>
       </div>
     </div>
-
     ${toggleHTML}
   `;
 
-  const sidebar     = root.querySelector("#sidebar");
-  const toggleBtn   = root.querySelector("#sidebar-toggle");
-  const themeChk    = root.querySelector("#toggle");
-  const content     = root.querySelector("#content");
-  const topbarTitle = root.querySelector("#topbar-title");
-
+  // Sidebar toggle
+  const sidebar   = root.querySelector("#sidebar");
+  const toggleBtn = root.querySelector("#sidebar-toggle");
   toggleBtn.addEventListener("click", () => {
     sidebarCollapsed = !sidebarCollapsed;
     sidebar.classList.toggle("collapsed", sidebarCollapsed);
-    const icon = toggleBtn.querySelector("i");
-    icon.className = `fi ${sidebarCollapsed ? "fi-rr-arrow-right" : "fi-rr-arrow-left"}`;
+    toggleBtn.querySelector("i").className =
+      `fi ${sidebarCollapsed ? "fi-rr-arrow-right" : "fi-rr-arrow-left"}`;
     toggleBtn.querySelector(".sidebar-toggle-label").textContent =
       sidebarCollapsed ? "" : "Recolher";
     localStorage.setItem("sidebar_collapsed", sidebarCollapsed);
   });
 
+  // Theme toggle
+  const themeChk = root.querySelector("#toggle");
   themeChk.addEventListener("change", () => {
     isDark = themeChk.checked;
     document.documentElement.setAttribute("data-theme", isDark ? "dark" : "light");
     localStorage.setItem("theme", isDark ? "dark" : "light");
   });
 
-  function mountPage(key) {
-    if (!pages[key]) key = "dashboard";
-    const m = PAGE_META[key] || { icon: "fi-rr-apps", label: key };
-    content.innerHTML = `<div class="loading">Carregando...</div>`;
-    pages[key].mount(content);
-    topbarTitle.innerHTML = `<i class="fi ${m.icon}"></i><span>${m.label}</span>`;
-    root.querySelectorAll(".nav-btn").forEach(btn => {
-      btn.classList.toggle("active", btn.dataset.key === key);
-    });
-  }
-
+  // Navegação pela sidebar → delega ao router via hash
   root.addEventListener("click", (e) => {
     const btn = e.target.closest("[data-key]");
     if (!btn) return;
     window.location.hash = btn.dataset.key;
   });
-
-  const getHash = () => window.location.hash.replace("#", "") || "dashboard";
-  mountPage(getHash());
-  window.addEventListener("hashchange", () => mountPage(getHash()));
 }
