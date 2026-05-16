@@ -77,10 +77,12 @@ export async function initApp() {
     }, { title: path });
   });
 
-  // 6. Sincronizar sidebar e topbar com navegação
+  // 6. Sincronizar sidebar e topbar com navegação e montar conteúdo
   EventBus.on(EVENTS.PAGINA_MUDOU, ({ to }) => {
     updateNavActive(to);
     updateTopbarTitle(to);
+    const container = document.getElementById("content");
+    if (container) router.mount(container);
   });
 
   // 7. Inicializar router (lê hash atual)
