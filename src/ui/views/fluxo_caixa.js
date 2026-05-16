@@ -17,16 +17,16 @@ export class FluxoCaixaView extends BaseView {
 
   async _init() {
     await services.caixa.listar();
-    await services.clientes.listar();
-    await services.produtos.listar();
+    await services.cliente.listar();
+    await services.produto.listar();
     this.subscribe("caixa", () => this.refresh());
   }
 
   render() {
     const state = selectors.caixa();
     const movimentos = state.movimentos || [];
-    const clientes = selectors.clientes().clientes || [];
-    const produtos = selectors.produtos().produtos || [];
+    const clientes = selectors.clientes().list || [];
+    const produtos = selectors.produtos().list || [];
 
     const doDia = movimentos.filter(m => m.data === this.#filtroDia);
 
@@ -225,7 +225,7 @@ export class FluxoCaixaView extends BaseView {
     this.$$("[data-del]").forEach(btn =>
       btn.addEventListener("click", async () => {
         if (!confirm("Excluir este lançamento?")) return;
-        await services.caixa.excluir(btn.dataset.del);
+        await services.caixa.deletar(btn.dataset.del);
         this.refresh();
       })
     );
@@ -447,7 +447,7 @@ export class FluxoCaixaView extends BaseView {
       const preco = parseFloat(modal.querySelector("#np-preco").value) || null;
       const catNome = modal.querySelector("#np-cat").value.trim();
       
-      await services.produtos.criar({
+      await services.produto.criar({
         nome,
         preco_venda: preco,
         categoria: catNome || null,
@@ -468,7 +468,7 @@ export class FluxoCaixaView extends BaseView {
       content: `<p style="font-size:12px;color:var(--muted);margin:0 0 14px">Carregando vendas disponíveis...</p>`
     });
 
-    const vendas = await services.vendas.listar();
+    const vendas = await services.venda.listar();
     const state = selectors.caixa();
     const vendaIdsImportadas = new Set((state.movimentos || []).filter(m => m.venda_id).map(m => m.venda_id));
     const disponiveis = (vendas || []).filter(v => !vendaIdsImportadas.has(v.id) && ["entregue", "pronto"].includes(v.status));

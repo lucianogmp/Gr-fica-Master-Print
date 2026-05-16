@@ -453,6 +453,74 @@ export const ProducaoService = {
 };
 
 // ══════════════════════════════════════════════════════════════════════════════
+// PRODUTO SERVICE
+// ══════════════════════════════════════════════════════════════════════════════
+export const ProdutoService = {
+  async listar() {
+    store.set("produtos", { loading: true });
+    try {
+      const list = await repositories.produtos.findAll();
+      actions.setProdutos(list);
+      return list;
+    } finally {
+      store.set("produtos", s => ({ ...s, loading: false }));
+    }
+  },
+
+  async criar(dados) {
+    const produto = await repositories.produtos.create(dados);
+    await ProdutoService.listar();
+    actions.showToast("Produto criado!", "ok");
+    return produto;
+  },
+
+  async atualizar(id, dados) {
+    const produto = await repositories.produtos.update(id, dados);
+    await ProdutoService.listar();
+    return produto;
+  },
+
+  async deletar(id) {
+    await repositories.produtos.delete(id);
+    await ProdutoService.listar();
+  },
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CAIXA SERVICE
+// ══════════════════════════════════════════════════════════════════════════════
+export const CaixaService = {
+  async listar() {
+    store.set("caixa", { loading: true });
+    try {
+      const list = await repositories.caixaMovimentos.findAll();
+      actions.setCaixaMovimentos(list);
+      return list;
+    } finally {
+      store.set("caixa", s => ({ ...s, loading: false }));
+    }
+  },
+
+  async criar(dados) {
+    const mov = await repositories.caixaMovimentos.create(dados);
+    await CaixaService.listar();
+    actions.showToast("Movimento registrado!", "ok");
+    return mov;
+  },
+
+  async atualizar(id, dados) {
+    const mov = await repositories.caixaMovimentos.update(id, dados);
+    await CaixaService.listar();
+    return mov;
+  },
+
+  async deletar(id) {
+    await repositories.caixaMovimentos.delete(id);
+    await CaixaService.listar();
+  },
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
 // ORÇAMENTO SERVICE
 // ══════════════════════════════════════════════════════════════════════════════
 export const OrcamentoService = {
@@ -561,7 +629,9 @@ export const DashboardService = {
 export const services = {
   venda:      VendaService,
   cliente:    ClienteService,
+  produto:    ProdutoService,
   estoque:    EstoqueService,
+  caixa:      CaixaService,
   lancamento: LancamentoService,
   producao:   ProducaoService,
   orcamento:  OrcamentoService,
