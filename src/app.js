@@ -18,11 +18,11 @@ const PAGES = {
   clientes:      () => import("./ui/views/clientes.js").then(m => m.ClientesView),
   financeiro:    () => import("./ui/views/financeiro.js").then(m => m.FinanceiroView),
   fluxo_caixa:   () => import("./ui/views/fluxo_caixa.js").then(m => m.FluxoCaixaView),
-  produtos:      () => import("./ui/views/stub_views.js").then(m => m.ProdutosView),
+  produtos:      () => import("./ui/views/produtos.js").then(m => m.ProdutosView),
   estoque:       () => import("./ui/views/estoque.js").then(m => m.EstoqueView),
   producao:      () => import("./ui/views/stub_views.js").then(m => m.ProducaoView),
-  gestao_custos: () => import("./ui/views/stub_views.js").then(m => m.GestaoCustosView),
-  configuracoes: () => import("./ui/views/stub_views.js").then(m => m.ConfiguracoesView),
+  gestao_custos: () => import("./ui/views/gestao_custos.js").then(m => m.GestaoCustosView),
+  configuracoes: () => import("./ui/views/configuracoes.js").then(m => m.ConfiguracoesView),
 };
 
 // View ativa no momento
