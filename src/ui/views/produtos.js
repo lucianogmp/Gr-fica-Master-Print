@@ -102,10 +102,16 @@ export class ProdutosView {
     const statusLabel = { ativo: "Ativo", inativo: "Inativo", rascunho: "Rascunho" }[status] || status;
     const statusClass = { ativo: "st-ativo", inativo: "st-inativo", rascunho: "st-rascunho" }[status] || "";
     const preco = Number(p.preco_venda || 0);
+
+    // Ícone: se for SVG completo, renderiza em miniatura contida; senão usa tag fi
+    const icone = p.icone_svg
+      ? `<div class="prod-icone-svg">${p.icone_svg}</div>`
+      : `<div class="prod-icone-fi"><i class="fi fi-rr-box-open"></i></div>`;
+
     return `
       <div class="prod-card">
         <div class="prod-card-header">
-          <div class="prod-icone">${p.icone_svg || '<i class="fi fi-rr-box-open"></i>'}</div>
+          ${icone}
           <span class="prod-status ${statusClass}">${statusLabel}</span>
         </div>
         <div class="prod-nome">${esc(p.nome)}</div>
@@ -249,8 +255,10 @@ export class ProdutosView {
 .prod-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:12px; }
 .prod-card { background:var(--panel2); border:1px solid var(--border); border-radius:var(--radius-lg); padding:16px; display:flex; flex-direction:column; gap:6px; transition:border-color var(--t); }
 .prod-card:hover { border-color:var(--primary-border); }
-.prod-card-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; }
-.prod-icone { font-size:22px; }
+.prod-card-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:8px; gap:8px; }
+.prod-icone-fi { font-size:22px; flex-shrink:0; }
+.prod-icone-svg { width:40px; height:40px; flex-shrink:0; overflow:hidden; border-radius:var(--radius-sm); background:var(--panel3); display:flex; align-items:center; justify-content:center; }
+.prod-icone-svg svg { width:32px !important; height:32px !important; max-width:32px; max-height:32px; display:block; }
 .prod-status { font-size:10px; font-weight:700; padding:2px 8px; border-radius:99px; }
 .st-ativo    { background:rgba(0,196,154,0.12); color:var(--success); }
 .st-inativo  { background:var(--panel3); color:var(--muted); }
