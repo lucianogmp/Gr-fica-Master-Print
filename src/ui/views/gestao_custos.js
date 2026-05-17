@@ -3,9 +3,15 @@
 // ════════════════════════════════════════════════════════════════════════════
 import { BaseRepository } from "../../data/repositories/baseRepository.js";
 import { supabase }       from "../../supabase/client.js";
-import { BaseView }       from "../../core/baseView.js";
 import { EventBus }       from "../../core/eventBus.js";
 import { fmtBRL, fmtBRL4 } from "../../utils/fmt.js";
+
+// Mixin inline — substitui BaseView sem dependência externa
+class BaseView {
+  constructor(container) { this._container = container; this._listeners = []; }
+  _on(el, ev, fn) { el.addEventListener(ev, fn); this._listeners.push({ el, ev, fn }); }
+  cleanup() { this._listeners.forEach(({ el, ev, fn }) => el.removeEventListener(ev, fn)); this._listeners = []; }
+}
 
 class DepreciacaoRepository extends BaseRepository {
   constructor() { super("depreciacao", "*"); }
