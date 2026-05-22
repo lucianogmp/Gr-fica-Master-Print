@@ -4,7 +4,7 @@ import {
 } from "../repositories/FluxoCaixaRepository.js";
 import { ProdutosRepository } from "../repositories/ProdutosRepository.js";
 import { BaseRepository } from "../repositories/BaseRepository.js";
-import { EventBus } from "../core/EventBus.js";
+import { EventBus } from "../core/eventBus.js";
 
 // Repositório leve para clientes (só precisa de id/nome)
 class ClientesLightRepository extends BaseRepository {

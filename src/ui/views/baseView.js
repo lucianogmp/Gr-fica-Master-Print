@@ -16,7 +16,7 @@
  *  - unmount()       → pode ser sobrescrito (chame super.unmount())
  */
 
-import { EventBus } from "../core/eventBus.js";
+import { EventBus } from "../../core/eventBus.js";
 
 export class BaseView {
   /** @type {HTMLElement|null} */

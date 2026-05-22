@@ -4,7 +4,7 @@ import {
   MateriasPrimasRepository,
   BomRepository,
 } from "../repositories/ProdutosRepository.js";
-import { EventBus } from "../core/EventBus.js";
+import { EventBus } from "../core/eventBus.js";
 
 export class ProdutosService {
   #produtos   = new ProdutosRepository();
