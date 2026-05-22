@@ -2,6 +2,7 @@
   "name": "grafica-master-print",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "build": "npx vite build",
     "dev": "npx vite",
