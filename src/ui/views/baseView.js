@@ -29,6 +29,9 @@ export class BaseView {
   /** @private listeners do DOM para cleanup */
   _domListeners = [];
 
+  /** @private subscriptions do store para cleanup */
+  _storeUnsubscribers = [];
+
   // ── Lifecycle ───────────────────────────────────────────────────────────────
 
   /**
@@ -52,6 +55,9 @@ export class BaseView {
       el.removeEventListener(event, handler)
     );
     this._domListeners = [];
+
+    this._storeUnsubscribers.forEach(unsubscribe => unsubscribe());
+    this._storeUnsubscribers = [];
 
     this._container = null;
   }
@@ -100,6 +106,12 @@ export class BaseView {
   listenTo(event, handler) {
     EventBus.on(event, handler);
     this._busListeners.push({ event, handler });
+  }
+
+  subscribe(slice, callback) {
+    const unsubscribe = store.subscribe(slice, callback);
+    this._storeUnsubscribers.push(unsubscribe);
+    return unsubscribe;
   }
 
   // ── Toast ───────────────────────────────────────────────────────────────────
@@ -173,7 +185,6 @@ export class BaseView {
 export class ListViewBase extends BaseView {
   list = [];
   _state = { search: "" };
-  _storeUnsubscribers = [];
 
   setList(list = []) {
     this.list = Array.isArray(list) ? list : [];
@@ -195,15 +206,4 @@ export class ListViewBase extends BaseView {
     );
   }
 
-  subscribe(slice, callback) {
-    const unsubscribe = store.subscribe(slice, callback);
-    this._storeUnsubscribers.push(unsubscribe);
-    return unsubscribe;
-  }
-
-  unmount() {
-    this._storeUnsubscribers.forEach(unsubscribe => unsubscribe());
-    this._storeUnsubscribers = [];
-    super.unmount();
-  }
 }

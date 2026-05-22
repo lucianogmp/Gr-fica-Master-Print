@@ -6,6 +6,15 @@
 import { BaseRepository } from "./baseRepository.js";
 import { supabase } from "../../supabase/client.js";
 
+function intervaloMes(mes) {
+  const [ano, numeroMes] = mes.split("-").map(Number);
+  const ultimoDia = new Date(ano, numeroMes, 0).getDate();
+  return {
+    inicio: `${mes}-01`,
+    fim: `${mes}-${String(ultimoDia).padStart(2, "0")}`,
+  };
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 // VENDAS
 // ══════════════════════════════════════════════════════════════════════════════
@@ -22,7 +31,10 @@ export class VendaRepository extends BaseRepository {
       .limit(limit);
 
     if (status) q = q.eq("status", status);
-    if (mes)    q = q.gte("created_at", `${mes}-01`).lte("created_at", `${mes}-31`);
+    if (mes) {
+      const { inicio, fim } = intervaloMes(mes);
+      q = q.gte("created_at", inicio).lte("created_at", fim);
+    }
     if (search) q = q.ilike("cliente_nome", `%${search}%`);
 
     const { data, error } = await q;
@@ -58,11 +70,12 @@ export class VendaRepository extends BaseRepository {
   }
 
   async getResumoMes(mes) {
+    const { inicio, fim } = intervaloMes(mes);
     const { data, error } = await supabase
       .from("vendas")
       .select("id, total, status, created_at")
-      .gte("created_at", `${mes}-01`)
-      .lte("created_at", `${mes}-31`);
+      .gte("created_at", inicio)
+      .lte("created_at", fim);
     if (error) throw error;
     return data || [];
   }
@@ -198,11 +211,12 @@ export class LancamentoRepository extends BaseRepository {
   }
 
   async findDoMes(mes) {
+    const { inicio, fim } = intervaloMes(mes);
     const { data, error } = await supabase
       .from("lancamentos")
       .select("*")
-      .gte("data_vencimento", `${mes}-01`)
-      .lte("data_vencimento", `${mes}-31`)
+      .gte("data_vencimento", inicio)
+      .lte("data_vencimento", fim)
       .order("data_vencimento");
     if (error) throw error;
     return data || [];
