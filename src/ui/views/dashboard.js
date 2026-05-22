@@ -478,31 +478,45 @@ export class DashboardView extends BaseView {
 
   // ─── Ponto de equilíbrio ──────────────────────────────────────────────────
   #renderEquilibrio(fin) {
-    const pontEq  = fin.despesas > 0 ? fin.despesas : 1;
-    const pct     = Math.min((fin.receitas / pontEq) * 100, 100);
+    const meta    = Math.max(Number(fin.despesas || 0), 0);
+    const pontEq  = meta > 0 ? meta : 0;
+    const pctReal = meta > 0 ? (Number(fin.receitas || 0) / meta) * 100 : 100;
+    const pct     = Math.min(pctReal, 100);
     const atingido = fin.receitas >= pontEq;
+    const raio = 42;
+    const circ = 2 * Math.PI * raio;
+    const offset = circ - (pct / 100) * circ;
 
     return `
-      <div class="equil-nums">
-        <div class="equil-num">
-          <div class="equil-val" style="color:var(--success)">${fmtBRL(fin.receitas)}</div>
-          <div class="equil-lbl">Receita atual</div>
-        </div>
-        <div class="equil-sep">/</div>
-        <div class="equil-num">
-          <div class="equil-val" style="color:var(--muted)">${fmtBRL(pontEq)}</div>
-          <div class="equil-lbl">Meta (despesas)</div>
-        </div>
-      </div>
-      <div class="equil-bar-wrap">
-        <div class="equil-track">
-          <div class="equil-fill" style="width:${pct.toFixed(1)}%;background:${atingido ? "var(--success)" : "var(--primary)"}">
+      <div class="equil-layout">
+        <div class="equil-ring-wrap">
+          <svg class="equil-ring" viewBox="0 0 120 120" aria-label="${pctReal.toFixed(0)}% atingido">
+            <circle class="equil-ring-bg" cx="60" cy="60" r="${raio}"></circle>
+            <circle
+              class="equil-ring-fill"
+              cx="60"
+              cy="60"
+              r="${raio}"
+              stroke-dasharray="${circ.toFixed(2)}"
+              stroke-dashoffset="${offset.toFixed(2)}"
+              style="stroke:${atingido ? "var(--success)" : "var(--primary)"}"
+            ></circle>
+          </svg>
+          <div class="equil-ring-center">
+            <strong>${pctReal.toFixed(0)}%</strong>
+            <span>atingido</span>
           </div>
-          <div class="equil-marker" style="left:100%"></div>
         </div>
-        <div class="equil-labels">
-          <span>${pct.toFixed(0)}% atingido</span>
-          <span>${atingido ? "✅ Equilibrado" : "Faltam " + fmtBRL(pontEq - fin.receitas)}</span>
+        <div class="equil-nums">
+          <div class="equil-num">
+            <div class="equil-val" style="color:var(--success)">${fmtBRL(fin.receitas)}</div>
+            <div class="equil-lbl">Receita atual</div>
+          </div>
+          <div class="equil-sep">/</div>
+          <div class="equil-num">
+            <div class="equil-val" style="color:var(--muted)">${fmtBRL(pontEq)}</div>
+            <div class="equil-lbl">Meta (despesas)</div>
+          </div>
         </div>
       </div>
       <div class="equil-status ${atingido ? "ok" : "nok"}">
@@ -604,16 +618,21 @@ function dashCSS() { return `
 .estoque-saldo.baixo{color:var(--warning)}
 
 /* Equilíbrio */
-.equil-nums{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.equil-layout{display:flex;align-items:center;gap:16px;margin-bottom:14px}
+.equil-ring-wrap{width:118px;height:118px;position:relative;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.equil-ring{width:118px;height:118px;transform:rotate(-90deg)}
+.equil-ring-bg{fill:none;stroke:var(--panel3);stroke-width:10}
+.equil-ring-fill{fill:none;stroke-width:10;stroke-linecap:round;transition:stroke-dashoffset .6s}
+.equil-ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;pointer-events:none}
+.equil-ring-center strong{font-size:22px;line-height:1;color:var(--text)}
+.equil-ring-center span{font-size:10px;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:.05em}
+.equil-nums{display:flex;align-items:center;gap:10px;flex:1}
 .equil-num{flex:1}
 .equil-val{font-size:16px;font-weight:800;line-height:1.1}
 .equil-lbl{font-size:11px;color:var(--muted);margin-top:2px}
 .equil-sep{font-size:20px;color:var(--border-md)}
-.equil-bar-wrap{margin-bottom:8px}
-.equil-track{background:var(--panel3);border-radius:99px;height:10px;overflow:hidden;position:relative;margin-bottom:4px}
-.equil-fill{height:100%;border-radius:99px;transition:width .6s}
-.equil-labels{display:flex;justify-content:space-between;font-size:11px;color:var(--muted)}
 .equil-status{font-size:12px;padding:8px 12px;border-radius:var(--radius-md);text-align:center}
 .equil-status.ok{background:var(--success-bg);color:var(--success);border:1px solid var(--success-border)}
 .equil-status.nok{background:var(--error-bg);color:var(--error);border:1px solid var(--error-border)}
+@media(max-width:520px){.equil-layout{align-items:flex-start}.equil-ring-wrap{width:96px;height:96px}.equil-ring{width:96px;height:96px}.equil-ring-center strong{font-size:18px}.equil-nums{flex-direction:column;align-items:flex-start}.equil-sep{display:none}}
 `; }

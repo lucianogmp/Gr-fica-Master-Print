@@ -310,7 +310,8 @@ body {
 .sidebar.collapsed .sidebar-toggle-label { display: none; }
 
 /* ══ MAIN ═════════════════════════════════════════════════════════════════════ */
-.main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.main,
+.main-wrap { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 
 .topbar {
   height: 48px;
@@ -385,8 +386,10 @@ body {
 .theme-toggle-label { font-size: 14px; line-height: 1; }
 
 /* Content */
-.content { flex: 1; padding: 20px; overflow-y: auto; background: var(--bg); }
-.content h2 { font-size: 18px; font-weight: 700; margin-bottom: 16px; color: var(--text); }
+.content,
+.content-area { flex: 1; padding: 20px; overflow-y: auto; background: var(--bg); }
+.content h2,
+.content-area h2 { font-size: 18px; font-weight: 700; margin-bottom: 16px; color: var(--text); }
 
 /* ══ CARDS DE DADOS ═══════════════════════════════════════════════════════════ */
 .ds-card {
