@@ -7,15 +7,18 @@
 import { repositories } from "../data/repositories/index.js";
 import { store, actions, selectors } from "./store.js";
 import { EventBus, EVENTS } from "./eventBus.js";
+import {
+  ValidationError,
+  validateValor,
+  validateDescricao,
+  validateItensVenda,
+  validateCliente,
+  validateMateria,
+  validateMovEstoque,
+} from "../utils/validate.js";
 
-// ─── Helpers de validação ─────────────────────────────────────────────────────
-class ValidationError extends Error {
-  constructor(message, fields = {}) {
-    super(message);
-    this.name = "ValidationError";
-    this.fields = fields;
-  }
-}
+// Re-exporta ValidationError para uso externo
+export { ValidationError };
 
 // ══════════════════════════════════════════════════════════════════════════════
 // VENDA SERVICE
@@ -39,29 +42,26 @@ export const VendaService = {
   },
 
   async criar(dados, itens = []) {
-    const erros = VendaService._validar(dados, itens);
-    if (Object.keys(erros).length) throw new ValidationError("Dados inválidos", erros);
+    const itensValidos = validateItensVenda(itens);
 
     const payload = {
       ...dados,
-      total: VendaService._calcularTotal(itens),
+      total: VendaService._calcularTotal(itensValidos),
       status: dados.status || "pendente",
     };
 
     const venda = await repositories.vendas.create(payload);
 
-    if (itens.length) {
-      const itensDb = itens
-        .filter(it => it.descricao?.trim())
-        .map(it => ({
-          venda_id:       venda.id,
-          produto_id:     it.produtoId || null,
-          descricao:      it.descricao,
-          quantidade:     Number(it.qtd) || 1,
-          preco_unitario: Number(it.preco) || 0,
-          desconto:       Number(it.desconto) || 0,
-          obs:            it.obs || null,
-        }));
+    if (itensValidos.length) {
+      const itensDb = itensValidos.map(it => ({
+        venda_id:       venda.id,
+        produto_id:     it.produtoId || null,
+        descricao:      it.descricao,
+        quantidade:     Number(it.qtd) || 1,
+        preco_unitario: Number(it.preco) || 0,
+        desconto:       Number(it.desconto) || 0,
+        obs:            it.obs || null,
+      }));
       await repositories.vendas.createItens(itensDb);
     }
 
@@ -71,16 +71,13 @@ export const VendaService = {
     // Lançamento financeiro automático
     await LancamentoService.criarDeVenda(venda);
 
-    // Invalidar cache
-    actions.setCache("vendas_resumo", null);
-
     return venda;
   },
 
   async atualizar(id, dados, itens) {
     const venda = await repositories.vendas.update(id, {
       ...dados,
-      total: VendaService._calcularTotal(itens),
+      total: VendaService._calcularTotal(itens || []),
     });
 
     if (itens !== undefined) {
@@ -89,16 +86,19 @@ export const VendaService = {
       if (validos.length) {
         await repositories.vendas.createItens(
           validos.map(it => ({
-            venda_id: id,
-            produto_id: it.produtoId || null,
-            descricao: it.descricao,
-            quantidade: Number(it.qtd) || 1,
+            venda_id:       id,
+            produto_id:     it.produtoId || null,
+            descricao:      it.descricao,
+            quantidade:     Number(it.qtd) || 1,
             preco_unitario: Number(it.preco) || 0,
-            desconto: Number(it.desconto) || 0,
-            obs: it.obs || null,
+            desconto:       Number(it.desconto) || 0,
+            obs:            it.obs || null,
           }))
         );
       }
+
+      // Atualizar lançamento financeiro vinculado
+      await LancamentoService._atualizarDeVenda(id, venda.total);
     }
 
     EventBus.emit(EVENTS.VENDA_ATUALIZADA, venda);
@@ -110,12 +110,18 @@ export const VendaService = {
     const venda = await repositories.vendas.update(id, { status });
     EventBus.emit(EVENTS.VENDA_STATUS_MUDOU, { id, status });
 
-    // Auto-mover para produção
+    // Fluxo automático: entregue → baixa o lançamento financeiro
+    if (status === "entregue") {
+      await LancamentoService._baixarDeVenda(id);
+    }
+
+    // Fluxo automático: em_execucao → cria item de produção
     if (status === "em_execucao") {
       const vendaCompleta = await repositories.vendas.findById(id, "id, cliente_nome");
       await ProducaoService.criarDeVenda(vendaCompleta);
     }
 
+    actions.showToast(`Status atualizado para "${status}".`, "ok");
     return venda;
   },
 
@@ -132,7 +138,6 @@ export const VendaService = {
     if (cache[cacheKey] && Date.now() < (cache._ttl?.[cacheKey] || 0)) {
       return cache[cacheKey];
     }
-
     const vendas = await repositories.vendas.getResumoMes(mes);
     const resumo = {
       total: vendas.reduce((s, v) => s + Number(v.total || 0), 0),
@@ -144,13 +149,6 @@ export const VendaService = {
     };
     actions.setCache(cacheKey, resumo);
     return resumo;
-  },
-
-  _validar(dados, itens) {
-    const erros = {};
-    const itensValidos = itens.filter(it => it.descricao?.trim());
-    if (!itensValidos.length) erros.itens = "Adicione ao menos um item";
-    return erros;
   },
 
   _calcularTotal(itens) {
@@ -168,7 +166,6 @@ export const ClienteService = {
   async listar() {
     const cached = actions.getCache("clientes");
     if (cached) { actions.setClientes(cached); return cached; }
-
     const list = await repositories.clientes.findAll();
     actions.setClientes(list);
     actions.setCache("clientes", list);
@@ -181,19 +178,18 @@ export const ClienteService = {
   },
 
   async criar(dados) {
-    if (!dados.nome?.trim()) throw new ValidationError("Nome é obrigatório", { nome: true });
+    validateCliente(dados);
     const cliente = await repositories.clientes.create(dados);
     EventBus.emit(EVENTS.CLIENTE_CRIADO, cliente);
-    actions.setCache("clientes", null); // Invalidar cache
     await ClienteService.listar();
     actions.showToast(`Cliente "${cliente.nome}" cadastrado!`, "ok");
     return cliente;
   },
 
   async atualizar(id, dados) {
+    validateCliente(dados);
     const cliente = await repositories.clientes.update(id, dados);
     EventBus.emit(EVENTS.CLIENTE_ATUALIZADO, cliente);
-    actions.setCache("clientes", null);
     await ClienteService.listar();
     return cliente;
   },
@@ -201,8 +197,8 @@ export const ClienteService = {
   async deletar(id) {
     await repositories.clientes.delete(id);
     EventBus.emit(EVENTS.CLIENTE_DELETADO, { id });
-    actions.setCache("clientes", null);
     await ClienteService.listar();
+    actions.showToast("Cliente removido.", "ok");
   },
 };
 
@@ -214,11 +210,10 @@ export const EstoqueService = {
     const materias = await repositories.materias.findComSaldo();
     actions.setMaterias(materias);
 
-    // Verificar alertas
     materias.forEach(mp => {
       const saldo = Number(mp.saldo);
-      const min = Number(mp.estoque_minimo || 0);
-      if (saldo <= 0) EventBus.emit(EVENTS.ESTOQUE_ZERADO, mp);
+      const min   = Number(mp.estoque_minimo || 0);
+      if (saldo <= 0)              EventBus.emit(EVENTS.ESTOQUE_ZERADO, mp);
       else if (min > 0 && saldo <= min) EventBus.emit(EVENTS.ESTOQUE_ALERTA_BAIXO, mp);
     });
 
@@ -226,34 +221,32 @@ export const EstoqueService = {
   },
 
   async registrarEntrada(mpId, quantidade, motivo) {
-    if (!quantidade || quantidade <= 0) throw new ValidationError("Quantidade inválida");
+    const n = Number(quantidade);
+    if (!n || n <= 0) throw new ValidationError("Quantidade inválida.");
     const mov = await repositories.movimentos.registrar({
-      materia_prima_id: mpId, tipo: "entrada", quantidade, motivo,
+      materia_prima_id: mpId, tipo: "entrada", quantidade: n, motivo,
     });
-    EventBus.emit(EVENTS.ESTOQUE_ENTRADA, { mpId, quantidade });
+    EventBus.emit(EVENTS.ESTOQUE_ENTRADA, { mpId, quantidade: n });
     await EstoqueService.listar();
     return mov;
   },
 
   async registrarSaida(mpId, quantidade, motivo, forcarNegativo = false) {
-    if (!quantidade || quantidade <= 0) throw new ValidationError("Quantidade inválida");
-
-    // Verificar saldo
-    const materias = selectors.estoque().materias;
+    const materias = selectors.estoque().materias || [];
     const mp = materias.find(m => m.id === mpId);
-    if (mp && mp.saldo < quantidade && !forcarNegativo) {
-      throw new ValidationError(`Saldo insuficiente (${mp.saldo} ${mp.unidade})`);
-    }
+    const saldo = mp ? Number(mp.saldo) : Infinity;
+    const n = validateMovEstoque(quantidade, saldo, forcarNegativo);
 
     const mov = await repositories.movimentos.registrar({
-      materia_prima_id: mpId, tipo: "saida", quantidade, motivo,
+      materia_prima_id: mpId, tipo: "saida", quantidade: n, motivo,
     });
-    EventBus.emit(EVENTS.ESTOQUE_SAIDA, { mpId, quantidade });
+    EventBus.emit(EVENTS.ESTOQUE_SAIDA, { mpId, quantidade: n });
     await EstoqueService.listar();
     return mov;
   },
 
   async criarMateria(dados) {
+    validateMateria(dados);
     const mp = await repositories.materias.create(dados);
     if (dados.saldo_inicial > 0) {
       await repositories.movimentos.registrar({
@@ -267,6 +260,7 @@ export const EstoqueService = {
   },
 
   async atualizarMateria(id, dados) {
+    validateMateria(dados);
     const mp = await repositories.materias.update(id, dados);
     await EstoqueService.listar();
     return mp;
@@ -276,6 +270,7 @@ export const EstoqueService = {
     await repositories.movimentos.deleteWhere({ materia_prima_id: id });
     await repositories.materias.delete(id);
     await EstoqueService.listar();
+    actions.showToast("Matéria-prima removida.", "ok");
   },
 };
 
@@ -289,7 +284,6 @@ export const LancamentoService = {
       const lancamentos = mes
         ? await repositories.lancamentos.findDoMes(mes)
         : await repositories.lancamentos.findAll();
-
       const resumo = LancamentoService._calcularResumo(lancamentos);
       actions.setLancamentos(lancamentos);
       actions.setResumo(resumo);
@@ -302,8 +296,8 @@ export const LancamentoService = {
   async criar(dados) {
     const { isRecorrente, qtdParcelas, tipoParc, ...payload } = dados;
 
-    if (!payload.descricao?.trim()) throw new ValidationError("Informe a descrição");
-    if (!payload.valor) throw new ValidationError("Informe o valor");
+    validateDescricao(payload.descricao, "Descrição");
+    validateValor(payload.valor, "Valor");
 
     if (isRecorrente) {
       return LancamentoService._criarRecorrente(payload, qtdParcelas, tipoParc);
@@ -318,16 +312,38 @@ export const LancamentoService = {
 
   async criarDeVenda(venda) {
     const lanc = await repositories.lancamentos.create({
-      tipo: "receita",
-      descricao: `Venda — ${venda.cliente_nome || "Sem cliente"}`,
-      valor: Number(venda.total || 0),
-      categoria: "Venda",
-      status: venda.status === "entregue" ? "pago" : "pendente",
-      venda_id: venda.id,
-      data_vencimento: venda.data_entrega || new Date().toISOString().split("T")[0],
+      tipo:             "receita",
+      descricao:        `Venda — ${venda.cliente_nome || "Sem cliente"}`,
+      valor:            Number(venda.total || 0),
+      categoria:        "Venda",
+      status:           venda.status === "entregue" ? "pago" : "pendente",
+      venda_id:         venda.id,
+      data_vencimento:  venda.data_entrega || new Date().toISOString().split("T")[0],
     });
     EventBus.emit(EVENTS.LANCAMENTO_CRIADO, lanc);
     return lanc;
+  },
+
+  // Atualiza valor do lançamento quando a venda é editada
+  async _atualizarDeVenda(vendaId, novoTotal) {
+    try {
+      const todos = await repositories.lancamentos.findAll();
+      const lanc  = todos.find(l => l.venda_id === vendaId && l.status === "pendente");
+      if (lanc) {
+        await repositories.lancamentos.update(lanc.id, { valor: novoTotal });
+      }
+    } catch { /* silencioso — não bloqueia a atualização da venda */ }
+  },
+
+  // Baixa (marca como pago) o lançamento vinculado à venda entregue
+  async _baixarDeVenda(vendaId) {
+    try {
+      const todos = await repositories.lancamentos.findAll();
+      const lanc  = todos.find(l => l.venda_id === vendaId && l.status === "pendente");
+      if (lanc) {
+        await LancamentoService.marcarPago(lanc.id);
+      }
+    } catch { /* silencioso */ }
   },
 
   async marcarPago(id) {
@@ -339,6 +355,7 @@ export const LancamentoService = {
   },
 
   async atualizar(id, dados) {
+    if (dados.valor !== undefined) validateValor(dados.valor, "Valor");
     const lanc = await repositories.lancamentos.update(id, dados);
     await LancamentoService.listar(selectors.financeiro().mes);
     return lanc;
@@ -356,11 +373,13 @@ export const LancamentoService = {
         );
         await Promise.all(pendentes.map(l => repositories.lancamentos.delete(l.id)));
         await LancamentoService.listar(selectors.financeiro().mes);
+        actions.showToast(`${pendentes.length} parcelas removidas.`, "ok");
         return;
       }
     }
     await repositories.lancamentos.delete(id);
     await LancamentoService.listar(selectors.financeiro().mes);
+    actions.showToast("Lançamento removido.", "ok");
   },
 
   _calcularResumo(lancamentos) {
@@ -369,18 +388,18 @@ export const LancamentoService = {
     const totalRec  = receitas.reduce((s, l) => s + Number(l.valor), 0);
     const totalDesp = despesas.reduce((s, l) => s + Number(l.valor), 0);
     return {
-      receitas: totalRec,
-      despesas: totalDesp,
-      saldo: totalRec - totalDesp,
-      recebido: receitas.filter(l => l.status === "pago").reduce((s, l) => s + Number(l.valor), 0),
-      aReceber: receitas.filter(l => l.status === "pendente").reduce((s, l) => s + Number(l.valor), 0),
-      aPagar:   despesas.filter(l => l.status === "pendente").reduce((s, l) => s + Number(l.valor), 0),
+      receitas:   totalRec,
+      despesas:   totalDesp,
+      saldo:      totalRec - totalDesp,
+      recebido:   receitas.filter(l => l.status === "pago").reduce((s, l) => s + Number(l.valor), 0),
+      aReceber:   receitas.filter(l => l.status === "pendente").reduce((s, l) => s + Number(l.valor), 0),
+      aPagar:     despesas.filter(l => l.status === "pendente").reduce((s, l) => s + Number(l.valor), 0),
     };
   },
 
   async _criarRecorrente(payload, qtd, tipoParc) {
     const numParc = tipoParc === "indefinido" ? 24 : (parseInt(qtd) || 12);
-    const grupo = crypto.randomUUID();
+    const grupo   = crypto.randomUUID();
     const [ano, mes, dia] = payload.data_vencimento.split("-").map(Number);
     const registros = [];
     for (let i = 0; i < numParc; i++) {
@@ -389,10 +408,10 @@ export const LancamentoService = {
       registros.push({
         ...payload,
         data_vencimento: `${novoAno}-${String(novoMes).padStart(2,"0")}-${String(dia).padStart(2,"0")}`,
-        status: i === 0 ? payload.status : "pendente",
+        status:          i === 0 ? payload.status : "pendente",
         grupo_recorrencia: grupo,
-        parcela_num: i + 1,
-        total_parcelas: tipoParc === "indefinido" ? null : numParc,
+        parcela_num:     i + 1,
+        total_parcelas:  tipoParc === "indefinido" ? null : numParc,
       });
     }
     await repositories.lancamentos.createMany(registros);
@@ -425,9 +444,9 @@ export const ProducaoService = {
 
   async criarDeVenda(venda) {
     return ProducaoService.criar({
-      titulo: `Pedido — ${venda.cliente_nome || "Sem cliente"}`,
-      venda_id: venda.id,
-      etapa: "fila",
+      titulo:    `Pedido — ${venda.cliente_nome || "Sem cliente"}`,
+      venda_id:  venda.id,
+      etapa:     "fila",
       prioridade: "normal",
     });
   },
@@ -435,7 +454,16 @@ export const ProducaoService = {
   async moverEtapa(id, etapa) {
     const item = await repositories.producao.moverEtapa(id, etapa);
     EventBus.emit(EVENTS.PRODUCAO_ETAPA_MUDOU, { id, etapa });
-    if (etapa === "pronto") EventBus.emit(EVENTS.PRODUCAO_CONCLUIDA, item);
+
+    if (etapa === "pronto") {
+      EventBus.emit(EVENTS.PRODUCAO_CONCLUIDA, item);
+      // Atualiza status da venda vinculada
+      if (item.venda_id) {
+        await repositories.vendas.update(item.venda_id, { status: "pronto" });
+        EventBus.emit(EVENTS.VENDA_STATUS_MUDOU, { id: item.venda_id, status: "pronto" });
+      }
+    }
+
     await ProducaoService.listar();
     return item;
   },
@@ -468,21 +496,27 @@ export const ProdutoService = {
   },
 
   async criar(dados) {
+    if (!dados.nome?.trim()) throw new ValidationError("Nome é obrigatório.", { nome: true });
     const produto = await repositories.produtos.create(dados);
+    EventBus.emit(EVENTS.PRODUTO_CRIADO, produto);
     await ProdutoService.listar();
     actions.showToast("Produto criado!", "ok");
     return produto;
   },
 
   async atualizar(id, dados) {
+    if (!dados.nome?.trim()) throw new ValidationError("Nome é obrigatório.", { nome: true });
     const produto = await repositories.produtos.update(id, dados);
+    EventBus.emit(EVENTS.PRODUTO_ATUALIZADO, produto);
     await ProdutoService.listar();
     return produto;
   },
 
   async deletar(id) {
     await repositories.produtos.delete(id);
+    EventBus.emit(EVENTS.PRODUTO_DELETADO, { id });
     await ProdutoService.listar();
+    actions.showToast("Produto removido.", "ok");
   },
 };
 
@@ -502,13 +536,18 @@ export const CaixaService = {
   },
 
   async criar(dados) {
+    validateDescricao(dados.descricao, "Descrição");
+    validateValor(dados.valor, "Valor");
     const mov = await repositories.caixaMovimentos.create(dados);
+    EventBus.emit(EVENTS.CAIXA_MOVIMENTO_CRIADO, mov);
     await CaixaService.listar();
     actions.showToast("Movimento registrado!", "ok");
     return mov;
   },
 
   async atualizar(id, dados) {
+    if (dados.descricao !== undefined) validateDescricao(dados.descricao, "Descrição");
+    if (dados.valor     !== undefined) validateValor(dados.valor, "Valor");
     const mov = await repositories.caixaMovimentos.update(id, dados);
     await CaixaService.listar();
     return mov;
@@ -516,7 +555,9 @@ export const CaixaService = {
 
   async deletar(id) {
     await repositories.caixaMovimentos.delete(id);
+    EventBus.emit(EVENTS.CAIXA_MOVIMENTO_EXCLUIDO, { id });
     await CaixaService.listar();
+    actions.showToast("Movimento removido.", "ok");
   },
 };
 
@@ -553,17 +594,17 @@ export const OrcamentoService = {
 // ══════════════════════════════════════════════════════════════════════════════
 export const ConfigService = {
   async carregar() {
-    const cfg = await repositories.config.getGlobal();
+    const cfg       = await repositories.config.getGlobal();
     const vendedores = await repositories.vendedores.findAll();
     const parse = (val, fallback) => {
       try { return JSON.parse(val || "null") ?? fallback; } catch { return fallback; }
     };
     const config = {
-      empresa: cfg,
-      formasPagamento: parse(cfg.formas_pagamento, []),
-      etapasProducao: parse(cfg.etapas_producao, []),
-      categoriasFinanceiras: parse(cfg.categorias_financeiras, { receitas: [], despesas: [] }),
-      custosFixos: parse(cfg.custos_fixos, []),
+      empresa:                cfg,
+      formasPagamento:        parse(cfg.formas_pagamento, []),
+      etapasProducao:         parse(cfg.etapas_producao, []),
+      categoriasFinanceiras:  parse(cfg.categorias_financeiras, { receitas: [], despesas: [] }),
+      custosFixos:            parse(cfg.custos_fixos, []),
       vendedores,
     };
     actions.setConfig(config);
@@ -589,43 +630,71 @@ export const ConfigService = {
 export const DashboardService = {
   async getResumo(mes) {
     const cacheKey = `dashboard_${mes}`;
-    const cached = actions.getCache(cacheKey);
+    const cached   = actions.getCache(cacheKey);
     if (cached) return cached;
 
-    const [vendas, lancamentos, materias, clientes] = await Promise.all([
+    const [vendas, lancamentos, materias] = await Promise.all([
       repositories.vendas.getResumoMes(mes),
       repositories.lancamentos.findDoMes(mes),
       repositories.materias.findComSaldo(),
-      repositories.clientes.count({ created_at: { op: "gte", value: `${mes}-01` } }).catch(() => 0),
     ]);
 
-    const receitasMes = lancamentos.filter(l => l.tipo === "receita").reduce((s,l) => s+Number(l.valor), 0);
-    const despesasMes = lancamentos.filter(l => l.tipo === "despesa").reduce((s,l) => s+Number(l.valor), 0);
-    const faturamento = vendas.reduce((s,v) => s+Number(v.total||0), 0);
+    const receitasMes = lancamentos.filter(l => l.tipo === "receita").reduce((s,l) => s + Number(l.valor), 0);
+    const despesasMes = lancamentos.filter(l => l.tipo === "despesa").reduce((s,l) => s + Number(l.valor), 0);
+    const faturamento = vendas.reduce((s,v) => s + Number(v.total||0), 0);
+
+    // Tendência: últimos 6 meses
+    const tendencia = await DashboardService._getTendencia(mes);
 
     const resumo = {
       faturamento,
-      vendas: { total: vendas.length, lista: vendas },
+      vendas:     { total: vendas.length, lista: vendas },
       financeiro: {
         receitas: receitasMes,
         despesas: despesasMes,
-        lucro: receitasMes - despesasMes,
-        margem: receitasMes > 0 ? ((receitasMes - despesasMes) / receitasMes * 100).toFixed(1) : "0.0",
+        lucro:    receitasMes - despesasMes,
+        margem:   receitasMes > 0 ? ((receitasMes - despesasMes) / receitasMes * 100).toFixed(1) : "0.0",
+        recebido: lancamentos.filter(l => l.tipo === "receita" && l.status === "pago").reduce((s,l) => s + Number(l.valor), 0),
+        aReceber: lancamentos.filter(l => l.tipo === "receita" && l.status === "pendente").reduce((s,l) => s + Number(l.valor), 0),
+        aPagar:   lancamentos.filter(l => l.tipo === "despesa" && l.status === "pendente").reduce((s,l) => s + Number(l.valor), 0),
       },
       estoque: {
         alertas: materias.filter(m => m.saldo > 0 && m.saldo <= (m.estoque_minimo || 0)),
         zerados: materias.filter(m => m.saldo <= 0),
       },
-      clientes: { novos: clientes },
       lancamentos,
+      tendencia,
     };
 
     actions.setCache(cacheKey, resumo);
     return resumo;
   },
+
+  async _getTendencia(mesAtual) {
+    const meses = [];
+    const [ano, mes] = mesAtual.split("-").map(Number);
+    for (let i = 5; i >= 0; i--) {
+      let m = mes - i, y = ano;
+      while (m <= 0) { m += 12; y--; }
+      meses.push(`${y}-${String(m).padStart(2,"0")}`);
+    }
+
+    const dados = await Promise.all(meses.map(async m => {
+      try {
+        const lancs = await repositories.lancamentos.findDoMes(m);
+        const rec   = lancs.filter(l => l.tipo === "receita").reduce((s,l) => s + Number(l.valor), 0);
+        const desp  = lancs.filter(l => l.tipo === "despesa").reduce((s,l) => s + Number(l.valor), 0);
+        return { mes: m, receitas: rec, despesas: desp, lucro: rec - desp };
+      } catch {
+        return { mes: m, receitas: 0, despesas: 0, lucro: 0 };
+      }
+    }));
+
+    return dados;
+  },
 };
 
-// Exporta todos os services em um namespace
+// ── Namespace único exportado ──────────────────────────────────────────────────
 export const services = {
   venda:      VendaService,
   cliente:    ClienteService,

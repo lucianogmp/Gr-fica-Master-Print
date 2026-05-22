@@ -1,21 +1,22 @@
 /**
- * VENDAS VIEW — Tela de vendas refatorada com arquitetura em camadas.
- * View → Service → Repository → Supabase
+ * VENDAS VIEW — Tela de vendas com tabela melhorada e fluxo ERP completo.
  */
 
-import { BaseView } from "./baseView.js";
-import { services } from "../../core/services.js";
+import { BaseView }       from "./baseView.js";
+import { services }       from "../../core/services.js";
 import { store, selectors, actions } from "../../core/store.js";
 import { EventBus, EVENTS } from "../../core/eventBus.js";
+import { esc }            from "../../utils/sanitize.js";
+import { fmtBRL, fmtData } from "../../utils/fmt.js";
 import {
   PageHeader, KpiGrid, Tabs, DataTable, Btn, StatusBadge,
-  openModal, SearchBar, EmptyState, fmtBRL, fmtData, esc,
+  openModal, SearchBar, EmptyState,
 } from "../components/index.js";
 
 const SITUACOES = [
   { id: "pendente",    label: "Pendente",    cor: "#F79009" },
   { id: "em_execucao", label: "Em execução", cor: "#007CBE" },
-  { id: "pronto",      label: "Pronto",      cor: "#0008FF" },
+  { id: "pronto",      label: "Pronto",      cor: "#6B48FF" },
   { id: "entregue",    label: "Entregue",    cor: "#00AC17" },
   { id: "cancelado",   label: "Cancelado",   cor: "#AB0000" },
 ];
@@ -23,40 +24,28 @@ const SITUACOES = [
 const TIPOS_VENDA = ["Venda/O.S.", "Orçamento", "Consignação", "Troca"];
 
 export class VendasView extends BaseView {
-  #subView = "lista"; // "lista" | "form"
+  #subView       = "lista";
   #vendaEditando = null;
-  #form = null;
+  #form          = null;
+  #sortKey       = "created_at";
+  #sortDir       = "desc";
 
   async _init() {
     this.#form = this.#novoForm();
-
-    // Carrega dados
     await services.venda.listar(selectors.vendas().filters);
-
-    // Carrega lookups em paralelo
     await Promise.allSettled([
       services.cliente.listar(),
       services.config.carregar(),
     ]);
-
-    // Reatividade: quando vendas mudam no store, atualiza a lista
     this.subscribe("vendas", () => {
       if (this.#subView === "lista") this.refresh();
     });
-
-    // Quando uma venda é criada/atualizada de outro módulo
     this.listenTo(EVENTS.VENDA_CRIADA,     () => services.venda.listar());
     this.listenTo(EVENTS.VENDA_ATUALIZADA, () => services.venda.listar());
   }
 
-  render() {
-    return this.#subView === "form" ? this.#renderForm() : this.#renderLista();
-  }
-
-  afterRender() {
-    if (this.#subView === "lista") this.#bindListaEvents();
-    else this.#bindFormEvents();
-  }
+  render()       { return this.#subView === "form" ? this.#renderForm() : this.#renderLista(); }
+  afterRender()  { if (this.#subView === "lista") this.#bindListaEvents(); else this.#bindFormEvents(); }
 
   // ══════════════════════════════════════════════════════════════════════════
   // LISTA
@@ -71,14 +60,25 @@ export class VendasView extends BaseView {
     const emExecucao = list.filter(v => v.status === "em_execucao").length;
     const entregues  = list.filter(v => v.status === "entregue").length;
 
-    const filtradas = list.filter(v => {
-      const matchStatus = !filtro.status || v.status === filtro.status;
-      const matchBusca  = !filtro.search ||
+    let filtradas = list.filter(v => {
+      const ok1 = !filtro.status || v.status === filtro.status;
+      const ok2 = !filtro.search ||
         (v.cliente_nome || "").toLowerCase().includes(filtro.search.toLowerCase());
-      return matchStatus && matchBusca;
+      return ok1 && ok2;
+    });
+
+    // Ordenação
+    filtradas = [...filtradas].sort((a, b) => {
+      let va = a[this.#sortKey] ?? "";
+      let vb = b[this.#sortKey] ?? "";
+      if (this.#sortKey === "total") { va = Number(va); vb = Number(vb); }
+      const cmp = va < vb ? -1 : va > vb ? 1 : 0;
+      return this.#sortDir === "asc" ? cmp : -cmp;
     });
 
     return `
+      <style>${vendasCSS()}</style>
+
       ${PageHeader({
         title: "Vendas",
         subtitle: `${list.length} venda${list.length !== 1 ? "s" : ""} · ${fmtBRL(total)}`,
@@ -86,102 +86,133 @@ export class VendasView extends BaseView {
       })}
 
       ${KpiGrid([
-        { label: "Faturamento", value: fmtBRL(total),     color: "var(--primary-light)",  icon: "💰" },
-        { label: "Pendentes",   value: pendentes,          color: "var(--warning)",         icon: "⏳" },
-        { label: "Em execução", value: emExecucao,         color: "var(--primary-light)",   icon: "🔄" },
-        { label: "Entregues",   value: entregues,          color: "var(--success)",          icon: "✅" },
+        { label: "Faturamento", value: fmtBRL(total),   sub: `${list.length} venda${list.length!==1?"s":""}`, color: "var(--primary-light)", icon: "💰" },
+        { label: "Pendentes",   value: pendentes,        sub: "aguardando",  color: "var(--warning)",        icon: "⏳" },
+        { label: "Em execução", value: emExecucao,       sub: "em produção", color: "var(--info)",           icon: "🔄" },
+        { label: "Entregues",   value: entregues,        sub: "concluídas",  color: "var(--success)",        icon: "✅" },
       ])}
 
-      <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
-        <div style="flex:1;min-width:220px;max-width:340px">
+      <!-- Filtros -->
+      <div class="venda-filtros">
+        <div style="flex:1;max-width:340px">
           ${SearchBar({ id: "busca-vendas", placeholder: "Buscar por cliente...", value: filtro.search })}
         </div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap">
-          <button class="tab-btn ${!filtro.status ? "active" : ""}" data-filtro-status="">Todas</button>
+        <div class="status-chips">
+          <button class="chip ${!filtro.status ? "active" : ""}" data-filtro-status="">Todas</button>
           ${SITUACOES.map(s => `
-            <button class="tab-btn ${filtro.status === s.id ? "active" : ""}" data-filtro-status="${s.id}"
-              style="${filtro.status === s.id ? `border-color:${s.cor};color:${s.cor};background:${s.cor}12` : ""}">
-              <span style="width:7px;height:7px;background:${s.cor};border-radius:50%;display:inline-block"></span>
+            <button class="chip ${filtro.status === s.id ? "active" : ""}" data-filtro-status="${s.id}"
+              style="${filtro.status === s.id ? `--chip-cor:${s.cor}` : ""}">
+              <span class="chip-dot" style="background:${s.cor}"></span>
               ${s.label}
             </button>`).join("")}
         </div>
       </div>
 
+      <!-- Contagem -->
+      <div class="result-count">${filtradas.length} venda${filtradas.length !== 1 ? "s" : ""} encontrada${filtradas.length !== 1 ? "s" : ""}</div>
+
+      <!-- Tabela -->
       ${DataTable({
         columns: [
-          { label: "#",        style: "width:60px" },
-          { label: "Cliente" },
-          { label: "Tipo",     style: "width:130px" },
-          { label: "Data",     style: "width:100px" },
-          { label: "Entrega",  style: "width:100px" },
-          { label: "Situação", style: "width:130px" },
-          { label: "Total",    style: "text-align:right;width:120px" },
-          { label: "",         style: "width:80px" },
+          { key: "numero",       label: "#",        style: "width:60px" },
+          { key: "cliente_nome", label: "Cliente",  sortable: true },
+          { key: "tipo",         label: "Tipo",     style: "width:130px" },
+          { key: "created_at",   label: "Data",     style: "width:100px" },
+          { key: "data_entrega", label: "Entrega",  style: "width:100px" },
+          { key: "status",       label: "Situação", style: "width:140px" },
+          { key: "total",        label: "Total",    style: "text-align:right;width:130px" },
+          { key: "_actions",     label: "",         style: "width:80px" },
         ],
         rows: filtradas.length === 0 ? [] : filtradas.map((v, i) => {
           const sit = SITUACOES.find(s => s.id === v.status) || SITUACOES[0];
           const data = v.created_at ? new Date(v.created_at).toLocaleDateString("pt-BR") : "—";
           return `
             <tr class="clickable" data-abrir="${v.id}">
-              <td style="font-weight:700;color:var(--muted);font-size:12px">${String(filtradas.length - i).padStart(3, "0")}</td>
-              <td><strong>${esc(v.cliente_nome) || "Sem cliente"}</strong></td>
-              <td style="font-size:12px;color:var(--muted)">${esc(v.tipo || "Venda/O.S.")}</td>
-              <td style="font-size:12px">${data}</td>
-              <td style="font-size:12px;color:var(--muted)">${v.data_entrega ? fmtData(v.data_entrega) : "—"}</td>
+              <td class="num-cell">${String(filtradas.length - i).padStart(3,"0")}</td>
               <td>
-                <span class="status-badge" style="background:${sit.cor}20;color:${sit.cor};border:1px solid ${sit.cor}40">
-                  ${sit.label}
+                <div class="cli-cell-nome">${esc(v.cliente_nome) || "<span class='sem-cliente'>Sem cliente</span>"}</div>
+                ${v.observacoes ? `<div class="cli-cell-obs">${esc(v.observacoes.slice(0,50))}${v.observacoes.length>50?"…":""}</div>` : ""}
+              </td>
+              <td class="tipo-cell">${esc(v.tipo || "Venda/O.S.")}</td>
+              <td class="data-cell">${data}</td>
+              <td class="data-cell">${v.data_entrega ? fmtData(v.data_entrega) : "—"}</td>
+              <td>
+                <span class="status-pill" style="--pill-cor:${sit.cor}">
+                  <span class="status-pill-dot"></span>${sit.label}
                 </span>
               </td>
-              <td style="text-align:right;font-weight:700;color:var(--primary-light)">${fmtBRL(v.total || 0)}</td>
+              <td class="total-cell">${fmtBRL(v.total || 0)}</td>
               <td>
-                <div style="display:flex;gap:4px">
+                <div class="row-actions">
                   ${Btn.icon('<i class="fi fi-rr-pencil"></i>', `edit-${v.id}`)}
                   ${Btn.icon('<i class="fi fi-rr-trash"></i>', `del-${v.id}`, true)}
                 </div>
               </td>
             </tr>`;
         }),
-        emptyMessage: "Nenhuma venda. Clique em \"Nova Venda\" para começar.",
+        emptyMessage: filtro.search || filtro.status
+          ? "Nenhuma venda com esses filtros."
+          : "Nenhuma venda cadastrada. Clique em \"Nova Venda\" para começar.",
+        sortKey:  this.#sortKey,
+        sortDir:  this.#sortDir,
+        onSort:   true,
       })}
     `;
   }
 
   #bindListaEvents() {
-    this.$(`#btn-nova-venda`)?.addEventListener("click", () => {
+    this.$("#btn-nova-venda")?.addEventListener("click", () => {
       this.#vendaEditando = null;
-      this.#form = this.#novoForm();
-      this.#subView = "form";
+      this.#form          = this.#novoForm();
+      this.#subView       = "form";
       this.refresh();
     });
 
-    this.$(`#busca-vendas`)?.addEventListener("input", e => {
-      actions.setVendasFiltro({ search: e.target.value });
-    });
+    this.$("#busca-vendas")?.addEventListener("input", e =>
+      actions.setVendasFiltro({ search: e.target.value })
+    );
 
-    this.$$("[data-filtro-status]").forEach(btn => {
-      btn.addEventListener("click", () => {
-        actions.setVendasFiltro({ status: btn.dataset.filtroStatus });
+    this.$$("[data-filtro-status]").forEach(btn =>
+      btn.addEventListener("click", () =>
+        actions.setVendasFiltro({ status: btn.dataset.filtroStatus })
+      )
+    );
+
+    // Ordenação por colunas
+    this.$$(".data-table th.sortable, th[data-sort]").forEach(th => {
+      if (!th.dataset.sort) return;
+      th.addEventListener("click", () => {
+        const key = th.dataset.sort;
+        if (this.#sortKey === key) {
+          this.#sortDir = this.#sortDir === "asc" ? "desc" : "asc";
+        } else {
+          this.#sortKey = key;
+          this.#sortDir = "asc";
+        }
+        this.refresh();
       });
     });
 
-    this.$$("[data-abrir]").forEach(row => {
-      row.addEventListener("click", async (e) => {
+    this.$$("[data-abrir]").forEach(row =>
+      row.addEventListener("click", async e => {
         if (e.target.closest("button")) return;
         await this.#abrirVenda(row.dataset.abrir);
-      });
-    });
+      })
+    );
 
     selectors.vendas().list.forEach(v => {
-      this.$(`#edit-${v.id}`)?.addEventListener("click", async (e) => {
+      this.$(`#edit-${v.id}`)?.addEventListener("click", async e => {
         e.stopPropagation();
         await this.#abrirVenda(v.id);
       });
-
-      this.$(`#del-${v.id}`)?.addEventListener("click", async (e) => {
+      this.$(`#del-${v.id}`)?.addEventListener("click", async e => {
         e.stopPropagation();
-        if (!confirm(`Excluir venda de "${v.cliente_nome || "este cliente"}"?`)) return;
-        await services.venda.deletar(v.id);
+        if (!confirm(`Excluir a venda de "${v.cliente_nome || "sem cliente"}"?`)) return;
+        try {
+          await services.venda.deletar(v.id);
+        } catch (err) {
+          this.toast(err.message, "erro");
+        }
       });
     });
   }
@@ -190,19 +221,20 @@ export class VendasView extends BaseView {
     const venda = await services.venda.buscarPorId(id);
     this.#vendaEditando = venda;
     this.#form = {
-      clienteNome:     venda.cliente_nome || "",
-      tipo:            venda.tipo || "Venda/O.S.",
-      data:            venda.data_venda || this.#hoje(),
-      situacao:        venda.status || "pendente",
-      entrega:         venda.data_entrega || "",
-      palavraChave:    venda.palavra_chave || "",
-      vendedor:        venda.vendedor || "",
-      consumidorFinal: venda.consumidor_final !== false,
-      observacoes:     venda.observacoes || "",
+      clienteNome:  venda.cliente_nome || "",
+      tipo:         venda.tipo || "Venda/O.S.",
+      data:         venda.data_venda || this.#hoje(),
+      situacao:     venda.status || "pendente",
+      entrega:      venda.data_entrega || "",
+      vendedor:     venda.vendedor || "",
+      observacoes:  venda.observacoes || "",
       itens: (venda.venda_itens || []).map(i => ({
-        descricao: i.descricao, produtoId: i.produto_id,
-        preco: Number(i.preco_unitario), qtd: Number(i.quantidade),
-        desconto: Number(i.desconto || 0), obs: i.obs || "",
+        descricao: i.descricao,
+        produtoId: i.produto_id,
+        preco:     Number(i.preco_unitario),
+        qtd:       Number(i.quantidade),
+        desconto:  Number(i.desconto || 0),
+        obs:       i.obs || "",
       })) || [this.#novoItem()],
     };
     if (!this.#form.itens.length) this.#form.itens = [this.#novoItem()];
@@ -214,102 +246,112 @@ export class VendasView extends BaseView {
   // FORMULÁRIO
   // ══════════════════════════════════════════════════════════════════════════
   #renderForm() {
-    const f = this.#form;
-    const t = this.#calcularTotais();
-    const isEdit = !!this.#vendaEditando;
+    const f       = this.#form;
+    const t       = this.#calcularTotais();
+    const isEdit  = !!this.#vendaEditando;
+    const clientes = selectors.clientes().list || [];
+    const produtos  = selectors.produtos().list || [];
 
     return `
+      <style>${formCSS()}</style>
       ${PageHeader({
-        title: isEdit ? `Editar Venda #${this.#vendaEditando?.numero || ""}` : "Nova Venda",
+        title: isEdit ? `Editar Venda` : "Nova Venda",
         actions: `
-          ${Btn.secondary('<i class="fi fi-rr-clock"></i> Histórico', "btn-historico")}
           ${Btn.ghost('<i class="fi fi-rr-print"></i> Imprimir', "btn-imprimir")}
-          ${Btn.primary('<i class="fi fi-rr-disk"></i> Salvar', "btn-salvar")}
           ${Btn.secondary("← Voltar", "btn-voltar")}
+          ${Btn.primary('<i class="fi fi-rr-disk"></i> Salvar', "btn-salvar")}
         `,
       })}
 
       <!-- Dados principais -->
       <div class="ds-card">
         <div class="ds-card-title"><i class="fi fi-rr-file-invoice"></i> Dados da Venda</div>
-        <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr">
-          <div class="form-field full">
+        <div class="form-grid" style="grid-template-columns:2fr 1fr 1fr">
+          <div class="form-field" style="grid-column:1/-1">
             <label>Cliente</label>
             <div class="autocomplete-wrap">
-              <input id="f-cliente" value="${esc(f.clienteNome)}" placeholder="Buscar cliente..." autocomplete="off" />
+              <input id="f-cliente" value="${esc(f.clienteNome)}" placeholder="Buscar ou digitar cliente..." autocomplete="off" />
               <div class="autocomplete-list" id="ac-cli"></div>
             </div>
           </div>
           <div class="form-field">
             <label>Tipo</label>
-            <select id="f-tipo">${TIPOS_VENDA.map(t => `<option ${f.tipo === t ? "selected" : ""}>${t}</option>`).join("")}</select>
+            <select id="f-tipo">${TIPOS_VENDA.map(t => `<option ${f.tipo===t?"selected":""}>${t}</option>`).join("")}</select>
+          </div>
+          <div class="form-field">
+            <label>Situação</label>
+            <select id="f-situacao">
+              ${SITUACOES.map(s => `<option value="${s.id}" ${f.situacao===s.id?"selected":""}>${s.label}</option>`).join("")}
+            </select>
           </div>
           <div class="form-field">
             <label>Data</label>
             <input id="f-data" type="date" value="${f.data}" />
           </div>
           <div class="form-field">
+            <label>Entrega</label>
+            <input id="f-entrega" type="date" value="${f.entrega}" />
+          </div>
+          <div class="form-field">
             <label>Vendedor</label>
             <input id="f-vendedor" value="${esc(f.vendedor)}" placeholder="Nome do vendedor" />
-          </div>
-          <div class="form-field">
-            <label>Situação</label>
-            <select id="f-situacao">
-              ${SITUACOES.map(s => `<option value="${s.id}" ${f.situacao === s.id ? "selected" : ""}>${s.label}</option>`).join("")}
-            </select>
-          </div>
-          <div class="form-field">
-            <label>Data de entrega</label>
-            <input id="f-entrega" type="date" value="${f.entrega}" />
           </div>
         </div>
       </div>
 
       <!-- Itens -->
       <div class="ds-card">
-        <div class="ds-card-title"><i class="fi fi-rr-shopping-cart"></i> Itens</div>
-        <div style="overflow-x:auto;border-radius:var(--radius-md);border:1px solid var(--border)">
-          <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <div class="ds-card-title"><i class="fi fi-rr-shopping-cart"></i> Itens do Pedido</div>
+        <div class="itens-table-wrap">
+          <table class="itens-table">
             <thead>
-              <tr style="background:var(--panel)">
-                <th style="padding:9px 12px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border)">Produto / Serviço</th>
-                <th style="padding:9px 12px;text-align:right;width:120px;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border)">Preço R$</th>
-                <th style="padding:9px 12px;text-align:center;width:90px;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border)">Qtd</th>
-                <th style="padding:9px 12px;text-align:right;width:110px;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border)">Desconto</th>
-                <th style="padding:9px 12px;text-align:right;width:110px;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border)">Total</th>
-                <th style="width:32px;border-bottom:1px solid var(--border)"></th>
+              <tr>
+                <th>Produto / Serviço</th>
+                <th style="width:130px;text-align:right">Preço R$</th>
+                <th style="width:100px;text-align:center">Qtd</th>
+                <th style="width:120px;text-align:right">Desconto</th>
+                <th style="width:130px;text-align:right">Total</th>
+                <th style="width:36px"></th>
               </tr>
             </thead>
             <tbody id="tbody-itens">
               ${f.itens.map((it, i) => this.#renderItemRow(it, i)).join("")}
             </tbody>
             <tfoot>
-              <tr style="background:var(--panel)">
-                <td colspan="3" style="padding:10px 12px;text-align:right;font-size:12px;font-weight:700;color:var(--muted)">TOTAL</td>
-                <td style="padding:10px 12px;text-align:right;font-weight:700;color:var(--error)" id="r-desc">${fmtBRL(t.descontoTotal)}</td>
-                <td style="padding:10px 12px;text-align:right;font-weight:800;font-size:15px;color:var(--primary-light)" id="r-total">${fmtBRL(t.totalGeral)}</td>
+              <tr class="tfoot-row">
+                <td colspan="3"></td>
+                <td class="tfoot-desc-label">Descontos:</td>
+                <td class="tfoot-desc-val" id="r-desc">${fmtBRL(t.descontoTotal)}</td>
+                <td></td>
+              </tr>
+              <tr class="tfoot-total-row">
+                <td colspan="3"></td>
+                <td class="tfoot-total-label">TOTAL:</td>
+                <td class="tfoot-total-val" id="r-total">${fmtBRL(t.totalGeral)}</td>
                 <td></td>
               </tr>
             </tfoot>
           </table>
         </div>
-        <button class="btn btn-ghost" id="btn-add-item" style="margin-top:10px;border:1px dashed var(--border-md)">
-          <i class="fi fi-rr-add"></i> Adicionar item
+        <button class="btn-add-item-row" id="btn-add-item">
+          <i class="fi fi-rr-plus"></i> Adicionar item
         </button>
       </div>
 
       <!-- Observações -->
       <div class="ds-card">
         <div class="ds-card-title"><i class="fi fi-rr-comment"></i> Observações</div>
-        <textarea id="f-obs" rows="3" placeholder="Detalhes do pedido...">${esc(f.observacoes)}</textarea>
+        <textarea id="f-obs" rows="3" placeholder="Detalhes do pedido, prazo, acabamento...">${esc(f.observacoes)}</textarea>
       </div>
 
-      <!-- Total fixo no bottom -->
-      <div style="position:sticky;bottom:0;background:var(--panel);border-top:1px solid var(--border);padding:12px 0;margin-top:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-        <span style="font-size:14px;color:var(--muted)">Total: <strong style="color:var(--primary-light);font-size:18px" id="r-total-bottom">${fmtBRL(t.totalGeral)}</strong></span>
+      <!-- Barra total fixo -->
+      <div class="bottom-bar">
+        <div class="bottom-total">
+          Total: <strong id="r-total-bottom">${fmtBRL(t.totalGeral)}</strong>
+        </div>
         <div style="display:flex;gap:8px">
-          ${Btn.primary('<i class="fi fi-rr-disk"></i> Salvar', "btn-salvar2")}
-          ${Btn.secondary("Voltar", "btn-voltar2")}
+          ${Btn.primary('<i class="fi fi-rr-disk"></i> Salvar Venda', "btn-salvar2")}
+          ${Btn.secondary("Cancelar", "btn-voltar2")}
         </div>
       </div>
     `;
@@ -318,30 +360,33 @@ export class VendasView extends BaseView {
   #renderItemRow(it, i) {
     const total = (Number(it.preco) || 0) * (Number(it.qtd) || 0) - (Number(it.desconto) || 0);
     return `
-      <tr data-row="${i}" style="border-bottom:1px solid var(--border)">
-        <td style="padding:7px 10px">
+      <tr data-row="${i}">
+        <td>
           <div class="autocomplete-wrap">
-            <input class="item-desc" data-i="${i}" value="${esc(it.descricao)}"
-              placeholder="Produto ou serviço..."
-              style="width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:var(--radius-sm);padding:7px 9px;font-size:13px" />
+            <input class="item-input item-desc" data-i="${i}" value="${esc(it.descricao)}"
+              placeholder="Produto ou serviço..." autocomplete="off" />
             <div class="autocomplete-list" id="ac-item-${i}"></div>
           </div>
         </td>
-        <td style="padding:7px 10px;text-align:right">
-          <input type="number" class="item-preco" data-i="${i}" value="${it.preco}"
-            style="width:100%;text-align:right;background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:var(--radius-sm);padding:7px 9px;font-size:13px" />
+        <td>
+          <input type="number" class="item-input item-preco" data-i="${i}"
+            value="${it.preco}" style="text-align:right" />
         </td>
-        <td style="padding:7px 10px;text-align:center">
-          <input type="number" class="item-qtd" data-i="${i}" value="${Number(it.qtd).toFixed(3)}" min="0.001" step="0.001"
-            style="width:100%;text-align:center;background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:var(--radius-sm);padding:7px 9px;font-size:13px" />
+        <td>
+          <input type="number" class="item-input item-qtd" data-i="${i}"
+            value="${Number(it.qtd).toFixed(3)}" min="0.001" step="0.001" style="text-align:center" />
         </td>
-        <td style="padding:7px 10px;text-align:right">
-          <input type="number" class="item-desc-val" data-i="${i}" value="${it.desconto}" min="0" step="0.01"
-            style="width:100%;text-align:right;background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:var(--radius-sm);padding:7px 9px;font-size:13px" />
+        <td>
+          <input type="number" class="item-input item-desc-val" data-i="${i}"
+            value="${it.desconto}" min="0" step="0.01" style="text-align:right" />
         </td>
-        <td style="padding:7px 10px;text-align:right;font-weight:700;color:${total > 0 ? "var(--primary-light)" : "var(--muted)"}" data-row-total="${i}">${fmtBRL(total)}</td>
-        <td style="padding:7px 10px">
-          <button class="del-item btn-icon danger" data-del-item="${i}" style="padding:4px 7px">✕</button>
+        <td class="item-total-cell ${total > 0 ? "positivo" : ""}" data-row-total="${i}">
+          ${fmtBRL(total)}
+        </td>
+        <td>
+          <button class="del-item-btn btn-icon danger" data-del-item="${i}">
+            <i class="fi fi-rr-cross-small"></i>
+          </button>
         </td>
       </tr>`;
   }
@@ -349,62 +394,47 @@ export class VendasView extends BaseView {
   #bindFormEvents() {
     const f = this.#form;
 
-    // Voltar
-    ["#btn-voltar", "#btn-voltar2"].forEach(sel => {
+    ["#btn-voltar","#btn-voltar2"].forEach(sel =>
       this.$(sel)?.addEventListener("click", () => {
         this.#subView = "lista";
         this.refresh();
-      });
-    });
-
-    // Histórico
-    ["#btn-historico"].forEach(sel => {
-      this.$(sel)?.addEventListener("click", () => {
-        this.#subView = "lista";
-        this.refresh();
-      });
-    });
-
-    // Salvar
-    ["#btn-salvar", "#btn-salvar2"].forEach(sel => {
-      this.$(sel)?.addEventListener("click", () => this.#salvar());
-    });
-
-    // Imprimir
+      })
+    );
+    ["#btn-salvar","#btn-salvar2"].forEach(sel =>
+      this.$(sel)?.addEventListener("click", () => this.#salvar())
+    );
     this.$("#btn-imprimir")?.addEventListener("click", () => this.#imprimir());
 
-    // Campos simples
-    const bind = (sel, prop) => {
+    // Campos
+    const bind = (sel, prop) =>
       this.$(sel)?.addEventListener("input", e => { f[prop] = e.target.value; });
-    };
-    const bindChange = (sel, prop) => {
+    const bindChange = (sel, prop) =>
       this.$(sel)?.addEventListener("change", e => { f[prop] = e.target.value; });
-    };
-    bind("#f-cliente", "clienteNome");
+    bind("#f-cliente",  "clienteNome");
     bind("#f-vendedor", "vendedor");
-    bind("#f-obs", "observacoes");
-    bindChange("#f-tipo", "tipo");
-    bindChange("#f-data", "data");
-    bindChange("#f-entrega", "entrega");
+    bind("#f-obs",      "observacoes");
+    bindChange("#f-tipo",     "tipo");
+    bindChange("#f-data",     "data");
+    bindChange("#f-entrega",  "entrega");
     bindChange("#f-situacao", "situacao");
 
-    // Autocomplete cliente
-    const clientes = selectors.clientes().list;
-    this.#bindAC("f-cliente", "ac-cli", clientes,
-      (item, inp) => { inp.value = item.dataset.nome; f.clienteNome = item.dataset.nome; }
-    );
+    // Autocomplete clientes
+    const clientes = selectors.clientes().list || [];
+    this.#bindAC("f-cliente", "ac-cli", clientes, (item, inp) => {
+      inp.value = item.dataset.nome;
+      f.clienteNome = item.dataset.nome;
+    });
 
     // Itens
     const tbody = this.$("#tbody-itens");
     tbody?.addEventListener("input", e => {
-      const t = e.target, i = parseInt(t.dataset.i);
+      const tgt = e.target, i = parseInt(tgt.dataset.i);
       if (isNaN(i)) return;
-      if (t.classList.contains("item-desc"))    f.itens[i].descricao = t.value;
-      if (t.classList.contains("item-preco"))   { f.itens[i].preco = t.value; this.#atualizarTotais(); }
-      if (t.classList.contains("item-qtd"))     { f.itens[i].qtd = t.value; this.#atualizarTotais(); }
-      if (t.classList.contains("item-desc-val")){ f.itens[i].desconto = t.value; this.#atualizarTotais(); }
+      if (tgt.classList.contains("item-desc"))     f.itens[i].descricao = tgt.value;
+      if (tgt.classList.contains("item-preco"))    { f.itens[i].preco    = tgt.value; this.#atualizarTotais(); }
+      if (tgt.classList.contains("item-qtd"))      { f.itens[i].qtd      = tgt.value; this.#atualizarTotais(); }
+      if (tgt.classList.contains("item-desc-val")) { f.itens[i].desconto = tgt.value; this.#atualizarTotais(); }
     });
-
     tbody?.addEventListener("click", e => {
       const del = e.target.closest("[data-del-item]");
       if (!del) return;
@@ -412,7 +442,6 @@ export class VendasView extends BaseView {
       if (!f.itens.length) f.itens.push(this.#novoItem());
       this.refresh();
     });
-
     this.$("#btn-add-item")?.addEventListener("click", () => {
       f.itens.push(this.#novoItem());
       this.refresh();
@@ -422,18 +451,15 @@ export class VendasView extends BaseView {
       }, 50);
     });
 
-    // Autocomplete produtos para cada item
-    const produtos = selectors.produtos().list;
-    f.itens.forEach((_, i) => {
-      this.#bindProdutoAC(i, produtos);
-    });
+    // Autocomplete produtos por linha
+    const produtos = selectors.produtos().list || [];
+    f.itens.forEach((_, i) => this.#bindProdutoAC(i, produtos));
   }
 
   #bindAC(inputId, listId, data, onSelect) {
     const inp  = this.$(`#${inputId}`);
     const list = this.$(`#${listId}`);
     if (!inp || !list) return;
-
     inp.addEventListener("input", () => {
       const q = inp.value.toLowerCase();
       if (!q) { list.style.display = "none"; return; }
@@ -454,13 +480,14 @@ export class VendasView extends BaseView {
     const inp  = this.$(`[data-i="${i}"].item-desc`);
     const list = this.$(`#ac-item-${i}`);
     if (!inp || !list) return;
-
     inp.addEventListener("input", () => {
       const q = inp.value.toLowerCase();
       if (!q) { list.style.display = "none"; return; }
       const m = produtos.filter(p => p.nome?.toLowerCase().includes(q)).slice(0, 7);
       if (!m.length) { list.style.display = "none"; return; }
-      list.innerHTML = m.map(p => `<div class="ac-item" data-nome="${esc(p.nome)}" data-preco="${p.preco_venda || p.preco || 0}">${esc(p.nome)}</div>`).join("");
+      list.innerHTML = m.map(p =>
+        `<div class="ac-item" data-nome="${esc(p.nome)}" data-preco="${p.preco_venda||0}">${esc(p.nome)}</div>`
+      ).join("");
       list.style.display = "block";
     });
     list.addEventListener("click", e => {
@@ -468,7 +495,7 @@ export class VendasView extends BaseView {
       if (!item) return;
       inp.value = item.dataset.nome;
       this.#form.itens[i].descricao = item.dataset.nome;
-      this.#form.itens[i].preco = parseFloat(item.dataset.preco) || 0;
+      this.#form.itens[i].preco     = parseFloat(item.dataset.preco) || 0;
       const precoInp = this.$(`[data-i="${i}"].item-preco`);
       if (precoInp) precoInp.value = this.#form.itens[i].preco;
       this.#atualizarTotais();
@@ -479,38 +506,35 @@ export class VendasView extends BaseView {
   #atualizarTotais() {
     const t = this.#calcularTotais();
     const set = (id, v) => { const el = this.$(`#${id}`); if (el) el.textContent = v; };
-    set("r-desc", fmtBRL(t.descontoTotal));
-    set("r-total", fmtBRL(t.totalGeral));
+    set("r-desc",         fmtBRL(t.descontoTotal));
+    set("r-total",        fmtBRL(t.totalGeral));
     set("r-total-bottom", fmtBRL(t.totalGeral));
     this.#form.itens.forEach((it, i) => {
-      const tot = (Number(it.preco) || 0) * (Number(it.qtd) || 0) - (Number(it.desconto) || 0);
+      const tot = (Number(it.preco)||0) * (Number(it.qtd)||0) - (Number(it.desconto)||0);
       const el  = this.$(`[data-row-total="${i}"]`);
-      if (el) { el.textContent = fmtBRL(tot); el.style.color = tot > 0 ? "var(--primary-light)" : "var(--muted)"; }
+      if (el) {
+        el.textContent = fmtBRL(tot);
+        el.classList.toggle("positivo", tot > 0);
+      }
     });
   }
 
   async #salvar() {
     const f = this.#form;
-    const itensValidos = f.itens.filter(it => it.descricao?.trim());
-    if (!itensValidos.length) { this.toast("Adicione ao menos um item.", "warn"); return; }
-
-    const dados = {
-      cliente_nome:     f.clienteNome || null,
-      vendedor:         f.vendedor || null,
-      tipo:             f.tipo,
-      data_venda:       f.data,
-      data_entrega:     f.entrega || null,
-      status:           f.situacao,
-      consumidor_final: f.consumidorFinal,
-      palavra_chave:    f.palavraChave || null,
-      observacoes:      f.observacoes || null,
-    };
-
     try {
+      const dados = {
+        cliente_nome: f.clienteNome || null,
+        vendedor:     f.vendedor    || null,
+        tipo:         f.tipo,
+        data_venda:   f.data,
+        data_entrega: f.entrega     || null,
+        status:       f.situacao,
+        observacoes:  f.observacoes || null,
+      };
       if (this.#vendaEditando) {
-        await services.venda.atualizar(this.#vendaEditando.id, dados, itensValidos);
+        await services.venda.atualizar(this.#vendaEditando.id, dados, f.itens);
       } else {
-        await services.venda.criar(dados, itensValidos);
+        await services.venda.criar(dados, f.itens);
       }
       this.#subView = "lista";
       this.#vendaEditando = null;
@@ -526,28 +550,32 @@ export class VendasView extends BaseView {
     const win = window.open("", "_blank");
     win.document.write(`<!DOCTYPE html><html><head><title>Venda</title>
       <style>body{font-family:Arial,sans-serif;padding:28px;font-size:13px}
-      table{width:100%;border-collapse:collapse}th{background:#283D3B;color:#fff;padding:7px 10px;text-align:left}
-      td{padding:7px 10px;border-bottom:1px solid #eee}.tr{font-weight:bold;background:#f5f5f5}</style>
+      h2{margin:0 0 4px}p{margin:0 0 16px;color:#666;font-size:12px}
+      table{width:100%;border-collapse:collapse}
+      th{background:#1a1a2e;color:#fff;padding:8px 10px;text-align:left;font-size:12px}
+      td{padding:8px 10px;border-bottom:1px solid #eee}
+      .total{font-weight:bold;font-size:15px}</style>
     </head><body>
       <h2>Gráfica Master Print</h2>
-      <p><strong>Cliente:</strong> ${esc(f.clienteNome) || "—"} · <strong>Data:</strong> ${fmtData(f.data)}</p>
+      <p>Cliente: ${esc(f.clienteNome)||"—"} · Data: ${fmtData(f.data)}</p>
       <table><thead><tr><th>Produto</th><th>Qtd</th><th>Preço</th><th>Desc.</th><th>Total</th></tr></thead>
-      <tbody>${f.itens.filter(it => it.descricao).map(it => {
-        const tot = (Number(it.preco) || 0) * (Number(it.qtd) || 0) - (Number(it.desconto) || 0);
-        return `<tr><td>${esc(it.descricao)}</td><td>${Number(it.qtd).toFixed(3)}</td><td>${fmtBRL(it.preco)}</td><td>${fmtBRL(it.desconto)}</td><td>${fmtBRL(tot)}</td></tr>`;
+      <tbody>${f.itens.filter(it=>it.descricao).map(it => {
+        const tot = (Number(it.preco)||0)*(Number(it.qtd)||0)-(Number(it.desconto)||0);
+        return `<tr><td>${esc(it.descricao)}</td><td>${Number(it.qtd).toFixed(3)}</td>
+          <td>${fmtBRL(it.preco)}</td><td>${fmtBRL(it.desconto)}</td><td>${fmtBRL(tot)}</td></tr>`;
       }).join("")}
-      <tr class="tr"><td colspan="4" style="text-align:right">TOTAL</td><td>${fmtBRL(t.totalGeral)}</td></tr>
+      <tr><td colspan="4" style="text-align:right;font-weight:700">TOTAL</td>
+          <td class="total">${fmtBRL(t.totalGeral)}</td></tr>
       </tbody></table>
-      ${f.observacoes ? `<p><strong>Obs:</strong> ${esc(f.observacoes)}</p>` : ""}
+      ${f.observacoes ? `<p style="margin-top:16px"><b>Obs:</b> ${esc(f.observacoes)}</p>` : ""}
     </body></html>`);
     win.document.close();
     setTimeout(() => win.print(), 300);
   }
 
-  // ─── Helpers ───────────────────────────────────────────────────────────────
   #calcularTotais() {
     return this.#form.itens.reduce((acc, it) => {
-      const sub = (Number(it.preco) || 0) * (Number(it.qtd) || 0);
+      const sub = (Number(it.preco)||0) * (Number(it.qtd)||0);
       acc.descontoTotal += Number(it.desconto) || 0;
       acc.totalGeral    += sub - (Number(it.desconto) || 0);
       return acc;
@@ -558,10 +586,58 @@ export class VendasView extends BaseView {
   #novoForm() {
     return {
       clienteNome: "", tipo: "Venda/O.S.", data: this.#hoje(),
-      situacao: "pendente", entrega: "", palavraChave: "",
-      vendedor: "", consumidorFinal: true, observacoes: "",
-      itens: [this.#novoItem()],
+      situacao: "pendente", entrega: "", vendedor: "",
+      observacoes: "", itens: [this.#novoItem()],
     };
   }
   #hoje() { return new Date().toISOString().split("T")[0]; }
 }
+
+// ─── CSS Vendas ───────────────────────────────────────────────────────────────
+function vendasCSS() { return `
+.venda-filtros{display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+.status-chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{padding:5px 12px;border-radius:999px;font-size:12px;font-weight:500;border:1px solid var(--border-md);background:transparent;color:var(--muted);cursor:pointer;transition:all var(--t);display:flex;align-items:center;gap:5px;font-family:var(--font)}
+.chip:hover{background:var(--panel2);color:var(--text)}
+.chip.active{background:color-mix(in srgb,var(--chip-cor,var(--primary)) 15%,transparent);border-color:var(--chip-cor,var(--primary));color:var(--chip-cor,var(--primary));font-weight:700}
+.chip-dot{width:7px;height:7px;border-radius:50%}
+.result-count{font-size:12px;color:var(--muted);margin-bottom:10px}
+.num-cell{font-weight:700;color:var(--muted);font-size:12px}
+.cli-cell-nome{font-weight:600;font-size:13px}
+.cli-cell-obs{font-size:11px;color:var(--muted);margin-top:2px}
+.sem-cliente{color:var(--muted);font-style:italic;font-weight:400}
+.tipo-cell{font-size:12px;color:var(--muted)}
+.data-cell{font-size:12px}
+.total-cell{text-align:right;font-weight:700;color:var(--primary-light)}
+.row-actions{display:flex;gap:4px;justify-content:flex-end}
+.status-pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px;background:color-mix(in srgb,var(--pill-cor) 15%,transparent);color:var(--pill-cor);border:1px solid color-mix(in srgb,var(--pill-cor) 30%,transparent)}
+.status-pill-dot{width:6px;height:6px;border-radius:50%;background:var(--pill-cor)}
+`; }
+
+function formCSS() { return `
+.itens-table-wrap{overflow-x:auto;border-radius:var(--radius-md);border:1px solid var(--border);margin-bottom:10px}
+.itens-table{width:100%;border-collapse:collapse;font-size:13px}
+.itens-table th{background:var(--panel);padding:9px 12px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);border-bottom:1px solid var(--border)}
+.itens-table td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
+.itens-table tr:last-child td{border-bottom:none}
+.item-input{width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:var(--radius-sm);padding:7px 9px;font-size:13px;font-family:var(--font)}
+.item-input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 2px rgba(0,196,154,0.12)}
+.item-total-cell{text-align:right;font-weight:600;color:var(--muted)}
+.item-total-cell.positivo{color:var(--primary-light)}
+.del-item-btn{padding:4px 6px}
+.tfoot-row td,.tfoot-total-row td{padding:8px 12px;border-top:1px solid var(--border-md)}
+.tfoot-desc-label,.tfoot-total-label{text-align:right;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+.tfoot-desc-val{text-align:right;font-weight:700;color:var(--error)}
+.tfoot-total-row{background:var(--primary-bg)}
+.tfoot-total-label{color:var(--text)}
+.tfoot-total-val{text-align:right;font-weight:800;font-size:16px;color:var(--primary-light)}
+.btn-add-item-row{width:100%;padding:10px;border:1.5px dashed var(--border-md);background:transparent;color:var(--muted);border-radius:var(--radius-md);cursor:pointer;font-family:var(--font);font-size:13px;transition:all var(--t);display:flex;align-items:center;justify-content:center;gap:6px;margin-top:6px}
+.btn-add-item-row:hover{border-color:var(--primary);color:var(--primary);background:var(--primary-bg)}
+.autocomplete-wrap{position:relative}
+.autocomplete-list{display:none;position:absolute;top:100%;left:0;right:0;z-index:50;background:var(--panel);border:1px solid var(--border-md);border-radius:var(--radius-md);box-shadow:var(--shadow-md);max-height:180px;overflow-y:auto}
+.ac-item{padding:9px 12px;font-size:13px;cursor:pointer;transition:background var(--t)}
+.ac-item:hover{background:var(--primary-bg);color:var(--primary-light)}
+.bottom-bar{position:sticky;bottom:0;background:var(--panel);border-top:1px solid var(--border);padding:12px 0;margin-top:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+.bottom-total{font-size:14px;color:var(--muted)}
+.bottom-total strong{color:var(--primary-light);font-size:20px;font-weight:800;margin-left:8px}
+`; }
