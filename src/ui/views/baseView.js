@@ -17,6 +17,7 @@
  */
 
 import { EventBus } from "../../core/eventBus.js";
+import { store } from "../../core/store.js";
 
 export class BaseView {
   /** @type {HTMLElement|null} */
@@ -166,5 +167,43 @@ export class BaseView {
         <div class="empty-state-title">${title}</div>
         ${sub ? `<div class="empty-state-subtitle">${sub}</div>` : ""}
       </div>`;
+  }
+}
+
+export class ListViewBase extends BaseView {
+  list = [];
+  _state = { search: "" };
+  _storeUnsubscribers = [];
+
+  setList(list = []) {
+    this.list = Array.isArray(list) ? list : [];
+  }
+
+  setSearch(search = "") {
+    this._state.search = search;
+    this.refresh();
+  }
+
+  get filteredList() {
+    const term = this._state.search.trim().toLowerCase();
+    if (!term) return this.list;
+
+    return this.list.filter(item =>
+      Object.values(item || {}).some(value =>
+        String(value ?? "").toLowerCase().includes(term)
+      )
+    );
+  }
+
+  subscribe(slice, callback) {
+    const unsubscribe = store.subscribe(slice, callback);
+    this._storeUnsubscribers.push(unsubscribe);
+    return unsubscribe;
+  }
+
+  unmount() {
+    this._storeUnsubscribers.forEach(unsubscribe => unsubscribe());
+    this._storeUnsubscribers = [];
+    super.unmount();
   }
 }
