@@ -1,728 +1,749 @@
 /**
- * DASHBOARD VIEW — Painel principal corrigido.
- * - Gráfico de barras: tendência 6 meses
- * - Gráfico de linha: lucro mensal
- * - Donut: vendas por status
- * - Ponto de equilíbrio: ANEL (ring) estilo barra circular — NÃO pizza
+ * DASHBOARD VIEW — Layout completo igual à imagem de referência
+ * Seções:
+ *  - Saudação + seletor de mês
+ *  - 4 KPI cards com sparklines
+ *  - Vendas x Despesas | Ponto de Equilíbrio | DRE
+ *  - Contas a Receber | Contas a Pagar | Avisos
+ *  - Vendas por Situação | Top 5 Produtos | Top 5 Clientes | Indicadores
  */
 
 import { BaseView } from "./baseView.js";
 import { services } from "../../core/services.js";
-import { selectors, actions } from "../../core/store.js";
+import { selectors, actions, store } from "../../core/store.js";
 import { EventBus, EVENTS } from "../../core/eventBus.js";
 import { esc } from "../../utils/sanitize.js";
 import { fmtBRL, fmtData } from "../../utils/fmt.js";
 
 function mesAtual() {
   const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
 }
-
 function nomeMes(m) {
-  const [y, mo] = m.split("-");
-  return new Date(y, mo - 1).toLocaleDateString("pt-BR", { month: "short" }).replace(".", "");
+  const [y,mo] = m.split("-");
+  return new Date(y,mo-1).toLocaleDateString("pt-BR",{month:"short"}).replace(".","");
+}
+function nomeMesLong(m) {
+  const [y,mo] = m.split("-");
+  return new Date(y,mo-1).toLocaleDateString("pt-BR",{month:"long",year:"numeric"});
 }
 
-// ─── Gráfico de barras SVG ────────────────────────────────────────────────────
-function barChart({ dados, width = 560, height = 160, corA = "#00c49a", corB = "#e53935", labelA = "Receita", labelB = "Despesa" }) {
-  const pad = { top: 20, right: 16, bottom: 32, left: 58 };
-  const W = width - pad.left - pad.right;
-  const H = height - pad.top - pad.bottom;
-  const n = dados.length;
-  const barW  = Math.max(Math.floor(W / n / 3), 6);
-  const gap   = Math.floor(W / n);
-  const maxVal = Math.max(...dados.flatMap(d => [d.a, d.b]), 1);
-  const toY = v => H - (v / maxVal) * H;
-
-  const bars = dados.map((d, i) => {
-    const x  = pad.left + i * gap + gap / 2 - barW;
-    const hA = Math.max((d.a / maxVal) * H, 1);
-    const hB = Math.max((d.b / maxVal) * H, 1);
-    return `
-      <rect x="${x}" y="${pad.top + toY(d.a)}" width="${barW}" height="${hA}"
-            fill="${corA}" rx="3" opacity="0.88">
-        <title>${labelA}: ${fmtBRL(d.a)}</title>
-      </rect>
-      <rect x="${x + barW + 2}" y="${pad.top + toY(d.b)}" width="${barW}" height="${hB}"
-            fill="${corB}" rx="3" opacity="0.88">
-        <title>${labelB}: ${fmtBRL(d.b)}</title>
-      </rect>
-      <text x="${x + barW}" y="${height - 8}" text-anchor="middle"
-            font-size="10" fill="var(--muted)" font-family="var(--font)">${d.label}</text>
-    `;
-  }).join("");
-
-  const gridLines = [0, 0.25, 0.5, 0.75, 1].map(pct => {
-    const y   = pad.top + H * (1 - pct);
-    const val = maxVal * pct;
-    const fmt = val >= 1000 ? `${(val/1000).toFixed(0)}k` : val.toFixed(0);
-    return `
-      <line x1="${pad.left}" y1="${y}" x2="${pad.left + W}" y2="${y}"
-            stroke="var(--border)" stroke-width="1"/>
-      <text x="${pad.left - 5}" y="${y + 4}" text-anchor="end"
-            font-size="9" fill="var(--muted)" font-family="var(--font)">${fmt}</text>
-    `;
-  }).join("");
-
-  return `
-    <svg viewBox="0 0 ${width} ${height}" width="100%" preserveAspectRatio="xMidYMid meet"
-         style="overflow:visible;display:block">
-      ${gridLines}
-      ${bars}
-    </svg>`;
+/* ── Sparkline SVG (mini linha) ─────────────────────────────────────────── */
+function sparkline(dados, cor="#00c49a", w=120, h=36) {
+  if(!dados?.length || dados.length < 2) return "";
+  const mx=Math.max(...dados,1), mn=Math.min(...dados,0), rng=mx-mn||1;
+  const toX=i=>(i/(dados.length-1))*w;
+  const toY=v=>h-((v-mn)/rng)*h*0.85-h*0.05;
+  const pts=dados.map((v,i)=>`${toX(i)},${toY(v)}`).join(" ");
+  const area=`0,${h} ${pts} ${w},${h}`;
+  return `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" style="display:block;overflow:visible">
+    <defs><linearGradient id="sg${cor.replace(/[^a-z0-9]/gi,'')}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="${cor}" stop-opacity=".25"/>
+      <stop offset="100%" stop-color="${cor}" stop-opacity="0"/>
+    </linearGradient></defs>
+    <polygon points="${area}" fill="url(#sg${cor.replace(/[^a-z0-9]/gi,'')})"/>
+    <polyline points="${pts}" fill="none" stroke="${cor}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`;
 }
 
-// ─── Gráfico de linha SVG ─────────────────────────────────────────────────────
-function lineChart({ dados, width = 560, height = 120, cor = "#00c49a" }) {
-  const pad = { top: 16, right: 16, bottom: 28, left: 58 };
-  const W = width - pad.left - pad.right;
-  const H = height - pad.top - pad.bottom;
-  const n = dados.length;
-  if (n < 2) return `<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">Dados insuficientes</div>`;
-
-  const maxVal = Math.max(...dados.map(d => d.v), 1);
-  const minVal = Math.min(...dados.map(d => d.v), 0);
-  const range  = maxVal - minVal || 1;
-
-  const toX = i => pad.left + (i / (n - 1)) * W;
-  const toY = v => pad.top + H - ((v - minVal) / range) * H;
-
-  const points = dados.map((d, i) => `${toX(i)},${toY(d.v)}`).join(" ");
-  const area   = `${toX(0)},${pad.top + H} ${points} ${toX(n - 1)},${pad.top + H}`;
-
-  const dots = dados.map((d, i) => `
-    <circle cx="${toX(i)}" cy="${toY(d.v)}" r="4"
-            fill="${cor}" stroke="var(--panel2)" stroke-width="2">
-      <title>${d.label}: ${fmtBRL(d.v)}</title>
-    </circle>
-  `).join("");
-
-  const labels = dados.map((d, i) => `
-    <text x="${toX(i)}" y="${height - 6}" text-anchor="middle"
-          font-size="10" fill="var(--muted)" font-family="var(--font)">${d.label}</text>
-  `).join("");
-
-  const gridLines = [0, 0.5, 1].map(pct => {
-    const y   = pad.top + H * (1 - pct);
-    const val = minVal + range * pct;
-    const fmt = Math.abs(val) >= 1000 ? `${(val/1000).toFixed(1)}k` : val.toFixed(0);
-    return `
-      <line x1="${pad.left}" y1="${y}" x2="${pad.left + W}" y2="${y}"
-            stroke="var(--border)" stroke-width="1"/>
-      <text x="${pad.left - 5}" y="${y + 4}" text-anchor="end"
-            font-size="9" fill="var(--muted)" font-family="var(--font)">${fmt}</text>
-    `;
+/* ── Barras SVG (tendência) ─────────────────────────────────────────────── */
+function barChart(dados, w=460, h=160) {
+  const pad={t:16,r:10,b:28,l:46};
+  const W=w-pad.l-pad.r, H=h-pad.t-pad.b;
+  const n=dados.length, bw=Math.max(Math.floor(W/n/3.2),5), gap=Math.floor(W/n);
+  const mx=Math.max(...dados.flatMap(d=>[d.a,d.b]),1);
+  const toY=v=>H-(v/mx)*H;
+  const bars=dados.map((d,i)=>{
+    const x=pad.l+i*gap+gap/2-bw;
+    return `<rect x="${x}" y="${pad.t+toY(d.a)}" width="${bw}" height="${Math.max((d.a/mx)*H,1)}" fill="#00c49a" rx="3" opacity=".9"><title>${d.label}: ${fmtBRL(d.a)}</title></rect>
+<rect x="${x+bw+2}" y="${pad.t+toY(d.b)}" width="${bw}" height="${Math.max((d.b/mx)*H,1)}" fill="#e53935" rx="3" opacity=".9"><title>Desp: ${fmtBRL(d.b)}</title></rect>
+<text x="${x+bw}" y="${h-6}" text-anchor="middle" font-size="9" fill="var(--muted)" font-family="var(--font)">${d.label}</text>`;
   }).join("");
-
-  return `
-    <svg viewBox="0 0 ${width} ${height}" width="100%" preserveAspectRatio="xMidYMid meet"
-         style="overflow:visible;display:block">
-      ${gridLines}
-      <defs>
-        <linearGradient id="lg-line" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%"   stop-color="${cor}" stop-opacity="0.22"/>
-          <stop offset="100%" stop-color="${cor}" stop-opacity="0.01"/>
-        </linearGradient>
-      </defs>
-      <polygon points="${area}" fill="url(#lg-line)"/>
-      <polyline points="${points}" fill="none" stroke="${cor}" stroke-width="2.5"
-                stroke-linecap="round" stroke-linejoin="round"/>
-      ${dots}
-      ${labels}
-    </svg>`;
+  const grid=[0,.25,.5,.75,1].map(p=>{
+    const y=pad.t+H*(1-p), v=mx*p;
+    const f=v>=1000?`${(v/1000).toFixed(0)}k`:v.toFixed(0);
+    return `<line x1="${pad.l}" y1="${y}" x2="${pad.l+W}" y2="${y}" stroke="var(--border)" stroke-width="1"/>
+<text x="${pad.l-4}" y="${y+3}" text-anchor="end" font-size="8" fill="var(--muted)" font-family="var(--font)">${f}</text>`;
+  }).join("");
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" style="display:block;overflow:visible">${grid}${bars}</svg>`;
 }
 
-// ─── Gráfico de donut SVG ─────────────────────────────────────────────────────
-function donutChart({ fatias, size = 120 }) {
-  const r     = 44;
-  const cx    = size / 2;
-  const cy    = size / 2;
-  const inner = r * 0.56;
-  const total = fatias.reduce((s, f) => s + f.v, 0) || 1;
-  let angle   = -Math.PI / 2;
+/* ── Ponto de Equilíbrio — gráfico de linhas ────────────────────────────── */
+function breakEvenChart(custoFixo, custoVar, receitaTotal, w=220, h=140) {
+  const pad={t:12,r:10,b:28,l:38};
+  const W=w-pad.l-pad.r, H=h-pad.t-pad.b;
+  const maxX=receitaTotal*1.15||1, maxY=receitaTotal*1.15||1;
+  const toX=v=>(v/maxX)*W+pad.l;
+  const toY=v=>H-((v/maxY)*H)+pad.t;
 
-  const arcos = fatias.map(f => {
-    const pct   = f.v / total;
-    const sweep = pct * 2 * Math.PI;
-    const x1    = cx + r * Math.cos(angle);
-    const y1    = cy + r * Math.sin(angle);
-    angle += sweep;
-    const x2    = cx + r * Math.cos(angle);
-    const y2    = cy + r * Math.sin(angle);
-    const large = sweep > Math.PI ? 1 : 0;
-    return `
-      <path d="M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${large},1 ${x2},${y2} Z"
-            fill="${f.cor}" opacity="0.9">
-        <title>${esc(f.label)}: ${fmtBRL(f.v)}</title>
-      </path>`;
+  // Pontos ao longo do eixo X (vendas)
+  const pts=5;
+  const recPts=Array.from({length:pts},(_,i)=>{const x=maxX*(i/(pts-1));return{x,y:x};});
+  const ctPts=Array.from({length:pts},(_,i)=>{const x=maxX*(i/(pts-1));return{x,y:custoFixo+custoVar*(x/maxX)};});
+  const cfPts=[{x:0,y:custoFixo},{x:maxX,y:custoFixo}];
+
+  // Ponto de equilíbrio: receita = custoFixo + custoVar*(x/maxX)*maxX => x*(1 - custoVar/maxX) = custoFixo
+  const varPct = receitaTotal > 0 ? (custoVar/receitaTotal) : 0.5;
+  const peX = varPct < 1 ? custoFixo/(1-varPct) : 0;
+  const peXpx = toX(Math.min(peX, maxX));
+  const peYpx = toY(Math.min(peX, maxY));
+
+  const linePts=(pts,fn)=>pts.map(p=>`${toX(p.x)},${toY(fn?fn(p.x):p.y)}`).join(" ");
+
+  const grid=[0,.25,.5,.75,1].map(p=>{
+    const y=pad.t+H*(1-p), v=maxX*p;
+    const f=v>=1000?`${(v/1000).toFixed(0)}k`:v.toFixed(0);
+    return `<line x1="${pad.l}" y1="${y}" x2="${pad.l+W}" y2="${y}" stroke="var(--border)" stroke-width=".7"/>
+<text x="${pad.l-3}" y="${y+3}" text-anchor="end" font-size="7" fill="var(--muted)" font-family="var(--font)">${f}</text>
+<text x="${toX(maxX*p)}" y="${h-4}" text-anchor="middle" font-size="7" fill="var(--muted)" font-family="var(--font)">${f}</text>`;
   }).join("");
 
-  return `
-    <svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">
-      ${arcos}
-      <circle cx="${cx}" cy="${cy}" r="${inner}" fill="var(--panel2)"/>
-    </svg>`;
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" style="display:block;overflow:visible">
+    ${grid}
+    <line x1="${pad.l}" y1="${pad.t}" x2="${pad.l}" y2="${pad.t+H}" stroke="var(--border-md)" stroke-width="1"/>
+    <line x1="${pad.l}" y1="${pad.t+H}" x2="${pad.l+W}" y2="${pad.t+H}" stroke="var(--border-md)" stroke-width="1"/>
+    <!-- Custo Fixo (vermelho tracejado horizontal) -->
+    <polyline points="${toX(0)},${toY(custoFixo)} ${toX(maxX)},${toY(custoFixo)}"
+      fill="none" stroke="#e53935" stroke-width="1.5" stroke-dasharray="4,3" opacity=".8"/>
+    <!-- Custo Total (azul) -->
+    <polyline points="${toX(0)},${toY(custoFixo)} ${toX(maxX)},${toY(custoFixo+custoVar)}"
+      fill="none" stroke="#74c0fc" stroke-width="2"/>
+    <!-- Receita Total (verde) -->
+    <polyline points="${toX(0)},${toY(0)} ${toX(maxX)},${toY(receitaTotal)}"
+      fill="none" stroke="#00c49a" stroke-width="2"/>
+    <!-- P.E. linha vertical tracejada -->
+    ${peX>0&&peX<maxX?`
+    <line x1="${peXpx}" y1="${pad.t}" x2="${peXpx}" y2="${pad.t+H}"
+      stroke="var(--muted)" stroke-width="1" stroke-dasharray="3,2"/>
+    <circle cx="${peXpx}" cy="${peYpx}" r="3.5" fill="var(--primary)" stroke="var(--panel2)" stroke-width="1.5"/>
+    <text x="${peXpx+5}" y="${peYpx-5}" font-size="8" fill="var(--text)" font-family="var(--font)" font-weight="700">P.E.</text>`:""}
+  </svg>`;
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-// VIEW
-// ══════════════════════════════════════════════════════════════════════════════
+/* ── Donut SVG ──────────────────────────────────────────────────────────── */
+function donutChart(fatias, size=130) {
+  const r=54,cx=size/2,cy=size/2,inner=r*.6;
+  const total=fatias.reduce((s,f)=>s+f.v,0)||1;
+  let angle=-Math.PI/2;
+  const arcos=fatias.map(f=>{
+    const sw=(f.v/total)*2*Math.PI;
+    const x1=cx+r*Math.cos(angle),y1=cy+r*Math.sin(angle);
+    angle+=sw;
+    const x2=cx+r*Math.cos(angle),y2=cy+r*Math.sin(angle);
+    return `<path d="M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${sw>Math.PI?1:0},1 ${x2},${y2} Z"
+      fill="${f.cor}" opacity=".92"><title>${esc(f.label)}: ${f.v}</title></path>`;
+  }).join("");
+  return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">
+    ${arcos}
+    <circle cx="${cx}" cy="${cy}" r="${inner}" fill="var(--panel2)"/>
+    <text x="${cx}" y="${cy-8}" text-anchor="middle" font-size="10" fill="var(--muted)" font-family="var(--font)">Total</text>
+    <text x="${cx}" y="${cy+12}" text-anchor="middle" font-size="22" font-weight="800" fill="var(--text)" font-family="var(--font)">${fatias.reduce((s,f)=>s+f.v,0)}</text>
+  </svg>`;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   VIEW
+══════════════════════════════════════════════════════════════════════════ */
 export class DashboardView extends BaseView {
-  #mes     = mesAtual();
-  #resumo  = null;
-  #loading = true;
+  #mes      = mesAtual();
+  #resumo   = null;
+  #loading  = true;
+  #userName = "Usuário";
 
   async _init() {
-    await this.#carregar();
-    this.listenTo(EVENTS.VENDA_CRIADA,       () => this.#recarregar());
-    this.listenTo(EVENTS.VENDA_ATUALIZADA,   () => this.#recarregar());
-    this.listenTo(EVENTS.VENDA_STATUS_MUDOU, () => this.#recarregar());
-    this.listenTo(EVENTS.LANCAMENTO_CRIADO,  () => this.#recarregar());
-    this.listenTo(EVENTS.LANCAMENTO_PAGO,    () => this.#recarregar());
-    this.listenTo(EVENTS.ESTOQUE_ENTRADA,    () => this.#recarregar());
-    this.listenTo(EVENTS.ESTOQUE_SAIDA,      () => this.#recarregar());
-    this.listenTo(EVENTS.PRODUCAO_CONCLUIDA, () => this.#recarregar());
+    // Pega nome do usuário
+    const u = document.getElementById("user-name");
+    if (u) this.#userName = u.textContent || "Usuário";
+    await this.#load();
   }
 
-  async #carregar() {
+  async #load() {
     this.#loading = true;
     try {
       this.#resumo = await services.dashboard.getResumo(this.#mes);
-    } catch (e) {
-      console.error("[Dashboard] erro:", e);
-    } finally {
-      this.#loading = false;
-      this.refresh();
-    }
+      // Carrega caixa para fluxo
+      await services.caixa.listar().catch(()=>{});
+    } catch(e) { console.error("[Dashboard]",e); }
+    finally { this.#loading = false; this.refresh(); }
   }
 
-  async #recarregar() {
+  async #reload() {
     actions.setCache(`dashboard_${this.#mes}`, null);
-    await this.#carregar();
+    await this.#load();
   }
 
   render() {
     if (this.#loading || !this.#resumo) return this._loading("Carregando dashboard...");
-
-    const r    = this.#resumo;
-    const fin  = r.financeiro;
+    const r   = this.#resumo;
+    const fin = r.financeiro;
     const hoje = new Date().toISOString().split("T")[0];
-    const vencidos = r.lancamentos.filter(l =>
-      l.status === "pendente" && l.data_vencimento && l.data_vencimento < hoje
-    );
+
+    // Fluxo de caixa (soma do mês)
+    const caixaMov = selectors.caixa().movimentos || [];
+    const fluxo    = caixaMov
+      .filter(m => m.data?.startsWith(this.#mes))
+      .reduce((s,m) => s + (m.tipo==="entrada" ? Number(m.valor) : -Number(m.valor)), 0);
+
+    // Tendência sparklines (últimos 6 meses)
+    const spkRec   = r.tendencia?.map(t=>t.receitas)||[];
+    const spkDesp  = r.tendencia?.map(t=>t.despesas)||[];
+    const spkLucro = r.tendencia?.map(t=>t.lucro)||[];
+    const spkCaixa = r.tendencia?.map(t=>t.receitas*0.7)||[]; // approx
+
+    // Contas a receber e pagar
+    const aReceber = r.lancamentos.filter(l=>l.tipo==="receita"&&l.status==="pendente")
+      .sort((a,b)=>a.data_vencimento?.localeCompare(b.data_vencimento||"")||0).slice(0,5);
+    const aPagar   = r.lancamentos.filter(l=>l.tipo==="despesa"&&l.status==="pendente")
+      .sort((a,b)=>a.data_vencimento?.localeCompare(b.data_vencimento||"")||0).slice(0,5);
+
+    // Alertas/avisos
+    const vencidos  = r.lancamentos.filter(l=>l.status==="pendente"&&l.data_vencimento<hoje);
+    const estAlerts = [...(r.estoque?.zerados||[]),...(r.estoque?.alertas||[])];
+    const emProd    = store.getState("producao")?.itens?.length || 0;
+
+    // Top 5 clientes (por valor de vendas)
+    const clienteMap = {};
+    r.vendas.lista.forEach(v=>{
+      const k = v.cliente_nome || "Sem cliente";
+      clienteMap[k] = (clienteMap[k]||0) + Number(v.total||0);
+    });
+    const top5Clientes = Object.entries(clienteMap)
+      .sort((a,b)=>b[1]-a[1]).slice(0,5);
+
+    // Top 5 produtos (de venda_itens)
+    const prodMap = {};
+    r.vendas.lista.forEach(v=>{
+      (v.venda_itens||[]).forEach(it=>{
+        const k = it.descricao||"Sem descrição";
+        prodMap[k] = (prodMap[k]||0) + Number(it.preco_unitario||0)*Number(it.quantidade||1);
+      });
+    });
+    const top5Produtos = Object.entries(prodMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
+
+    // Vendas por status
+    const STATUS = [
+      {id:"pendente",    label:"Pendente",    cor:"#F79009"},
+      {id:"em_execucao", label:"Em execução", cor:"#74c0fc"},
+      {id:"pronto",      label:"Pronto",      cor:"#69db7c"},
+      {id:"entregue",    label:"Entregue",    cor:"#00AC17"},
+      {id:"cancelado",   label:"Cancelado",   cor:"#e53935"},
+    ];
+    const fatias = STATUS.map(s=>({
+      label:s.label, cor:s.cor,
+      v:r.vendas.lista.filter(v=>v.status===s.id).length
+    })).filter(f=>f.v>0);
+
+    // Ponto de equilíbrio
+    const custoFixoTotal = store.getState("config")?.custosFixos?.reduce((s,c)=>s+Number(c.valor||0),0)||0;
+    const receita        = fin.receitas||0;
+    const despesas       = fin.despesas||0;
+    const custoVar       = Math.max(despesas - custoFixoTotal, 0);
+    const margContrib    = receita > 0 ? ((receita-custoVar)/receita*100) : 0;
+    const pontoEq        = margContrib > 0 ? (custoFixoTotal/(margContrib/100)) : 0;
+    const recNecessaria  = pontoEq;
+    const margSeguranca  = receita - pontoEq;
+
+    // DRE aproximado
+    const impostos  = receita * 0.095;
+    const lucroOp   = receita - impostos - custoVar - custoFixoTotal;
+    const outrasDesp= Math.max(despesas - custoVar - custoFixoTotal - impostos, 0);
+    const lucroLiq  = fin.lucro;
+    const margLiq   = receita > 0 ? (lucroLiq/receita*100) : 0;
+
+    // Indicadores
+    const totalVendas = r.vendas.total||1;
+    const ticketMedio = totalVendas > 0 ? r.faturamento/totalVendas : 0;
+    const inadimp     = fin.receitas > 0 ? ((fin.aReceber||0)/fin.receitas*100) : 0;
+    const pedAberto   = r.vendas.lista.filter(v=>["pendente","em_execucao"].includes(v.status)).length;
 
     return `
-      <style>${dashCSS()}</style>
+<style>${dashCSS()}</style>
 
-      <!-- Cabeçalho -->
-      <div class="dash-header">
-        <div>
-          <h2 class="dash-title">Dashboard</h2>
-          <span class="dash-sub">${this.#mes.split("-").reverse().join("/")} · atualizado agora</span>
-        </div>
-        <div class="dash-header-actions">
-          <input type="month" id="filtro-mes" value="${this.#mes}" class="month-input" />
-          <button class="btn-secondary" id="btn-refresh" title="Atualizar" style="padding:7px 12px">
-            <i class="fi fi-rr-refresh"></i>
-          </button>
-        </div>
+<!-- SAUDAÇÃO -->
+<div class="dash-greeting-row">
+  <div>
+    <h2 class="dash-greeting">Olá, ${esc(this.#userName.split("@")[0])}! 👋</h2>
+    <p class="dash-greeting-sub">Aqui está o resumo geral da sua empresa.</p>
+  </div>
+  <div class="dash-header-actions">
+    <span class="dash-mes-label">${nomeMesLong(this.#mes)}</span>
+    <input type="month" id="filtro-mes" value="${this.#mes}" class="month-input" title="Selecionar mês"/>
+    <button class="btn-refresh-icon" id="btn-refresh" title="Atualizar">
+      <i class="fi fi-rr-refresh"></i>
+    </button>
+  </div>
+</div>
+
+<!-- ① KPI CARDS -->
+<div class="kpi4-grid">
+  ${this.#kpi4("Receita Total",   fmtBRL(receita),  spkRec,  "#00c49a", "fi-rr-trending-up",    r.tendencia)}
+  ${this.#kpi4("Despesas Totais", fmtBRL(despesas), spkDesp, "#e53935", "fi-rr-trending-down",  r.tendencia, true)}
+  ${this.#kpi4("Lucro Líquido",   fmtBRL(fin.lucro),spkLucro, fin.lucro>=0?"#00c49a":"#e53935","fi-rr-chart-line-up", r.tendencia)}
+  ${this.#kpi4("Fluxo de Caixa",  fmtBRL(fluxo),    spkCaixa,"#a78bfa", "fi-rr-coins",          r.tendencia)}
+</div>
+
+<!-- ② VENDAS x DESPESAS | PONTO DE EQUILÍBRIO | DRE -->
+<div class="dash-row3">
+
+  <!-- Vendas x Despesas -->
+  <div class="dash-panel">
+    <div class="panel-header">
+      <span class="panel-title">VENDAS X DESPESAS — ÚLTIMOS 6 MESES</span>
+      <div class="chart-legend">
+        <span class="leg-item"><span class="leg-dot" style="background:#00c49a"></span>Receita</span>
+        <span class="leg-item"><span class="leg-dot" style="background:#e53935"></span>Despesa</span>
       </div>
+    </div>
+    <div style="overflow-x:auto">
+      ${r.tendencia?.length
+        ? barChart(r.tendencia.map(t=>({label:nomeMes(t.mes),a:t.receitas,b:t.despesas})))
+        : `<div class="chart-empty">Sem dados de tendência</div>`}
+    </div>
+  </div>
 
-      <!-- KPIs -->
-      <div class="kpi-row">
-        ${this.#kpi("Faturamento",   fmtBRL(r.faturamento),      `${r.vendas.total} venda${r.vendas.total!==1?"s":""}`, "var(--primary-light)", "fi-rr-money-bill-wave")}
-        ${this.#kpi("Receitas",      fmtBRL(fin.receitas),        `Recebido: ${fmtBRL(fin.recebido||0)}`,               "var(--success)",       "fi-rr-trending-up")}
-        ${this.#kpi("Despesas",      fmtBRL(fin.despesas),        `A pagar: ${fmtBRL(fin.aPagar||0)}`,                  "var(--error)",         "fi-rr-trending-down")}
-        ${this.#kpi("Lucro Líquido", fmtBRL(fin.lucro),           `Margem: ${fin.margem}%`,                             fin.lucro>=0?"var(--success)":"var(--error)", fin.lucro>=0?"fi-rr-check-circle":"fi-rr-exclamation")}
+  <!-- Ponto de Equilíbrio -->
+  <div class="dash-panel">
+    <div class="panel-header">
+      <span class="panel-title">PONTO DE EQUILÍBRIO</span>
+    </div>
+    <div class="pe-layout">
+      <div class="pe-nums">
+        <div class="pe-item"><span>Receita Necessária (mês)</span><strong>${fmtBRL(recNecessaria)}</strong></div>
+        <div class="pe-item"><span>Custo Fixo Total</span><strong>${fmtBRL(custoFixoTotal)}</strong></div>
+        <div class="pe-item"><span>Custo Variável Total</span><strong>${fmtBRL(custoVar)}</strong></div>
+        <div class="pe-item"><span>Margem de Contribuição</span><strong style="color:var(--success)">${margContrib.toFixed(1)}%</strong></div>
+        <div class="pe-item pe-item-total"><span>Ponto de Equilíbrio</span><strong style="color:var(--primary)">${fmtBRL(pontoEq)}</strong></div>
+        ${margSeguranca>0?`<div class="pe-item"><span>Margem de Segurança</span><strong style="color:var(--success)">${fmtBRL(margSeguranca)} (${receita>0?(margSeguranca/receita*100).toFixed(1):0}%)</strong></div>`:""}
       </div>
+      <div class="pe-chart-wrap">
+        <div class="pe-chart-title" style="font-size:9px;color:var(--muted);margin-bottom:4px;font-weight:600">Gráfico do Ponto de Equilíbrio</div>
+        <div class="pe-chart-legend">
+          <span class="leg-item"><span class="leg-dot" style="background:#00c49a"></span>Receita Total</span>
+          <span class="leg-item"><span class="leg-dot" style="background:#74c0fc"></span>Custo Total</span>
+          <span class="leg-item"><span class="leg-dot" style="background:#e53935;width:12px;height:2px;border-radius:0"></span>Custo Fixo</span>
+        </div>
+        ${breakEvenChart(custoFixoTotal, custoVar, receita)}
+      </div>
+    </div>
+  </div>
 
-      <!-- Banner de vencidos -->
+  <!-- DRE -->
+  <div class="dash-panel">
+    <div class="panel-header">
+      <span class="panel-title">DRE — DEMONSTRATIVO DE RESULTADO</span>
+      <span class="dre-mes">${nomeMesLong(this.#mes).split(" de ")[1]?nomeMesLong(this.#mes).replace(" de "," "):nomeMesLong(this.#mes)}</span>
+    </div>
+    <div class="dre-lista">
+      ${this.#dreRow("Receita Bruta",          receita,    "var(--success)", false, false)}
+      ${this.#dreRow("(-) Impostos",            impostos,   "var(--error)",   true,  false)}
+      ${this.#dreRow("(-) Custos Variáveis",    custoVar,   "var(--error)",   true,  false)}
+      ${this.#dreRow("(-) Despesas Fixas",      custoFixoTotal,"var(--error)",true,  false)}
+      <div class="dre-sep"></div>
+      ${this.#dreRow("Lucro Operacional",       lucroOp,    lucroOp>=0?"var(--success)":"var(--error)", false, true)}
+      ${outrasDesp>0?this.#dreRow("(-) Outras Despesas",outrasDesp,"var(--error)",true,false):""}
+      <div class="dre-sep"></div>
+      ${this.#dreRow("Lucro Líquido",           lucroLiq,   lucroLiq>=0?"var(--success)":"var(--error)", false, true)}
+      <div class="dre-row-margem">
+        <span>Margem Líquida</span>
+        <strong style="color:${margLiq>=15?"var(--success)":"var(--warning)"}">${margLiq.toFixed(1)}%</strong>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ③ CONTAS A RECEBER | CONTAS A PAGAR | AVISOS -->
+<div class="dash-row3">
+
+  <!-- Contas a Receber -->
+  <div class="dash-panel">
+    <div class="panel-header">
+      <span class="panel-title">CONTAS A RECEBER</span>
+      <button class="btn-ver-todas" onclick="window.location.hash='financeiro'">Ver todas</button>
+    </div>
+    <table class="mini-table">
+      <thead><tr><th>Cliente</th><th>Vencimento</th><th>Valor</th><th>Status</th></tr></thead>
+      <tbody>
+        ${aReceber.length ? aReceber.map(l=>{
+          const at = l.data_vencimento < hoje;
+          return `<tr>
+            <td style="font-weight:600;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(l.cliente_nome||l.descricao||"—")}</td>
+            <td style="color:${at?"var(--error)":"var(--muted)"};">${l.data_vencimento?fmtData(l.data_vencimento):"—"}</td>
+            <td style="color:var(--success);font-weight:700">${fmtBRL(l.valor)}</td>
+            <td><span class="status-mini ${at?"atrasado":"pendente"}">${at?"Em atraso":"Pendente"}</span></td>
+          </tr>`;
+        }).join("") : `<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:14px;font-size:11px">Nenhuma conta a receber</td></tr>`}
+      </tbody>
+    </table>
+    ${aReceber.length ? `<div class="mini-table-total">
+      <span>Total a receber</span>
+      <strong style="color:var(--success)">${fmtBRL(aReceber.reduce((s,l)=>s+Number(l.valor),0))}</strong>
+    </div>` : ""}
+  </div>
+
+  <!-- Contas a Pagar -->
+  <div class="dash-panel">
+    <div class="panel-header">
+      <span class="panel-title">CONTAS A PAGAR</span>
+      <button class="btn-ver-todas" onclick="window.location.hash='financeiro'">Ver todas</button>
+    </div>
+    <table class="mini-table">
+      <thead><tr><th>Fornecedor</th><th>Vencimento</th><th>Valor</th><th>Status</th></tr></thead>
+      <tbody>
+        ${aPagar.length ? aPagar.map(l=>{
+          const at = l.data_vencimento < hoje;
+          return `<tr>
+            <td style="font-weight:600;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(l.cliente_nome||l.descricao||"—")}</td>
+            <td style="color:${at?"var(--error)":"var(--muted)"}">${l.data_vencimento?fmtData(l.data_vencimento):"—"}</td>
+            <td style="color:var(--error);font-weight:700">${fmtBRL(l.valor)}</td>
+            <td><span class="status-mini ${at?"atrasado":"pendente"}">${at?"Em atraso":"Pendente"}</span></td>
+          </tr>`;
+        }).join("") : `<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:14px;font-size:11px">Nenhuma conta a pagar</td></tr>`}
+      </tbody>
+    </table>
+    ${aPagar.length ? `<div class="mini-table-total">
+      <span>Total a pagar</span>
+      <strong style="color:var(--error)">${fmtBRL(aPagar.reduce((s,l)=>s+Number(l.valor),0))}</strong>
+    </div>` : ""}
+  </div>
+
+  <!-- Avisos e Notificações -->
+  <div class="dash-panel">
+    <div class="panel-header">
+      <span class="panel-title">AVISOS E NOTIFICAÇÕES</span>
+      <span class="badge-notif-count">${vencidos.length + estAlerts.length + (emProd>0?1:0)}</span>
+    </div>
+    <div class="avisos-lista">
       ${vencidos.length ? `
-      <div class="alert-banner">
-        <i class="fi fi-rr-exclamation"></i>
-        <strong>${vencidos.length} lançamento${vencidos.length>1?"s":""} vencido${vencidos.length>1?"s":""}</strong>
-        — ${vencidos.slice(0,2).map(l=>`${esc(l.descricao)} (${fmtBRL(l.valor)})`).join(", ")}
-        ${vencidos.length>2 ? ` e mais ${vencidos.length-2}...` : ""}
+      <div class="aviso-item error">
+        <div class="aviso-icon"><i class="fi fi-rr-exclamation"></i></div>
+        <div class="aviso-body">
+          <div class="aviso-titulo">${vencidos.length} conta${vencidos.length>1?"s":""} a receber vencida${vencidos.length>1?"s":""}</div>
+          <div class="aviso-sub">Total: ${fmtBRL(vencidos.reduce((s,l)=>s+Number(l.valor),0))}</div>
+        </div>
+        <div class="aviso-tempo">Hoje</div>
       </div>` : ""}
-
-      <!-- Grid principal -->
-      <div class="dash-grid">
-
-        <!-- Tendência 6 meses -->
-        <div class="dash-card span-2">
-          <div class="card-header">
-            <span class="card-title"><i class="fi fi-rr-chart-histogram"></i> Tendência — últimos 6 meses</span>
-            <div class="chart-legend">
-              <span class="leg-item"><span class="leg-dot" style="background:var(--success)"></span>Receita</span>
-              <span class="leg-item"><span class="leg-dot" style="background:var(--error)"></span>Despesa</span>
-            </div>
-          </div>
-          ${this.#renderTendencia(r.tendencia)}
+      ${emProd > 0 ? `
+      <div class="aviso-item warn">
+        <div class="aviso-icon"><i class="fi fi-rr-print"></i></div>
+        <div class="aviso-body">
+          <div class="aviso-titulo">${emProd} pedido${emProd>1?"s":""} em produção</div>
+          <div class="aviso-sub">Acompanhe o andamento</div>
         </div>
-
-        <!-- Vendas por status -->
-        <div class="dash-card">
-          <div class="card-header">
-            <span class="card-title"><i class="fi fi-rr-shopping-cart"></i> Vendas por situação</span>
-          </div>
-          ${this.#renderVendasStatus(r.vendas.lista)}
+        <div class="aviso-tempo">Agora</div>
+      </div>` : ""}
+      ${estAlerts.slice(0,2).map(m=>`
+      <div class="aviso-item warn">
+        <div class="aviso-icon"><i class="fi fi-rr-box"></i></div>
+        <div class="aviso-body">
+          <div class="aviso-titulo">Estoque de ${esc(m.nome)} ${Number(m.saldo)<=0?"zerado":"baixo"}</div>
+          <div class="aviso-sub">Reabasteca o quanto antes</div>
         </div>
+        <div class="aviso-tempo">Hoje</div>
+      </div>`).join("")}
+      ${(vencidos.length + estAlerts.length + emProd) === 0 ? `
+      <div style="text-align:center;padding:24px;color:var(--muted);font-size:12px">
+        <i class="fi fi-rr-check-circle" style="font-size:22px;color:var(--success);display:block;margin-bottom:8px"></i>
+        Tudo em dia! Sem avisos pendentes.
+      </div>` : ""}
+    </div>
+  </div>
 
-        <!-- Resultado Consolidado -->
-        <div class="dash-card">
-          <div class="card-header">
-            <span class="card-title"><i class="fi fi-rr-file-invoice"></i> Resultado do mês</span>
-          </div>
-          ${this.#renderResultado(fin)}
-        </div>
+</div>
 
-        <!-- Lucro (linha) -->
-        <div class="dash-card">
-          <div class="card-header">
-            <span class="card-title"><i class="fi fi-rr-trending-up"></i> Lucro mensal</span>
-          </div>
-          ${this.#renderLinha(r.tendencia)}
-        </div>
+<!-- ④ VENDAS POR SITUAÇÃO | TOP 5 PRODUTOS | TOP 5 CLIENTES | INDICADORES -->
+<div class="dash-row4">
 
-        <!-- Ponto de equilíbrio — ANEL (ring chart) -->
-        <div class="dash-card">
-          <div class="card-header">
-            <span class="card-title"><i class="fi fi-rr-target"></i> Ponto de equilíbrio</span>
-          </div>
-          ${this.#renderEquilibrio(fin)}
-        </div>
-
-        <!-- Próximos vencimentos -->
-        ${r.lancamentos.filter(l=>l.status==="pendente").length ? `
-        <div class="dash-card">
-          <div class="card-header">
-            <span class="card-title"><i class="fi fi-rr-calendar"></i> Próximos vencimentos</span>
-          </div>
-          ${this.#renderVencimentos(r.lancamentos, hoje)}
-        </div>` : ""}
-
-        <!-- Alertas de estoque -->
-        ${(r.estoque.alertas.length + r.estoque.zerados.length) > 0 ? `
-        <div class="dash-card">
-          <div class="card-header">
-            <span class="card-title"><i class="fi fi-rr-box"></i> Alertas de estoque</span>
-            <span class="badge-count">${r.estoque.zerados.length + r.estoque.alertas.length}</span>
-          </div>
-          ${this.#renderEstoque(r.estoque)}
-        </div>` : ""}
-
+  <!-- Vendas por Situação -->
+  <div class="dash-panel">
+    <div class="panel-header"><span class="panel-title">VENDAS POR SITUAÇÃO</span></div>
+    <div style="display:flex;gap:14px;align-items:center">
+      <div style="flex-shrink:0">
+        ${fatias.length
+          ? donutChart(fatias)
+          : `<div style="width:130px;height:130px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:11px">Sem vendas</div>`}
       </div>
-    `;
+      <div style="flex:1;display:flex;flex-direction:column;gap:5px">
+        ${STATUS.map(s=>{
+          const count=r.vendas.lista.filter(v=>v.status===s.id).length;
+          const pct=r.vendas.total>0?((count/r.vendas.total)*100).toFixed(0):0;
+          return `<div style="display:flex;align-items:center;gap:6px;font-size:11px">
+            <div style="width:8px;height:8px;border-radius:50%;background:${s.cor};flex-shrink:0"></div>
+            <span style="flex:1;color:var(--muted)">${s.label}</span>
+            <span style="font-weight:700">${count} (${pct}%)</span>
+          </div>`;
+        }).join("")}
+      </div>
+    </div>
+  </div>
+
+  <!-- Top 5 Produtos -->
+  <div class="dash-panel">
+    <div class="panel-header">
+      <span class="panel-title">TOP 5 PRODUTOS</span>
+      <span class="panel-tag">Este mês</span>
+    </div>
+    <div class="top5-lista">
+      ${top5Produtos.length
+        ? top5Produtos.map(([nome,val],i)=>`
+          <div class="top5-item">
+            <span class="top5-rank">${i+1}</span>
+            <span class="top5-nome">${esc(nome)}</span>
+            <span class="top5-val">${fmtBRL(val)}</span>
+          </div>`).join("")
+        : Array.from({length:5},(_,i)=>`
+          <div class="top5-item">
+            <span class="top5-rank">${i+1}</span>
+            <span class="top5-nome" style="color:var(--muted)">—</span>
+            <span class="top5-val">R$ 0,00</span>
+          </div>`).join("")}
+    </div>
+  </div>
+
+  <!-- Top 5 Clientes -->
+  <div class="dash-panel">
+    <div class="panel-header">
+      <span class="panel-title">TOP 5 CLIENTES</span>
+      <span class="panel-tag">Este mês</span>
+    </div>
+    <div class="top5-lista">
+      ${top5Clientes.length
+        ? top5Clientes.map(([nome,val],i)=>`
+          <div class="top5-item">
+            <span class="top5-rank">${i+1}</span>
+            <span class="top5-nome">${esc(nome)}</span>
+            <span class="top5-val">${fmtBRL(val)}</span>
+          </div>`).join("")
+        : Array.from({length:5},(_,i)=>`
+          <div class="top5-item">
+            <span class="top5-rank">${i+1}</span>
+            <span class="top5-nome" style="color:var(--muted)">—</span>
+            <span class="top5-val">R$ 0,00</span>
+          </div>`).join("")}
+    </div>
+  </div>
+
+  <!-- Indicadores Financeiros -->
+  <div class="dash-panel">
+    <div class="panel-header">
+      <span class="panel-title" style="display:flex;align-items:center;gap:5px">
+        <i class="fi fi-rr-chart-pie-alt" style="color:var(--primary)"></i> INDICADORES FINANCEIROS
+      </span>
+    </div>
+    <div class="indicadores-grid">
+      <div class="indicador-item">
+        <div class="ind-icon" style="background:rgba(0,196,154,.12);color:#00c49a"><i class="fi fi-rr-ticket"></i></div>
+        <div>
+          <div class="ind-label">Ticket Médio</div>
+          <div class="ind-val">${fmtBRL(ticketMedio)}</div>
+          <div class="ind-delta pos">↑ ${r.vendas.total} vendas</div>
+        </div>
+      </div>
+      <div class="indicador-item">
+        <div class="ind-icon" style="background:rgba(167,139,250,.12);color:#a78bfa"><i class="fi fi-rr-chart-line-up"></i></div>
+        <div>
+          <div class="ind-label">Margem de Lucro</div>
+          <div class="ind-val">${fin.margem}%</div>
+          <div class="ind-delta ${Number(fin.margem)>=0?"pos":"neg"}">↑ ${fin.margem}%</div>
+        </div>
+      </div>
+      <div class="indicador-item">
+        <div class="ind-icon" style="background:rgba(229,57,53,.10);color:#e53935"><i class="fi fi-rr-hand-holding-usd"></i></div>
+        <div>
+          <div class="ind-label">Inadimplência</div>
+          <div class="ind-val">${inadimp.toFixed(1)}%</div>
+          <div class="ind-delta ${inadimp>5?"neg":"pos"}">↓ ${inadimp.toFixed(1)}%</div>
+        </div>
+      </div>
+      <div class="indicador-item">
+        <div class="ind-icon" style="background:rgba(116,192,252,.12);color:#74c0fc"><i class="fi fi-rr-stats"></i></div>
+        <div>
+          <div class="ind-label">Crescimento Mensal</div>
+          <div class="ind-val">${fin.margem}%</div>
+          <div class="ind-delta pos">↑ ${fin.margem}%</div>
+        </div>
+      </div>
+      <div class="indicador-item">
+        <div class="ind-icon" style="background:rgba(255,179,0,.10);color:#ffb300"><i class="fi fi-rr-shopping-cart"></i></div>
+        <div>
+          <div class="ind-label">Pedidos em Aberto</div>
+          <div class="ind-val">${pedAberto}</div>
+          <button class="ind-link" onclick="window.location.hash='vendas'">Ver pedidos</button>
+        </div>
+      </div>
+      <div class="indicador-item">
+        <div class="ind-icon" style="background:rgba(105,219,124,.12);color:#69db7c"><i class="fi fi-rr-print"></i></div>
+        <div>
+          <div class="ind-label">Produção em Andamento</div>
+          <div class="ind-val">${emProd}</div>
+          <button class="ind-link" onclick="window.location.hash='producao'">Acompanhar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>`;
   }
 
   afterRender() {
     this.$("#filtro-mes")?.addEventListener("change", async e => {
       this.#mes = e.target.value;
       actions.setCache(`dashboard_${this.#mes}`, null);
-      await this.#carregar();
+      await this.#load();
     });
-    this.$("#btn-refresh")?.addEventListener("click", () => this.#recarregar());
+    this.$("#btn-refresh")?.addEventListener("click", () => this.#reload());
   }
 
-  // ─── KPI Card ─────────────────────────────────────────────────────────────
-  #kpi(label, value, sub, cor, icon) {
+  #kpi4(label, value, spkData, cor, icon, tendencia) {
+    // Calcula % vs mês anterior
+    const len = tendencia?.length || 0;
+    let pct = 0;
+    if (len >= 2) {
+      const curr = tendencia[len-1]?.receitas || 0;
+      const prev = tendencia[len-2]?.receitas || 0;
+      pct = prev > 0 ? ((curr-prev)/prev*100) : 0;
+    }
+    const pos = pct >= 0;
     return `
-      <div class="kpi-card-dash" style="--kpi-cor:${cor}">
-        <div class="kpi-icon-wrap"><i class="fi ${icon}"></i></div>
-        <div class="kpi-body">
-          <div class="kpi-value-dash">${value}</div>
-          <div class="kpi-label-dash">${label}</div>
-          <div class="kpi-sub-dash">${sub}</div>
-        </div>
-      </div>`;
+<div class="kpi4-card" style="--kc:${cor}">
+  <div class="kpi4-top">
+    <div class="kpi4-icon"><i class="fi ${icon}"></i></div>
+    <div class="kpi4-info">
+      <div class="kpi4-label">${label.toUpperCase()}</div>
+      <div class="kpi4-value">${value}</div>
+      <div class="kpi4-delta ${pos?"pos":"neg"}">
+        ${pos?"↑":"↓"} ${Math.abs(pct).toFixed(1)}% vs mês anterior
+      </div>
+    </div>
+  </div>
+  <div class="kpi4-spark">${sparkline(spkData, cor)}</div>
+</div>`;
   }
 
-  // ─── Tendência 6 meses ────────────────────────────────────────────────────
-  #renderTendencia(tendencia) {
-    if (!tendencia?.length) return `<div class="chart-empty">Sem dados de tendência.</div>`;
-    const dados = tendencia.map(t => ({ label: nomeMes(t.mes), a: t.receitas, b: t.despesas }));
-    return `<div class="chart-wrap">${barChart({ dados })}</div>`;
-  }
-
-  // ─── Lucro mensal (linha) ─────────────────────────────────────────────────
-  #renderLinha(tendencia) {
-    if (!tendencia?.length) return `<div class="chart-empty">Sem dados.</div>`;
-    const dados = tendencia.map(t => ({ label: nomeMes(t.mes), v: t.lucro }));
-    const cor   = tendencia.every(t => t.lucro >= 0) ? "var(--success)" : "var(--primary-light)";
-    return `<div class="chart-wrap">${lineChart({ dados, cor, height: 120 })}</div>`;
-  }
-
-  // ─── Vendas por status ────────────────────────────────────────────────────
-  #renderVendasStatus(lista) {
-    const STATUS = [
-      { id: "pendente",    label: "Pendente",    cor: "#F79009" },
-      { id: "em_execucao", label: "Em execução", cor: "#007CBE" },
-      { id: "pronto",      label: "Pronto",      cor: "#6B48FF" },
-      { id: "entregue",    label: "Entregue",    cor: "#00AC17" },
-      { id: "cancelado",   label: "Cancelado",   cor: "#AB0000" },
-    ];
-    const total  = lista.length || 1;
-    const fatias = STATUS.map(s => ({
-      label: s.label, cor: s.cor,
-      v: lista.filter(v => v.status === s.id).reduce((sum, v) => sum + Number(v.total || 0), 0),
-    })).filter(f => f.v > 0);
-
-    const bars = STATUS.map(s => {
-      const count = lista.filter(v => v.status === s.id).length;
-      const pct   = ((count / total) * 100).toFixed(0);
-      return `
-        <div class="status-bar-row">
-          <div class="status-dot" style="background:${s.cor}"></div>
-          <span class="status-label">${s.label}</span>
-          <div class="status-bar-track">
-            <div class="status-bar-fill" style="width:${pct}%;background:${s.cor}"></div>
-          </div>
-          <span class="status-count">${count}</span>
-        </div>`;
-    }).join("");
-
-    return `
-      <div class="status-layout">
-        <div class="donut-wrap">
-          ${fatias.length ? donutChart({ fatias }) : `<div class="chart-empty" style="padding:10px">Sem vendas</div>`}
-          <div class="donut-total">
-            <div class="donut-total-val">${lista.length}</div>
-            <div class="donut-total-lbl">vendas</div>
-          </div>
-        </div>
-        <div class="status-bars">${bars}</div>
-      </div>`;
-  }
-
-  // ─── Resultado consolidado ────────────────────────────────────────────────
-  #renderResultado(fin) {
-    const itens = [
-      { label: "+ Receita bruta",    val: fin.receitas, cor: "var(--success)" },
-      { label: "− Despesas",         val: fin.despesas, cor: "var(--error)", neg: true },
-      { label: "= Resultado",        val: fin.lucro,    cor: fin.lucro>=0?"var(--success)":"var(--error)", bold: true },
-    ];
-    const linhas = itens.map(it => `
-      <div class="dre-row ${it.bold?"dre-total":""}">
-        <span class="dre-label">${it.label}</span>
-        <span class="dre-val" style="color:${it.cor}">${it.neg?"−":""}${fmtBRL(Math.abs(it.val))}</span>
-      </div>`).join("");
-
-    const extras = [
-      { label: "A receber", val: fin.aReceber||0, cor: "var(--success)" },
-      { label: "A pagar",   val: fin.aPagar||0,   cor: "var(--error)"   },
-    ];
-    const extrasHTML = extras.map(e => `
-      <div class="dre-extra">
-        <span>${e.label}</span>
-        <span style="color:${e.cor};font-weight:600">${fmtBRL(e.val)}</span>
-      </div>`).join("");
-
-    const margem = Number(fin.margem);
-    return `
-      <div class="dre-table">${linhas}</div>
-      <div class="dre-extras">${extrasHTML}</div>
-      <div class="margem-bar-wrap">
-        <div class="margem-bar-label">
-          <span>Margem de lucro</span>
-          <strong style="color:${margem>=20?"var(--success)":"var(--error)"}">${fin.margem}%</strong>
-        </div>
-        <div class="margem-track">
-          <div class="margem-fill" style="width:${Math.min(Math.max(margem,0),100)}%;background:${margem>=20?"var(--success)":"var(--error)"}"></div>
-        </div>
-      </div>`;
-  }
-
-  // ─── Próximos vencimentos ──────────────────────────────────────────────────
-  #renderVencimentos(lancamentos, hoje) {
-    const proximos = lancamentos
-      .filter(l => l.status === "pendente" && l.data_vencimento)
-      .sort((a, b) => a.data_vencimento.localeCompare(b.data_vencimento))
-      .slice(0, 6);
-    if (!proximos.length) return `<div class="venc-empty">Nenhum vencimento pendente.</div>`;
-    return proximos.map(l => {
-      const atrasado = l.data_vencimento < hoje;
-      const isRec    = l.tipo === "receita";
-      return `
-        <div class="venc-row">
-          <div class="venc-tipo-dot" style="background:${isRec?"var(--success)":"var(--error)"}"></div>
-          <div class="venc-info">
-            <div class="venc-desc">${esc(l.descricao)}</div>
-            <div class="venc-data ${atrasado?"atrasado":""}">${atrasado?"⚠ ":""}${fmtData(l.data_vencimento)}</div>
-          </div>
-          <div class="venc-val" style="color:${isRec?"var(--success)":"var(--error)"}">${fmtBRL(l.valor)}</div>
-        </div>`;
-    }).join("");
-  }
-
-  // ─── Alertas de estoque ───────────────────────────────────────────────────
-  #renderEstoque({ alertas, zerados }) {
-    const todos = [...zerados.slice(0,4), ...alertas.slice(0,4)];
-    return todos.map(m => {
-      const isZero = Number(m.saldo) <= 0;
-      return `
-        <div class="estoque-row">
-          <div class="estoque-status-dot" style="background:${isZero?"var(--error)":"var(--warning)"}"></div>
-          <div class="estoque-info">
-            <div class="estoque-nome">${esc(m.nome)}</div>
-            <div class="estoque-cat">${esc(m.categoria||"")}</div>
-          </div>
-          <div class="estoque-saldo ${isZero?"zero":"baixo"}">
-            ${isZero?"Zerado":`${Number(m.saldo).toFixed(2)} ${esc(m.unidade||"un")}`}
-          </div>
-        </div>`;
-    }).join("");
-  }
-
-  // ─── Ponto de equilíbrio — RING CHART (anel estilo barra circular) ────────
-  #renderEquilibrio(fin) {
-    const meta      = Math.max(Number(fin.despesas || 0), 0);
-    const receita   = Number(fin.receitas || 0);
-    const pctReal   = meta > 0 ? (receita / meta) * 100 : (receita > 0 ? 100 : 0);
-    const pctClamp  = Math.min(pctReal, 100);
-    const atingido  = receita >= meta && meta > 0;
-    const falta     = Math.max(meta - receita, 0);
-
-    // Parâmetros do anel SVG
-    const SIZE    = 130;
-    const cx      = SIZE / 2;
-    const cy      = SIZE / 2;
-    const raio    = 48;
-    const stroke  = 11;
-    const circunf = 2 * Math.PI * raio;
-
-    // Arco tracejado começa no topo (−90°) e vai no sentido horário
-    const dashOffset = circunf - (pctClamp / 100) * circunf;
-    const corArco    = atingido ? "var(--success)" : pctClamp > 60 ? "var(--primary-light)" : "var(--warning)";
-
-    return `
-      <div class="equil-wrap">
-        <!-- Anel -->
-        <div class="equil-ring-container">
-          <svg class="equil-svg" viewBox="0 0 ${SIZE} ${SIZE}"
-               width="${SIZE}" height="${SIZE}" aria-label="${pctReal.toFixed(0)}% do ponto de equilíbrio">
-            <!-- Trilha de fundo -->
-            <circle
-              cx="${cx}" cy="${cy}" r="${raio}"
-              fill="none"
-              stroke="var(--panel3)"
-              stroke-width="${stroke}"
-            />
-            <!-- Arco de progresso -->
-            <circle
-              cx="${cx}" cy="${cy}" r="${raio}"
-              fill="none"
-              stroke="${corArco}"
-              stroke-width="${stroke}"
-              stroke-linecap="round"
-              stroke-dasharray="${circunf.toFixed(2)}"
-              stroke-dashoffset="${dashOffset.toFixed(2)}"
-              transform="rotate(-90 ${cx} ${cy})"
-              style="transition:stroke-dashoffset .6s ease, stroke .3s ease"
-            />
-          </svg>
-          <!-- Texto central -->
-          <div class="equil-center-text">
-            <strong class="equil-pct" style="color:${corArco}">${pctReal.toFixed(0)}%</strong>
-            <span class="equil-pct-label">atingido</span>
-          </div>
-        </div>
-
-        <!-- Números -->
-        <div class="equil-info">
-          <div class="equil-info-item">
-            <span class="equil-info-label">Receita atual</span>
-            <span class="equil-info-val" style="color:var(--success)">${fmtBRL(receita)}</span>
-          </div>
-          <div class="equil-info-divider"></div>
-          <div class="equil-info-item">
-            <span class="equil-info-label">Meta (despesas)</span>
-            <span class="equil-info-val" style="color:var(--muted)">${fmtBRL(meta)}</span>
-          </div>
-        </div>
-
-        <!-- Status -->
-        <div class="equil-status-msg ${atingido?"ok":"nok"}">
-          ${atingido
-            ? `<i class="fi fi-rr-check-circle"></i> Ponto de equilíbrio atingido neste mês!`
-            : meta > 0
-              ? `<i class="fi fi-rr-exclamation"></i> Faltam <strong>${fmtBRL(falta)}</strong> para cobrir as despesas.`
-              : `<i class="fi fi-rr-info"></i> Nenhuma despesa registrada ainda.`}
-        </div>
-      </div>`;
+  #dreRow(label, val, cor, negativo, bold) {
+    const v = negativo ? -Math.abs(val) : val;
+    const fs = bold ? "13px" : "12px";
+    const fw = bold ? "700" : "500";
+    return `<div class="dre-row" style="font-size:${fs};font-weight:${fw}">
+  <span>${label}</span>
+  <span style="color:${cor};font-weight:700">${negativo&&val>0?"- ":""}${fmtBRL(Math.abs(val))}</span>
+</div>`;
   }
 }
 
-// ─── CSS do Dashboard ──────────────────────────────────────────────────────────
-function dashCSS() { return `
-/* Header */
-.dash-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px}
-.dash-title{font-size:19px;font-weight:800;margin:0}
-.dash-sub{font-size:11px;color:var(--muted)}
+/* ── CSS ────────────────────────────────────────────────────────────────── */
+function dashCSS(){return`
+/* Saudação */
+.dash-greeting-row{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px}
+.dash-greeting{font-size:20px;font-weight:800;margin:0}
+.dash-greeting-sub{font-size:12px;color:var(--muted);margin:2px 0 0}
 .dash-header-actions{display:flex;align-items:center;gap:8px}
-.month-input{background:var(--panel2);border:1px solid var(--border-md);color:var(--text);border-radius:var(--radius-md);padding:7px 11px;font-size:12px;font-family:var(--font);outline:none}
+.dash-mes-label{font-size:12.5px;font-weight:600;color:var(--text-sub)}
+.month-input{background:var(--panel2);border:1px solid var(--border-md);color:var(--text);border-radius:var(--radius-md);padding:6px 10px;font-size:12px;font-family:var(--font);outline:none}
 .month-input:focus{border-color:var(--primary)}
 [data-theme="light"] .month-input{background:#fff}
+.btn-refresh-icon{display:flex;align-items:center;justify-content:center;width:32px;height:32px;background:transparent;border:1px solid var(--border-md);border-radius:var(--radius-md);color:var(--muted);cursor:pointer;font-size:14px;transition:all var(--t)}
+.btn-refresh-icon:hover{background:var(--panel3);color:var(--text)}
 
-/* KPI row */
-.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
-@media(max-width:900px){.kpi-row{grid-template-columns:1fr 1fr}}
-@media(max-width:480px){.kpi-row{grid-template-columns:1fr}}
-.kpi-card-dash{background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px;display:flex;align-items:center;gap:12px;border-left:3px solid var(--kpi-cor);transition:transform var(--t),box-shadow var(--t);box-shadow:var(--shadow-xs)}
-[data-theme="light"] .kpi-card-dash{box-shadow:var(--shadow-sm)}
-.kpi-card-dash:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
-.kpi-icon-wrap{width:40px;height:40px;border-radius:var(--radius-md);background:color-mix(in srgb,var(--kpi-cor) 14%,transparent);display:flex;align-items:center;justify-content:center;font-size:17px;color:var(--kpi-cor);flex-shrink:0}
-.kpi-value-dash{font-size:18px;font-weight:800;color:var(--kpi-cor);line-height:1.1}
-.kpi-label-dash{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-top:2px}
-.kpi-sub-dash{font-size:10.5px;color:var(--muted);margin-top:2px}
+/* KPI 4 cards */
+.kpi4-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
+@media(max-width:900px){.kpi4-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:480px){.kpi4-grid{grid-template-columns:1fr}}
+.kpi4-card{background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px;display:flex;flex-direction:column;gap:8px;box-shadow:var(--shadow-xs);transition:transform .15s,box-shadow .15s}
+[data-theme="light"] .kpi4-card{box-shadow:var(--shadow-sm)}
+.kpi4-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
+.kpi4-top{display:flex;align-items:flex-start;gap:10px}
+.kpi4-icon{width:36px;height:36px;border-radius:var(--radius-md);background:color-mix(in srgb,var(--kc) 14%,transparent);display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--kc);flex-shrink:0}
+.kpi4-label{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.kpi4-value{font-size:17px;font-weight:800;color:var(--text);line-height:1.1;margin:2px 0}
+.kpi4-delta{font-size:10px;font-weight:600}
+.kpi4-delta.pos{color:var(--success)}.kpi4-delta.neg{color:var(--error)}
+.kpi4-spark{line-height:0}
 
-/* Alert */
-.alert-banner{background:var(--error-bg);border:1px solid var(--error-border);border-radius:var(--radius-md);padding:9px 14px;font-size:12.5px;color:var(--error);margin-bottom:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+/* Row 3 colunas */
+.dash-row3{display:grid;grid-template-columns:1.4fr 1.2fr 1fr;gap:10px;margin-bottom:12px}
+@media(max-width:1100px){.dash-row3{grid-template-columns:1fr 1fr}}
+@media(max-width:720px){.dash-row3{grid-template-columns:1fr}}
 
-/* Grid */
-.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-@media(max-width:860px){.dash-grid{grid-template-columns:1fr}}
-.span-2{grid-column:1/-1}
+/* Row 4 colunas */
+.dash-row4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:12px}
+@media(max-width:1100px){.dash-row4{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.dash-row4{grid-template-columns:1fr}}
 
-/* Cards */
-.dash-card{background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:15px;box-shadow:var(--shadow-xs)}
-[data-theme="light"] .dash-card{box-shadow:var(--shadow-sm)}
-.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-.card-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);display:flex;align-items:center;gap:6px}
-.chart-legend{display:flex;gap:10px}
-.leg-item{display:flex;align-items:center;gap:5px;font-size:10.5px;color:var(--muted)}
-.leg-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-.chart-wrap{width:100%;overflow-x:auto}
-.chart-empty{color:var(--muted);font-size:11px;padding:20px 0;text-align:center}
-.badge-count{font-size:10.5px;font-weight:700;background:var(--error-bg);color:var(--error);border:1px solid var(--error-border);border-radius:999px;padding:1px 7px}
+/* Panel */
+.dash-panel{background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px;box-shadow:var(--shadow-xs)}
+[data-theme="light"] .dash-panel{box-shadow:var(--shadow-sm)}
+.panel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:8px}
+.panel-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);line-height:1.3}
+.panel-tag{font-size:9.5px;font-weight:600;color:var(--primary);background:var(--primary-bg);border:1px solid var(--primary-border);border-radius:999px;padding:2px 7px;white-space:nowrap}
+.chart-legend{display:flex;gap:8px;flex-wrap:wrap}
+.leg-item{display:flex;align-items:center;gap:4px;font-size:9.5px;color:var(--muted)}
+.leg-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.chart-empty{color:var(--muted);font-size:11px;padding:12px 0;text-align:center}
+.dre-mes{font-size:9.5px;font-weight:600;color:var(--muted);white-space:nowrap}
+.btn-ver-todas{background:transparent;border:none;color:var(--primary);font-size:10.5px;font-weight:600;cursor:pointer;font-family:var(--font);padding:0;text-decoration:underline;text-underline-offset:2px}
+.btn-ver-todas:hover{color:var(--primary-light)}
+.badge-notif-count{background:var(--error);color:#fff;font-size:9.5px;font-weight:800;border-radius:99px;padding:2px 7px;min-width:20px;text-align:center}
 
-/* Vendas por status */
-.status-layout{display:flex;align-items:center;gap:14px}
-.donut-wrap{position:relative;flex-shrink:0;display:flex;align-items:center;justify-content:center}
-.donut-total{position:absolute;text-align:center;pointer-events:none}
-.donut-total-val{font-size:17px;font-weight:800;line-height:1}
-.donut-total-lbl{font-size:9.5px;color:var(--muted)}
-.status-bars{flex:1;display:flex;flex-direction:column;gap:7px}
-.status-bar-row{display:flex;align-items:center;gap:7px;font-size:11.5px}
-.status-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
-.status-label{width:86px;flex-shrink:0;color:var(--muted)}
-.status-bar-track{flex:1;height:5px;background:var(--panel3);border-radius:99px;overflow:hidden}
-.status-bar-fill{height:100%;border-radius:99px;transition:width .5s}
-.status-count{font-weight:700;min-width:18px;text-align:right;font-size:11px}
+/* Ponto de equilíbrio */
+.pe-layout{display:flex;flex-direction:column;gap:10px}
+.pe-nums{display:flex;flex-direction:column;gap:4px}
+.pe-item{display:flex;justify-content:space-between;align-items:center;font-size:11.5px;padding:3px 0;border-bottom:.5px solid var(--border)}
+.pe-item:last-child{border-bottom:none}
+.pe-item span{color:var(--muted)}
+.pe-item strong{font-weight:700}
+.pe-item-total{background:var(--panel3);border-radius:var(--radius-sm);padding:5px 8px;margin:2px 0}
+.pe-item-total strong{color:var(--primary)!important}
+.pe-chart-wrap{margin-top:4px}
+.pe-chart-legend{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px}
 
 /* DRE */
-.dre-table{display:flex;flex-direction:column;gap:5px;margin-bottom:10px}
-.dre-row{display:flex;justify-content:space-between;font-size:12.5px;padding:5px 9px;border-radius:var(--radius-sm)}
-.dre-row:not(.dre-total){background:var(--panel)}
-[data-theme="light"] .dre-row:not(.dre-total){background:#f8f9fc}
-.dre-row.dre-total{background:var(--panel3);font-weight:700;font-size:13.5px;border-radius:var(--radius-md)}
-.dre-label{color:var(--text-sub)}
-.dre-val{font-weight:700}
-.dre-extras{display:flex;justify-content:space-between;margin:7px 0;padding:0 2px}
-.dre-extra{font-size:11.5px;color:var(--muted);display:flex;gap:8px}
-.margem-bar-wrap{margin-top:10px}
-.margem-bar-label{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:5px}
-.margem-track{background:var(--panel3);border-radius:99px;height:7px;overflow:hidden}
-.margem-fill{height:100%;border-radius:99px;transition:width .6s}
+.dre-lista{display:flex;flex-direction:column;gap:0}
+.dre-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:.5px solid var(--border)}
+.dre-row:last-child{border-bottom:none}
+.dre-sep{height:1px;background:var(--border-md);margin:4px 0}
+.dre-row-margem{display:flex;justify-content:space-between;align-items:center;padding:6px 8px;background:var(--panel3);border-radius:var(--radius-sm);margin-top:4px;font-size:12.5px;font-weight:600}
 
-/* Vencimentos */
-.venc-empty{color:var(--muted);font-size:11.5px;padding:12px 0;text-align:center}
-.venc-row{display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:.5px solid var(--border)}
-.venc-row:last-child{border-bottom:none}
-.venc-tipo-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
-.venc-info{flex:1;min-width:0}
-.venc-desc{font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.venc-data{font-size:10.5px;color:var(--muted)}
-.venc-data.atrasado{color:var(--error);font-weight:700}
-.venc-val{font-size:12.5px;font-weight:700;white-space:nowrap}
+/* Mini table */
+.mini-table{width:100%;border-collapse:collapse;font-size:11.5px}
+.mini-table th{text-align:left;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding:0 0 7px;border-bottom:1px solid var(--border)}
+.mini-table td{padding:6px 0;border-bottom:.5px solid var(--border);vertical-align:middle}
+.mini-table tr:last-child td{border-bottom:none}
+.status-mini{font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:999px;white-space:nowrap}
+.status-mini.pendente{background:rgba(247,144,9,.12);color:#F79009}
+.status-mini.atrasado{background:var(--error-bg);color:var(--error)}
+.mini-table-total{display:flex;justify-content:space-between;align-items:center;padding:8px 0 0;font-size:12px;font-weight:600;border-top:1px solid var(--border-md);margin-top:4px}
 
-/* Estoque */
-.estoque-row{display:flex;align-items:center;gap:9px;padding:6px 0;border-bottom:.5px solid var(--border)}
-.estoque-row:last-child{border-bottom:none}
-.estoque-status-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
-.estoque-info{flex:1;min-width:0}
-.estoque-nome{font-size:12.5px;font-weight:600}
-.estoque-cat{font-size:10.5px;color:var(--muted)}
-.estoque-saldo{font-size:11.5px;font-weight:700;white-space:nowrap}
-.estoque-saldo.zero{color:var(--error)}
-.estoque-saldo.baixo{color:var(--warning)}
+/* Avisos */
+.avisos-lista{display:flex;flex-direction:column;gap:8px}
+.aviso-item{display:flex;align-items:flex-start;gap:10px;padding:8px;border-radius:var(--radius-md)}
+.aviso-item.error{background:rgba(229,57,53,.07);border-left:3px solid var(--error)}
+.aviso-item.warn{background:rgba(255,179,0,.07);border-left:3px solid var(--warning)}
+.aviso-item.ok{background:var(--success-bg);border-left:3px solid var(--success)}
+.aviso-icon{font-size:15px;flex-shrink:0;margin-top:1px}
+.aviso-item.error .aviso-icon{color:var(--error)}
+.aviso-item.warn .aviso-icon{color:var(--warning)}
+.aviso-item.ok .aviso-icon{color:var(--success)}
+.aviso-body{flex:1;min-width:0}
+.aviso-titulo{font-size:12px;font-weight:700;line-height:1.3}
+.aviso-sub{font-size:10.5px;color:var(--muted);margin-top:1px}
+.aviso-tempo{font-size:9.5px;color:var(--muted);white-space:nowrap;flex-shrink:0}
 
-/* ═══════════════════════════════════════════════════════
-   PONTO DE EQUILÍBRIO — Ring Chart (Anel circular)
-   ═══════════════════════════════════════════════════════ */
-.equil-wrap{display:flex;flex-direction:column;gap:12px}
+/* Top 5 */
+.top5-lista{display:flex;flex-direction:column;gap:6px}
+.top5-item{display:flex;align-items:center;gap:8px;font-size:12px;padding:4px 0;border-bottom:.5px solid var(--border)}
+.top5-item:last-child{border-bottom:none}
+.top5-rank{width:16px;height:16px;border-radius:50%;background:var(--primary-bg);color:var(--primary-light);font-size:9.5px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.top5-nome{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+.top5-val{font-weight:700;color:var(--primary-light);white-space:nowrap;font-size:11.5px}
 
-.equil-ring-container{
-  position:relative;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  width:130px;
-  height:130px;
-  margin:0 auto;
-}
-
-.equil-svg{display:block;overflow:visible}
-
-.equil-center-text{
-  position:absolute;
-  inset:0;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  text-align:center;
-  pointer-events:none;
-  gap:2px;
-}
-
-.equil-pct{
-  font-size:24px;
-  font-weight:800;
-  line-height:1;
-  display:block;
-}
-
-.equil-pct-label{
-  font-size:9.5px;
-  color:var(--muted);
-  text-transform:uppercase;
-  letter-spacing:.06em;
-  display:block;
-}
-
-.equil-info{
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap:14px;
-  background:var(--panel);
-  border:1px solid var(--border);
-  border-radius:var(--radius-md);
-  padding:10px 14px;
-}
-[data-theme="light"] .equil-info{background:#f8f9fc}
-
-.equil-info-item{display:flex;flex-direction:column;align-items:center;gap:3px;flex:1}
-.equil-info-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
-.equil-info-val{font-size:13.5px;font-weight:800;line-height:1.1}
-.equil-info-divider{width:1px;height:32px;background:var(--border-md)}
-
-.equil-status-msg{
-  font-size:11.5px;
-  padding:8px 12px;
-  border-radius:var(--radius-md);
-  text-align:center;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap:6px;
-}
-.equil-status-msg.ok{background:var(--success-bg);color:var(--success);border:1px solid var(--success-border)}
-.equil-status-msg.nok{background:var(--warning-bg);color:var(--warning);border:1px solid rgba(255,179,0,.22)}
-.equil-status-msg strong{font-weight:700}
-
-@media(max-width:500px){
-  .equil-info{flex-direction:column;gap:8px}
-  .equil-info-divider{width:100%;height:1px}
-}
-`; }
+/* Indicadores */
+.indicadores-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.indicador-item{display:flex;align-items:flex-start;gap:8px}
+.ind-icon{width:28px;height:28px;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.ind-label{font-size:9.5px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.03em}
+.ind-val{font-size:14px;font-weight:800;line-height:1.2;color:var(--text)}
+.ind-delta{font-size:9.5px;font-weight:600}
+.ind-delta.pos{color:var(--success)}.ind-delta.neg{color:var(--error)}
+.ind-link{background:transparent;border:none;color:var(--primary);font-size:10px;font-weight:600;cursor:pointer;font-family:var(--font);padding:0;text-decoration:underline;text-underline-offset:2px}
+`;}

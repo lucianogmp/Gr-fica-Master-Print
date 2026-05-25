@@ -1,13 +1,12 @@
 /**
  * UI COMPONENTS — Biblioteca de componentes e utilitários de interface.
- * Usa sanitize.js centralizado — sem duplicação de esc().
+ * openModal corrigido: retorna elemento DOM com .close() — compatível com TODOS os usos.
  */
 
 export { esc } from "../../utils/sanitize.js";
 import { esc } from "../../utils/sanitize.js";
 import { fmtBRL, fmtData } from "../../utils/fmt.js";
 
-// ── Re-exporta formatadores para não quebrar imports existentes ───────────────
 export { fmtBRL, fmtData };
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -24,8 +23,8 @@ export function PageHeader({ title = "", subtitle = "", actions = "" } = {}) {
     </div>
     <style>
       .page-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:20px;flex-wrap:wrap}
-      .page-title{font-size:20px;font-weight:800;color:var(--text);margin:0}
-      .page-subtitle{font-size:13px;color:var(--muted);margin-top:3px}
+      .page-title{font-size:18px;font-weight:800;color:var(--text);margin:0}
+      .page-subtitle{font-size:12px;color:var(--muted);margin-top:3px}
       .page-header-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
     </style>
   `;
@@ -65,7 +64,7 @@ export function Tabs({ tabs = [], active = "" } = {}) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// DATA TABLE — com suporte a ordenação e paginação
+// DATA TABLE
 // ══════════════════════════════════════════════════════════════════════════════
 export function DataTable({
   columns = [],
@@ -97,7 +96,6 @@ export function DataTable({
       </th>`;
   }).join("");
 
-  // rows pode ser array de HTML strings OU de objetos
   const tbody = rows.map((row, idx) => {
     if (typeof row === "string") return row;
     const cells = columns.map(c => {
@@ -115,9 +113,7 @@ export function DataTable({
         <tbody>${tbody}</tbody>
       </table>
     </div>
-    <style>
-      .row-alt td{background:rgba(255,255,255,0.02)}
-    </style>
+    <style>.row-alt td{background:rgba(255,255,255,0.02)}</style>
   `;
 }
 
@@ -125,24 +121,58 @@ export function DataTable({
 // BOTÕES
 // ══════════════════════════════════════════════════════════════════════════════
 export const Btn = {
-  primary: (label, id = "", extraClass = "") =>
-    `<button class="btn-primary ${extraClass}" ${id ? `id="${id}"` : ""}>${label}</button>`,
+  primary:   (label, id = "", extraClass = "") =>
+    `<button class="btn-primary ${extraClass}"   ${id ? `id="${id}"` : ""}>${label}</button>`,
   secondary: (label, id = "", extraClass = "") =>
     `<button class="btn-secondary ${extraClass}" ${id ? `id="${id}"` : ""}>${label}</button>`,
-  danger: (label, id = "", extraClass = "") =>
-    `<button class="btn-danger ${extraClass}" ${id ? `id="${id}"` : ""}>${label}</button>`,
-  ghost: (label, id = "", extraClass = "") =>
-    `<button class="btn btn-ghost ${extraClass}" ${id ? `id="${id}"` : ""}>${label}</button>`,
-  icon: (content, id = "", danger = false) =>
+  danger:    (label, id = "", extraClass = "") =>
+    `<button class="btn-danger ${extraClass}"    ${id ? `id="${id}"` : ""}>${label}</button>`,
+  ghost:     (label, id = "", extraClass = "") =>
+    `<button class="btn-ghost ${extraClass}"     ${id ? `id="${id}"` : ""}>${label}</button>`,
+  icon:      (content, id = "", danger = false) =>
     `<button class="btn-icon${danger ? " danger" : ""}" ${id ? `id="${id}"` : ""}>${content}</button>`,
 };
 
 // ══════════════════════════════════════════════════════════════════════════════
-// MODAL
+// MODAL — VERSÃO UNIFICADA E ROBUSTA
+//
+// Aceita TANTO o estilo antigo ({body, actions}) QUANTO o estilo do fluxo_caixa
+// ({content, buttons: []}) para não quebrar nenhum módulo existente.
+//
+// RETORNA o elemento DOM .modal-panel com um método .close() anexado.
+// Isso permite AMBOS os padrões de uso:
+//   1. const ref = openModal({...}); ref.close()         ← estilo estoque/financeiro
+//   2. const m   = openModal({...}); m.querySelector(...) ← estilo fluxo_caixa
+//   3. document.getElementById("btn-id")                 ← estilo direto
 // ══════════════════════════════════════════════════════════════════════════════
-export function openModal({ title = "", body = "", actions = "", maxWidth = "480px", onClose } = {}) {
+export function openModal({
+  title   = "",
+  body    = "",
+  content = "",          // alias para "body" (usado pelo fluxo_caixa)
+  actions = "",
+  buttons = null,        // array [{text, class, id, style}] — alternativa a "actions"
+  maxWidth = "480px",
+  onClose,
+} = {}) {
+
+  // Fecha qualquer modal aberto anteriormente
   document.getElementById("__modal-overlay__")?.remove();
 
+  // Resolve body: aceita "body" ou "content"
+  const bodyHtml = body || content || "";
+
+  // Resolve actions: aceita string HTML ou array de botões
+  let actionsHtml = actions || "";
+  if (!actionsHtml && Array.isArray(buttons) && buttons.length) {
+    actionsHtml = buttons.map(b => {
+      const cls   = b.class   || "btn-secondary";
+      const id    = b.id      ? `id="${b.id}"` : "";
+      const style = b.style   ? `style="${b.style}"` : "";
+      return `<button class="${cls}" ${id} ${style}>${b.text || ""}</button>`;
+    }).join("");
+  }
+
+  // Monta overlay
   const overlay = document.createElement("div");
   overlay.id        = "__modal-overlay__";
   overlay.className = "modal-overlay";
@@ -154,24 +184,46 @@ export function openModal({ title = "", body = "", actions = "", maxWidth = "480
           <i class="fi fi-rr-cross-small"></i>
         </button>
       </div>
-      <div class="modal-body">${body}</div>
-      ${actions ? `<div class="modal-footer">${actions}</div>` : ""}
+      <div class="modal-body">${bodyHtml}</div>
+      ${actionsHtml ? `<div class="modal-footer">${actionsHtml}</div>` : ""}
     </div>`;
 
   document.body.appendChild(overlay);
   requestAnimationFrame(() => overlay.classList.add("open"));
 
+  // Função de fechar
   const close = () => {
     overlay.classList.remove("open");
     setTimeout(() => { overlay.remove(); onClose?.(); }, 200);
   };
 
-  document.getElementById("__modal-close-x__")?.addEventListener("click", close);
-  overlay.addEventListener("click", e => { if (e.target === overlay) close(); });
-  const onEsc = e => { if (e.key === "Escape") { close(); document.removeEventListener("keydown", onEsc); } };
+  // Fecha ao clicar no X
+  document.getElementById("__modal-close-x__")
+    ?.addEventListener("click", close);
+
+  // Fecha ao clicar fora do painel
+  overlay.addEventListener("click", e => {
+    if (e.target === overlay) close();
+  });
+
+  // Fecha com ESC
+  const onEsc = e => {
+    if (e.key === "Escape") {
+      close();
+      document.removeEventListener("keydown", onEsc);
+    }
+  };
   document.addEventListener("keydown", onEsc);
 
-  return { close };
+  // ── Retorna o painel DOM com .close() anexado ──
+  // Isso torna TODOS os padrões de uso compatíveis:
+  //   panel.close()            — fecha o modal
+  //   panel.querySelector(...) — acessa elementos internos
+  //   document.getElementById  — também funciona (o overlay está no body)
+  const panel = overlay.querySelector(".modal-panel");
+  if (panel) panel.close = close;
+
+  return panel ?? { close };
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -239,7 +291,7 @@ export function EmptyState({ title = "Nenhum registro encontrado.", subtitle = "
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// DESIGN SYSTEM CSS (injeta estilos base extras)
+// DESIGN SYSTEM CSS
 // ══════════════════════════════════════════════════════════════════════════════
 export function injectDesignSystemCSS() {
   if (document.getElementById("__design-system__")) return;
@@ -248,7 +300,7 @@ export function injectDesignSystemCSS() {
   s.textContent = `
     .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
     .form-field{display:flex;flex-direction:column;gap:4px}
-    .form-field label{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.03em}
+    .form-field label{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.03em}
     .form-field.full{grid-column:1/-1}
 
     .ds-card{background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:14px}
@@ -258,8 +310,12 @@ export function injectDesignSystemCSS() {
     .clickable:hover td{background:var(--primary-bg) !important}
 
     .data-table th.sortable:hover{color:var(--primary);cursor:pointer}
-    .data-table th.sort-asc .sort-icon::before{content:"↑"}
+    .data-table th.sort-asc  .sort-icon::before{content:"↑"}
     .data-table th.sort-desc .sort-icon::before{content:"↓"}
+
+    /* Botão ghost */
+    .btn-ghost{display:inline-flex;align-items:center;gap:6px;background:transparent;border:1px solid var(--border-md);color:var(--text-sub);border-radius:var(--radius-md);padding:7px 13px;font-family:var(--font);font-size:12px;font-weight:500;cursor:pointer;transition:all var(--t);white-space:nowrap}
+    .btn-ghost:hover{background:var(--panel3);color:var(--text)}
   `;
   document.head.appendChild(s);
 }
