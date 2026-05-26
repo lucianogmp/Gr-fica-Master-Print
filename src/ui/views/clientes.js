@@ -56,39 +56,51 @@ export class ClientesView extends ListViewBase {
             subtitle: this._state.search ? "Tente outros termos de busca." : "Clique em \"Novo Cliente\" para começar.",
             action:   !this._state.search ? Btn.primary('<i class="fi fi-rr-user-add"></i> Novo Cliente', "btn-novo-empty") : "",
           })
-        : `<div class="cli-grid">${filtrados.map(c => this.#card(c)).join("")}</div>`}
+        : `<div class="cli-list-wrap">
+             <div class="cli-list-head">
+               <span>Cliente</span>
+               <span>Telefone</span>
+               <span>Documento</span>
+               <span>Cidade</span>
+               <span>A&ccedil;&otilde;es</span>
+             </div>
+             <div class="cli-list">
+               ${filtrados.map(c => this.#row(c)).join("")}
+             </div>
+           </div>`}
     `;
   }
 
-  #card(c) {
+  #row(c) {
     const inicial = (c.nome || "?")[0].toUpperCase();
     // Cor do avatar baseada no nome (pseudo-aleatória mas estável)
     const cores = ["#00c49a","#6B48FF","#007CBE","#F79009","#e53935","#43a047"];
     const corIdx = c.nome?.charCodeAt(0) % cores.length || 0;
     const cor    = cores[corIdx];
-
-    const tags = [];
-    if (c.telefone) tags.push(`<span class="cli-tag"><i class="fi fi-rr-phone-call"></i> ${esc(c.telefone)}</span>`);
-    if (c.email)    tags.push(`<span class="cli-tag"><i class="fi fi-rr-envelope"></i> ${esc(c.email)}</span>`);
-    if (c.cidade)   tags.push(`<span class="cli-tag"><i class="fi fi-rr-marker"></i> ${esc(c.cidade)}${c.estado?` — ${esc(c.estado)}`:""}</span>`);
-    if (c.cpf_cnpj) tags.push(`<span class="cli-tag"><i class="fi fi-rr-id-card-clip-alt"></i> ${esc(c.cpf_cnpj)}</span>`);
+    const local  = [c.cidade, c.estado].filter(Boolean).join(" / ") || "Sem cidade";
 
     return `
-      <div class="cli-card" data-id="${c.id}" role="button" tabindex="0">
-        <div class="cli-card-header">
+      <div class="cli-row" data-id="${c.id}" role="button" tabindex="0">
+        <div class="cli-info">
           <div class="cli-avatar" style="--av-cor:${cor}">${inicial}</div>
-          <div class="cli-card-info">
+          <div class="cli-main">
             <div class="cli-nome">${esc(c.nome)}</div>
-            ${c.observacoes
-              ? `<div class="cli-obs">${esc(c.observacoes.slice(0,60))}${c.observacoes.length>60?"…":""}</div>`
-              : ""}
+            <div class="cli-meta">
+              ${c.email ? `<span><i class="fi fi-rr-envelope"></i> ${esc(c.email)}</span>` : `<span>Sem e-mail</span>`}
+              ${c.observacoes ? `<span>${esc(c.observacoes.slice(0,60))}${c.observacoes.length>60?"...":""}</span>` : ""}
+            </div>
           </div>
-          <button class="cli-edit-btn btn-icon" data-edit="${c.id}" title="Editar">
+        </div>
+        <div class="cli-cell">${c.telefone ? esc(c.telefone) : "Sem telefone"}</div>
+        <div class="cli-cell">${c.cpf_cnpj ? esc(c.cpf_cnpj) : "Sem documento"}</div>
+        <div class="cli-cell">${esc(local)}</div>
+        <div class="cli-actions">
+          <button class="cli-edit-btn btn-icon" data-edit="${c.id}" title="Editar cliente">
             <i class="fi fi-rr-pencil"></i>
           </button>
         </div>
-        ${tags.length ? `<div class="cli-tags">${tags.join("")}</div>` : ""}
       </div>`;
+
   }
 
   #bindLista() {
@@ -238,8 +250,28 @@ export class ClientesView extends ListViewBase {
 
 // ─── CSS ──────────────────────────────────────────────────────────────────────
 function cliCSS() { return `
+.page-header{margin-bottom:12px!important}
+.page-title{line-height:1.12!important}
+.page-subtitle{margin:1px 0 0!important;line-height:1.2!important}
 .cli-toolbar{display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap}
 .result-count{font-size:12px;color:var(--muted)}
+.cli-list-wrap{border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;background:var(--panel2);box-shadow:var(--shadow-xs)}
+[data-theme="light"] .cli-list-wrap{box-shadow:var(--shadow-sm)}
+.cli-list-head{display:grid;grid-template-columns:minmax(260px,1fr) 145px 155px 130px 72px;gap:12px;align-items:center;padding:10px 14px;background:var(--panel3);border-bottom:1px solid var(--border);color:var(--muted);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em}
+.cli-list-head span:last-child{text-align:right}
+.cli-list{display:flex;flex-direction:column}
+.cli-row{display:grid;grid-template-columns:minmax(260px,1fr) 145px 155px 130px 72px;gap:12px;align-items:center;padding:12px 14px;border-top:1px solid var(--border);cursor:pointer;transition:background var(--t),box-shadow var(--t)}
+.cli-row:first-child{border-top:none}
+.cli-row:hover{background:var(--panel3)}
+.cli-row:focus{outline:2px solid var(--primary);outline-offset:-2px}
+.cli-info{display:flex;align-items:center;gap:11px;min-width:0}
+.cli-main{min-width:0}
+.cli-cell{font-size:12px;color:var(--text-sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cli-meta{display:flex;gap:8px;color:var(--muted);font-size:10.5px;line-height:1.35;min-width:0}
+.cli-meta span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:300px}
+.cli-meta span+span{color:var(--text-sub)}
+.cli-actions{display:flex;justify-content:flex-end}
+.cli-actions .btn-icon{width:30px;height:30px;padding:0;display:inline-flex;align-items:center;justify-content:center}
 .cli-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
 .cli-card{background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px;cursor:pointer;transition:border-color var(--t),transform var(--t),box-shadow var(--t)}
 .cli-card:hover{border-color:var(--primary-border);transform:translateY(-2px);box-shadow:var(--shadow-md)}
@@ -249,10 +281,19 @@ function cliCSS() { return `
 .cli-card-info{flex:1;min-width:0}
 .cli-nome{font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cli-obs{font-size:11px;color:var(--muted);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.cli-edit-btn{opacity:0;transition:opacity var(--t);flex-shrink:0}
+.cli-edit-btn{opacity:1;transition:opacity var(--t);flex-shrink:0}
+.cli-card .cli-edit-btn{opacity:0}
 .cli-card:hover .cli-edit-btn{opacity:1}
 .cli-tags{display:flex;flex-direction:column;gap:5px}
 .cli-tag{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:5px}
 .cli-tag i{font-size:11px;color:var(--muted2)}
 .form-actions{display:flex;gap:8px;flex-wrap:wrap;padding-top:4px;margin-top:4px}
+@media (max-width: 860px){
+  .cli-list-head{display:none}
+  .cli-list-wrap{border-radius:var(--radius-md)}
+  .cli-row{grid-template-columns:1fr auto;gap:9px;padding:12px}
+  .cli-info{grid-column:1/-1}
+  .cli-cell{grid-column:1/2}
+  .cli-actions{grid-column:2/3;grid-row:2/5;align-self:center}
+}
 `; }

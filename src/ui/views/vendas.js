@@ -85,12 +85,14 @@ export class VendasView extends BaseView {
         actions: Btn.primary('<i class="fi fi-rr-add"></i> Nova Venda', "btn-nova-venda"),
       })}
 
+      <div class="vendas-kpis">
       ${KpiGrid([
-        { label: "Faturamento", value: fmtBRL(total),   sub: `${list.length} venda${list.length!==1?"s":""}`, color: "var(--primary-light)", icon: "💰" },
-        { label: "Pendentes",   value: pendentes,        sub: "aguardando",  color: "var(--warning)",        icon: "⏳" },
-        { label: "Em execução", value: emExecucao,       sub: "em produção", color: "var(--info)",           icon: "🔄" },
-        { label: "Entregues",   value: entregues,        sub: "concluídas",  color: "var(--success)",        icon: "✅" },
+        { label: "Faturamento", value: fmtBRL(total),   sub: `${list.length} venda${list.length!==1?"s":""}`, color: "var(--primary-light)", icon: '<i class="fi fi-rr-money-bill-wave"></i>' },
+        { label: "Pendentes",   value: pendentes,        sub: "aguardando",  color: "var(--warning)",        icon: '<i class="fi fi-rr-clock"></i>' },
+        { label: "Em execução", value: emExecucao,       sub: "em produção", color: "var(--info)",           icon: '<i class="fi fi-rr-settings"></i>' },
+        { label: "Entregues",   value: entregues,        sub: "concluídas",  color: "var(--success)",        icon: '<i class="fi fi-rr-check-circle"></i>' },
       ])}
+      </div>
 
       <!-- Filtros -->
       <div class="venda-filtros">
@@ -595,6 +597,19 @@ export class VendasView extends BaseView {
 
 // ─── CSS Vendas ───────────────────────────────────────────────────────────────
 function vendasCSS() { return `
+.page-header{margin-bottom:12px!important}
+.page-title{line-height:1.12!important}
+.page-subtitle{margin:1px 0 0!important;line-height:1.2!important}
+.vendas-kpis .kpi-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:12px}
+.vendas-kpis .kpi-card{display:grid;grid-template-columns:30px minmax(0,1fr);grid-template-areas:"icon value" "label sub";align-items:center;column-gap:9px;row-gap:2px;padding:10px 12px;min-height:54px}
+.vendas-kpis .kpi-card:hover{transform:none}
+.vendas-kpis .kpi-card::before{height:2px;background:var(--kpi-accent,var(--primary))}
+.vendas-kpis .kpi-icon{grid-area:icon;width:28px;height:28px;margin:0;border-radius:var(--radius-sm);background:color-mix(in srgb,var(--kpi-accent,var(--primary)) 14%,transparent);display:flex;align-items:center;justify-content:center;font-size:14px}
+.vendas-kpis .kpi-value{grid-area:value;margin:0;font-size:17px;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vendas-kpis .kpi-label{grid-area:label;font-size:9.5px;line-height:1.1;white-space:nowrap}
+.vendas-kpis .kpi-sub{grid-area:sub;margin:0;font-size:10px;line-height:1.1;text-align:right;white-space:nowrap}
+@media(max-width:900px){.vendas-kpis .kpi-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:520px){.vendas-kpis .kpi-grid{grid-template-columns:1fr}.vendas-kpis .kpi-card{grid-template-columns:28px 1fr auto;grid-template-areas:"icon value sub" "icon label label"}}
 .venda-filtros{display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap}
 .status-chips{display:flex;gap:6px;flex-wrap:wrap}
 .chip{padding:5px 12px;border-radius:999px;font-size:12px;font-weight:500;border:1px solid var(--border-md);background:transparent;color:var(--muted);cursor:pointer;transition:all var(--t);display:flex;align-items:center;gap:5px;font-family:var(--font)}
@@ -641,3 +656,4 @@ function formCSS() { return `
 .bottom-total{font-size:14px;color:var(--muted)}
 .bottom-total strong{color:var(--primary-light);font-size:20px;font-weight:800;margin-left:8px}
 `; }
+

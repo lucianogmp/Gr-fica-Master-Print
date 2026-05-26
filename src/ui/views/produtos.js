@@ -103,37 +103,52 @@ export class ProdutosView {
                   </button>`
                : ""}
            </div>`
-        : `<div class="prod-grid">
-             ${filtrados.map(p => this._renderCard(p)).join("")}
+        : `<div class="prod-list-wrap">
+             <div class="prod-list-head">
+               <span>Produto</span>
+               <span>Categoria</span>
+               <span>Status</span>
+               <span>Pre&ccedil;o</span>
+               <span>A&ccedil;&otilde;es</span>
+             </div>
+             <div class="prod-list">
+               ${filtrados.map(p => this._renderRow(p, categorias)).join("")}
+             </div>
            </div>`}
     `;
 
     this._bindEvents(produtos);
   }
 
-  _renderCard(p) {
+  _renderRow(p, categorias = []) {
     const status      = p.status || "ativo";
     const statusLabel = { ativo:"Ativo", inativo:"Inativo", rascunho:"Rascunho" }[status] || status;
     const statusClass = { ativo:"st-ativo", inativo:"st-inativo", rascunho:"st-rascunho" }[status] || "";
     const preco       = Number(p.preco_venda || 0);
+    const categoria   = categorias.find(cat => String(cat.id) === String(p.categoria_id))?.nome || "Sem categoria";
 
     const icone = p.icone_svg
-      ? `<div class="prod-icone-svg">${p.icone_svg}</div>`
-      : `<div class="prod-icone-fi"><i class="fi fi-rr-box-open"></i></div>`;
+      ? `<div class="prod-row-icon prod-icone-svg">${p.icone_svg}</div>`
+      : `<div class="prod-row-icon prod-icone-fi"><i class="fi fi-rr-box-open"></i></div>`;
 
     return `
-      <div class="prod-card">
-        <div class="prod-card-header">
+      <div class="prod-row">
+        <div class="prod-info">
           ${icone}
-          <span class="prod-status ${statusClass}">${statusLabel}</span>
+          <div class="prod-main">
+            <div class="prod-nome">${esc(p.nome)}</div>
+            <div class="prod-meta">
+              ${p.sku ? `<span>SKU: ${esc(p.sku)}</span>` : `<span>Sem SKU</span>`}
+              ${p.descricao ? `<span>${esc(p.descricao)}</span>` : ""}
+            </div>
+          </div>
         </div>
-        <div class="prod-nome">${esc(p.nome)}</div>
-        ${p.sku         ? `<div class="prod-sku">SKU: ${esc(p.sku)}</div>` : ""}
-        ${p.descricao   ? `<div class="prod-desc">${esc(p.descricao)}</div>` : ""}
+        <div class="prod-categoria">${esc(categoria)}</div>
+        <div><span class="prod-status ${statusClass}">${statusLabel}</span></div>
         <div class="prod-preco">${preco > 0 ? fmtBRL(preco) : "—"}</div>
         <div class="prod-acoes">
           <button class="btn-icon" data-edit="${esc(p.id)}" title="Editar produto">
-            <i class="fi fi-rr-pencil"></i> Editar
+            <i class="fi fi-rr-pencil"></i>
           </button>
           <button class="btn-icon danger" data-del="${esc(p.id)}" data-nome="${esc(p.nome)}" title="Excluir produto">
             <i class="fi fi-rr-trash"></i>
@@ -307,25 +322,46 @@ export class ProdutosView {
 .prod-select{padding:8px 12px;border:1px solid var(--border-md);border-radius:var(--radius-md);background:var(--panel2);color:var(--text);font-size:12.5px;font-family:var(--font);cursor:pointer;outline:none}
 [data-theme="light"] .prod-select{background:#fff}
 
-.prod-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
-.prod-card{background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;display:flex;flex-direction:column;gap:6px;transition:border-color var(--t),box-shadow var(--t);box-shadow:var(--shadow-xs)}
-[data-theme="light"] .prod-card{box-shadow:var(--shadow-sm)}
-.prod-card:hover{border-color:var(--primary-border);box-shadow:var(--shadow-md)}
-.prod-card-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;gap:8px}
-.prod-icone-fi{font-size:22px;flex-shrink:0;color:var(--muted)}
-.prod-icone-svg{width:40px;height:40px;flex-shrink:0;overflow:hidden;border-radius:var(--radius-sm);background:var(--panel3);display:flex;align-items:center;justify-content:center}
-.prod-icone-svg svg{width:32px !important;height:32px !important;max-width:32px;max-height:32px;display:block}
+.prod-list-wrap{border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;background:var(--panel2);box-shadow:var(--shadow-xs)}
+[data-theme="light"] .prod-list-wrap{box-shadow:var(--shadow-sm)}
+.prod-list-head{display:grid;grid-template-columns:minmax(260px,1fr) 150px 110px 120px 82px;gap:12px;align-items:center;padding:10px 14px;background:var(--panel3);border-bottom:1px solid var(--border);color:var(--muted);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em}
+.prod-list-head span:nth-child(4){text-align:right}
+.prod-list-head span:nth-child(5){text-align:right}
+.prod-list{display:flex;flex-direction:column}
+.prod-row{display:grid;grid-template-columns:minmax(260px,1fr) 150px 110px 120px 82px;gap:12px;align-items:center;padding:12px 14px;border-top:1px solid var(--border);transition:background var(--t)}
+.prod-row:first-child{border-top:none}
+.prod-row:hover{background:var(--panel3)}
+.prod-info{display:flex;align-items:center;gap:11px;min-width:0}
+.prod-main{min-width:0}
+.prod-row-icon{width:34px;height:34px;flex-shrink:0;border-radius:var(--radius-sm);background:var(--panel3);display:flex;align-items:center;justify-content:center}
+.prod-row:hover .prod-row-icon{background:var(--panel2)}
+.prod-icone-fi{font-size:18px;color:var(--muted)}
+.prod-icone-svg{overflow:hidden}
+.prod-icone-svg svg{width:26px !important;height:26px !important;max-width:26px;max-height:26px;display:block}
 .prod-status{font-size:9.5px;font-weight:700;padding:2px 8px;border-radius:99px}
 .st-ativo   {background:rgba(0,196,154,.12);color:var(--success)}
 .st-inativo {background:var(--panel3);color:var(--muted)}
 .st-rascunho{background:rgba(255,179,0,.12);color:var(--warning)}
-.prod-nome{font-size:13.5px;font-weight:700;line-height:1.3}
-.prod-sku{font-size:10.5px;color:var(--muted)}
-.prod-desc{font-size:11.5px;color:var(--text-sub);line-height:1.4;max-height:36px;overflow:hidden;text-overflow:ellipsis}
-.prod-preco{font-size:15px;font-weight:800;color:var(--primary-light);margin-top:4px}
-.prod-acoes{display:flex;gap:6px;margin-top:6px;padding-top:10px;border-top:1px solid var(--border)}
+.prod-nome{font-size:13.5px;font-weight:700;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prod-meta{display:flex;gap:8px;color:var(--muted);font-size:10.5px;line-height:1.35;min-width:0}
+.prod-meta span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:340px}
+.prod-meta span+span{color:var(--text-sub)}
+.prod-categoria{font-size:12px;color:var(--text-sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prod-preco{font-size:13px;font-weight:800;color:var(--primary-light);text-align:right;white-space:nowrap}
+.prod-acoes{display:flex;justify-content:flex-end;gap:6px}
+.prod-acoes .btn-icon{width:30px;height:30px;padding:0;display:inline-flex;align-items:center;justify-content:center}
 .prod-vazio{display:flex;flex-direction:column;align-items:center;gap:12px;padding:60px 20px;color:var(--muted);text-align:center}
 .prod-vazio i{font-size:36px;opacity:.3}
+
+@media (max-width: 820px){
+  .prod-list-head{display:none}
+  .prod-list-wrap{border-radius:var(--radius-md)}
+  .prod-row{grid-template-columns:1fr auto;gap:10px;padding:12px}
+  .prod-info{grid-column:1/-1}
+  .prod-categoria{grid-column:1/2}
+  .prod-preco{text-align:left}
+  .prod-acoes{grid-column:2/3;grid-row:2/4;align-self:center}
+}
 
 /* Modal fields */
 .modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}

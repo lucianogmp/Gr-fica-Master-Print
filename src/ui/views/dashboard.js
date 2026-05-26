@@ -47,8 +47,8 @@ function sparkline(dados, cor="#00c49a", w=120, h=36) {
 }
 
 /* ── Barras SVG (tendência) ─────────────────────────────────────────────── */
-function barChart(dados, w=460, h=160) {
-  const pad={t:16,r:10,b:28,l:46};
+function barChart(dados, w=460, h=190) {
+  const pad={t:12,r:10,b:28,l:46};
   const W=w-pad.l-pad.r, H=h-pad.t-pad.b;
   const n=dados.length, bw=Math.max(Math.floor(W/n/3.2),5), gap=Math.floor(W/n);
   const mx=Math.max(...dados.flatMap(d=>[d.a,d.b]),1);
@@ -65,12 +65,12 @@ function barChart(dados, w=460, h=160) {
     return `<line x1="${pad.l}" y1="${y}" x2="${pad.l+W}" y2="${y}" stroke="var(--border)" stroke-width="1"/>
 <text x="${pad.l-4}" y="${y+3}" text-anchor="end" font-size="8" fill="var(--muted)" font-family="var(--font)">${f}</text>`;
   }).join("");
-  return `<svg viewBox="0 0 ${w} ${h}" width="100%" style="display:block;overflow:visible">${grid}${bars}</svg>`;
+  return `<svg class="dash-chart-svg dash-bar-svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" preserveAspectRatio="xMidYMid meet">${grid}${bars}</svg>`;
 }
 
 /* ── Ponto de Equilíbrio — gráfico de linhas ────────────────────────────── */
-function breakEvenChart(custoFixo, custoVar, receitaTotal, w=220, h=140) {
-  const pad={t:12,r:10,b:28,l:38};
+function breakEvenChart(custoFixo, custoVar, receitaTotal, w=260, h=168) {
+  const pad={t:10,r:10,b:24,l:34};
   const W=w-pad.l-pad.r, H=h-pad.t-pad.b;
   const maxX=receitaTotal*1.15||1, maxY=receitaTotal*1.15||1;
   const toX=v=>(v/maxX)*W+pad.l;
@@ -98,7 +98,7 @@ function breakEvenChart(custoFixo, custoVar, receitaTotal, w=220, h=140) {
 <text x="${toX(maxX*p)}" y="${h-4}" text-anchor="middle" font-size="7" fill="var(--muted)" font-family="var(--font)">${f}</text>`;
   }).join("");
 
-  return `<svg viewBox="0 0 ${w} ${h}" width="100%" style="display:block;overflow:visible">
+  return `<svg class="dash-chart-svg pe-chart-svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" preserveAspectRatio="xMidYMid meet">
     ${grid}
     <line x1="${pad.l}" y1="${pad.t}" x2="${pad.l}" y2="${pad.t+H}" stroke="var(--border-md)" stroke-width="1"/>
     <line x1="${pad.l}" y1="${pad.t+H}" x2="${pad.l+W}" y2="${pad.t+H}" stroke="var(--border-md)" stroke-width="1"/>
@@ -148,12 +148,10 @@ export class DashboardView extends BaseView {
   #mes      = mesAtual();
   #resumo   = null;
   #loading  = true;
-  #userName = "Usuário";
+  #userName = "Luciano";
+  #ocultarDados = localStorage.getItem("dashboard_ocultar_dados") === "true";
 
   async _init() {
-    // Pega nome do usuário
-    const u = document.getElementById("user-name");
-    if (u) this.#userName = u.textContent || "Usuário";
     await this.#load();
   }
 
@@ -256,8 +254,9 @@ export class DashboardView extends BaseView {
     const inadimp     = fin.receitas > 0 ? ((fin.aReceber||0)/fin.receitas*100) : 0;
     const pedAberto   = r.vendas.lista.filter(v=>["pendente","em_execucao"].includes(v.status)).length;
 
-    return `
+return `
 <style>${dashCSS()}</style>
+<div class="dash-page ${this.#ocultarDados ? "dash-hidden" : ""}">
 
 <!-- SAUDAÇÃO -->
 <div class="dash-greeting-row">
@@ -267,6 +266,9 @@ export class DashboardView extends BaseView {
   </div>
   <div class="dash-header-actions">
     <span class="dash-mes-label">${nomeMesLong(this.#mes)}</span>
+    <button class="btn-refresh-icon btn-toggle-values" id="btn-toggle-values" title="${this.#ocultarDados ? "Mostrar dados" : "Ocultar dados"}" aria-label="${this.#ocultarDados ? "Mostrar dados" : "Ocultar dados"}">
+      <i class="fi ${this.#ocultarDados ? "fi-rr-eye" : "fi-rr-eye-crossed"}"></i>
+    </button>
     <input type="month" id="filtro-mes" value="${this.#mes}" class="month-input" title="Selecionar mês"/>
     <button class="btn-refresh-icon" id="btn-refresh" title="Atualizar">
       <i class="fi fi-rr-refresh"></i>
@@ -276,8 +278,8 @@ export class DashboardView extends BaseView {
 
 <!-- ① KPI CARDS -->
 <div class="kpi4-grid">
-  ${this.#kpi4("Receita Total",   fmtBRL(receita),  spkRec,  "#00c49a", "fi-rr-trending-up",    r.tendencia)}
-  ${this.#kpi4("Despesas Totais", fmtBRL(despesas), spkDesp, "#e53935", "fi-rr-trending-down",  r.tendencia, true)}
+  ${this.#kpi4("Receita Total",   fmtBRL(receita),  spkRec,  "#00c49a", "fi-rr-money-bill-wave", r.tendencia)}
+  ${this.#kpi4("Despesas Totais", fmtBRL(despesas), spkDesp, "#e53935", "fi-rr-shopping-cart",   r.tendencia, true)}
   ${this.#kpi4("Lucro Líquido",   fmtBRL(fin.lucro),spkLucro, fin.lucro>=0?"#00c49a":"#e53935","fi-rr-chart-line-up", r.tendencia)}
   ${this.#kpi4("Fluxo de Caixa",  fmtBRL(fluxo),    spkCaixa,"#a78bfa", "fi-rr-coins",          r.tendencia)}
 </div>
@@ -294,7 +296,7 @@ export class DashboardView extends BaseView {
         <span class="leg-item"><span class="leg-dot" style="background:#e53935"></span>Despesa</span>
       </div>
     </div>
-    <div style="overflow-x:auto">
+    <div class="dash-chart-scroll">
       ${r.tendencia?.length
         ? barChart(r.tendencia.map(t=>({label:nomeMes(t.mes),a:t.receitas,b:t.despesas})))
         : `<div class="chart-empty">Sem dados de tendência</div>`}
@@ -582,7 +584,7 @@ export class DashboardView extends BaseView {
     </div>
   </div>
 
-</div>`;
+</div></div>`;
   }
 
   afterRender() {
@@ -590,6 +592,11 @@ export class DashboardView extends BaseView {
       this.#mes = e.target.value;
       actions.setCache(`dashboard_${this.#mes}`, null);
       await this.#load();
+    });
+    this.$("#btn-toggle-values")?.addEventListener("click", () => {
+      this.#ocultarDados = !this.#ocultarDados;
+      localStorage.setItem("dashboard_ocultar_dados", String(this.#ocultarDados));
+      this.refresh();
     });
     this.$("#btn-refresh")?.addEventListener("click", () => this.#reload());
   }
@@ -634,9 +641,9 @@ export class DashboardView extends BaseView {
 /* ── CSS ────────────────────────────────────────────────────────────────── */
 function dashCSS(){return`
 /* Saudação */
-.dash-greeting-row{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px}
-.dash-greeting{font-size:20px;font-weight:800;margin:0}
-.dash-greeting-sub{font-size:12px;color:var(--muted);margin:2px 0 0}
+.dash-greeting-row{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px}
+h2.dash-greeting{font-size:20px;font-weight:800;margin:0 0 4px!important;line-height:1.15}
+.dash-greeting-sub{font-size:12px;color:var(--muted);margin:0}
 .dash-header-actions{display:flex;align-items:center;gap:8px}
 .dash-mes-label{font-size:12.5px;font-weight:600;color:var(--text-sub)}
 .month-input{background:var(--panel2);border:1px solid var(--border-md);color:var(--text);border-radius:var(--radius-md);padding:6px 10px;font-size:12px;font-family:var(--font);outline:none}
@@ -644,6 +651,19 @@ function dashCSS(){return`
 [data-theme="light"] .month-input{background:#fff}
 .btn-refresh-icon{display:flex;align-items:center;justify-content:center;width:32px;height:32px;background:transparent;border:1px solid var(--border-md);border-radius:var(--radius-md);color:var(--muted);cursor:pointer;font-size:14px;transition:all var(--t)}
 .btn-refresh-icon:hover{background:var(--panel3);color:var(--text)}
+.btn-toggle-values{color:var(--primary-light)}
+.dash-hidden .kpi4-value,
+.dash-hidden .pe-item strong,
+.dash-hidden .dre-row span:last-child,
+.dash-hidden .dre-row-margem strong,
+.dash-hidden .mini-table td:nth-child(3),
+.dash-hidden .mini-table-total strong,
+.dash-hidden .aviso-sub,
+.dash-hidden .top5-val,
+.dash-hidden .ind-val,
+.dash-hidden .ind-delta,
+.dash-hidden .dash-chart-svg,
+.dash-hidden .kpi4-spark svg{filter:blur(5px);user-select:none;pointer-events:none}
 
 /* KPI 4 cards */
 .kpi4-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
@@ -661,7 +681,7 @@ function dashCSS(){return`
 .kpi4-spark{line-height:0}
 
 /* Row 3 colunas */
-.dash-row3{display:grid;grid-template-columns:1.4fr 1.2fr 1fr;gap:10px;margin-bottom:12px}
+.dash-row3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:12px;align-items:stretch}
 @media(max-width:1100px){.dash-row3{grid-template-columns:1fr 1fr}}
 @media(max-width:720px){.dash-row3{grid-template-columns:1fr}}
 
@@ -671,7 +691,7 @@ function dashCSS(){return`
 @media(max-width:600px){.dash-row4{grid-template-columns:1fr}}
 
 /* Panel */
-.dash-panel{background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px;box-shadow:var(--shadow-xs)}
+.dash-panel{background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px;box-shadow:var(--shadow-xs);min-width:0;overflow:hidden}
 [data-theme="light"] .dash-panel{box-shadow:var(--shadow-sm)}
 .panel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:8px}
 .panel-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);line-height:1.3}
@@ -680,22 +700,29 @@ function dashCSS(){return`
 .leg-item{display:flex;align-items:center;gap:4px;font-size:9.5px;color:var(--muted)}
 .leg-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
 .chart-empty{color:var(--muted);font-size:11px;padding:12px 0;text-align:center}
+.dash-chart-scroll{width:100%;min-width:0;overflow-x:auto;overflow-y:hidden;padding:4px 0 2px}
+.dash-chart-svg{display:block;width:100%;height:auto;max-width:100%;overflow:hidden}
+.dash-bar-svg{min-width:360px}
+.pe-chart-svg{max-width:260px;margin:0 auto}
 .dre-mes{font-size:9.5px;font-weight:600;color:var(--muted);white-space:nowrap}
 .btn-ver-todas{background:transparent;border:none;color:var(--primary);font-size:10.5px;font-weight:600;cursor:pointer;font-family:var(--font);padding:0;text-decoration:underline;text-underline-offset:2px}
 .btn-ver-todas:hover{color:var(--primary-light)}
 .badge-notif-count{background:var(--error);color:#fff;font-size:9.5px;font-weight:800;border-radius:99px;padding:2px 7px;min-width:20px;text-align:center}
 
 /* Ponto de equilíbrio */
-.pe-layout{display:flex;flex-direction:column;gap:10px}
-.pe-nums{display:flex;flex-direction:column;gap:4px}
-.pe-item{display:flex;justify-content:space-between;align-items:center;font-size:11.5px;padding:3px 0;border-bottom:.5px solid var(--border)}
+.pe-layout{display:grid;grid-template-columns:minmax(0,.9fr) minmax(220px,1.1fr);gap:14px;align-items:start}
+.pe-nums{display:flex;flex-direction:column;gap:5px;padding-top:4px}
+.pe-item{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:11.5px;padding:5px 0;border-bottom:.5px solid var(--border)}
 .pe-item:last-child{border-bottom:none}
-.pe-item span{color:var(--muted)}
-.pe-item strong{font-weight:700}
-.pe-item-total{background:var(--panel3);border-radius:var(--radius-sm);padding:5px 8px;margin:2px 0}
+.pe-item span{color:var(--muted);line-height:1.2}
+.pe-item strong{font-weight:700;white-space:nowrap}
+.pe-item-total{background:var(--panel3);border-radius:var(--radius-sm);padding:7px 8px;margin:3px 0}
 .pe-item-total strong{color:var(--primary)!important}
-.pe-chart-wrap{margin-top:4px}
-.pe-chart-legend{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px}
+.pe-chart-wrap{margin-top:0;min-width:0}
+.pe-chart-title{font-size:9.5px!important;margin-bottom:6px!important}
+.pe-chart-legend{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+@media(max-width:900px){.pe-layout{grid-template-columns:minmax(0,1fr) 210px}.pe-chart-svg{max-width:210px}.pe-item{font-size:11px;padding:4px 0}}
+@media(max-width:720px){.pe-layout{grid-template-columns:1fr}.pe-chart-svg{max-width:260px}}
 
 /* DRE */
 .dre-lista{display:flex;flex-direction:column;gap:0}
