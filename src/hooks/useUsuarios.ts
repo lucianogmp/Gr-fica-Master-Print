@@ -19,19 +19,7 @@ export function useUsuarios() {
     queryKey: ['usuarios-admin'],
     queryFn: async (): Promise<UsuarioAdmin[]> => {
       const { data, error } = await supabase.rpc('listar_usuarios');
-      if (error) {
-        // fallback: só mostra o usuário atual se não tiver a função RPC
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return [];
-        return [{
-          id: user.id,
-          email: user.email ?? '',
-          nome: user.user_metadata?.nome ?? user.user_metadata?.name ?? user.email ?? '',
-          role: user.user_metadata?.role ?? null,
-          created_at: user.created_at,
-          last_sign_in_at: user.last_sign_in_at,
-        }];
-      }
+      if (error) throw error;
       return data ?? [];
     },
   });
@@ -48,8 +36,36 @@ export function useUsuarios() {
       qc.invalidateQueries({ queryKey: ['usuarios-admin'] });
       toast.success('Perfil atualizado!');
     },
-    onError: (e: any) => toast.error('Erro: ' + e.message),
+    onError: (e: any) => toast.error(e.message),
   });
 
-  return { ...query, definirRole: definirRole.mutateAsync };
+  const convidarUsuario = useMutation({
+    mutationFn: async ({ email, nome, role }: { email: string; nome: string; role: Role }) => {
+      // 1. Cria o usuário via Admin API (invite)
+      const { data, error } = await supabase.auth.admin.inviteUserByEmail(email, {
+        data: { nome, role },
+      });
+      if (error) {
+        // Se já existe, só atualiza o role
+        const { error: rpcErr } = await supabase.rpc('convidar_usuario', {
+          p_email: email,
+          p_nome: nome,
+          p_role: role,
+        });
+        if (rpcErr) throw rpcErr;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['usuarios-admin'] });
+      toast.success('Usuário convidado! Ele receberá um e-mail para definir a senha.');
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  return {
+    ...query,
+    definirRole:     definirRole.mutateAsync,
+    convidarUsuario: convidarUsuario.mutateAsync,
+    isConvidando:    convidarUsuario.isPending,
+  };
 }
