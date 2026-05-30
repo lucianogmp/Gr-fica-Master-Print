@@ -34,7 +34,7 @@ export function AppRoutes() {
   }
 
   return (
-    <BrowserRouter basename="/Gr-fica-Master-Print">
+    <BrowserRouter>
       <Routes>
         {/* Rota pública */}
         <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
