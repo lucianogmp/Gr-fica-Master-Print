@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-theme="light">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -11,9 +11,10 @@
     />
   </head>
 
-  <body>
-    <div id="app"></div>
+<body>
+  <!-- O React precisa desse ID exato para "viver" dentro dele -->
+  <div id="root"></div>
 
-    <script type="module" src="/src/main.js"></script>
-  </body>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
 </html>

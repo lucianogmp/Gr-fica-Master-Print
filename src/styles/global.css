@@ -1,0 +1,67 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* === Variáveis de Tema (Dark Mode como Padrão) === */
+:root {
+  --color-bg-primary: #111827; /* Fundo principal escuro */
+  --color-bg-card: #1f2937;    /* Fundo dos cards escuro */
+  --color-text-primary: #f3f4f6; /* Texto principal claro */
+  --color-text-muted: #9ca3af;   /* Texto secundário/cinza */
+  --color-border-main: #374151; /* Borda dos cards escura */
+  --color-blue-accent: #007cbe; /* Azul do seu tema */
+  --color-green-accent: #10b981; /* Verde para positivo */
+  --color-red-accent: #ef4444;   /* Vermelho para negativo */
+  --color-yellow-accent: #f59e0b; /* Amarelo/Laranja para warning */
+}
+
+/* === Light Theme (Sobrescreve as variáveis acima) === */
+html[data-theme="light"] {
+  --color-bg-primary: #ffffff; /* Fundo principal branco */
+  --color-bg-card: #f8f8f8;    /* Fundo dos cards claro */
+  --color-text-primary: #333333; /* Texto principal escuro */
+  --color-text-muted: #6b7280;   /* Texto secundário/cinza */
+  --color-border-main: #e5e7eb; /* Borda dos cards clara */
+  --color-blue-accent: #1d4ed8;
+  --color-green-accent: #059669;
+  --color-red-accent: #dc2626;
+  --color-yellow-accent: #d97706;
+}
+
+/* === Estilos Globais e Componentes Reutilizáveis === */
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, sans-serif; /* Fonte moderna */
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Estilo para cards que vamos usar no Dashboard */
+.card {
+  background-color: var(--color-bg-card);
+  padding: 1.5rem; /* 24px */
+  border-radius: 0.75rem; /* 12px */
+  border: 1px solid var(--color-border-main);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1); /* Sombra suave */
+}
+
+.text-muted {
+  color: var(--color-text-muted);
+}
+
+/* Scrollbar Bonita */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--color-bg-primary); }
+::-webkit-scrollbar-thumb { background: var(--color-border-main); border-radius: 10px; }
+
+/* Animação de entrada (já tínhamos) */
+.animate-in {
+  animation: fadeIn 0.3s ease-out;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
