@@ -1,8 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { Layout } from '../components/Layout';
-import { useAuth } from '../hooks/useAuth';
+import { Layout }          from '../components/Layout';
+import { ProtectedRoute }  from '../components/ProtectedRoute';
+import { useAuth }         from '../hooks/useAuth';
 
-// Páginas
 import { Login }         from '../pages/Login';
 import { Dashboard }     from '../pages/Dashboard';
 import { Vendas }        from '../pages/Vendas';
@@ -16,45 +16,55 @@ import { Producao }      from '../pages/Producao';
 import { GestaoCustos }  from '../pages/GestaoCustos';
 import { Configuracoes } from '../pages/Configuracoes';
 
+const ROTAS = [
+  { path: '/',              Page: Dashboard,    rota: '/'              },
+  { path: '/vendas',        Page: Vendas,       rota: '/vendas'        },
+  { path: '/orcamentos',    Page: Orcamentos,   rota: '/orcamentos'    },
+  { path: '/clientes',      Page: Clientes,     rota: '/clientes'      },
+  { path: '/financeiro',    Page: Financeiro,   rota: '/financeiro'    },
+  { path: '/fluxo-caixa',   Page: FluxoCaixa,   rota: '/fluxo-caixa'   },
+  { path: '/produtos',      Page: Produtos,     rota: '/produtos'      },
+  { path: '/estoque',       Page: Estoque,      rota: '/estoque'       },
+  { path: '/producao',      Page: Producao,     rota: '/producao'      },
+  { path: '/custos',        Page: GestaoCustos, rota: '/custos'        },
+  { path: '/configuracoes', Page: Configuracoes,rota: '/configuracoes' },
+];
+
 export function AppRoutes() {
   const { user, loading } = useAuth();
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#111827] flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-3xl font-black mb-2">
-            <span className="text-blue-500">MASTER</span>
-            <span className="text-white"> PRINT</span>
-          </div>
-          <p className="text-gray-500 text-sm animate-pulse">Carregando...</p>
+  if (loading) return (
+    <div className="min-h-screen bg-[#111827] flex items-center justify-center">
+      <div className="text-center">
+        <div className="text-3xl font-black mb-2">
+          <span className="text-blue-500">MASTER</span>
+          <span className="text-white"> PRINT</span>
         </div>
+        <p className="text-gray-500 text-sm animate-pulse">Carregando...</p>
       </div>
-    );
-  }
+    </div>
+  );
 
   return (
     <BrowserRouter>
       <Routes>
-        {/* Rota pública */}
         <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
 
-        {/* Rotas protegidas */}
         <Route path="/" element={user ? <Layout /> : <Navigate to="/login" replace />}>
-          <Route index                element={<Dashboard />} />
-          <Route path="vendas"        element={<Vendas />} />
-          <Route path="orcamentos"    element={<Orcamentos />} />
-          <Route path="clientes"      element={<Clientes />} />
-          <Route path="financeiro"    element={<Financeiro />} />
-          <Route path="fluxo-caixa"   element={<FluxoCaixa />} />
-          <Route path="produtos"      element={<Produtos />} />
-          <Route path="estoque"       element={<Estoque />} />
-          <Route path="producao"      element={<Producao />} />
-          <Route path="custos"        element={<GestaoCustos />} />
-          <Route path="configuracoes" element={<Configuracoes />} />
+          {ROTAS.map(({ path, Page, rota }) => (
+            <Route
+              key={path}
+              path={path === '/' ? undefined : path}
+              index={path === '/'}
+              element={
+                <ProtectedRoute rota={rota}>
+                  <Page />
+                </ProtectedRoute>
+              }
+            />
+          ))}
         </Route>
 
-        {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

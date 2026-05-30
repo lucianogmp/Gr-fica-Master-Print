@@ -1,9 +1,11 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useRole } from '../hooks/useRole';
+import { ROLES, ROUTE_PERMISSIONS, Role } from '../types/roles';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 
-const MENU_ITEMS = [
+const ALL_MENU = [
   { path: '/',             label: 'Dashboard',      icon: '📊' },
   { path: '/vendas',       label: 'Vendas',          icon: '💰' },
   { path: '/orcamentos',   label: 'Orçamentos',      icon: '📝' },
@@ -18,18 +20,23 @@ const MENU_ITEMS = [
 ];
 
 export function Layout() {
-  const location  = useLocation();
+  const location = useLocation();
   const navigate  = useNavigate();
   const { user }  = useAuth();
+  const { role, pode } = useRole();
+
+  // Filtra o menu pelo role do usuário
+  const menuItems = ALL_MENU.filter(item => pode(item.path));
+
+  const currentPage = ALL_MENU.find(i => i.path === location.pathname);
+  const initials    = (user?.name ?? 'U').slice(0, 1).toUpperCase();
+  const roleInfo    = role ? ROLES[role as Role] : null;
 
   async function handleLogout() {
     await supabase.auth.signOut();
     toast.success('Até logo!');
     navigate('/login');
   }
-
-  const initials = (user?.name ?? 'U').slice(0, 1).toUpperCase();
-  const currentPage = MENU_ITEMS.find(i => i.path === location.pathname);
 
   return (
     <div className="flex h-screen bg-[#111827] text-gray-100 overflow-hidden">
@@ -39,21 +46,19 @@ export function Layout() {
           <h1 className="text-xl font-black tracking-tighter text-blue-500">
             MASTER <span className="text-white">PRINT</span>
           </h1>
+          <p className="text-[10px] text-gray-600 mt-0.5">Sistema de Gestão</p>
         </div>
 
         <nav className="flex-1 overflow-y-auto p-4 space-y-1">
-          {MENU_ITEMS.map((item) => {
+          {menuItems.map(item => {
             const isActive = location.pathname === item.path;
             return (
-              <Link
-                key={item.path}
-                to={item.path}
+              <Link key={item.path} to={item.path}
                 className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
                   isActive
                     ? 'bg-blue-600 text-white shadow-lg'
                     : 'text-gray-400 hover:bg-gray-700 hover:text-white'
-                }`}
-              >
+                }`}>
                 <span className="text-base">{item.icon}</span>
                 {item.label}
               </Link>
@@ -61,21 +66,26 @@ export function Layout() {
           })}
         </nav>
 
-        {/* Usuário + Sair */}
+        {/* Usuário + Role + Sair */}
         <div className="p-4 border-t border-gray-700 bg-[#1a222f]">
-          <div className="flex items-center gap-3 px-2 mb-3">
+          <div className="flex items-center gap-3 px-2 mb-2">
             <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center font-bold text-sm flex-shrink-0">
               {initials}
             </div>
-            <div className="overflow-hidden flex-1">
+            <div className="overflow-hidden flex-1 min-w-0">
               <p className="text-xs font-bold truncate text-white">{user?.name ?? 'Usuário'}</p>
               <p className="text-[10px] text-gray-500 truncate">{user?.email}</p>
             </div>
           </div>
-          <button
-            onClick={handleLogout}
-            className="w-full text-xs text-gray-500 hover:text-red-400 hover:bg-red-500/10 py-2 rounded-lg transition-all font-medium"
-          >
+          {roleInfo && (
+            <div className="px-2 mb-2">
+              <span className={`text-[10px] font-bold ${roleInfo.cor}`}>
+                ● {roleInfo.label}
+              </span>
+            </div>
+          )}
+          <button onClick={handleLogout}
+            className="w-full text-xs text-gray-500 hover:text-red-400 hover:bg-red-500/10 py-2 rounded-lg transition-all font-medium">
             Sair da conta
           </button>
         </div>
@@ -83,7 +93,6 @@ export function Layout() {
 
       {/* Área Principal */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Topbar */}
         <header className="h-14 bg-[#1f2937] border-b border-gray-700 flex items-center justify-between px-8">
           <div className="flex items-center gap-2 text-sm">
             <span className="text-gray-500">ERP</span>
@@ -95,14 +104,12 @@ export function Layout() {
           <div className="flex items-center gap-4">
             <div className="relative cursor-pointer">
               <span className="text-xl">🔔</span>
-              <span className="absolute -top-1 -right-1 bg-red-500 text-[10px] font-bold px-1 rounded-full">3</span>
             </div>
           </div>
         </header>
 
-        {/* Conteúdo */}
         <main className="flex-1 overflow-y-auto bg-[#111827]">
-          <div className="max-w-7xl mx-auto animate-in">
+          <div className="max-w-7xl mx-auto">
             <Outlet />
           </div>
         </main>

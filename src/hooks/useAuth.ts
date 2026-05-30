@@ -2,30 +2,38 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { User } from '@supabase/supabase-js';
 
-// Estende a interface User do Supabase para incluir o campo name
-interface AuthUser extends User {
-  user_metadata?: {
-    name?: string;
+interface AuthUser {
+  id: string;
+  email: string;
+  name: string;
+  user_metadata: Record<string, any>;
+}
+
+function mapUser(u: User): AuthUser {
+  return {
+    id:    u.id,
+    email: u.email ?? '',
+    name:  u.user_metadata?.nome ?? u.user_metadata?.name ?? u.email ?? 'Usuário',
+    user_metadata: u.user_metadata ?? {},
   };
 }
 
 export function useAuth() {
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const [user, setUser]       = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user as AuthUser ?? null);
+    supabase.auth.getSession().then(({ data }) => {
+      setUser(data.session?.user ? mapUser(data.session.user) : null);
       setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user as AuthUser ?? null);
-      setLoading(false);
+      setUser(session?.user ? mapUser(session.user) : null);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  return { user: user ? { ...user, name: user.user_metadata?.name || user.email } : null, loading };
+  return { user, loading };
 }
