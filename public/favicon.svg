@@ -2,7 +2,7 @@
   <!-- Background -->
   <rect width="100" height="100" rx="20" fill="#0f172a"/>
 
-  <!-- Paper saindo (atrás da impressora, base) -->
+  <!-- Paper saindo (atrï¿½s da impressora, base) -->
   <rect x="28" y="56" width="44" height="30" rx="4" fill="#f8fafc"/>
 
   <!-- Listras CMYK no papel -->
@@ -10,7 +10,7 @@
   <rect x="39" y="56" width="11" height="30" fill="#e879f9"/>
   <rect x="50" y="56" width="11" height="30" fill="#facc15"/>
   <rect x="61" y="56" width="11" height="30" rx="0" fill="#334155"/>
-  <!-- Máscara arredondada inferior do papel -->
+  <!-- Mï¿½scara arredondada inferior do papel -->
   <rect x="28" y="76" width="44" height="12" rx="4" fill="#f8fafc"/>
   <!-- Linhas impressas no papel (texto simulado) -->
   <rect x="33" y="76" width="22" height="2.5" rx="1.5" fill="#94a3b8"/>
@@ -22,10 +22,10 @@
   <rect x="12" y="36" width="76" height="10" rx="8" fill="#1d4ed8"/>
   <rect x="12" y="42" width="76" height="4" fill="#1d4ed8"/>
 
-  <!-- Slot de saída do papel (fenda) -->
+  <!-- Slot de saï¿½da do papel (fenda) -->
   <rect x="24" y="56" width="52" height="5" rx="2" fill="#0f172a"/>
 
-  <!-- Bandeja de alimentação (topo) -->
+  <!-- Bandeja de alimentaï¿½ï¿½o (topo) -->
   <rect x="30" y="18" width="40" height="22" rx="5" fill="#f1f5f9"/>
   <!-- Borda da bandeja -->
   <rect x="30" y="18" width="40" height="4" rx="2" fill="#cbd5e1"/>
@@ -34,6 +34,6 @@
   <circle cx="75" cy="46" r="5" fill="#10b981"/>
   <circle cx="75" cy="46" r="2.5" fill="#6ee7b7"/>
 
-  <!-- Botão power -->
+  <!-- Botï¿½o power -->
   <rect x="58" y="43" width="10" height="6" rx="3" fill="#3b82f6"/>
 </svg>

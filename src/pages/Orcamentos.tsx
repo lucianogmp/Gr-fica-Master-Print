@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { FileText, CheckCircle, Zap, Banknote, Layers, Scissors, Search, Plus, User, Package, DollarSign, Edit2, Trash2, Check, ArrowRight, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useOrcamentos, useOrcamentoItens } from '../hooks/useOrcamentos';
 import { useMateriaisImpressao } from '../hooks/useMateriaisImpressao';
@@ -16,7 +17,7 @@ const fmtData = (d?: string | null) => d ? new Date(d).toLocaleDateString('pt-BR
 const IN = "w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors";
 
 const TIPO_LABEL: Record<string, string> = {
-  metro: '📐 m²', metro_manual: '✏️ m² M.', folha: '📄 Folha', livre: '💰 Livre',
+  metro: 'm²', metro_manual: 'm² Manual', folha: 'Folha', livre: 'Livre',
 };
 
 const NOVO_ORC: Omit<Orcamento, 'id' | 'created_at' | 'updated_at'> = {
@@ -157,14 +158,14 @@ export function Orcamentos() {
         <button onClick={() => setView('lista')}
           className="text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 w-9 h-9 rounded-lg flex items-center justify-center font-bold">←</button>
         <div>
-          <h1 className="text-xl font-black text-white">📐 Materiais de Impressão</h1>
+          <h1 className="text-xl font-black text-white">Materiais de Impressão</h1>
           <p className="text-gray-500 text-sm">Materiais disponíveis nos orçamentos (precificados por m²)</p>
         </div>
       </div>
 
       {/* Novo */}
       <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5">
-        <h3 className="text-xs font-bold text-gray-400 uppercase mb-4">➕ Novo Material</h3>
+        <h3 className="text-xs font-bold text-gray-400 uppercase mb-4 flex items-center gap-2"><Plus className="w-3.5 h-3.5" />Novo Material</h3>
         <div className="flex gap-3 items-end">
           <div className="flex-1">
             <label className="text-[10px] text-gray-500 uppercase block mb-1.5">Nome *</label>
@@ -230,7 +231,7 @@ export function Orcamentos() {
                     {matEditId === m.id ? (
                       <>
                         <button onClick={() => salvarEditMat(m.id)}
-                          className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-green-500/15 text-green-400 hover:bg-green-500/25 border border-green-500/30">✓ Salvar</button>
+                          className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-green-500/15 text-green-400 hover:bg-green-500/25 border border-green-500/30">Salvar</button>
                         <button onClick={() => setMatEditId(null)}
                           className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-gray-500/15 text-gray-400 border border-gray-500/30">Cancelar</button>
                       </>
@@ -259,13 +260,13 @@ export function Orcamentos() {
         <button onClick={() => setView('lista')}
           className="text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 w-9 h-9 rounded-lg flex items-center justify-center font-bold">←</button>
         <div>
-          <h1 className="text-xl font-black text-white">✂️ Acabamentos</h1>
+          <h1 className="text-xl font-black text-white">Acabamentos</h1>
           <p className="text-gray-500 text-sm">Opções de acabamento disponíveis nos orçamentos</p>
         </div>
       </div>
 
       <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5">
-        <h3 className="text-xs font-bold text-gray-400 uppercase mb-4">➕ Novo Acabamento</h3>
+        <h3 className="text-xs font-bold text-gray-400 uppercase mb-4 flex items-center gap-2"><Plus className="w-3.5 h-3.5" />Novo Acabamento</h3>
         <div className="flex gap-3 items-end">
           <div className="flex-1">
             <label className="text-[10px] text-gray-500 uppercase block mb-1.5">Nome *</label>
@@ -330,7 +331,7 @@ export function Orcamentos() {
                     {acabEditId === a.id ? (
                       <>
                         <button onClick={() => salvarEditAcab(a.id)}
-                          className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-green-500/15 text-green-400 hover:bg-green-500/25 border border-green-500/30">✓ Salvar</button>
+                          className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-green-500/15 text-green-400 hover:bg-green-500/25 border border-green-500/30">Salvar</button>
                         <button onClick={() => setAcabEditId(null)}
                           className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-gray-500/15 text-gray-400 border border-gray-500/30">Cancelar</button>
                       </>
@@ -357,17 +358,17 @@ export function Orcamentos() {
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-2xl font-black text-white">📝 Orçamentos</h1>
+          <h1 className="text-2xl font-black text-white">Orçamentos</h1>
           <p className="text-gray-500 text-sm">{orcamentos.length} orçamento(s)</p>
         </div>
         <div className="flex gap-2">
           <button onClick={() => setView('materiais')}
-            className="bg-gray-700 hover:bg-gray-600 text-gray-300 px-4 py-2.5 rounded-xl font-bold text-sm transition-all">
-            📐 Materiais
+            className="bg-gray-700 hover:bg-gray-600 text-gray-300 px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2">
+            <Layers className="w-4 h-4" /> Materiais
           </button>
           <button onClick={() => setView('acabamentos')}
-            className="bg-gray-700 hover:bg-gray-600 text-gray-300 px-4 py-2.5 rounded-xl font-bold text-sm transition-all">
-            ✂️ Acabamentos
+            className="bg-gray-700 hover:bg-gray-600 text-gray-300 px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2">
+            <Scissors className="w-4 h-4" /> Acabamentos
           </button>
           <button onClick={() => abrirDetalhe(null)}
             className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all">
@@ -377,10 +378,10 @@ export function Orcamentos() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <KpiCard label="Total"       value={totalOrc}           icon="📝" color="text-blue-400" />
+        <KpiCard label="Total"       value={totalOrc}           icon={FileText} color="text-blue-400" />
         <KpiCard label="Aprovados"   value={aprovados}          icon="✅" color="text-green-400" />
-        <KpiCard label="Convertidos" value={convertidos}        icon="💰" color="text-purple-400" />
-        <KpiCard label="Valor total" value={fmtBRL(valorTotal)} icon="💵" color="text-yellow-400" />
+        <KpiCard label="Convertidos" value={convertidos}        icon={Zap} color="text-purple-400" />
+        <KpiCard label="Valor total" value={fmtBRL(valorTotal)} icon={Banknote} color="text-yellow-400" />
       </div>
 
       <div className="flex gap-2 flex-wrap items-center">
@@ -392,7 +393,7 @@ export function Orcamentos() {
             </button>
           ))}
         </div>
-        <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="🔍 Buscar..."
+        <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar..."
           className="flex-1 min-w-48 bg-[#1f2937] border border-gray-700 rounded-xl px-4 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500" />
       </div>
 
@@ -437,7 +438,7 @@ export function Orcamentos() {
                             navigate('/vendas');
                           }}
                           className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-purple-500/15 text-purple-400 hover:bg-purple-500/25 border border-purple-500/30">
-                          ⚡ Venda
+                          Converter em Venda
                         </button>
                       )}
                       <button onClick={() => { if (confirm('Remover?')) deletar(o.id); }}
@@ -478,11 +479,11 @@ export function Orcamentos() {
           {!isNovo && form.status === 'aprovado' && !jaConvertido && (
             <button onClick={handleConverter} disabled={isConvertendo}
               className="bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white px-5 py-2 rounded-xl font-bold text-sm transition-all">
-              {isConvertendo ? '⏳...' : '⚡ Converter em Venda'}
+              {isConvertendo ? 'Convertendo...' : 'Converter em Venda'}
             </button>
           )}
           {jaConvertido && (
-            <span className="px-4 py-2 rounded-xl text-sm font-bold bg-purple-500/20 text-purple-400 border border-purple-500/30">✓ Convertido</span>
+            <span className="px-4 py-2 rounded-xl text-sm font-bold bg-purple-500/20 text-purple-400 border border-purple-500/30">Convertido</span>
           )}
           <button onClick={handleSalvar} disabled={isSaving || !form.cliente_nome.trim()}
             className="bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white px-5 py-2 rounded-xl font-bold text-sm transition-all">
@@ -495,7 +496,7 @@ export function Orcamentos() {
         <div className="xl:col-span-2 space-y-5">
           {/* Dados */}
           <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5">
-            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">👤 Dados do Orçamento</h3>
+            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Dados do Orçamento</h3>
             <div className="space-y-4">
               <ClienteSelector value={form.cliente_nome} onChange={v => setF('cliente_nome', v)} />
               <div>
@@ -509,7 +510,7 @@ export function Orcamentos() {
           {/* Itens */}
           <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">📦 Itens do Orçamento</h3>
+              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Itens do Orçamento</h3>
               {!showEditor && !jaConvertido && (
                 <button onClick={() => { setEditandoIdx(null); setShowEditor(true); }}
                   className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl font-bold text-xs transition-all">
@@ -548,9 +549,9 @@ export function Orcamentos() {
                         <td className="px-3 py-2.5">
                           <div className="font-medium text-white">{it.descricao}</div>
                           {it.acabamento_nome && it.acabamento_nome !== 'Sem acabamento' && (
-                            <div className="text-[9px] text-gray-500">✂️ {it.acabamento_nome}</div>
+                            <div className="text-[9px] text-gray-500">↳ {it.acabamento_nome}</div>
                           )}
-                          {it.arte_inclusa && <div className="text-[9px] text-green-500">🎨 Arte inclusa</div>}
+                          {it.arte_inclusa && <div className="text-[9px] text-green-500">Arte inclusa</div>}
                         </td>
                         <td className="px-3 py-2.5 text-center">
                           <span className="text-[9px] font-bold bg-gray-700 text-gray-300 px-1.5 py-0.5 rounded-full">
@@ -569,7 +570,7 @@ export function Orcamentos() {
                           {!jaConvertido && (
                             <div className="flex gap-1 justify-center">
                               <button onClick={() => { setEditandoIdx(i); setShowEditor(true); }}
-                                className="text-gray-500 hover:text-blue-400 transition-colors">✏️</button>
+                                className="text-gray-500 hover:text-blue-400 transition-colors"><Edit2 className="w-3.5 h-3.5" /></button>
                               <button onClick={() => setItens(p => p.filter((_, idx) => idx !== i))}
                                 className="text-gray-500 hover:text-red-400 transition-colors">✕</button>
                             </div>
@@ -582,7 +583,7 @@ export function Orcamentos() {
               </div>
             ) : !showEditor ? (
               <div className="text-center py-10 border-2 border-dashed border-gray-700 rounded-xl">
-                <div className="text-4xl mb-2 opacity-20">📦</div>
+                
                 <p className="text-sm text-gray-600">Nenhum item adicionado.</p>
                 <button onClick={() => setShowEditor(true)}
                   className="mt-3 text-blue-400 hover:text-blue-300 text-xs font-bold underline">
@@ -596,7 +597,7 @@ export function Orcamentos() {
         {/* Resumo */}
         <div>
           <div className="bg-[#1f2937] border-t-2 border-blue-500 border-x border-b border-gray-700 rounded-xl p-5 sticky top-4">
-            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">💰 Resumo</h3>
+            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Resumo</h3>
             <div className="space-y-1.5 mb-4 max-h-48 overflow-y-auto">
               {itens.map((it, i) => (
                 <div key={i} className="flex justify-between text-xs text-gray-400 border-b border-gray-800 pb-1">
@@ -645,7 +646,7 @@ export function Orcamentos() {
               {!isNovo && form.status === 'aprovado' && !jaConvertido && (
                 <button onClick={handleConverter} disabled={isConvertendo}
                   className="w-full bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white py-3 rounded-xl font-bold text-sm transition-all">
-                  {isConvertendo ? '⏳ Convertendo...' : '⚡ Converter em Venda'}
+                  {isConvertendo ? 'Convertendo...' : 'Converter em Venda'}
                 </button>
               )}
               {!isNovo && !jaConvertido && (
