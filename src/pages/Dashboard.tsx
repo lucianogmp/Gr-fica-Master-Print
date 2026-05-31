@@ -6,6 +6,12 @@ import {
   ResponsiveContainer, BarChart, Bar, LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
 } from 'recharts';
+import { KpiGridSkeleton, CardSkeleton } from '../components/ui/Skeleton';
+import {
+  DollarSign, ShoppingCart, TrendingUp, TrendingDown, Landmark, BarChart3,
+  Ticket, AlertTriangle, CheckCircle2, ArrowDownCircle, ArrowUpCircle,
+  ArrowUp, ArrowDown, ArrowRight, Factory, type LucideIcon,
+} from 'lucide-react';
 
 const fmtBRL = (v: number | null | undefined) =>
   Number(v ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -34,10 +40,22 @@ export function Dashboard() {
   const { data, isLoading } = useDashboardData(mes);
 
   if (isLoading) return (
-    <div className="p-8 flex items-center justify-center min-h-96">
-      <div className="text-center">
-        <div className="text-blue-500 animate-pulse font-bold text-lg mb-2">Carregando Dashboard...</div>
-        <div className="text-gray-600 text-sm">Processando dados da empresa</div>
+    <div className="p-5 space-y-4">
+      <div className="flex justify-between items-center">
+        <div className="space-y-2">
+          <div className="skeleton h-7 w-56 rounded-md" />
+          <div className="skeleton h-3 w-72 rounded-md" />
+        </div>
+        <div className="skeleton h-9 w-40 rounded-lg" />
+      </div>
+      <KpiGridSkeleton />
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
+        <CardSkeleton className="lg:col-span-2 h-64" />
+        <CardSkeleton className="lg:col-span-2 h-64" />
+        <CardSkeleton className="lg:col-span-1 h-64" />
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
+        {Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={i} className="h-44" />)}
       </div>
     </div>
   );
@@ -50,7 +68,7 @@ export function Dashboard() {
       {/* ── HEADER ── */}
       <div className="flex justify-between items-center flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-black text-white">Olá, {user?.name?.split(' ')[0]}! 👋</h1>
+          <h1 className="text-2xl font-black text-white">Olá, {user?.name?.split(' ')[0]}!</h1>
           <p className="text-gray-500 text-sm">Aqui está o resumo geral da sua empresa.</p>
         </div>
         <div className="flex items-center gap-3">
@@ -72,10 +90,10 @@ export function Dashboard() {
 
       {/* ── ROW 1: 4 KPI CARDS ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <KpiCard title="RECEITA TOTAL"   value={data?.receitaMes ?? 0}  pct={data?.pctReceita ?? 0}  icon="💰" cor="#10b981" spark={data?.sparkReceita ?? []} />
-        <KpiCard title="DESPESAS TOTAIS" value={data?.despesaMes ?? 0}  pct={data?.pctDespesa ?? 0}  icon="🛒" cor="#ef4444" spark={data?.sparkDespesa ?? []} invertPct />
-        <KpiCard title="LUCRO LÍQUIDO"   value={data?.lucroMes ?? 0}    pct={data?.pctLucro ?? 0}    icon="📈" cor="#10b981" spark={data?.sparkLucro ?? []} />
-        <KpiCard title="FLUXO DE CAIXA"  value={data?.fluxoMes ?? 0}    pct={0}                      icon="🏦" cor="#a855f7" spark={data?.sparkReceita ?? []} hideVar />
+        <KpiCard title="RECEITA TOTAL"   value={data?.receitaMes ?? 0}  pct={data?.pctReceita ?? 0}  icon={DollarSign}   cor="#10b981" spark={data?.sparkReceita ?? []} />
+        <KpiCard title="DESPESAS TOTAIS" value={data?.despesaMes ?? 0}  pct={data?.pctDespesa ?? 0}  icon={ShoppingCart} cor="#ef4444" spark={data?.sparkDespesa ?? []} invertPct />
+        <KpiCard title="LUCRO LÍQUIDO"   value={data?.lucroMes ?? 0}    pct={data?.pctLucro ?? 0}    icon={TrendingUp}   cor="#10b981" spark={data?.sparkLucro ?? []} />
+        <KpiCard title="FLUXO DE CAIXA"  value={data?.fluxoMes ?? 0}    pct={0}                      icon={Landmark}     cor="#a855f7" spark={data?.sparkReceita ?? []} hideVar />
       </div>
 
       {/* ── ROW 2: GRÁFICO + PONTO EQ + DRE ── */}
@@ -187,7 +205,7 @@ export function Dashboard() {
         <div className={`${CARD_BASE} lg:col-span-2 p-4`}>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Contas a Receber</h3>
-            <button onClick={() => navigate('/financeiro')} className="text-[10px] text-blue-400 hover:text-blue-300 font-bold transition-colors">Ver todas →</button>
+            <button onClick={() => navigate('/financeiro')} className="text-[10px] text-blue-400 hover:text-blue-300 font-bold transition-colors flex items-center gap-0.5">Ver todas <ArrowRight className="w-3 h-3" /></button>
           </div>
           <table className="w-full text-xs">
             <thead>
@@ -220,7 +238,7 @@ export function Dashboard() {
         <div className={`${CARD_BASE} lg:col-span-2 p-4`}>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Contas a Pagar</h3>
-            <button onClick={() => navigate('/financeiro')} className="text-[10px] text-blue-400 hover:text-blue-300 font-bold transition-colors">Ver todas →</button>
+            <button onClick={() => navigate('/financeiro')} className="text-[10px] text-blue-400 hover:text-blue-300 font-bold transition-colors flex items-center gap-0.5">Ver todas <ArrowRight className="w-3 h-3" /></button>
           </div>
           <table className="w-full text-xs">
             <thead>
@@ -261,14 +279,14 @@ export function Dashboard() {
           </div>
           {(data?.contasReceber?.length ?? 0) === 0 && (data?.contasPagar?.length ?? 0) === 0 ? (
             <div className="flex flex-col items-center justify-center h-24 gap-2">
-              <div className="text-green-500 text-3xl">✓</div>
+              <CheckCircle2 className="w-8 h-8 text-green-500" />
               <p className="text-xs text-gray-500 text-center">Tudo em dia! Sem avisos pendentes.</p>
             </div>
           ) : (
             <div className="space-y-2">
               {(data?.contasPagar ?? []).slice(0, 3).map((c: any) => (
                 <div key={c.id} className="text-[10px] flex items-start gap-2 p-2 bg-red-500/10 border border-red-500/20 rounded-lg">
-                  <span>💸</span>
+                  <ArrowDownCircle className="w-3.5 h-3.5 text-red-400 flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="font-bold text-red-300">{c.descricao}</p>
                     <p className="text-gray-500">{fmtData(c.data_vencimento)} · {fmtBRL(c.valor)}</p>
@@ -277,7 +295,7 @@ export function Dashboard() {
               ))}
               {(data?.contasReceber ?? []).slice(0, 2).map((c: any) => (
                 <div key={c.id} className="text-[10px] flex items-start gap-2 p-2 bg-green-500/10 border border-green-500/20 rounded-lg">
-                  <span>💰</span>
+                  <ArrowUpCircle className="w-3.5 h-3.5 text-green-400 flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="font-bold text-green-300">{c.descricao}</p>
                     <p className="text-gray-500">{fmtData(c.data_vencimento)} · {fmtBRL(c.valor)}</p>
@@ -372,35 +390,37 @@ export function Dashboard() {
         {/* Indicadores Financeiros */}
         <div className={`${CARD_BASE} p-4`}>
           <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-            <span>📊</span> Indicadores Financeiros
+            <BarChart3 className="w-3.5 h-3.5" /> Indicadores Financeiros
           </h3>
           <div className="grid grid-cols-2 gap-2">
             {[
-              { label: 'Ticket Médio',       valor: fmtBRL(data?.ticketMedio), sub: `${(data?.top5Clientes?.length ?? 0)} clientes`, cor: '#3b82f6', icon: '🎫' },
-              { label: 'Margem de Lucro',    valor: `${(data?.margemContrib ?? 0).toFixed(1)}%`, sub: '', cor: '#10b981', icon: '📈' },
-              { label: 'Inadimplência',      valor: `${(data?.inadimplencia ?? 0).toFixed(1)}%`, sub: '', cor: '#ef4444', icon: '⚠️' },
-              { label: 'Crescimento Mensal', valor: fmtPct(data?.pctReceita ?? 0), sub: '', cor: data?.pctReceita && data.pctReceita >= 0 ? '#10b981' : '#ef4444', icon: '📉' },
-            ].map(ind => (
+              { label: 'Ticket Médio',       valor: fmtBRL(data?.ticketMedio), sub: `${(data?.top5Clientes?.length ?? 0)} clientes`, cor: '#3b82f6', icon: Ticket },
+              { label: 'Margem de Lucro',    valor: `${(data?.margemContrib ?? 0).toFixed(1)}%`, sub: '', cor: '#10b981', icon: TrendingUp },
+              { label: 'Inadimplência',      valor: `${(data?.inadimplencia ?? 0).toFixed(1)}%`, sub: '', cor: '#ef4444', icon: AlertTriangle },
+              { label: 'Crescimento Mensal', valor: fmtPct(data?.pctReceita ?? 0), sub: '', cor: data?.pctReceita && data.pctReceita >= 0 ? '#10b981' : '#ef4444', icon: TrendingDown },
+            ].map(ind => {
+              const Icon = ind.icon;
+              return (
               <div key={ind.label} className="bg-gray-800/30 border border-gray-700/50 rounded-lg p-2.5">
                 <div className="flex items-center gap-1 mb-1">
-                  <span className="text-xs">{ind.icon}</span>
+                  <Icon className="w-3 h-3" style={{ color: ind.cor }} />
                   <span className="text-[9px] text-gray-500 font-bold uppercase">{ind.label}</span>
                 </div>
                 <p className="text-sm font-black" style={{ color: ind.cor }}>{ind.valor}</p>
                 {ind.sub && <p className="text-[9px] text-gray-600">{ind.sub}</p>}
               </div>
-            ))}
+            ); })}
           </div>
           <div className="grid grid-cols-2 gap-2 mt-2">
             <button onClick={() => navigate('/financeiro')}
               className="bg-gray-800/30 border border-gray-700/50 rounded-lg p-2.5 text-left hover:bg-gray-700/30 transition-all">
-              <div className="flex items-center gap-1 mb-1"><span>🛒</span><span className="text-[9px] text-gray-500 font-bold uppercase">Pedidos em Aberto</span></div>
+              <div className="flex items-center gap-1 mb-1"><ShoppingCart className="w-3 h-3 text-gray-400" /><span className="text-[9px] text-gray-500 font-bold uppercase">Pedidos em Aberto</span></div>
               <p className="text-sm font-black text-white">{data?.situacao.pendente ?? 0}</p>
               <p className="text-[9px] text-blue-400">Ver pedidos</p>
             </button>
             <button onClick={() => navigate('/producao')}
               className="bg-gray-800/30 border border-gray-700/50 rounded-lg p-2.5 text-left hover:bg-gray-700/30 transition-all">
-              <div className="flex items-center gap-1 mb-1"><span>⚙️</span><span className="text-[9px] text-gray-500 font-bold uppercase">Prod. em Andamento</span></div>
+              <div className="flex items-center gap-1 mb-1"><Factory className="w-3 h-3 text-gray-400" /><span className="text-[9px] text-gray-500 font-bold uppercase">Prod. em Andamento</span></div>
               <p className="text-sm font-black text-white">{data?.prodEmAnd ?? 0}</p>
               <p className="text-[9px] text-blue-400">Acompanhar</p>
             </button>
@@ -413,8 +433,8 @@ export function Dashboard() {
 
 // ── Componentes auxiliares ──
 
-function KpiCard({ title, value, pct, icon, cor, spark, invertPct = false, hideVar = false }: {
-  title: string; value: number; pct: number; icon: string;
+function KpiCard({ title, value, pct, icon: Icon, cor, spark, invertPct = false, hideVar = false }: {
+  title: string; value: number; pct: number; icon: LucideIcon;
   cor: string; spark: { v: number }[]; invertPct?: boolean; hideVar?: boolean;
 }) {
   const isPos = invertPct ? pct <= 0 : pct >= 0;
@@ -425,14 +445,15 @@ function KpiCard({ title, value, pct, icon, cor, spark, invertPct = false, hideV
           <p className="text-[9px] font-bold text-gray-500 uppercase tracking-wider mb-1">{title}</p>
           <p className="text-xl font-black text-white">{fmtBRL(value)}</p>
           {!hideVar && (
-            <p className={`text-[10px] font-bold mt-0.5 ${isPos ? 'text-green-400' : 'text-red-400'}`}>
-              {isPos ? '↑' : '↓'} {Math.abs(pct).toFixed(1)}% vs mês anterior
+            <p className={`text-[10px] font-bold mt-0.5 flex items-center gap-0.5 ${isPos ? 'text-green-400' : 'text-red-400'}`}>
+              {isPos ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}
+              {Math.abs(pct).toFixed(1)}% vs mês anterior
             </p>
           )}
         </div>
-        <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm"
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center"
           style={{ backgroundColor: cor + '20' }}>
-          {icon}
+          <Icon className="w-4 h-4" style={{ color: cor }} />
         </div>
       </div>
       <div className="h-10 -mx-1 mt-2">

@@ -3,6 +3,10 @@ import { useVendas, useVendaItens } from '../hooks/useVendas';
 import { Venda, VendaItem, StatusVenda, STATUS_VENDA } from '../types/venda';
 import { ItensEditor } from '../components/vendas/ItensEditor';
 import { KpiCard } from '../components/ui/KpiCard';
+import {
+  ShoppingCart, DollarSign, ClipboardList, Factory, CheckCircle2,
+  ArrowLeft, Save, User, Package, Settings, X,
+} from 'lucide-react';
 
 type View = 'lista' | 'detalhe';
 type Filtro = 'todos' | StatusVenda;
@@ -102,7 +106,7 @@ export function Vendas() {
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-2xl font-black text-white">💰 Vendas</h1>
+          <h1 className="text-2xl font-black text-white flex items-center gap-2"><ShoppingCart className="w-6 h-6 text-blue-400" /> Vendas</h1>
           <p className="text-gray-500 text-sm">{vendas.length} venda(s) no sistema</p>
         </div>
         <button onClick={() => abrirDetalhe(null)}
@@ -112,10 +116,10 @@ export function Vendas() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <KpiCard label="Total vendido"  value={fmtBRL(totalVendas)} icon="💰" color="text-green-400" />
-        <KpiCard label="Total de vendas" value={vendas.length}      icon="📋" color="text-blue-400" />
-        <KpiCard label="Em produção"    value={emProducao}           icon="⚙️" color="text-yellow-400" />
-        <KpiCard label="Prontas"        value={prontas}              icon="✅" color="text-purple-400" />
+        <KpiCard label="Total vendido"  value={fmtBRL(totalVendas)} icon={DollarSign}    color="text-green-400" />
+        <KpiCard label="Total de vendas" value={vendas.length}      icon={ClipboardList} color="text-blue-400" />
+        <KpiCard label="Em produção"    value={emProducao}           icon={Factory}      color="text-yellow-400" />
+        <KpiCard label="Prontas"        value={prontas}              icon={CheckCircle2} color="text-purple-400" />
       </div>
 
       {/* Filtros */}
@@ -130,7 +134,7 @@ export function Vendas() {
             </button>
           ))}
         </div>
-        <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="🔍 Buscar por cliente, nº ou palavra-chave..."
+        <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar por cliente, nº ou palavra-chave..."
           className="flex-1 min-w-48 bg-[#1f2937] border border-gray-700 rounded-xl px-4 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500" />
       </div>
 
@@ -176,8 +180,8 @@ export function Vendas() {
                         Editar
                       </button>
                       <button onClick={() => { if (confirm('Remover esta venda?')) deletar(v.id); }}
-                        className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-red-500/15 text-red-400 hover:bg-red-500/25 border border-red-500/30 transition-all">
-                        ✕
+                        className="flex items-center justify-center px-2.5 py-1 rounded-lg bg-red-500/15 text-red-400 hover:bg-red-500/25 border border-red-500/30 transition-all">
+                        <X className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </td>
@@ -196,8 +200,8 @@ export function Vendas() {
       {/* Header */}
       <div className="flex items-center gap-4">
         <button onClick={fechar}
-          className="text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 w-9 h-9 rounded-lg flex items-center justify-center transition-all font-bold">
-          ←
+          className="text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 w-9 h-9 rounded-lg flex items-center justify-center transition-all">
+          <ArrowLeft className="w-4 h-4" />
         </button>
         <div className="flex-1">
           <h1 className="text-xl font-black text-white">
@@ -220,8 +224,8 @@ export function Vendas() {
           </div>
         )}
         <button onClick={handleSalvar} disabled={isSaving || !form.cliente_nome.trim()}
-          className="bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white px-6 py-2.5 rounded-xl font-bold text-sm transition-all">
-          {isSaving ? 'Salvando...' : '💾 Salvar'}
+          className="bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white px-6 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2">
+          <Save className="w-4 h-4" /> {isSaving ? 'Salvando...' : 'Salvar'}
         </button>
       </div>
 
@@ -231,7 +235,7 @@ export function Vendas() {
 
           {/* Dados do cliente */}
           <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5">
-            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">👤 Dados da Venda</h3>
+            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-1.5"><User className="w-3.5 h-3.5" /> Dados da Venda</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
                 <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Cliente *</label>
@@ -264,7 +268,7 @@ export function Vendas() {
 
           {/* Itens */}
           <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5">
-            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">📦 Itens da Venda</h3>
+            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-1.5"><Package className="w-3.5 h-3.5" /> Itens da Venda</h3>
             <ItensEditor itens={itens} onChange={setItens} />
           </div>
         </div>
@@ -272,7 +276,7 @@ export function Vendas() {
         {/* Coluna lateral — Resumo */}
         <div className="space-y-4">
           <div className="bg-[#1f2937] border-t-2 border-green-500 border-x border-b border-gray-700 rounded-xl p-5">
-            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">💰 Resumo</h3>
+            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-1.5"><DollarSign className="w-3.5 h-3.5" /> Resumo</h3>
             <div className="space-y-3">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-400">Subtotal</span>
@@ -302,7 +306,7 @@ export function Vendas() {
 
           {!isNovo && (
             <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5">
-              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">⚙️ Status</h3>
+              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-1.5"><Settings className="w-3.5 h-3.5" /> Status</h3>
               <div className="space-y-1.5">
                 {Object.entries(STATUS_VENDA).map(([k, v]) => (
                   <button key={k} onClick={() => { setF('status', k); atualizarStatus({ id: vendaId!, status: k as StatusVenda }); }}

@@ -3,6 +3,7 @@ import { BomItem } from '../../types/produto';
 import { MateriaPrima } from '../../types/estoque';
 import { Modal } from '../ui/Modal';
 import { calcCustoBOM } from '../../hooks/useBom';
+import { Boxes, X, ArrowRight } from 'lucide-react';
 
 const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -62,7 +63,7 @@ export function BomEditor({ bom, materias, onChange }: BomEditorProps) {
       <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
-            <span>🧱</span> Matérias-Primas (BOM)
+            <Boxes className="w-4 h-4" /> Matérias-Primas (BOM)
           </h3>
           <button
             onClick={() => setShowModal(true)}
@@ -74,7 +75,7 @@ export function BomEditor({ bom, materias, onChange }: BomEditorProps) {
 
         {bom.length === 0 ? (
           <div className="text-center py-8 text-gray-600 text-sm">
-            <div className="text-3xl mb-2 opacity-30">🧱</div>
+            <Boxes className="w-8 h-8 mb-2 opacity-30 mx-auto" />
             Nenhuma matéria-prima adicionada.<br />
             <span className="text-xs">Adicione os insumos para calcular o custo BOM.</span>
           </div>
@@ -112,7 +113,7 @@ export function BomEditor({ bom, materias, onChange }: BomEditorProps) {
                       <td className="px-3 py-2 text-right text-gray-400 text-xs">{fmtBRL(mp.custo_unitario)}</td>
                       <td className="px-3 py-2 text-right font-bold text-blue-400">{fmtBRL(sub)}</td>
                       <td className="px-3 py-2">
-                        <button onClick={() => handleRemove(i)} className="text-gray-600 hover:text-red-400 transition-colors">✕</button>
+                        <button onClick={() => handleRemove(i)} className="text-gray-600 hover:text-red-400 transition-colors"><X className="w-3.5 h-3.5" /></button>
                       </td>
                     </tr>
                   );
@@ -183,7 +184,7 @@ export function BomEditor({ bom, materias, onChange }: BomEditorProps) {
                       <p className="text-sm font-medium text-white">{m.nome}</p>
                       <p className="text-xs text-gray-500">{m.unidade} · {fmtBRL(m.custo_unitario)}/un</p>
                     </div>
-                    <span className="text-gray-600 text-xs">→</span>
+                    <ArrowRight className="w-3.5 h-3.5 text-gray-600" />
                   </button>
                 ))
               )}
@@ -194,7 +195,7 @@ export function BomEditor({ bom, materias, onChange }: BomEditorProps) {
             <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg px-4 py-3 text-sm">
               <span className="font-bold text-blue-300">{selecionada.nome}</span>
               <span className="text-gray-400"> · {selecionada.unidade} · {fmtBRL(selecionada.custo_unitario)}/un</span>
-              <button onClick={() => { setSelecionada(null); setBusca(''); }} className="ml-2 text-gray-600 hover:text-red-400 text-xs">✕</button>
+              <button onClick={() => { setSelecionada(null); setBusca(''); }} className="ml-2 inline-flex text-gray-600 hover:text-red-400"><X className="w-3 h-3" /></button>
             </div>
           )}
 

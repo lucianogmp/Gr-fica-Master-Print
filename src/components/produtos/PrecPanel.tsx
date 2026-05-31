@@ -1,5 +1,6 @@
 import { GcData } from '../../hooks/useGestaoCustos';
 import { CustosProduto } from '../../types/produto';
+import { Calculator, Lightbulb, Tag, Star } from 'lucide-react';
 
 const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -24,8 +25,8 @@ export function PrecPanel({ custos, preco, onPrecoChange, gc, tempo }: PrecPanel
 
       {/* Composição de Custos */}
       <div className="bg-[#1f2937] border-t-2 border-blue-500 border-x border-b border-gray-700 rounded-xl p-4">
-        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-1">
-          🧮 Composição de Custos
+        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+          <Calculator className="w-3.5 h-3.5" /> Composição de Custos
         </p>
         <div className="space-y-1.5">
           <CustoLinha label="BOM (matérias-primas)" valor={custoBOM} />
@@ -49,18 +50,18 @@ export function PrecPanel({ custos, preco, onPrecoChange, gc, tempo }: PrecPanel
 
       {/* Sugestões */}
       <div className={`bg-[#1f2937] border-t-2 border-yellow-500/60 border-x border-b border-gray-700 rounded-xl p-4 ${total === 0 ? 'opacity-50' : ''}`}>
-        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-3">
-          💡 Preço Sugerido
+        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+          <Lightbulb className="w-3.5 h-3.5" /> Preço Sugerido
         </p>
         {total > 0 ? (
           <div className="grid grid-cols-3 gap-2">
             {([
               { label: '30%', v: sug(30) },
-              { label: '40% ★', v: sug(40), dest: true },
+              { label: '40%', v: sug(40), dest: true },
               { label: '50%', v: sug(50) },
             ]).map(s => (
               <div key={s.label} className={`border rounded-lg p-2 text-center ${s.dest ? 'border-yellow-500/50 bg-yellow-500/5' : 'border-gray-700'}`}>
-                <p className="text-[9px] text-gray-500 font-bold mb-1">{s.label}</p>
+                <p className="text-[9px] text-gray-500 font-bold mb-1 flex items-center justify-center gap-0.5">{s.label}{s.dest && <Star className="w-2.5 h-2.5 text-yellow-400 fill-yellow-400" />}</p>
                 <p className="text-xs font-black text-white">{fmtBRL(s.v)}</p>
                 <button
                   onClick={() => onPrecoChange(s.v)}
@@ -81,8 +82,8 @@ export function PrecPanel({ custos, preco, onPrecoChange, gc, tempo }: PrecPanel
 
       {/* Preço de Venda */}
       <div className="bg-[#1f2937] border-t-2 border-green-500/60 border-x border-b border-gray-700 rounded-xl p-4">
-        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-3">
-          🏷️ Preço de Venda
+        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+          <Tag className="w-3.5 h-3.5" /> Preço de Venda
         </p>
         <div className="flex items-center bg-[#111827] border border-gray-700 rounded-lg overflow-hidden focus-within:border-green-500 transition-colors">
           <span className="px-3 text-gray-500 text-sm font-bold bg-gray-800 border-r border-gray-700 py-3">R$</span>

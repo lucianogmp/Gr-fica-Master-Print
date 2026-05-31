@@ -4,6 +4,10 @@ import { MateriaPrima, statusEstoque } from '../types/estoque';
 import { KpiCard } from '../components/ui/KpiCard';
 import { ModalMP } from '../components/estoque/ModalMP';
 import { ModalMov } from '../components/estoque/ModalMov';
+import {
+  Warehouse, Package, AlertTriangle, AlertCircle, DollarSign,
+  BarChart3, Settings, ClipboardList, ArrowUp, ArrowDown, type LucideIcon,
+} from 'lucide-react';
 
 type Aba = 'saldo' | 'gerenciar' | 'historico';
 
@@ -53,7 +57,7 @@ export function Estoque() {
       {/* Header */}
       <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-2xl font-black text-white">🏭 Estoque</h1>
+          <h1 className="text-2xl font-black text-white flex items-center gap-2"><Warehouse className="w-6 h-6 text-blue-400" /> Estoque</h1>
           <p className="text-gray-500 text-sm">Controle de matérias-primas e insumos</p>
         </div>
         {aba === 'gerenciar' && (
@@ -68,27 +72,27 @@ export function Estoque() {
 
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <KpiCard label="Total cadastradas"  value={total}        icon="📦" color="text-blue-400" />
-        <KpiCard label="Estoque baixo"      value={baixos}       icon="⚠️" color="text-yellow-400" />
-        <KpiCard label="Zeradas"            value={zerados}      icon="🚨" color="text-red-400" />
-        <KpiCard label="Valor em estoque"   value={fmtBRL(valorTotal)} icon="💰" color="text-green-400" />
+        <KpiCard label="Total cadastradas"  value={total}        icon={Package}       color="text-blue-400" />
+        <KpiCard label="Estoque baixo"      value={baixos}       icon={AlertTriangle} color="text-yellow-400" />
+        <KpiCard label="Zeradas"            value={zerados}      icon={AlertCircle}   color="text-red-400" />
+        <KpiCard label="Valor em estoque"   value={fmtBRL(valorTotal)} icon={DollarSign} color="text-green-400" />
       </div>
 
       {/* Abas */}
       <div className="flex gap-1 bg-[#1f2937] border border-gray-700 rounded-xl p-1 w-fit">
         {([
-          { key: 'saldo',    label: '📊 Saldo Atual' },
-          { key: 'gerenciar',label: '⚙️ Gerenciar' },
-          { key: 'historico',label: '📋 Histórico' },
-        ] as { key: Aba; label: string }[]).map(t => (
+          { key: 'saldo',    label: 'Saldo Atual', icon: BarChart3 },
+          { key: 'gerenciar',label: 'Gerenciar',   icon: Settings },
+          { key: 'historico',label: 'Histórico',   icon: ClipboardList },
+        ] as { key: Aba; label: string; icon: LucideIcon }[]).map(t => (
           <button
             key={t.key}
             onClick={() => setAba(t.key)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${
               aba === t.key ? 'bg-blue-600 text-white shadow' : 'text-gray-400 hover:text-white'
             }`}
           >
-            {t.label}
+            <t.icon className="w-4 h-4" /> {t.label}
           </button>
         ))}
       </div>
@@ -97,7 +101,7 @@ export function Estoque() {
       {aba === 'saldo' && (
         <div className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">
           <div className="p-4 border-b border-gray-700">
-            <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="🔍 Buscar..."
+            <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar..."
               className="w-full bg-[#111827] border border-gray-700 rounded-lg px-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500" />
           </div>
           <table className="w-full text-sm">
@@ -161,7 +165,7 @@ export function Estoque() {
       {aba === 'gerenciar' && (
         <div className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">
           <div className="p-4 border-b border-gray-700">
-            <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="🔍 Buscar..."
+            <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar..."
               className="w-full bg-[#111827] border border-gray-700 rounded-lg px-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500" />
           </div>
           <table className="w-full text-sm">
@@ -217,7 +221,7 @@ export function Estoque() {
       {aba === 'historico' && (
         <div className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">
           <div className="p-4 border-b border-gray-700">
-            <input value={filtroMov} onChange={e => setFiltroMov(e.target.value)} placeholder="🔍 Filtrar por matéria-prima ou motivo..."
+            <input value={filtroMov} onChange={e => setFiltroMov(e.target.value)} placeholder="Filtrar por matéria-prima ou motivo..."
               className="w-full bg-[#111827] border border-gray-700 rounded-lg px-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500" />
           </div>
           <table className="w-full text-sm">
@@ -246,7 +250,10 @@ export function Estoque() {
                         ? 'bg-green-500/15 text-green-400 border-green-500/30'
                         : 'bg-red-500/15 text-red-400 border-red-500/30'
                     }`}>
-                      {m.tipo === 'entrada' ? '↑ Entrada' : '↓ Saída'}
+                      <span className="inline-flex items-center gap-1">
+                        {m.tipo === 'entrada' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}
+                        {m.tipo === 'entrada' ? 'Entrada' : 'Saída'}
+                      </span>
                     </span>
                   </td>
                   <td className="px-5 py-3 text-right font-bold text-white">

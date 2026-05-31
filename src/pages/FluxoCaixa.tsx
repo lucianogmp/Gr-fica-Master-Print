@@ -2,6 +2,10 @@ import { useMemo, useState } from 'react';
 import { useCaixaMovimentos } from '../hooks/useCaixaMovimentos';
 import { useLancamentos } from '../hooks/useLancamentos';
 import { KpiCard } from '../components/ui/KpiCard';
+import {
+  TrendingUp, ArrowUp, ArrowDown, Wallet, Sparkles,
+  ArrowDownToLine, ArrowUpFromLine,
+} from 'lucide-react';
 
 const fmtBRL  = (v: number) => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const fmtData = (d: string) => new Date(d + 'T00:00:00').toLocaleDateString('pt-BR');
@@ -50,7 +54,7 @@ export function FluxoCaixa() {
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-start flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-black text-white">📈 Fluxo de Caixa</h1>
+          <h1 className="text-2xl font-black text-white flex items-center gap-2"><TrendingUp className="w-6 h-6 text-blue-400" /> Fluxo de Caixa</h1>
           <p className="text-gray-500 text-sm">Movimentos e projeção financeira</p>
         </div>
         <input type="month" value={mes} onChange={e => setMes(e.target.value)}
@@ -59,21 +63,21 @@ export function FluxoCaixa() {
 
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <KpiCard label="Entradas no mês"   value={fmtBRL(entradas)} icon="↑" color="text-green-400" />
-        <KpiCard label="Saídas no mês"     value={fmtBRL(saidas)}   icon="↓" color="text-red-400" />
-        <KpiCard label="Saldo do mês"      value={fmtBRL(saldo)}    icon="💰" color={saldo >= 0 ? 'text-blue-400' : 'text-red-400'} />
-        <KpiCard label="Saldo projetado"   value={fmtBRL(saldo + receber - pagar)} icon="🔮" color="text-purple-400" />
+        <KpiCard label="Entradas no mês"   value={fmtBRL(entradas)} icon={ArrowUp}   color="text-green-400" />
+        <KpiCard label="Saídas no mês"     value={fmtBRL(saidas)}   icon={ArrowDown} color="text-red-400" />
+        <KpiCard label="Saldo do mês"      value={fmtBRL(saldo)}    icon={Wallet}    color={saldo >= 0 ? 'text-blue-400' : 'text-red-400'} />
+        <KpiCard label="Saldo projetado"   value={fmtBRL(saldo + receber - pagar)} icon={Sparkles} color="text-purple-400" />
       </div>
 
       {/* Projeção */}
       <div className="grid grid-cols-2 gap-4">
         <div className="bg-[#1f2937] border border-green-500/20 rounded-xl p-5">
-          <p className="text-xs font-bold text-gray-500 uppercase mb-3">📥 A receber (pendente)</p>
+          <p className="text-xs font-bold text-gray-500 uppercase mb-3 flex items-center gap-1.5"><ArrowDownToLine className="w-3.5 h-3.5 text-green-400" /> A receber (pendente)</p>
           <p className="text-2xl font-black text-green-400">{fmtBRL(receber)}</p>
           <p className="text-xs text-gray-600 mt-1">{lancamentos.filter(l => l.tipo === 'receita' && l.status !== 'pago' && l.status !== 'cancelado').length} lançamentos</p>
         </div>
         <div className="bg-[#1f2937] border border-red-500/20 rounded-xl p-5">
-          <p className="text-xs font-bold text-gray-500 uppercase mb-3">📤 A pagar (pendente)</p>
+          <p className="text-xs font-bold text-gray-500 uppercase mb-3 flex items-center gap-1.5"><ArrowUpFromLine className="w-3.5 h-3.5 text-red-400" /> A pagar (pendente)</p>
           <p className="text-2xl font-black text-red-400">{fmtBRL(pagar)}</p>
           <p className="text-xs text-gray-600 mt-1">{lancamentos.filter(l => l.tipo === 'despesa' && l.status !== 'pago' && l.status !== 'cancelado').length} lançamentos</p>
         </div>
@@ -112,8 +116,8 @@ export function FluxoCaixa() {
                   {movs.map(m => (
                     <div key={m.id} className="flex items-center justify-between px-5 py-2.5 border-b border-gray-800 last:border-b-0 hover:bg-gray-800/20 transition-colors">
                       <div className="flex items-center gap-3">
-                        <span className={`text-lg ${m.tipo === 'entrada' ? 'text-green-400' : 'text-red-400'}`}>
-                          {m.tipo === 'entrada' ? '↑' : '↓'}
+                        <span className={m.tipo === 'entrada' ? 'text-green-400' : 'text-red-400'}>
+                          {m.tipo === 'entrada' ? <ArrowUp className="w-5 h-5" /> : <ArrowDown className="w-5 h-5" />}
                         </span>
                         <div>
                           <p className="text-sm font-medium text-white">{m.descricao}</p>

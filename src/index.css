@@ -36,8 +36,12 @@ h1, h2, h3, h4, h5, h6 {
   letter-spacing: -0.02em !important;
 }
 
-.font-light, p.text-gray-500, p.text-muted {
+.font-light {
   font-weight: 300 !important;
+}
+/* Texto cinza informativo precisa de peso normal pra manter legibilidade no fundo escuro */
+p.text-gray-500, p.text-muted {
+  font-weight: 400 !important;
 }
 
 /* ─── Animações Globais e Keyframes ─── */
@@ -316,4 +320,39 @@ textarea:focus,
 .bg-blue-600\/20 {
   background: rgba(59, 130, 246, 0.12) !important;
   border: 1px solid rgba(59, 130, 246, 0.25) !important;
+}
+
+/* ─── Acessibilidade: Contraste de Texto ─── */
+/* gray-500 (#6b7280) e gray-600 (#4b5563) ficam abaixo do AA sobre o fundo
+   quase-preto. Elevamos o tom mínimo mantendo a hierarquia visual. */
+.text-gray-600 { color: #8b95a7 !important; }
+.text-gray-500 { color: #9aa5b8 !important; }
+.text-gray-400 { color: #b6bfce !important; }
+/* placeholders um pouco mais visíveis */
+::placeholder { color: #8b95a7 !important; opacity: 1 !important; }
+
+/* ─── Skeleton / Shimmer ─── */
+@keyframes skeleton-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 25%,
+    rgba(255, 255, 255, 0.10) 37%,
+    rgba(255, 255, 255, 0.04) 63%
+  ) !important;
+  background-size: 200% 100% !important;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite !important;
+  border: 1px solid var(--glass-border) !important;
+}
+
+/* Respeita usuários que reduzem movimento */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none !important;
+    background: rgba(255, 255, 255, 0.06) !important;
+  }
 }

@@ -3,6 +3,10 @@ import { useProducao } from '../hooks/useProducao';
 import { OrdemProducao, ETAPAS, PRIORIDADES, Etapa } from '../types/producao';
 import { ModalOrdem } from '../components/producao/ModalOrdem';
 import { KpiCard } from '../components/ui/KpiCard';
+import {
+  Factory, ClipboardList, AlertCircle, AlarmClock, CheckCircle2,
+  Calendar, ShoppingCart, User, X, ArrowRight,
+} from 'lucide-react';
 
 const fmtData = (d?: string | null) =>
   d ? new Date(d + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : null;
@@ -83,7 +87,7 @@ export function Producao() {
       {/* Header */}
       <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-2xl font-black text-white">⚙️ Produção</h1>
+          <h1 className="text-2xl font-black text-white flex items-center gap-2"><Factory className="w-6 h-6 text-blue-400" /> Produção</h1>
           <p className="text-gray-500 text-sm">Kanban de ordens de produção — arraste para mover entre etapas</p>
         </div>
         <button onClick={() => abrirNova('fila')}
@@ -94,10 +98,10 @@ export function Producao() {
 
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <KpiCard label="Total em aberto" value={total}     icon="⚙️" color="text-blue-400" />
-        <KpiCard label="Urgentes"        value={urgentes}  icon="🚨" color="text-red-400" />
-        <KpiCard label="Atrasados"       value={atrasados} icon="⏰" color="text-yellow-400" />
-        <KpiCard label="Prontos"         value={prontos}   icon="✅" color="text-green-400" />
+        <KpiCard label="Total em aberto" value={total}     icon={ClipboardList} color="text-blue-400" />
+        <KpiCard label="Urgentes"        value={urgentes}  icon={AlertCircle}   color="text-red-400" />
+        <KpiCard label="Atrasados"       value={atrasados} icon={AlarmClock}    color="text-yellow-400" />
+        <KpiCard label="Prontos"         value={prontos}   icon={CheckCircle2}  color="text-green-400" />
       </div>
 
       {/* Kanban */}
@@ -169,8 +173,8 @@ export function Producao() {
                             {prio?.label ?? ordem.prioridade}
                           </span>
                           {prazo && (
-                            <span className={`text-[10px] font-bold ${prazo.cor}`}>
-                              📅 {prazo.texto}
+                            <span className={`text-[10px] font-bold flex items-center gap-1 ${prazo.cor}`}>
+                              <Calendar className="w-3 h-3" /> {prazo.texto}
                             </span>
                           )}
                         </div>
@@ -180,8 +184,8 @@ export function Producao() {
 
                         {/* Venda vinculada */}
                         {venda && (
-                          <p className="text-[10px] text-blue-400 mb-1">
-                            🛒 Venda #{venda.numero} · {venda.cliente_nome}
+                          <p className="text-[10px] text-blue-400 mb-1 flex items-center gap-1">
+                            <ShoppingCart className="w-3 h-3" /> Venda #{venda.numero} · {venda.cliente_nome}
                           </p>
                         )}
 
@@ -192,8 +196,8 @@ export function Producao() {
 
                         {/* Responsável + ações */}
                         <div className="flex items-center justify-between pt-2 border-t border-gray-700/50 mt-1">
-                          <span className="text-[10px] text-gray-500">
-                            {ordem.responsavel ? `👤 ${ordem.responsavel}` : ''}
+                          <span className="text-[10px] text-gray-500 flex items-center gap-1">
+                            {ordem.responsavel ? <><User className="w-3 h-3" /> {ordem.responsavel}</> : ''}
                           </span>
                           <div className="flex gap-1">
                             <button
@@ -204,9 +208,9 @@ export function Producao() {
                             </button>
                             <button
                               onClick={e => { e.stopPropagation(); if (confirm('Remover ordem?')) deletar(ordem.id); }}
-                              className="text-[10px] px-2 py-0.5 rounded bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-all"
+                              className="flex items-center px-2 py-0.5 rounded bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-all"
                             >
-                              ✕
+                              <X className="w-3 h-3" />
                             </button>
                           </div>
                         </div>
@@ -218,9 +222,9 @@ export function Producao() {
                               const idx = ETAPAS.findIndex(e => e.key === etapa.key);
                               if (idx < ETAPAS.length - 1) moverEtapa({ id: ordem.id, etapa: ETAPAS[idx + 1].key as Etapa });
                             }}
-                            className="mt-2 w-full text-[10px] font-bold py-1 rounded-lg border border-dashed border-gray-600 text-gray-500 hover:border-green-500/50 hover:text-green-400 hover:bg-green-500/5 transition-all"
+                            className="mt-2 w-full text-[10px] font-bold py-1 rounded-lg border border-dashed border-gray-600 text-gray-500 hover:border-green-500/50 hover:text-green-400 hover:bg-green-500/5 transition-all flex items-center justify-center gap-1"
                           >
-                            → {ETAPAS[ETAPAS.findIndex(e => e.key === etapa.key) + 1]?.label}
+                            <ArrowRight className="w-3 h-3" /> {ETAPAS[ETAPAS.findIndex(e => e.key === etapa.key) + 1]?.label}
                           </button>
                         )}
                       </div>

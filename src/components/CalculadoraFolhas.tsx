@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useCalculoFolhas } from '../hooks/useCalculoFolhas';
 import { PAPEIS, TipoMaterial } from '../types/calculadora';
+import { Ruler, Tag, Ticket, RotateCw } from 'lucide-react';
 
 export function CalculadoraFolhas() {
   const [papelKey, setPapelKey] = useState<string>('A4');
@@ -20,7 +21,7 @@ export function CalculadoraFolhas() {
   return (
     <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-6">
       <div className="flex items-center gap-2 mb-5">
-        <span className="text-xl">📏</span>
+        <Ruler className="w-5 h-5 text-blue-400" />
         <h3 className="font-bold text-white">Calculadora de Encaixe de Folhas</h3>
       </div>
 
@@ -88,7 +89,9 @@ export function CalculadoraFolhas() {
               tipo === t ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
             }`}
           >
-            {t === 'adesivo' ? '🏷️ Adesivo' : '🎫 Tag'}
+            <span className="inline-flex items-center gap-1.5">
+              {t === 'adesivo' ? <><Tag className="w-3.5 h-3.5" /> Adesivo</> : <><Ticket className="w-3.5 h-3.5" /> Tag</>}
+            </span>
           </button>
         ))}
       </div>
@@ -102,7 +105,7 @@ export function CalculadoraFolhas() {
           <ResultCard label="Área útil" value={resultado.areaUtil} color="text-purple-400" />
           {resultado.rotacionado && (
             <div className="col-span-full text-xs text-yellow-500 flex items-center gap-1">
-              <span>↻</span> Melhor encaixe rotacionando o item 90°
+              <RotateCw className="w-3.5 h-3.5" /> Melhor encaixe rotacionando o item 90°
             </div>
           )}
         </div>

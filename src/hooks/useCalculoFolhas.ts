@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import { PAPEIS } from '../types/calculadora';
 
 interface Params {
@@ -9,38 +8,56 @@ interface Params {
   tipoMaterial: 'adesivo' | 'tag';
 }
 
-export function useCalculoFolhas({ papelKey, larguraItem, alturaItem, quantidadeTotal, tipoMaterial }: Params) {
-  return useMemo(() => {
-    const papel = PAPEIS[papelKey];
-    const esp = tipoMaterial === 'tag' ? 0.30 : 0.15; // Espaçamento entre itens
-    
-    // Área útil (Descontando as margens da impressora)
-    const uw = papel.w - (papel.margem * 2);
-    const uh = papel.h - (papel.margem * 2);
+interface Resultado {
+  cols: number;
+  rows: number;
+  porFolha: number;
+  totalFolhas: number;
+  areaUtil: string;
+  rotacionado: boolean;
+}
 
-    if (larguraItem <= 0 || alturaItem <= 0) return null;
+// Espaçamento entre itens conforme tipo
+const ESPACO: Record<'adesivo' | 'tag', number> = {
+  adesivo: 0.15, // 1.5mm
+  tag:     0.50, // 5mm
+};
 
-    // Teste 1: Normal
-    const c1 = Math.floor((uw + esp) / (larguraItem + esp));
-    const r1 = Math.floor((uh + esp) / (alturaItem + esp));
-    const total1 = Math.max(0, c1 * r1);
+function calcEncaixe(
+  papelW: number, papelH: number, margem: number,
+  itemW: number, itemH: number, esp: number
+): { cols: number; rows: number; total: number } {
+  const areaW = papelW - margem * 2;
+  const areaH = papelH - margem * 2;
+  const cols = Math.floor((areaW + esp) / (itemW + esp));
+  const rows = Math.floor((areaH + esp) / (itemH + esp));
+  return { cols: Math.max(0, cols), rows: Math.max(0, rows), total: Math.max(0, cols) * Math.max(0, rows) };
+}
 
-    // Teste 2: Rotacionado (Deitado)
-    const c2 = Math.floor((uw + esp) / (alturaItem + esp));
-    const r2 = Math.floor((uh + esp) / (larguraItem + esp));
-    const total2 = Math.max(0, c2 * r2);
+export function useCalculoFolhas(p: Params): Resultado | null {
+  const papel = PAPEIS[p.papelKey];
+  if (!papel || p.larguraItem <= 0 || p.alturaItem <= 0) return null;
 
-    const melhorRotacionado = total2 > total1;
-    const porFolha = melhorRotacionado ? total2 : total1;
-    const totalFolhas = porFolha > 0 ? Math.ceil(quantidadeTotal / porFolha) : 0;
+  const esp = ESPACO[p.tipoMaterial];
+  const normal   = calcEncaixe(papel.w, papel.h, papel.margem, p.larguraItem, p.alturaItem, esp);
+  const rotacion = calcEncaixe(papel.w, papel.h, papel.margem, p.alturaItem, p.larguraItem, esp);
 
-    return {
-      porFolha,
-      totalFolhas,
-      cols: melhorRotacionado ? c2 : c1,
-      rows: melhorRotacionado ? r2 : r1,
-      rotacionado: melhorRotacionado,
-      areaUtil: `${uw.toFixed(1)}x${uh.toFixed(1)}cm`
-    };
-  }, [papelKey, larguraItem, alturaItem, quantidadeTotal, tipoMaterial]);
+  const melhor   = rotacion.total > normal.total ? rotacion : normal;
+  const rotou    = rotacion.total > normal.total;
+
+  if (melhor.total === 0) return null;
+
+  const totalFolhas = Math.ceil(p.quantidadeTotal / melhor.total);
+  const areaUsada   = ((melhor.cols * (rotou ? p.alturaItem : p.larguraItem)) *
+                       (melhor.rows * (rotou ? p.larguraItem : p.alturaItem))) /
+                      ((papel.w - papel.margem * 2) * (papel.h - papel.margem * 2)) * 100;
+
+  return {
+    cols:        melhor.cols,
+    rows:        melhor.rows,
+    porFolha:    melhor.total,
+    totalFolhas,
+    areaUtil:    `${areaUsada.toFixed(0)}%`,
+    rotacionado: rotou,
+  };
 }

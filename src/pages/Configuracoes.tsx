@@ -5,6 +5,11 @@ import { useRole } from '../hooks/useRole';
 import { Configuracoes as ConfigType } from '../types/configuracoes';
 import { ROLES, Role } from '../types/roles';
 import { Modal } from '../components/ui/Modal';
+import {
+  Building2, DollarSign, FileText, Settings, Link2, Users, Wrench,
+  BarChart3, Plus, Hash, Palette, Lock, ClipboardList, CreditCard,
+  Save, Check, User, type LucideIcon,
+} from 'lucide-react';
 
 type Aba = 'empresa' | 'precificacao' | 'orcamentos' | 'sistema' | 'integracoes' | 'usuarios';
 
@@ -14,11 +19,11 @@ const IN_N = IN + " [appearance:textfield]";
 function Lbl({ children }: { children: React.ReactNode }) {
   return <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">{children}</label>;
 }
-function Section({ title, icon, children }: { title: string; icon: string; children: React.ReactNode }) {
+function Section({ title, icon: Icon, children }: { title: string; icon: LucideIcon; children: React.ReactNode }) {
   return (
     <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5 space-y-4">
       <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
-        <span>{icon}</span>{title}
+        <Icon className="w-4 h-4" />{title}
       </h3>
       {children}
     </div>
@@ -64,13 +69,13 @@ export function Configuracoes() {
     setConviteForm({ email: '', nome: '', role: 'vendedor' });
   }
 
-  const ABAS: { key: Aba; label: string; icon: string }[] = [
-    { key: 'empresa',      label: 'Empresa',      icon: '🏢' },
-    { key: 'precificacao', label: 'Precificação',  icon: '💰' },
-    { key: 'orcamentos',   label: 'Orçamentos',    icon: '📝' },
-    { key: 'sistema',      label: 'Sistema',       icon: '⚙️' },
-    { key: 'integracoes',  label: 'Integrações',   icon: '🔗' },
-    { key: 'usuarios',     label: 'Usuários',      icon: '👥' },
+  const ABAS: { key: Aba; label: string; icon: LucideIcon }[] = [
+    { key: 'empresa',      label: 'Empresa',      icon: Building2 },
+    { key: 'precificacao', label: 'Precificação',  icon: DollarSign },
+    { key: 'orcamentos',   label: 'Orçamentos',    icon: FileText },
+    { key: 'sistema',      label: 'Sistema',       icon: Settings },
+    { key: 'integracoes',  label: 'Integrações',   icon: Link2 },
+    { key: 'usuarios',     label: 'Usuários',      icon: Users },
   ];
 
   if (isLoading) return <div className="p-8 text-blue-500 animate-pulse font-bold">Carregando Configurações...</div>;
@@ -79,13 +84,14 @@ export function Configuracoes() {
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-2xl font-black text-white">🔧 Configurações</h1>
+          <h1 className="text-2xl font-black text-white flex items-center gap-2"><Wrench className="w-6 h-6 text-blue-400" /> Configurações</h1>
           <p className="text-gray-500 text-sm">Dados da empresa, precificação e integrações</p>
         </div>
         {aba !== 'usuarios' && (
           <button onClick={handleSalvar} disabled={isSaving || !dirty}
             className="bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white px-6 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2">
-            {isSaving ? 'Salvando...' : dirty ? '💾 Salvar Alterações' : '✓ Salvo'}
+            {dirty ? <Save className="w-4 h-4" /> : <Check className="w-4 h-4" />}
+            {isSaving ? 'Salvando...' : dirty ? 'Salvar Alterações' : 'Salvo'}
           </button>
         )}
       </div>
@@ -97,7 +103,7 @@ export function Configuracoes() {
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${
               aba === a.key ? 'bg-blue-600 text-white shadow' : 'text-gray-400 hover:text-white'
             }`}>
-            <span>{a.icon}</span>{a.label}
+<a.icon className="w-4 h-4" />{a.label}
           </button>
         ))}
       </div>
@@ -202,7 +208,7 @@ export function Configuracoes() {
       {/* ─── EMPRESA ─── */}
       {aba === 'empresa' && (
         <div className="space-y-5">
-          <Section title="Dados da Empresa" icon="🏢">
+          <Section title="Dados da Empresa" icon={Building2}>
             <Row cols={2}>
               <div><Lbl>Nome Fantasia</Lbl>
                 <input value={txt('empresa_nome')} onChange={e => set('empresa_nome', e.target.value)} className={IN} placeholder="Gráfica Master Print" /></div>
@@ -241,7 +247,7 @@ export function Configuracoes() {
       {/* ─── PRECIFICAÇÃO ─── */}
       {aba === 'precificacao' && (
         <div className="space-y-5">
-          <Section title="Parâmetros de Margem" icon="📊">
+          <Section title="Parâmetros de Margem" icon={BarChart3}>
             <Row cols={3}>
               <div><Lbl>Margem mínima (%)</Lbl>
                 <input type="number" min="0" step="0.1" value={num('prec_margem_minima')} onChange={e => set('prec_margem_minima', parseFloat(e.target.value) || null)} className={IN_N} /></div>
@@ -257,7 +263,7 @@ export function Configuracoes() {
                 <input type="number" min="0" step="0.01" value={num('prec_min_pedido')} onChange={e => set('prec_min_pedido', parseFloat(e.target.value) || null)} className={IN_N} /></div>
             </Row>
           </Section>
-          <Section title="Taxas Adicionais" icon="➕">
+          <Section title="Taxas Adicionais" icon={Plus}>
             <Row cols={3}>
               <div><Lbl>Taxa Arte (R$)</Lbl>
                 <input type="number" min="0" step="0.01" value={num('prec_taxa_arte')} onChange={e => set('prec_taxa_arte', parseFloat(e.target.value) || null)} className={IN_N} /></div>
@@ -267,7 +273,7 @@ export function Configuracoes() {
                 <input type="number" min="0" step="0.01" value={num('prec_taxa_instalacao')} onChange={e => set('prec_taxa_instalacao', parseFloat(e.target.value) || null)} className={IN_N} /></div>
             </Row>
           </Section>
-          <Section title="Overhead de Produção" icon="⚙️">
+          <Section title="Overhead de Produção" icon={Settings}>
             <Row cols={3}>
               <div><Lbl>Horas produtivas/mês</Lbl>
                 <input type="number" min="1" step="1" value={num('prec_horas_mes')} onChange={e => set('prec_horas_mes', parseFloat(e.target.value) || null)} className={IN_N} placeholder="160" /></div>
@@ -283,7 +289,7 @@ export function Configuracoes() {
       {/* ─── ORÇAMENTOS ─── */}
       {aba === 'orcamentos' && (
         <div className="space-y-5">
-          <Section title="Numeração e Prazos" icon="🔢">
+          <Section title="Numeração e Prazos" icon={Hash}>
             <Row cols={4}>
               <div><Lbl>Prefixo</Lbl><input value={txt('orc_prefixo')} onChange={e => set('orc_prefixo', e.target.value)} className={IN} placeholder="ORC-" /></div>
               <div><Lbl>Nº inicial</Lbl><input type="number" min="1" value={num('orc_numero_inicial')} onChange={e => set('orc_numero_inicial', parseInt(e.target.value) || null)} className={IN_N} /></div>
@@ -291,7 +297,7 @@ export function Configuracoes() {
               <div><Lbl>Prazo produção (dias)</Lbl><input type="number" min="1" value={num('orc_prazo_producao')} onChange={e => set('orc_prazo_producao', parseInt(e.target.value) || null)} className={IN_N} placeholder="3" /></div>
             </Row>
           </Section>
-          <Section title="Textos Padrão" icon="📄">
+          <Section title="Textos Padrão" icon={FileText}>
             <div><Lbl>Observações padrão</Lbl>
               <textarea rows={3} value={txt('orc_obs_padrao')} onChange={e => set('orc_obs_padrao', e.target.value)} className={IN + ' resize-none'} /></div>
             <Row cols={2}>
@@ -305,7 +311,7 @@ export function Configuracoes() {
       {/* ─── SISTEMA ─── */}
       {aba === 'sistema' && (
         <div className="space-y-5">
-          <Section title="Identidade" icon="🎨">
+          <Section title="Identidade" icon={Palette}>
             <Row cols={2}>
               <div><Lbl>Nome do sistema</Lbl>
                 <input value={txt('sistema_nome')} onChange={e => set('sistema_nome', e.target.value)} className={IN} /></div>
@@ -317,7 +323,7 @@ export function Configuracoes() {
               </div>
             </Row>
           </Section>
-          <Section title="Segurança" icon="🔒">
+          <Section title="Segurança" icon={Lock}>
             <div><Lbl>Timeout de sessão (minutos)</Lbl>
               <input type="number" min="5" step="5" value={num('seg_tempo_sessao')} onChange={e => set('seg_tempo_sessao', parseInt(e.target.value) || null)} className={IN_N + ' max-w-xs'} placeholder="60" /></div>
           </Section>
@@ -327,7 +333,7 @@ export function Configuracoes() {
       {/* ─── INTEGRAÇÕES ─── */}
       {aba === 'integracoes' && (
         <div className="space-y-5">
-          <Section title="Trello" icon="📋">
+          <Section title="Trello" icon={ClipboardList}>
             <Row cols={2}>
               <div><Lbl>API Key</Lbl><input value={txt('trello_api_key')} onChange={e => set('trello_api_key', e.target.value)} className={IN} /></div>
               <div><Lbl>Token</Lbl><input type="password" value={txt('trello_token')} onChange={e => set('trello_token', e.target.value)} className={IN} /></div>
@@ -340,7 +346,7 @@ export function Configuracoes() {
               <div><Lbl>Lista: Pronto</Lbl><input value={txt('trello_list_pronto')} onChange={e => set('trello_list_pronto', e.target.value)} className={IN} /></div>
             </Row>
           </Section>
-          <Section title="Mercado Pago" icon="💳">
+          <Section title="Mercado Pago" icon={CreditCard}>
             <div><Lbl>Access Token</Lbl><input type="password" value={txt('mp_access_token')} onChange={e => set('mp_access_token', e.target.value)} className={IN} /></div>
             <Row cols={2}>
               <div><Lbl>Chave Pix</Lbl><input value={txt('mp_pix_chave')} onChange={e => set('mp_pix_chave', e.target.value)} className={IN} /></div>
@@ -351,7 +357,7 @@ export function Configuracoes() {
       )}
 
       {/* Modal convidar usuário */}
-      <Modal open={modalConvite} onClose={() => setModalConvite(false)} title="👤 Convidar Usuário" maxWidth="440px"
+      <Modal open={modalConvite} onClose={() => setModalConvite(false)} title={<span className="flex items-center gap-1.5"><User className="w-4 h-4" /> Convidar Usuário</span>} maxWidth="440px"
         actions={
           <>
             <button onClick={() => setModalConvite(false)} className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-sm font-medium transition-all">Cancelar</button>
@@ -389,7 +395,7 @@ export function Configuracoes() {
         <div className="fixed bottom-6 right-6 z-40">
           <button onClick={handleSalvar} disabled={isSaving}
             className="bg-green-600 hover:bg-green-500 disabled:opacity-60 text-white px-6 py-3 rounded-2xl font-bold text-sm shadow-2xl transition-all flex items-center gap-2">
-            💾 {isSaving ? 'Salvando...' : 'Salvar alterações'}
+            <Save className="w-4 h-4" /> {isSaving ? 'Salvando...' : 'Salvar alterações'}
           </button>
         </div>
       )}

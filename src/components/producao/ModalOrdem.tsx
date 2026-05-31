@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Modal } from '../ui/Modal';
 import { OrdemProducao, ETAPAS, PRIORIDADES } from '../../types/producao';
+import { Pencil, Plus } from 'lucide-react';
 
 type FormData = {
   titulo: string;
@@ -71,7 +72,7 @@ export function ModalOrdem({ open, editando, etapaInicial, onClose, onSalvar }: 
     <Modal
       open={open}
       onClose={onClose}
-      title={editando ? '✏️ Editar Ordem' : '➕ Nova Ordem de Produção'}
+      title={<span className="flex items-center gap-1.5">{editando ? <><Pencil className="w-4 h-4" /> Editar Ordem</> : <><Plus className="w-4 h-4" /> Nova Ordem de Produção</>}</span>}
       maxWidth="520px"
       actions={
         <>

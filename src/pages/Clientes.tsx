@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useClientes } from '../hooks/useClientes';
 import { Cliente } from '../types/cliente';
+import { TableSkeleton } from '../components/ui/Skeleton';
+import { Users, Plus, X, AlertCircle } from 'lucide-react';
 
 export function Clientes() {
   const { data: clientes, isLoading, error, deleteCliente, createCliente, isCreating } = useClientes();
@@ -20,21 +22,32 @@ export function Clientes() {
     setShowForm(false);
   }
 
-if (isLoading) return <div className="p-8 text-blue-500 animate-pulse font-bold">Carregando Clientes...</div>;
-if (error)    return <div className="p-8 text-red-500 font-bold">❌ Erro ao carregar clientes.</div>;
+if (isLoading) return (
+  <div className="p-6 space-y-6">
+    <div className="flex justify-between items-center">
+      <div className="space-y-2">
+        <div className="skeleton h-7 w-40 rounded-md" />
+        <div className="skeleton h-3 w-48 rounded-md" />
+      </div>
+      <div className="skeleton h-10 w-36 rounded-xl" />
+    </div>
+    <TableSkeleton rows={6} cols={5} />
+  </div>
+);
+if (error)    return <div className="p-8 text-red-400 font-bold flex items-center gap-2"><AlertCircle className="w-5 h-5" /> Erro ao carregar clientes.</div>;
 
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-black text-white">Clientes</h1>
+          <h1 className="text-2xl font-black text-white flex items-center gap-2"><Users className="w-6 h-6 text-blue-400" /> Clientes</h1>
           <p className="text-gray-500 text-sm">{clientes?.length ?? 0} clientes cadastrados</p>
         </div>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg shadow-blue-900/30"
+          className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg shadow-blue-900/30 flex items-center gap-2"
         >
-          {showForm ? '✕ Cancelar' : '+ Novo Cliente'}
+          {showForm ? <><X className="w-4 h-4" /> Cancelar</> : <><Plus className="w-4 h-4" /> Novo Cliente</>}
         </button>
       </div>
 
@@ -73,7 +86,7 @@ if (error)    return <div className="p-8 text-red-500 font-bold">❌ Erro ao car
         <div className="p-4 border-b border-gray-700">
           <input
             type="text"
-            placeholder="🔍 Buscar por nome ou email..."
+            placeholder="Buscar por nome ou email..."
             value={busca}
             onChange={e => setBusca(e.target.value)}
             className="w-full bg-[#111827] border border-gray-700 rounded-lg px-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500"
@@ -100,7 +113,7 @@ if (error)    return <div className="p-8 text-red-500 font-bold">❌ Erro ao car
                 <td className="px-5 py-3 text-gray-400">{c.email || '—'}</td>
                 <td className="px-5 py-3 text-gray-400">{c.cpf_cnpj || '—'}</td>
                 <td className="px-5 py-3">
-                  <button onClick={() => deleteCliente(c.id)}
+                  <button onClick={() => { if (confirm(`Excluir o cliente "${c.nome}"?`)) deleteCliente(c.id); }}
                     className="text-red-500 hover:text-red-400 text-xs font-bold hover:bg-red-500/10 px-2 py-1 rounded transition-all">
                     Excluir
                   </button>

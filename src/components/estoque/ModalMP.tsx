@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Modal } from '../ui/Modal';
 import { MateriaPrima } from '../../types/estoque';
+import { Pencil, Plus } from 'lucide-react';
 
 const UNIDADES = ['un', 'kg', 'g', 'l', 'ml', 'm', 'cm', 'folha', 'rolo', 'caixa', 'resma', 'par'];
 
@@ -67,7 +68,7 @@ export function ModalMP({ open, editando, onClose, onSalvar }: ModalMPProps) {
     <Modal
       open={open}
       onClose={onClose}
-      title={editando ? '✏️ Editar Matéria-Prima' : '➕ Nova Matéria-Prima'}
+      title={<span className="flex items-center gap-1.5">{editando ? <><Pencil className="w-4 h-4" /> Editar Matéria-Prima</> : <><Plus className="w-4 h-4" /> Nova Matéria-Prima</>}</span>}
       actions={
         <>
           <button onClick={onClose} className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-sm font-medium transition-all">

@@ -3,6 +3,9 @@ import { useCustosFixos, useDepreciacao } from '../hooks/useGestaoBase';
 import { useGestaoCustos } from '../hooks/useGestaoCustos';
 import { Modal } from '../components/ui/Modal';
 import { KpiCard } from '../components/ui/KpiCard';
+import {
+  TrendingDown, Building2, DollarSign, Timer, BarChart3, Plus, type LucideIcon,
+} from 'lucide-react';
 
 type Aba = 'resumo' | 'fixos' | 'depreciacao';
 const fmtBRL = (v: number) => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -60,28 +63,28 @@ export function GestaoCustos() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-black text-white">📉 Gestão de Custos</h1>
+        <h1 className="text-2xl font-black text-white flex items-center gap-2"><TrendingDown className="w-6 h-6 text-blue-400" /> Gestão de Custos</h1>
         <p className="text-gray-500 text-sm">Custos fixos, depreciação e cálculo de overhead</p>
       </div>
 
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <KpiCard label="Custos fixos/mês"  value={fmtBRL(gcData.fixos)}   icon="🏢" color="text-blue-400" />
-        <KpiCard label="Depreciação/mês"   value={fmtBRL(gcData.depr)}    icon="📉" color="text-yellow-400" />
-        <KpiCard label="Overhead total/mês" value={fmtBRL(gcData.total)}  icon="💰" color="text-red-400" />
-        <KpiCard label="Overhead/hora"     value={fmtBRL(gcData.porHora)} icon="⏱️" color="text-purple-400" />
+        <KpiCard label="Custos fixos/mês"  value={fmtBRL(gcData.fixos)}   icon={Building2}    color="text-blue-400" />
+        <KpiCard label="Depreciação/mês"   value={fmtBRL(gcData.depr)}    icon={TrendingDown} color="text-yellow-400" />
+        <KpiCard label="Overhead total/mês" value={fmtBRL(gcData.total)}  icon={DollarSign}   color="text-red-400" />
+        <KpiCard label="Overhead/hora"     value={fmtBRL(gcData.porHora)} icon={Timer}        color="text-purple-400" />
       </div>
 
       {/* Abas */}
       <div className="flex gap-1 bg-[#1f2937] border border-gray-700 rounded-xl p-1 w-fit">
         {([
-          { key: 'resumo',      label: '📊 Resumo' },
-          { key: 'fixos',       label: '🏢 Custos Fixos' },
-          { key: 'depreciacao', label: '📉 Depreciação' },
-        ] as { key: Aba; label: string }[]).map(t => (
+          { key: 'resumo',      label: 'Resumo',       icon: BarChart3 },
+          { key: 'fixos',       label: 'Custos Fixos', icon: Building2 },
+          { key: 'depreciacao', label: 'Depreciação',  icon: TrendingDown },
+        ] as { key: Aba; label: string; icon: LucideIcon }[]).map(t => (
           <button key={t.key} onClick={() => setAba(t.key)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${aba === t.key ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'}`}>
-            {t.label}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${aba === t.key ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'}`}>
+            <t.icon className="w-4 h-4" /> {t.label}
           </button>
         ))}
       </div>
@@ -235,7 +238,7 @@ export function GestaoCustos() {
       )}
 
       {/* Modal custo fixo */}
-      <Modal open={modalFixo} onClose={() => setModalFixo(false)} title="➕ Novo Custo Fixo" maxWidth="440px"
+      <Modal open={modalFixo} onClose={() => setModalFixo(false)} title={<span className="flex items-center gap-1.5"><Plus className="w-4 h-4" /> Novo Custo Fixo</span>} maxWidth="440px"
         actions={
           <>
             <button onClick={() => setModalFixo(false)} className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-sm font-medium transition-all">Cancelar</button>
@@ -258,7 +261,7 @@ export function GestaoCustos() {
       </Modal>
 
       {/* Modal depreciação */}
-      <Modal open={modalDepr} onClose={() => setModalDepr(false)} title="➕ Novo Ativo (Depreciação)" maxWidth="440px"
+      <Modal open={modalDepr} onClose={() => setModalDepr(false)} title={<span className="flex items-center gap-1.5"><Plus className="w-4 h-4" /> Novo Ativo (Depreciação)</span>} maxWidth="440px"
         actions={
           <>
             <button onClick={() => setModalDepr(false)} className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-sm font-medium transition-all">Cancelar</button>

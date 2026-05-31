@@ -3,6 +3,10 @@ import { useLancamentos } from '../hooks/useLancamentos';
 import { Lancamento } from '../types/financeiro';
 import { ModalLancamento } from '../components/financeiro/ModalLancamento';
 import { KpiCard } from '../components/ui/KpiCard';
+import {
+  Landmark, TrendingUp, TrendingDown, Clock, Banknote,
+  ArrowUp, ArrowDown, AlertCircle, Check, X, type LucideIcon,
+} from 'lucide-react';
 
 type Filtro = 'todos' | 'receita' | 'despesa' | 'pendente' | 'atrasado';
 
@@ -71,7 +75,7 @@ export function Financeiro() {
       {/* Header */}
       <div className="flex justify-between items-start flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-black text-white">🏦 Financeiro</h1>
+          <h1 className="text-2xl font-black text-white flex items-center gap-2"><Landmark className="w-6 h-6 text-blue-400" /> Financeiro</h1>
           <p className="text-gray-500 text-sm">Contas a pagar e receber</p>
         </div>
         <div className="flex gap-2">
@@ -94,31 +98,31 @@ export function Financeiro() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <KpiCard label="Receitas do mês"  value={fmtBRL(totalReceitas)} icon="↑" color="text-green-400" />
-        <KpiCard label="Despesas do mês"  value={fmtBRL(totalDespesas)} icon="↓" color="text-red-400" />
-        <KpiCard label="A receber (total)" value={fmtBRL(aReceber)}     icon="⏳" color="text-blue-400" />
-        <KpiCard label="A pagar (total)"   value={fmtBRL(aPagar)}       icon="💸" color="text-yellow-400" />
+        <KpiCard label="Receitas do mês"  value={fmtBRL(totalReceitas)} icon={TrendingUp}   color="text-green-400" />
+        <KpiCard label="Despesas do mês"  value={fmtBRL(totalDespesas)} icon={TrendingDown} color="text-red-400" />
+        <KpiCard label="A receber (total)" value={fmtBRL(aReceber)}     icon={Clock}        color="text-blue-400" />
+        <KpiCard label="A pagar (total)"   value={fmtBRL(aPagar)}       icon={Banknote}     color="text-yellow-400" />
       </div>
 
       {/* Filtros + busca */}
       <div className="flex gap-2 flex-wrap items-center">
         <div className="flex gap-1 bg-[#1f2937] border border-gray-700 rounded-xl p-1">
           {([
-            { key: 'todos',    label: 'Todos' },
-            { key: 'receita',  label: '↑ Receitas' },
-            { key: 'despesa',  label: '↓ Despesas' },
-            { key: 'pendente', label: '⏳ Pendentes' },
-            { key: 'atrasado', label: '🚨 Atrasados' },
-          ] as { key: Filtro; label: string }[]).map(f => (
+            { key: 'todos',    label: 'Todos',     icon: null },
+            { key: 'receita',  label: 'Receitas',  icon: ArrowUp },
+            { key: 'despesa',  label: 'Despesas',  icon: ArrowDown },
+            { key: 'pendente', label: 'Pendentes', icon: Clock },
+            { key: 'atrasado', label: 'Atrasados', icon: AlertCircle },
+          ] as { key: Filtro; label: string; icon: LucideIcon | null }[]).map(f => (
             <button key={f.key} onClick={() => setFiltro(f.key)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${
                 filtro === f.key ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'
               }`}>
-              {f.label}
+              {f.icon && <f.icon className="w-3 h-3" />} {f.label}
             </button>
           ))}
         </div>
-        <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="🔍 Buscar..."
+        <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar..."
           className="flex-1 min-w-48 bg-[#1f2937] border border-gray-700 rounded-xl px-4 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500" />
       </div>
 
@@ -146,8 +150,8 @@ export function Financeiro() {
                 <tr key={l.id} className="border-b border-gray-800 hover:bg-gray-800/30 transition-colors">
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-2">
-                      <span className={l.tipo === 'receita' ? 'text-green-400 font-black' : 'text-red-400 font-black'}>
-                        {l.tipo === 'receita' ? '↑' : '↓'}
+                      <span className={l.tipo === 'receita' ? 'text-green-400' : 'text-red-400'}>
+                        {l.tipo === 'receita' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />}
                       </span>
                       <span className="font-medium text-white">{l.descricao}</span>
                       {l.parcela_num && l.total_parcelas && (
@@ -172,8 +176,8 @@ export function Financeiro() {
                     <div className="flex gap-1 justify-center">
                       {st !== 'pago' && st !== 'cancelado' && (
                         <button onClick={() => pagar({ id: l.id })}
-                          className="text-[10px] font-bold px-2 py-1 rounded-lg bg-green-500/15 text-green-400 hover:bg-green-500/25 border border-green-500/30 transition-all">
-                          ✓ Pagar
+                          className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg bg-green-500/15 text-green-400 hover:bg-green-500/25 border border-green-500/30 transition-all">
+                          <Check className="w-3 h-3" /> Pagar
                         </button>
                       )}
                       <button onClick={() => { setEditando(l); setModalOpen(true); }}
@@ -181,8 +185,8 @@ export function Financeiro() {
                         Editar
                       </button>
                       <button onClick={() => { if (confirm('Remover?')) deletar(l.id); }}
-                        className="text-[10px] font-bold px-2 py-1 rounded-lg bg-red-500/15 text-red-400 hover:bg-red-500/25 border border-red-500/30 transition-all">
-                        ✕
+                        className="flex items-center justify-center px-2 py-1 rounded-lg bg-red-500/15 text-red-400 hover:bg-red-500/25 border border-red-500/30 transition-all">
+                        <X className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </td>

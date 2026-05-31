@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Modal } from '../ui/Modal';
 import { Lancamento, CATEGORIAS_RECEITA, CATEGORIAS_DESPESA, FORMAS_PAGAMENTO } from '../../types/financeiro';
+import { Pencil, Plus, ArrowUp, ArrowDown } from 'lucide-react';
 
 const IN = "w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors";
 
@@ -78,7 +79,7 @@ export function ModalLancamento({ open, editando, tipoInicial, onClose, onSalvar
     <Modal
       open={open}
       onClose={onClose}
-      title={editando ? '✏️ Editar Lançamento' : '➕ Novo Lançamento'}
+      title={<span className="flex items-center gap-1.5">{editando ? <><Pencil className="w-4 h-4" /> Editar Lançamento</> : <><Plus className="w-4 h-4" /> Novo Lançamento</>}</span>}
       maxWidth="520px"
       actions={
         <>
@@ -104,7 +105,9 @@ export function ModalLancamento({ open, editando, tipoInicial, onClose, onSalvar
                     : 'bg-red-600 border-red-500 text-white'
                   : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-white'
               }`}>
-              {t === 'receita' ? '↑ Receita' : '↓ Despesa'}
+              <span className="inline-flex items-center gap-1.5">
+                {t === 'receita' ? <><ArrowUp className="w-3.5 h-3.5" /> Receita</> : <><ArrowDown className="w-3.5 h-3.5" /> Despesa</>}
+              </span>
             </button>
           ))}
         </div>

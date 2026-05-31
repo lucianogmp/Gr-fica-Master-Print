@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Modal } from '../ui/Modal';
 import { MateriaPrima } from '../../types/estoque';
+import { ArrowDownToLine, ArrowUpFromLine, AlertTriangle } from 'lucide-react';
 
 interface ModalMovProps {
   open: boolean;
@@ -45,8 +46,9 @@ export function ModalMov({ open, tipo, materia, onClose, onConfirmar }: ModalMov
       open={open}
       onClose={onClose}
       title={
-        <span className={isEntrada ? 'text-green-400' : 'text-red-400'}>
-          {isEntrada ? '📥 Entrada de Estoque' : '📤 Saída de Estoque'}
+        <span className={`flex items-center gap-1.5 ${isEntrada ? 'text-green-400' : 'text-red-400'}`}>
+          {isEntrada ? <ArrowDownToLine className="w-4 h-4" /> : <ArrowUpFromLine className="w-4 h-4" />}
+          {isEntrada ? 'Entrada de Estoque' : 'Saída de Estoque'}
         </span>
       }
       maxWidth="420px"
@@ -89,7 +91,7 @@ export function ModalMov({ open, tipo, materia, onClose, onConfirmar }: ModalMov
           />
           {tipo === 'saida' && qNum > saldoPos && qNum > 0 && (
             <p className="text-red-400 text-xs mt-1.5 flex items-center gap-1">
-              ⚠️ Saldo insuficiente. Disponível: {saldoPos} {materia.unidade}
+              <AlertTriangle className="w-3.5 h-3.5" /> Saldo insuficiente. Disponível: {saldoPos} {materia.unidade}
             </p>
           )}
         </div>

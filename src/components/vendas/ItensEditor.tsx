@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { VendaItem } from '../../types/venda';
+import { X } from 'lucide-react';
 
 const fmtBRL = (v: number) => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const IN = "bg-[#111827] border border-gray-700 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500 transition-colors w-full";
@@ -90,7 +91,7 @@ export function ItensEditor({ itens, onChange }: ItensEditorProps) {
                 </td>
                 <td className="px-3 py-1.5 text-right font-bold text-white">{fmtBRL(it.total)}</td>
                 <td className="px-2 py-1.5">
-                  <button onClick={() => removerItem(i)} className="text-gray-600 hover:text-red-400 transition-colors">✕</button>
+                  <button onClick={() => removerItem(i)} className="inline-flex text-gray-600 hover:text-red-400 transition-colors"><X className="w-3.5 h-3.5" /></button>
                 </td>
               </tr>
             ))}
