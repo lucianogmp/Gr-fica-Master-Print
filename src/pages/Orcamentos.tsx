@@ -379,7 +379,7 @@ export function Orcamentos() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <KpiCard label="Total"       value={totalOrc}           icon={FileText} color="text-blue-400" />
-        <KpiCard label="Aprovados"   value={aprovados}          icon="✅" color="text-green-400" />
+        <KpiCard label="Aprovados"   value={aprovados}          icon={Check } color="text-green-400" />
         <KpiCard label="Convertidos" value={convertidos}        icon={Zap} color="text-purple-400" />
         <KpiCard label="Valor total" value={fmtBRL(valorTotal)} icon={Banknote} color="text-yellow-400" />
       </div>
@@ -487,7 +487,7 @@ export function Orcamentos() {
           )}
           <button onClick={handleSalvar} disabled={isSaving || !form.cliente_nome.trim()}
             className="bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white px-5 py-2 rounded-xl font-bold text-sm transition-all">
-            {isSaving ? 'Salvando...' : '💾 Salvar'}
+            {isSaving ? 'Salvando...' : 'Salvar'}
           </button>
         </div>
       </div>
@@ -641,7 +641,7 @@ export function Orcamentos() {
             <div className="mt-5 space-y-2">
               <button onClick={handleSalvar} disabled={isSaving || !form.cliente_nome.trim()}
                 className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white py-3 rounded-xl font-bold text-sm transition-all">
-                {isSaving ? 'Salvando...' : '💾 Salvar Orçamento'}
+                {isSaving ? 'Salvando...' : 'Salvar Orçamento'}
               </button>
               {!isNovo && form.status === 'aprovado' && !jaConvertido && (
                 <button onClick={handleConverter} disabled={isConvertendo}
