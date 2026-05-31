@@ -7,7 +7,6 @@ import { Orcamento, OrcamentoItem, StatusOrcamento, STATUS_ORC } from '../types/
 import { ItemOrcEditor } from '../components/orcamentos/ItemOrcEditor';
 import { ClienteSelector } from '../components/orcamentos/ClienteSelector';
 import { KpiCard } from '../components/ui/KpiCard';
-import { FileText, CheckCircle, Zap, Banknote } from 'lucide-react';
 
 type View = 'lista' | 'detalhe' | 'materiais' | 'acabamentos';
 type Filtro = 'todos' | StatusOrcamento;
@@ -378,10 +377,10 @@ export function Orcamentos() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <KpiCard label="Total"       value={totalOrc}           icon={FileText}      color="text-blue-400" />
-<KpiCard label="Aprovados"   value={aprovados}          icon={CheckCircle}   color="text-green-400" />
-<KpiCard label="Convertidos" value={convertidos}        icon={Zap}           color="text-purple-400" />
-<KpiCard label="Valor total" value={fmtBRL(valorTotal)} icon={Banknote}      color="text-yellow-400" />
+        <KpiCard label="Total"       value={totalOrc}           icon="📝" color="text-blue-400" />
+        <KpiCard label="Aprovados"   value={aprovados}          icon="✅" color="text-green-400" />
+        <KpiCard label="Convertidos" value={convertidos}        icon="💰" color="text-purple-400" />
+        <KpiCard label="Valor total" value={fmtBRL(valorTotal)} icon="💵" color="text-yellow-400" />
       </div>
 
       <div className="flex gap-2 flex-wrap items-center">
