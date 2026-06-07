@@ -5,12 +5,17 @@ export function useEstoqueAlerts() {
   return useQuery({
     queryKey: ['estoque-alerts'],
     queryFn: async () => {
-      const { data } = await supabase
-        .from('materiais')
-        .select('nome, saldo, estoque_minimo');
-      
-      return data?.filter(m => Number(m.saldo) <= Number(m.estoque_minimo)) || [];
+      const { data, error } = await supabase
+        .from('materias_primas')
+        .select('nome, saldo, estoque_minimo')
+        .gt('estoque_minimo', 0);
+
+      if (error) throw error;
+
+      return (data ?? []).filter(
+        m => Number(m.saldo) <= Number(m.estoque_minimo)
+      );
     },
-    refetchInterval: 1000 * 60 * 5, // Atualiza a cada 5 min automaticamente
+    refetchInterval: 1000 * 60 * 5,
   });
 }

@@ -39,28 +39,35 @@ export function useUsuarios() {
     onError: (e: any) => toast.error(e.message),
   });
 
-  const convidarUsuario = useMutation({
-    mutationFn: async ({ email, nome, role }: { email: string; nome: string; role: Role }) => {
-      // 1. Cria o usuário via Admin API (invite)
-      const { data, error } = await supabase.auth.admin.inviteUserByEmail(email, {
-        data: { nome, role },
-      });
-      if (error) {
-        // Se já existe, só atualiza o role
-        const { error: rpcErr } = await supabase.rpc('convidar_usuario', {
-          p_email: email,
-          p_nome: nome,
-          p_role: role,
-        });
-        if (rpcErr) throw rpcErr;
+  // src/hooks/useUsuarios.ts  — substituir convidarUsuario
+const convidarUsuario = useMutation({
+  mutationFn: async ({ email, nome, role }: { email: string; nome: string; role: Role }) => {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) throw new Error('Sessão expirada.')
+
+    const res = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/convidar-usuario`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+          'apikey':        import.meta.env.VITE_SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({ email, nome, role }),
       }
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['usuarios-admin'] });
-      toast.success('Usuário convidado! Ele receberá um e-mail para definir a senha.');
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
+    )
+
+    const json = await res.json()
+    if (!res.ok) throw new Error(json.error ?? 'Erro ao convidar usuário.')
+    return json
+  },
+  onSuccess: () => {
+    qc.invalidateQueries({ queryKey: ['usuarios-admin'] })
+    toast.success('Convite enviado! O usuário receberá um e-mail.')
+  },
+  onError: (e: any) => toast.error(e.message),
+})
 
   return {
     ...query,

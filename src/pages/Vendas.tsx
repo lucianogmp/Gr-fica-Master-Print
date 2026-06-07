@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useVendas, useVendaItens } from '../hooks/useVendas';
 import { Venda, VendaItem, StatusVenda, STATUS_VENDA } from '../types/venda';
 import { ItensEditor } from '../components/vendas/ItensEditor';
@@ -34,10 +34,13 @@ export function Vendas() {
 
   const isNovo = vendaId === '__novo__';
 
-  // Carrega itens da venda ao abrir detalhe
   const { data: itensCarregados } = useVendaItens(isNovo ? null : vendaId);
 
-  // Abre detalhe
+  // ✅ Corrigido: useEffect em vez de useMemo para side effect
+  useEffect(() => {
+    if (itensCarregados && !isNovo) setItens(itensCarregados);
+  }, [itensCarregados, isNovo]);
+
   function abrirDetalhe(v: Venda | null) {
     if (v) {
       setVendaId(v.id);
@@ -50,11 +53,6 @@ export function Vendas() {
     }
     setView('detalhe');
   }
-
-  // Sincroniza itens quando carregam do banco
-  useMemo(() => {
-    if (itensCarregados && !isNovo) setItens(itensCarregados);
-  }, [itensCarregados, isNovo]);
 
   function fechar() { setView('lista'); setVendaId(null); setForm({ ...NOVA_VENDA }); setItens([]); }
   function setF(f: keyof typeof NOVA_VENDA, v: any) { setForm(p => ({ ...p, [f]: v })); }
@@ -75,7 +73,6 @@ export function Vendas() {
       await criar({ venda: clean as any, itens });
     } else if (vendaId) {
       await atualizar({ id: vendaId, payload: clean as any });
-      // Re-salva itens: deleta e reinsere
       const { supabase } = await import('../lib/supabase');
       await supabase.from('venda_itens').delete().eq('venda_id', vendaId);
       if (itens.length > 0) {
@@ -85,7 +82,6 @@ export function Vendas() {
     fechar();
   }
 
-  // KPIs
   const totalVendas = vendas.reduce((s, v) => s + Number(v.valor_total ?? v.total ?? 0), 0);
   const emProducao  = vendas.filter(v => v.status === 'producao').length;
   const prontas     = vendas.filter(v => v.status === 'pronto').length;

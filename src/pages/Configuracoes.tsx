@@ -19,6 +19,30 @@ const IN_N = IN + " [appearance:textfield]";
 function Lbl({ children }: { children: React.ReactNode }) {
   return <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">{children}</label>;
 }
+
+// Local fallback hook to save tokens if external hook is not available
+function useSalvarToken() {
+  const [isPending, setIsPending] = useState(false);
+
+  function mutate(
+    data: { nome: string; valor: string },
+    options?: { onSuccess?: () => void }
+  ) {
+    setIsPending(true);
+    fetch('/api/salvar-token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+      .then((res) => {
+        setIsPending(false);
+        if (res.ok && options?.onSuccess) options.onSuccess();
+      })
+      .catch(() => setIsPending(false));
+  }
+
+  return { mutate, isPending };
+}
 function Section({ title, icon: Icon, children }: { title: string; icon: LucideIcon; children: React.ReactNode }) {
   return (
     <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5 space-y-4">
@@ -32,6 +56,45 @@ function Section({ title, icon: Icon, children }: { title: string; icon: LucideI
 function Row({ children, cols = 2 }: { children: React.ReactNode; cols?: number }) {
   return <div className={`grid grid-cols-1 md:grid-cols-${cols} gap-4`}>{children}</div>;
 }
+
+function TokenField({ label, nome }: { label: string; nome: string }) {
+  const { mutate, isPending } = useSalvarToken()
+  const [valor, setValor] = useState('')
+  const [salvo, setSalvo] = useState(false)
+
+  return (
+    <div>
+      <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">
+        {label}
+      </label>
+      <div className="flex gap-2">
+        <input
+          type="password"
+          value={valor}
+          onChange={e => { setValor(e.target.value); setSalvo(false) }}
+          placeholder="Cole o token aqui..."
+          className="flex-1 bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500"
+        />
+        <button
+          onClick={() =>
+            mutate(
+              { nome, valor },
+              { onSuccess: () => { setValor(''); setSalvo(true) } }
+            )
+          }
+          disabled={isPending || !valor.trim()}
+          className="px-4 py-2 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white rounded-lg text-sm font-bold transition-all"
+        >
+          {isPending ? '...' : salvo ? '✓ Salvo' : 'Salvar'}
+        </button>
+      </div>
+      <p className="text-xs text-gray-500 mt-1">
+        Armazenado cifrado no Vault — nunca exposto no frontend.
+      </p>
+    </div>
+  )
+}
+// ───────────────────────────────────────────────────────────────────
 
 export function Configuracoes() {
   const { data: cfg, isLoading, salvar, isSaving } = useConfiguracoes();
@@ -332,30 +395,41 @@ export function Configuracoes() {
 
       {/* ─── INTEGRAÇÕES ─── */}
       {aba === 'integracoes' && (
-        <div className="space-y-5">
-          <Section title="Trello" icon={ClipboardList}>
-            <Row cols={2}>
-              <div><Lbl>API Key</Lbl><input value={txt('trello_api_key')} onChange={e => set('trello_api_key', e.target.value)} className={IN} /></div>
-              <div><Lbl>Token</Lbl><input type="password" value={txt('trello_token')} onChange={e => set('trello_token', e.target.value)} className={IN} /></div>
-            </Row>
-            <div><Lbl>Board ID</Lbl><input value={txt('trello_board_id')} onChange={e => set('trello_board_id', e.target.value)} className={IN} /></div>
-            <Row cols={2}>
-              <div><Lbl>Lista: Na Fila</Lbl><input value={txt('trello_list_fila')} onChange={e => set('trello_list_fila', e.target.value)} className={IN} /></div>
-              <div><Lbl>Lista: Imprimindo</Lbl><input value={txt('trello_list_imprimindo')} onChange={e => set('trello_list_imprimindo', e.target.value)} className={IN} /></div>
-              <div><Lbl>Lista: Acabamento</Lbl><input value={txt('trello_list_acabamento')} onChange={e => set('trello_list_acabamento', e.target.value)} className={IN} /></div>
-              <div><Lbl>Lista: Pronto</Lbl><input value={txt('trello_list_pronto')} onChange={e => set('trello_list_pronto', e.target.value)} className={IN} /></div>
-            </Row>
-          </Section>
-          <Section title="Mercado Pago" icon={CreditCard}>
-            <div><Lbl>Access Token</Lbl><input type="password" value={txt('mp_access_token')} onChange={e => set('mp_access_token', e.target.value)} className={IN} /></div>
-            <Row cols={2}>
-              <div><Lbl>Chave Pix</Lbl><input value={txt('mp_pix_chave')} onChange={e => set('mp_pix_chave', e.target.value)} className={IN} /></div>
-              <div><Lbl>Webhook URL</Lbl><input value={txt('mp_webhook_url')} onChange={e => set('mp_webhook_url', e.target.value)} className={IN} /></div>
-            </Row>
-          </Section>
-        </div>
-      )}
+  <div className="space-y-5">
+    <Section title="Trello" icon={ClipboardList}>
+      {/* Tokens sensíveis → Vault */}
+      <TokenField label="API Key"  nome="trello_api_key" />
+      <TokenField label="Token"    nome="trello_token" />
 
+      {/* Board ID e listas NÃO são segredos — ficam no banco normal */}
+      <div><Lbl>Board ID</Lbl>
+        <input value={txt('trello_board_id')} onChange={e => set('trello_board_id', e.target.value)} className={IN} /></div>
+      <Row cols={2}>
+        <div><Lbl>Lista: Na Fila</Lbl>
+          <input value={txt('trello_list_fila')} onChange={e => set('trello_list_fila', e.target.value)} className={IN} /></div>
+        <div><Lbl>Lista: Imprimindo</Lbl>
+          <input value={txt('trello_list_imprimindo')} onChange={e => set('trello_list_imprimindo', e.target.value)} className={IN} /></div>
+        <div><Lbl>Lista: Acabamento</Lbl>
+          <input value={txt('trello_list_acabamento')} onChange={e => set('trello_list_acabamento', e.target.value)} className={IN} /></div>
+        <div><Lbl>Lista: Pronto</Lbl>
+          <input value={txt('trello_list_pronto')} onChange={e => set('trello_list_pronto', e.target.value)} className={IN} /></div>
+      </Row>
+    </Section>
+
+    <Section title="Mercado Pago" icon={CreditCard}>
+      {/* Token sensível → Vault */}
+      <TokenField label="Access Token" nome="mp_access_token" />
+
+      {/* Chave Pix e Webhook não são segredos */}
+      <Row cols={2}>
+        <div><Lbl>Chave Pix</Lbl>
+          <input value={txt('mp_pix_chave')} onChange={e => set('mp_pix_chave', e.target.value)} className={IN} /></div>
+        <div><Lbl>Webhook URL</Lbl>
+          <input value={txt('mp_webhook_url')} onChange={e => set('mp_webhook_url', e.target.value)} className={IN} /></div>
+      </Row>
+    </Section>
+  </div>
+)}
       {/* Modal convidar usuário */}
       <Modal open={modalConvite} onClose={() => setModalConvite(false)} title={<span className="flex items-center gap-1.5"><User className="w-4 h-4" /> Convidar Usuário</span>} maxWidth="440px"
         actions={

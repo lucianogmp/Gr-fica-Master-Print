@@ -21,6 +21,7 @@ export interface OrcamentoItem {
   acabamento_id?: string | null;
   acabamento_nome?: string | null;
   acabamento_custo?: number | null;
+  acabamentos_por_folha?: number | null;
   arte_inclusa?: boolean;
 }
 

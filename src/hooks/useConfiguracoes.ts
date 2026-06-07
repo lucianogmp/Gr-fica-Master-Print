@@ -3,6 +3,20 @@ import { supabase } from '../lib/supabase';
 import { Configuracoes } from '../types/configuracoes';
 import toast from 'react-hot-toast';
 
+export function useSalvarToken() {
+  return useMutation({
+    mutationFn: async ({ nome, valor }: { nome: string; valor: string }) => {
+      const { error } = await supabase.rpc('salvar_token', {
+        p_nome: nome,
+        p_valor: valor,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => toast.success('Token salvo com segurança no Vault!'),
+    onError: (e: any) => toast.error(e.message),
+  });
+}
+
 export function useConfiguracoes() {
   const qc = useQueryClient();
 

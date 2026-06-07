@@ -38,6 +38,7 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
   const [precoFolha, setPrecoFolha] = useState(String(editando?.preco_por_folha ?? ''));
   const [precoLivre, setPrecoLivre] = useState(String(editando?.preco_unitario ?? ''));
   const [acabId, setAcabId]         = useState(editando?.acabamento_id ?? '');
+  const [acabamentosPerFolha, setAcabamentosPerFolha] = useState(String(editando?.acabamentos_por_folha ?? ''));
   const [arteInclusa, setArteInclusa] = useState(editando?.arte_inclusa ?? false);
 
   const matSel = materiais.find(m => m.id === materialId);
@@ -114,6 +115,7 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
       acabamento_id:   acabId || null,
       acabamento_nome: acabSel?.nome ?? null,
       acabamento_custo: acabSel?.custo ?? null,
+      acabamentos_por_folha: (['metro', 'metro_manual'].includes(tipo)) && acabId ? (parseInt(acabamentosPerFolha) || null) : null,
       arte_inclusa:    arteInclusa,
     };
     onAdicionar(item);
@@ -272,7 +274,7 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
       {/* Acabamento */}
       <div className="pt-3 border-t border-gray-800">
         <label className="text-[10px] font-bold text-gray-500 uppercase block mb-2">Acabamento</label>
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-1.5 items-end">
           <button onClick={() => setAcabId('')}
             className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${
               !acabId ? 'bg-gray-600 border-gray-500 text-white' : 'bg-gray-800 border-gray-700 text-gray-500 hover:text-white'
@@ -287,6 +289,10 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
               {a.nome}{a.custo > 0 && ` +${fmtBRL(a.custo)}`}
             </button>
           ))}
+          {acabId && (
+            <input type="number" min="0" value={acabamentosPerFolha} onChange={e => setAcabamentosPerFolha(e.target.value)} 
+              className={IN + ' py-1.5 w-24'} placeholder="Qtd..." />
+          )}
         </div>
       </div>
 

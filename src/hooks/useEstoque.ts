@@ -75,48 +75,45 @@ export function useMovimentos() {
     },
   });
 
-  const registrar = useMutation({
-    mutationFn: async ({
-      materiaId, tipo, quantidade, motivo,
-    }: {
-      materiaId: string;
-      tipo: 'entrada' | 'saida';
-      quantidade: number;
-      motivo?: string;
-    }) => {
-      const { data: mp, error: mpErr } = await supabase
-        .from('materias_primas')
-        .select('saldo')
-        .eq('id', materiaId)
-        .single();
-      if (mpErr) throw mpErr;
+ // src/hooks/useEstoque.ts — substituir o bloco registrar
+const registrar = useMutation({
+  mutationFn: async ({
+    materiaId, tipo, quantidade, motivo,
+  }: {
+    materiaId: string;
+    tipo: 'entrada' | 'saida';
+    quantidade: number;
+    motivo?: string;
+  }) => {
+    const { data, error } = await supabase.rpc(
+      'registrar_movimento_estoque',
+      {
+        p_materia_id: materiaId,
+        p_tipo:       tipo,
+        p_quantidade: quantidade,
+        p_motivo:     motivo ?? null,
+      }
+    )
 
-      const saldoAtual = Number(mp.saldo ?? 0);
-      const novoSaldo  = tipo === 'entrada' ? saldoAtual + quantidade : saldoAtual - quantidade;
+    if (error) {
+      // Traduzir mensagem do Postgres para o usuário
+      const msg = error.message.includes('Saldo insuficiente')
+        ? error.message
+        : 'Erro ao registrar movimento. Tente novamente.'
+      throw new Error(msg)
+    }
 
-      const { error: upErr } = await supabase
-        .from('materias_primas')
-        .update({ saldo: novoSaldo })
-        .eq('id', materiaId);
-      if (upErr) throw upErr;
-
-      const { error: movErr } = await supabase
-        .from('estoque_movimentos')
-        .insert({
-          materia_prima_id: materiaId,
-          tipo,
-          quantidade,
-          motivo: motivo || null,
-        });
-      if (movErr) throw movErr;
-    },
-    onSuccess: (_, vars) => {
-      qc.invalidateQueries({ queryKey: ['materias-primas'] });
-      qc.invalidateQueries({ queryKey: ['estoque-movimentos'] });
-      toast.success(`${vars.tipo === 'entrada' ? 'Entrada' : 'Saída'} registrada!`);
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
+    return data as { saldo_anterior: number; saldo_novo: number }
+  },
+  onSuccess: (_, vars) => {
+    qc.invalidateQueries({ queryKey: ['materias-primas'] })
+    qc.invalidateQueries({ queryKey: ['estoque-movimentos'] })
+    toast.success(
+      `${vars.tipo === 'entrada' ? 'Entrada' : 'Saída'} registrada com sucesso!`
+    )
+  },
+  onError: (e: any) => toast.error(e.message),
+})
 
   return { ...query, registrar: registrar.mutateAsync, isRegistrando: registrar.isPending };
 }
