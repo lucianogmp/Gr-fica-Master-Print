@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { Lancamento, StatusLancamento } from '../types/financeiro';
+import { createErrorMessage } from '../utils/errorHandler';
 import toast from 'react-hot-toast';
 
 type Payload = Omit<Lancamento, 'id' | 'created_at'>;
@@ -27,7 +28,7 @@ export function useLancamentos() {
       return data as Lancamento;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['lancamentos'] }); toast.success('Lançamento criado!'); },
-    onError:   (e: any) => toast.error(e.message),
+    onError:   (e: any) => toast.error(createErrorMessage(e)),
   });
 
   const atualizar = useMutation({
@@ -36,7 +37,7 @@ export function useLancamentos() {
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['lancamentos'] }); toast.success('Atualizado!'); },
-    onError:   (e: any) => toast.error(e.message),
+    onError:   (e: any) => toast.error(createErrorMessage(e)),
   });
 
   const pagarLancamento = useMutation({
@@ -49,7 +50,7 @@ export function useLancamentos() {
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['lancamentos'] }); toast.success('Marcado como pago!'); },
-    onError:   (e: any) => toast.error(e.message),
+    onError:   (e: any) => toast.error(createErrorMessage(e)),
   });
 
   const deletar = useMutation({
@@ -58,7 +59,7 @@ export function useLancamentos() {
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['lancamentos'] }); toast.success('Removido.'); },
-    onError:   (e: any) => toast.error(e.message),
+    onError:   (e: any) => toast.error(createErrorMessage(e)),
   });
 
   return {
