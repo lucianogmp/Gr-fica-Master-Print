@@ -1,5 +1,11 @@
+// src/pages/Configuracoes.tsx
+//
+// CORREÇÃO: o arquivo original definia um hook local `useSalvarToken` que
+// chamava /api/salvar-token (rota inexistente) em vez de usar o hook real
+// de src/hooks/useConfiguracoes.ts que usa supabase.rpc('salvar_token').
+
 import { useState, useEffect } from 'react';
-import { useConfiguracoes } from '../hooks/useConfiguracoes';
+import { useConfiguracoes, useSalvarToken } from '../hooks/useConfiguracoes';
 import { useUsuarios, UsuarioAdmin } from '../hooks/useUsuarios';
 import { useRole } from '../hooks/useRole';
 import { Configuracoes as ConfigType } from '../types/configuracoes';
@@ -20,29 +26,6 @@ function Lbl({ children }: { children: React.ReactNode }) {
   return <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">{children}</label>;
 }
 
-// Local fallback hook to save tokens if external hook is not available
-function useSalvarToken() {
-  const [isPending, setIsPending] = useState(false);
-
-  function mutate(
-    data: { nome: string; valor: string },
-    options?: { onSuccess?: () => void }
-  ) {
-    setIsPending(true);
-    fetch('/api/salvar-token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    })
-      .then((res) => {
-        setIsPending(false);
-        if (res.ok && options?.onSuccess) options.onSuccess();
-      })
-      .catch(() => setIsPending(false));
-  }
-
-  return { mutate, isPending };
-}
 function Section({ title, icon: Icon, children }: { title: string; icon: LucideIcon; children: React.ReactNode }) {
   return (
     <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5 space-y-4">
@@ -53,14 +36,17 @@ function Section({ title, icon: Icon, children }: { title: string; icon: LucideI
     </div>
   );
 }
+
 function Row({ children, cols = 2 }: { children: React.ReactNode; cols?: number }) {
   return <div className={`grid grid-cols-1 md:grid-cols-${cols} gap-4`}>{children}</div>;
 }
 
+// TokenField usa o hook real que chama supabase.rpc('salvar_token')
+// que persiste no Vault — nunca trafega em plaintext pelo banco
 function TokenField({ label, nome }: { label: string; nome: string }) {
   const { mutate, isPending } = useSalvarToken()
   const [valor, setValor] = useState('')
-  const [salvo, setSalvo] = useState(false)
+  const [salvo, setSalvo]   = useState(false)
 
   return (
     <div>
@@ -94,7 +80,6 @@ function TokenField({ label, nome }: { label: string; nome: string }) {
     </div>
   )
 }
-// ───────────────────────────────────────────────────────────────────
 
 export function Configuracoes() {
   const { data: cfg, isLoading, salvar, isSaving } = useConfiguracoes();
@@ -105,7 +90,6 @@ export function Configuracoes() {
   const [aba, setAba]     = useState<Aba>('empresa');
   const [dirty, setDirty] = useState(false);
 
-  // Modal convidar usuário
   const [modalConvite, setModalConvite] = useState(false);
   const [conviteForm, setConviteForm]   = useState({ email: '', nome: '', role: 'vendedor' as Role });
 
@@ -166,7 +150,7 @@ export function Configuracoes() {
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${
               aba === a.key ? 'bg-blue-600 text-white shadow' : 'text-gray-400 hover:text-white'
             }`}>
-<a.icon className="w-4 h-4" />{a.label}
+            <a.icon className="w-4 h-4" />{a.label}
           </button>
         ))}
       </div>
@@ -225,9 +209,7 @@ export function Configuracoes() {
                       </td>
                       <td className="px-5 py-3 text-center">
                         {roleInfo ? (
-                          <span className={`text-xs font-bold ${roleInfo.cor}`}>
-                            ● {roleInfo.label}
-                          </span>
+                          <span className={`text-xs font-bold ${roleInfo.cor}`}>● {roleInfo.label}</span>
                         ) : (
                           <span className="text-xs text-red-400 font-bold">Sem perfil</span>
                         )}
@@ -253,7 +235,6 @@ export function Configuracoes() {
             </table>
           </div>
 
-          {/* Legenda de perfis */}
           <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5">
             <p className="text-xs font-bold text-gray-400 uppercase mb-3">Permissões por Perfil</p>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -273,36 +254,24 @@ export function Configuracoes() {
         <div className="space-y-5">
           <Section title="Dados da Empresa" icon={Building2}>
             <Row cols={2}>
-              <div><Lbl>Nome Fantasia</Lbl>
-                <input value={txt('empresa_nome')} onChange={e => set('empresa_nome', e.target.value)} className={IN} placeholder="Gráfica Master Print" /></div>
-              <div><Lbl>Razão Social</Lbl>
-                <input value={txt('empresa_razao_social')} onChange={e => set('empresa_razao_social', e.target.value)} className={IN} /></div>
+              <div><Lbl>Nome Fantasia</Lbl><input value={txt('empresa_nome')} onChange={e => set('empresa_nome', e.target.value)} className={IN} placeholder="Gráfica Master Print" /></div>
+              <div><Lbl>Razão Social</Lbl><input value={txt('empresa_razao_social')} onChange={e => set('empresa_razao_social', e.target.value)} className={IN} /></div>
             </Row>
             <Row cols={2}>
-              <div><Lbl>CNPJ</Lbl>
-                <input value={txt('empresa_cnpj')} onChange={e => set('empresa_cnpj', e.target.value)} className={IN} placeholder="00.000.000/0000-00" /></div>
-              <div><Lbl>Inscrição Estadual</Lbl>
-                <input value={txt('empresa_ie')} onChange={e => set('empresa_ie', e.target.value)} className={IN} /></div>
+              <div><Lbl>CNPJ</Lbl><input value={txt('empresa_cnpj')} onChange={e => set('empresa_cnpj', e.target.value)} className={IN} placeholder="00.000.000/0000-00" /></div>
+              <div><Lbl>Inscrição Estadual</Lbl><input value={txt('empresa_ie')} onChange={e => set('empresa_ie', e.target.value)} className={IN} /></div>
             </Row>
             <Row cols={3}>
-              <div><Lbl>Telefone</Lbl>
-                <input value={txt('empresa_telefone')} onChange={e => set('empresa_telefone', e.target.value)} className={IN} /></div>
-              <div><Lbl>WhatsApp</Lbl>
-                <input value={txt('empresa_whatsapp')} onChange={e => set('empresa_whatsapp', e.target.value)} className={IN} /></div>
-              <div><Lbl>E-mail</Lbl>
-                <input type="email" value={txt('empresa_email')} onChange={e => set('empresa_email', e.target.value)} className={IN} /></div>
+              <div><Lbl>Telefone</Lbl><input value={txt('empresa_telefone')} onChange={e => set('empresa_telefone', e.target.value)} className={IN} /></div>
+              <div><Lbl>WhatsApp</Lbl><input value={txt('empresa_whatsapp')} onChange={e => set('empresa_whatsapp', e.target.value)} className={IN} /></div>
+              <div><Lbl>E-mail</Lbl><input type="email" value={txt('empresa_email')} onChange={e => set('empresa_email', e.target.value)} className={IN} /></div>
             </Row>
             <Row cols={2}>
-              <div><Lbl>Site</Lbl>
-                <input value={txt('empresa_site')} onChange={e => set('empresa_site', e.target.value)} className={IN} /></div>
-              <div><Lbl>Endereço</Lbl>
-                <input value={txt('empresa_endereco')} onChange={e => set('empresa_endereco', e.target.value)} className={IN} /></div>
+              <div><Lbl>Site</Lbl><input value={txt('empresa_site')} onChange={e => set('empresa_site', e.target.value)} className={IN} /></div>
+              <div><Lbl>Endereço</Lbl><input value={txt('empresa_endereco')} onChange={e => set('empresa_endereco', e.target.value)} className={IN} /></div>
             </Row>
-            <div><Lbl>URL do Logo</Lbl>
-              <input value={txt('empresa_logo_url')} onChange={e => set('empresa_logo_url', e.target.value)} className={IN} /></div>
-            <div><Lbl>Rodapé padrão</Lbl>
-              <textarea rows={2} value={txt('empresa_rodape')} onChange={e => set('empresa_rodape', e.target.value)}
-                className={IN + ' resize-none'} /></div>
+            <div><Lbl>URL do Logo</Lbl><input value={txt('empresa_logo_url')} onChange={e => set('empresa_logo_url', e.target.value)} className={IN} /></div>
+            <div><Lbl>Rodapé padrão</Lbl><textarea rows={2} value={txt('empresa_rodape')} onChange={e => set('empresa_rodape', e.target.value)} className={IN + ' resize-none'} /></div>
           </Section>
         </div>
       )}
@@ -312,38 +281,27 @@ export function Configuracoes() {
         <div className="space-y-5">
           <Section title="Parâmetros de Margem" icon={BarChart3}>
             <Row cols={3}>
-              <div><Lbl>Margem mínima (%)</Lbl>
-                <input type="number" min="0" step="0.1" value={num('prec_margem_minima')} onChange={e => set('prec_margem_minima', parseFloat(e.target.value) || null)} className={IN_N} /></div>
-              <div><Lbl>Margem ideal (%)</Lbl>
-                <input type="number" min="0" step="0.1" value={num('prec_margem_ideal')} onChange={e => set('prec_margem_ideal', parseFloat(e.target.value) || null)} className={IN_N} /></div>
-              <div><Lbl>Margem premium (%)</Lbl>
-                <input type="number" min="0" step="0.1" value={num('prec_margem_premium')} onChange={e => set('prec_margem_premium', parseFloat(e.target.value) || null)} className={IN_N} /></div>
+              <div><Lbl>Margem mínima (%)</Lbl><input type="number" min="0" step="0.1" value={num('prec_margem_minima')} onChange={e => set('prec_margem_minima', parseFloat(e.target.value) || null)} className={IN_N} /></div>
+              <div><Lbl>Margem ideal (%)</Lbl><input type="number" min="0" step="0.1" value={num('prec_margem_ideal')} onChange={e => set('prec_margem_ideal', parseFloat(e.target.value) || null)} className={IN_N} /></div>
+              <div><Lbl>Margem premium (%)</Lbl><input type="number" min="0" step="0.1" value={num('prec_margem_premium')} onChange={e => set('prec_margem_premium', parseFloat(e.target.value) || null)} className={IN_N} /></div>
             </Row>
             <Row cols={2}>
-              <div><Lbl>Desconto máximo (%)</Lbl>
-                <input type="number" min="0" step="0.1" value={num('prec_desconto_max')} onChange={e => set('prec_desconto_max', parseFloat(e.target.value) || null)} className={IN_N} /></div>
-              <div><Lbl>Pedido mínimo (R$)</Lbl>
-                <input type="number" min="0" step="0.01" value={num('prec_min_pedido')} onChange={e => set('prec_min_pedido', parseFloat(e.target.value) || null)} className={IN_N} /></div>
+              <div><Lbl>Desconto máximo (%)</Lbl><input type="number" min="0" step="0.1" value={num('prec_desconto_max')} onChange={e => set('prec_desconto_max', parseFloat(e.target.value) || null)} className={IN_N} /></div>
+              <div><Lbl>Pedido mínimo (R$)</Lbl><input type="number" min="0" step="0.01" value={num('prec_min_pedido')} onChange={e => set('prec_min_pedido', parseFloat(e.target.value) || null)} className={IN_N} /></div>
             </Row>
           </Section>
           <Section title="Taxas Adicionais" icon={Plus}>
             <Row cols={3}>
-              <div><Lbl>Taxa Arte (R$)</Lbl>
-                <input type="number" min="0" step="0.01" value={num('prec_taxa_arte')} onChange={e => set('prec_taxa_arte', parseFloat(e.target.value) || null)} className={IN_N} /></div>
-              <div><Lbl>Taxa Urgência (%)</Lbl>
-                <input type="number" min="0" step="0.1" value={num('prec_taxa_urgencia')} onChange={e => set('prec_taxa_urgencia', parseFloat(e.target.value) || null)} className={IN_N} /></div>
-              <div><Lbl>Taxa Instalação (R$)</Lbl>
-                <input type="number" min="0" step="0.01" value={num('prec_taxa_instalacao')} onChange={e => set('prec_taxa_instalacao', parseFloat(e.target.value) || null)} className={IN_N} /></div>
+              <div><Lbl>Taxa Arte (R$)</Lbl><input type="number" min="0" step="0.01" value={num('prec_taxa_arte')} onChange={e => set('prec_taxa_arte', parseFloat(e.target.value) || null)} className={IN_N} /></div>
+              <div><Lbl>Taxa Urgência (%)</Lbl><input type="number" min="0" step="0.1" value={num('prec_taxa_urgencia')} onChange={e => set('prec_taxa_urgencia', parseFloat(e.target.value) || null)} className={IN_N} /></div>
+              <div><Lbl>Taxa Instalação (R$)</Lbl><input type="number" min="0" step="0.01" value={num('prec_taxa_instalacao')} onChange={e => set('prec_taxa_instalacao', parseFloat(e.target.value) || null)} className={IN_N} /></div>
             </Row>
           </Section>
           <Section title="Overhead de Produção" icon={Settings}>
             <Row cols={3}>
-              <div><Lbl>Horas produtivas/mês</Lbl>
-                <input type="number" min="1" step="1" value={num('prec_horas_mes')} onChange={e => set('prec_horas_mes', parseFloat(e.target.value) || null)} className={IN_N} placeholder="160" /></div>
-              <div><Lbl>Depreciação mensal (R$)</Lbl>
-                <input type="number" min="0" step="0.01" value={num('prec_depreciacao_mensal')} onChange={e => set('prec_depreciacao_mensal', parseFloat(e.target.value) || null)} className={IN_N} /></div>
-              <div><Lbl>Energia por hora (R$)</Lbl>
-                <input type="number" min="0" step="0.01" value={num('prec_energia_hora')} onChange={e => set('prec_energia_hora', parseFloat(e.target.value) || null)} className={IN_N} /></div>
+              <div><Lbl>Horas produtivas/mês</Lbl><input type="number" min="1" step="1" value={num('prec_horas_mes')} onChange={e => set('prec_horas_mes', parseFloat(e.target.value) || null)} className={IN_N} placeholder="160" /></div>
+              <div><Lbl>Depreciação mensal (R$)</Lbl><input type="number" min="0" step="0.01" value={num('prec_depreciacao_mensal')} onChange={e => set('prec_depreciacao_mensal', parseFloat(e.target.value) || null)} className={IN_N} /></div>
+              <div><Lbl>Energia por hora (R$)</Lbl><input type="number" min="0" step="0.01" value={num('prec_energia_hora')} onChange={e => set('prec_energia_hora', parseFloat(e.target.value) || null)} className={IN_N} /></div>
             </Row>
           </Section>
         </div>
@@ -361,8 +319,7 @@ export function Configuracoes() {
             </Row>
           </Section>
           <Section title="Textos Padrão" icon={FileText}>
-            <div><Lbl>Observações padrão</Lbl>
-              <textarea rows={3} value={txt('orc_obs_padrao')} onChange={e => set('orc_obs_padrao', e.target.value)} className={IN + ' resize-none'} /></div>
+            <div><Lbl>Observações padrão</Lbl><textarea rows={3} value={txt('orc_obs_padrao')} onChange={e => set('orc_obs_padrao', e.target.value)} className={IN + ' resize-none'} /></div>
             <Row cols={2}>
               <div><Lbl>Garantia</Lbl><textarea rows={2} value={txt('orc_garantia')} onChange={e => set('orc_garantia', e.target.value)} className={IN + ' resize-none'} /></div>
               <div><Lbl>Rodapé</Lbl><textarea rows={2} value={txt('orc_rodape')} onChange={e => set('orc_rodape', e.target.value)} className={IN + ' resize-none'} /></div>
@@ -376,62 +333,53 @@ export function Configuracoes() {
         <div className="space-y-5">
           <Section title="Identidade" icon={Palette}>
             <Row cols={2}>
-              <div><Lbl>Nome do sistema</Lbl>
-                <input value={txt('sistema_nome')} onChange={e => set('sistema_nome', e.target.value)} className={IN} /></div>
+              <div><Lbl>Nome do sistema</Lbl><input value={txt('sistema_nome')} onChange={e => set('sistema_nome', e.target.value)} className={IN} /></div>
               <div><Lbl>Cor de destaque (hex)</Lbl>
                 <div className="flex gap-2">
                   <input value={txt('tema_accent_color')} onChange={e => set('tema_accent_color', e.target.value)} className={IN} placeholder="#3b82f6" />
-                  {txt('tema_accent_color') && <div className="w-10 h-10 rounded-lg border border-gray-700 flex-shrink-0" style={{ backgroundColor: txt('tema_accent_color') }} />}
+                  {txt('tema_accent_color') && (
+                    <div className="w-10 h-10 rounded-lg border border-gray-700 flex-shrink-0" style={{ backgroundColor: txt('tema_accent_color') }} />
+                  )}
                 </div>
               </div>
             </Row>
           </Section>
           <Section title="Segurança" icon={Lock}>
             <div><Lbl>Timeout de sessão (minutos)</Lbl>
-              <input type="number" min="5" step="5" value={num('seg_tempo_sessao')} onChange={e => set('seg_tempo_sessao', parseInt(e.target.value) || null)} className={IN_N + ' max-w-xs'} placeholder="60" /></div>
+              <input type="number" min="5" step="5" value={num('seg_tempo_sessao')} onChange={e => set('seg_tempo_sessao', parseInt(e.target.value) || null)} className={IN_N + ' max-w-xs'} placeholder="60" />
+            </div>
           </Section>
         </div>
       )}
 
       {/* ─── INTEGRAÇÕES ─── */}
       {aba === 'integracoes' && (
-  <div className="space-y-5">
-    <Section title="Trello" icon={ClipboardList}>
-      {/* Tokens sensíveis → Vault */}
-      <TokenField label="API Key"  nome="trello_api_key" />
-      <TokenField label="Token"    nome="trello_token" />
+        <div className="space-y-5">
+          <Section title="Trello" icon={ClipboardList}>
+            <TokenField label="API Key" nome="trello_api_key" />
+            <TokenField label="Token"   nome="trello_token" />
+            <div><Lbl>Board ID</Lbl><input value={txt('trello_board_id')} onChange={e => set('trello_board_id', e.target.value)} className={IN} /></div>
+            <Row cols={2}>
+              <div><Lbl>Lista: Na Fila</Lbl><input value={txt('trello_list_fila')} onChange={e => set('trello_list_fila', e.target.value)} className={IN} /></div>
+              <div><Lbl>Lista: Imprimindo</Lbl><input value={txt('trello_list_imprimindo')} onChange={e => set('trello_list_imprimindo', e.target.value)} className={IN} /></div>
+              <div><Lbl>Lista: Acabamento</Lbl><input value={txt('trello_list_acabamento')} onChange={e => set('trello_list_acabamento', e.target.value)} className={IN} /></div>
+              <div><Lbl>Lista: Pronto</Lbl><input value={txt('trello_list_pronto')} onChange={e => set('trello_list_pronto', e.target.value)} className={IN} /></div>
+            </Row>
+          </Section>
+          <Section title="Mercado Pago" icon={CreditCard}>
+            <TokenField label="Access Token" nome="mp_access_token" />
+            <Row cols={2}>
+              <div><Lbl>Chave Pix</Lbl><input value={txt('mp_pix_chave')} onChange={e => set('mp_pix_chave', e.target.value)} className={IN} /></div>
+              <div><Lbl>Webhook URL</Lbl><input value={txt('mp_webhook_url')} onChange={e => set('mp_webhook_url', e.target.value)} className={IN} /></div>
+            </Row>
+          </Section>
+        </div>
+      )}
 
-      {/* Board ID e listas NÃO são segredos — ficam no banco normal */}
-      <div><Lbl>Board ID</Lbl>
-        <input value={txt('trello_board_id')} onChange={e => set('trello_board_id', e.target.value)} className={IN} /></div>
-      <Row cols={2}>
-        <div><Lbl>Lista: Na Fila</Lbl>
-          <input value={txt('trello_list_fila')} onChange={e => set('trello_list_fila', e.target.value)} className={IN} /></div>
-        <div><Lbl>Lista: Imprimindo</Lbl>
-          <input value={txt('trello_list_imprimindo')} onChange={e => set('trello_list_imprimindo', e.target.value)} className={IN} /></div>
-        <div><Lbl>Lista: Acabamento</Lbl>
-          <input value={txt('trello_list_acabamento')} onChange={e => set('trello_list_acabamento', e.target.value)} className={IN} /></div>
-        <div><Lbl>Lista: Pronto</Lbl>
-          <input value={txt('trello_list_pronto')} onChange={e => set('trello_list_pronto', e.target.value)} className={IN} /></div>
-      </Row>
-    </Section>
-
-    <Section title="Mercado Pago" icon={CreditCard}>
-      {/* Token sensível → Vault */}
-      <TokenField label="Access Token" nome="mp_access_token" />
-
-      {/* Chave Pix e Webhook não são segredos */}
-      <Row cols={2}>
-        <div><Lbl>Chave Pix</Lbl>
-          <input value={txt('mp_pix_chave')} onChange={e => set('mp_pix_chave', e.target.value)} className={IN} /></div>
-        <div><Lbl>Webhook URL</Lbl>
-          <input value={txt('mp_webhook_url')} onChange={e => set('mp_webhook_url', e.target.value)} className={IN} /></div>
-      </Row>
-    </Section>
-  </div>
-)}
       {/* Modal convidar usuário */}
-      <Modal open={modalConvite} onClose={() => setModalConvite(false)} title={<span className="flex items-center gap-1.5"><User className="w-4 h-4" /> Convidar Usuário</span>} maxWidth="440px"
+      <Modal open={modalConvite} onClose={() => setModalConvite(false)}
+        title={<span className="flex items-center gap-1.5"><User className="w-4 h-4" /> Convidar Usuário</span>}
+        maxWidth="440px"
         actions={
           <>
             <button onClick={() => setModalConvite(false)} className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-sm font-medium transition-all">Cancelar</button>
@@ -445,11 +393,13 @@ export function Configuracoes() {
           <div><Lbl>E-mail *</Lbl>
             <input autoFocus type="email" value={conviteForm.email}
               onChange={e => setConviteForm(f => ({ ...f, email: e.target.value }))}
-              className={IN} placeholder="colaborador@email.com" /></div>
+              className={IN} placeholder="colaborador@email.com" />
+          </div>
           <div><Lbl>Nome</Lbl>
             <input value={conviteForm.nome}
               onChange={e => setConviteForm(f => ({ ...f, nome: e.target.value }))}
-              className={IN} placeholder="Nome do colaborador" /></div>
+              className={IN} placeholder="Nome do colaborador" />
+          </div>
           <div><Lbl>Perfil de acesso</Lbl>
             <select value={conviteForm.role}
               onChange={e => setConviteForm(f => ({ ...f, role: e.target.value as Role }))}
@@ -465,6 +415,7 @@ export function Configuracoes() {
         </div>
       </Modal>
 
+      {/* Botão flutuante de salvar */}
       {dirty && aba !== 'usuarios' && (
         <div className="fixed bottom-6 right-6 z-40">
           <button onClick={handleSalvar} disabled={isSaving}

@@ -1,9 +1,33 @@
+// src/hooks/useOrcamentos.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { Orcamento, OrcamentoItem, StatusOrcamento } from '../types/orcamento';
 import toast from 'react-hot-toast';
 
 type OrcPayload = Omit<Orcamento, 'id' | 'created_at' | 'updated_at'>;
+
+// Serializa itens para o formato esperado pela RPC
+function serializarItens(itens: OrcamentoItem[]) {
+  return itens.map(i => ({
+    descricao:             i.descricao,
+    tipo_calculo:          i.tipo_calculo,
+    quantidade:            i.quantidade,
+    preco_unitario:        i.preco_unitario,
+    total:                 i.total,
+    largura_cm:            i.largura_cm ?? null,
+    altura_cm:             i.altura_cm ?? null,
+    preco_por_m2:          i.preco_por_m2 ?? null,
+    material_id:           i.material_id ?? null,
+    folha_tipo:            i.folha_tipo ?? null,
+    itens_por_folha:       i.itens_por_folha ?? null,
+    preco_por_folha:       i.preco_por_folha ?? null,
+    acabamento_id:         i.acabamento_id ?? null,
+    acabamento_nome:       i.acabamento_nome ?? null,
+    acabamento_custo:      i.acabamento_custo ?? null,
+    acabamentos_por_folha: i.acabamentos_por_folha ?? null,
+    arte_inclusa:          i.arte_inclusa ?? false,
+  }));
+}
 
 export function useOrcamentos() {
   const qc = useQueryClient();
@@ -28,13 +52,16 @@ export function useOrcamentos() {
         .select()
         .single();
       if (error) throw error;
+
       const id = (data as Orcamento).id;
-      if (itens.length > 0) {
-        const { error: iErr } = await supabase
-          .from('orcamento_itens')
-          .insert(itens.map(i => ({ ...i, orcamento_id: id })));
-        if (iErr) throw iErr;
-      }
+
+      // Salva itens atomicamente via RPC
+      const { error: iErr } = await supabase.rpc('salvar_itens_orcamento', {
+        p_orcamento_id: id,
+        p_itens: serializarItens(itens),
+      });
+      if (iErr) throw iErr;
+
       return data as Orcamento;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['orcamentos'] }); toast.success('Orçamento salvo!'); },
@@ -42,17 +69,28 @@ export function useOrcamentos() {
   });
 
   const atualizar = useMutation({
-    mutationFn: async ({ id, orc, itens }: { id: string; orc: Partial<OrcPayload>; itens?: OrcamentoItem[] }) => {
+    mutationFn: async ({
+      id,
+      orc,
+      itens,
+    }: {
+      id: string;
+      orc: Partial<OrcPayload>;
+      itens?: OrcamentoItem[];
+    }) => {
       const { error } = await supabase
         .from('orcamentos')
         .update({ ...orc, updated_at: new Date().toISOString() })
         .eq('id', id);
       if (error) throw error;
+
+      // Substitui itens atomicamente se foram fornecidos
       if (itens !== undefined) {
-        await supabase.from('orcamento_itens').delete().eq('orcamento_id', id);
-        if (itens.length > 0) {
-          await supabase.from('orcamento_itens').insert(itens.map(i => ({ ...i, orcamento_id: id })));
-        }
+        const { error: iErr } = await supabase.rpc('salvar_itens_orcamento', {
+          p_orcamento_id: id,
+          p_itens: serializarItens(itens),
+        });
+        if (iErr) throw iErr;
       }
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['orcamentos'] }); toast.success('Orçamento atualizado!'); },
@@ -85,24 +123,25 @@ export function useOrcamentos() {
         .select()
         .single();
       if (vErr) throw vErr;
+
       const vendaId = (venda as any).id;
 
-      // 2. Cria os itens da venda
-      if (itens.length > 0) {
-        const { error: iErr } = await supabase.from('venda_itens').insert(
-          itens.map(i => ({
-            venda_id:       vendaId,
-            descricao:      i.descricao,
-            quantidade:     i.quantidade,
-            preco_unitario: i.preco_unitario,
-            total:          i.total,
-            unidade:        'un',
-          }))
-        );
-        if (iErr) throw iErr;
-      }
+      // 2. Salva itens da venda atomicamente
+      const { error: iErr } = await supabase.rpc('salvar_itens_venda', {
+        p_venda_id: vendaId,
+        p_itens: itens.map(i => ({
+          descricao:      i.descricao,
+          quantidade:     i.quantidade,
+          preco_unitario: i.preco_unitario,
+          desconto:       0,
+          obs:            null,
+          unidade:        'un',
+          total:          i.total,
+        })),
+      });
+      if (iErr) throw iErr;
 
-      // 3. Vincula orçamento à venda e marca como convertido
+      // 3. Marca orçamento como convertido e vincula à venda
       const { error: uErr } = await supabase
         .from('orcamentos')
         .update({ status: 'convertido', venda_id: vendaId })
@@ -111,17 +150,17 @@ export function useOrcamentos() {
 
       return vendaId;
     },
-    onSuccess: (vendaId) => {
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['orcamentos'] });
       qc.invalidateQueries({ queryKey: ['vendas'] });
       toast.success('Orçamento convertido em venda!');
-      return vendaId;
     },
     onError: (e: any) => toast.error(e.message),
   });
 
   const deletar = useMutation({
     mutationFn: async (id: string) => {
+      // Deleta itens primeiro (FK), depois o orçamento
       await supabase.from('orcamento_itens').delete().eq('orcamento_id', id);
       const { error } = await supabase.from('orcamentos').delete().eq('id', id);
       if (error) throw error;
@@ -132,13 +171,13 @@ export function useOrcamentos() {
 
   return {
     ...query,
-    criar:           criar.mutateAsync,
-    atualizar:       atualizar.mutateAsync,
-    atualizarStatus: atualizarStatus.mutate,
+    criar:            criar.mutateAsync,
+    atualizar:        atualizar.mutateAsync,
+    atualizarStatus:  atualizarStatus.mutate,
     converterEmVenda: converterEmVenda.mutateAsync,
-    deletar:         deletar.mutate,
-    isSaving:        criar.isPending || atualizar.isPending,
-    isConvertendo:   converterEmVenda.isPending,
+    deletar:          deletar.mutate,
+    isSaving:         criar.isPending || atualizar.isPending,
+    isConvertendo:    converterEmVenda.isPending,
   };
 }
 

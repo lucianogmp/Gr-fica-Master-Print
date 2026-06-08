@@ -1,3 +1,4 @@
+// src/hooks/useVendas.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { Venda, VendaItem, StatusVenda } from '../types/venda';
@@ -22,19 +23,33 @@ export function useVendas() {
 
   const criar = useMutation({
     mutationFn: async ({ venda, itens }: { venda: VendaPayload; itens: VendaItem[] }) => {
+      // 1. Cria a venda
       const { data, error } = await supabase
         .from('vendas')
         .insert(venda)
         .select()
         .single();
       if (error) throw error;
+
       const vendaId = (data as Venda).id;
+
+      // 2. Salva itens via RPC atômica (delete+insert em uma transação)
       if (itens.length > 0) {
-        const { error: iErr } = await supabase.from('venda_itens').insert(
-          itens.map(i => ({ ...i, venda_id: vendaId }))
-        );
+        const { error: iErr } = await supabase.rpc('salvar_itens_venda', {
+          p_venda_id: vendaId,
+          p_itens: itens.map(i => ({
+            descricao:      i.descricao,
+            quantidade:     i.quantidade,
+            preco_unitario: i.preco_unitario,
+            desconto:       i.desconto ?? 0,
+            obs:            i.obs ?? null,
+            unidade:        i.unidade ?? 'un',
+            total:          i.total,
+          })),
+        });
         if (iErr) throw iErr;
       }
+
       return data as Venda;
     },
     onSuccess: () => {
@@ -46,12 +61,38 @@ export function useVendas() {
   });
 
   const atualizar = useMutation({
-    mutationFn: async ({ id, payload }: { id: string; payload: Partial<VendaPayload> }) => {
+    mutationFn: async ({
+      id,
+      payload,
+      itens,
+    }: {
+      id: string;
+      payload: Partial<VendaPayload>;
+      itens?: VendaItem[];
+    }) => {
+      // 1. Atualiza cabeçalho da venda
       const { error } = await supabase
         .from('vendas')
         .update({ ...payload, updated_at: new Date().toISOString() })
         .eq('id', id);
       if (error) throw error;
+
+      // 2. Se itens foram passados, substitui atomicamente via RPC
+      if (itens !== undefined) {
+        const { error: iErr } = await supabase.rpc('salvar_itens_venda', {
+          p_venda_id: id,
+          p_itens: itens.map(i => ({
+            descricao:      i.descricao,
+            quantidade:     i.quantidade,
+            preco_unitario: i.preco_unitario,
+            desconto:       i.desconto ?? 0,
+            obs:            i.obs ?? null,
+            unidade:        i.unidade ?? 'un',
+            total:          i.total,
+          })),
+        });
+        if (iErr) throw iErr;
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['vendas'] });
@@ -78,7 +119,8 @@ export function useVendas() {
 
   const deletar = useMutation({
     mutationFn: async (id: string) => {
-      await supabase.from('venda_itens').delete().eq('venda_id', id);
+      // venda_itens tem ON DELETE CASCADE se configurado,
+      // senão a RPC cuida — aqui deletamos a venda e o Postgres cascateia
       const { error } = await supabase.from('vendas').delete().eq('id', id);
       if (error) throw error;
     },

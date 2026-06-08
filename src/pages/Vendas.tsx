@@ -1,3 +1,4 @@
+// src/pages/Vendas.tsx
 import { useState, useMemo, useEffect } from 'react';
 import { useVendas, useVendaItens } from '../hooks/useVendas';
 import { Venda, VendaItem, StatusVenda, STATUS_VENDA } from '../types/venda';
@@ -25,18 +26,16 @@ const NOVA_VENDA: Omit<Venda, 'id' | 'created_at' | 'updated_at' | 'numero'> = {
 export function Vendas() {
   const { data: vendas = [], isLoading, criar, atualizar, atualizarStatus, deletar, isSaving } = useVendas();
 
-  const [view, setView]           = useState<View>('lista');
-  const [vendaId, setVendaId]     = useState<string | null>(null);
-  const [form, setForm]           = useState({ ...NOVA_VENDA });
-  const [itens, setItens]         = useState<VendaItem[]>([]);
-  const [filtro, setFiltro]       = useState<Filtro>('todos');
-  const [busca, setBusca]         = useState('');
+  const [view, setView]       = useState<View>('lista');
+  const [vendaId, setVendaId] = useState<string | null>(null);
+  const [form, setForm]       = useState({ ...NOVA_VENDA });
+  const [itens, setItens]     = useState<VendaItem[]>([]);
+  const [filtro, setFiltro]   = useState<Filtro>('todos');
+  const [busca, setBusca]     = useState('');
 
   const isNovo = vendaId === '__novo__';
-
   const { data: itensCarregados } = useVendaItens(isNovo ? null : vendaId);
 
-  // ✅ Corrigido: useEffect em vez de useMemo para side effect
   useEffect(() => {
     if (itensCarregados && !isNovo) setItens(itensCarregados);
   }, [itensCarregados, isNovo]);
@@ -45,7 +44,7 @@ export function Vendas() {
     if (v) {
       setVendaId(v.id);
       setForm({ ...NOVA_VENDA, ...v });
-      setItens(itensCarregados ?? []);
+      // itens carregados via useVendaItens acima
     } else {
       setVendaId('__novo__');
       setForm({ ...NOVA_VENDA, data_venda: new Date().toISOString().split('T')[0] });
@@ -57,7 +56,7 @@ export function Vendas() {
   function fechar() { setView('lista'); setVendaId(null); setForm({ ...NOVA_VENDA }); setItens([]); }
   function setF(f: keyof typeof NOVA_VENDA, v: any) { setForm(p => ({ ...p, [f]: v })); }
 
-  const totalItens = itens.reduce((s, i) => s + Number(i.total), 0);
+  const totalItens  = itens.reduce((s, i) => s + Number(i.total), 0);
   const descGlobal  = Number(form.desconto ?? 0);
   const totalFinal  = totalItens * (1 - descGlobal / 100);
 
@@ -67,17 +66,14 @@ export function Vendas() {
       valor_total: totalFinal,
       total:       totalFinal,
     };
-    const { id: _id, created_at: _c, updated_at: _u, numero: _n, ...clean } = { id: '', created_at: '', updated_at: '', numero: 0, ...payload };
+    const { id: _id, created_at: _c, updated_at: _u, numero: _n, ...clean } =
+      { id: '', created_at: '', updated_at: '', numero: 0, ...payload };
 
     if (isNovo) {
       await criar({ venda: clean as any, itens });
     } else if (vendaId) {
-      await atualizar({ id: vendaId, payload: clean as any });
-      const { supabase } = await import('../lib/supabase');
-      await supabase.from('venda_itens').delete().eq('venda_id', vendaId);
-      if (itens.length > 0) {
-        await supabase.from('venda_itens').insert(itens.map(i => ({ ...i, venda_id: vendaId })));
-      }
+      // atualizar agora aceita itens e usa RPC atômica internamente
+      await atualizar({ id: vendaId, payload: clean as any, itens });
     }
     fechar();
   }
@@ -112,13 +108,12 @@ export function Vendas() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <KpiCard label="Total vendido"  value={fmtBRL(totalVendas)} icon={DollarSign}    color="text-green-400" />
-        <KpiCard label="Total de vendas" value={vendas.length}      icon={ClipboardList} color="text-blue-400" />
-        <KpiCard label="Em produção"    value={emProducao}           icon={Factory}      color="text-yellow-400" />
-        <KpiCard label="Prontas"        value={prontas}              icon={CheckCircle2} color="text-purple-400" />
+        <KpiCard label="Total vendido"   value={fmtBRL(totalVendas)} icon={DollarSign}    color="text-green-400" />
+        <KpiCard label="Total de vendas" value={vendas.length}       icon={ClipboardList} color="text-blue-400" />
+        <KpiCard label="Em produção"     value={emProducao}          icon={Factory}       color="text-yellow-400" />
+        <KpiCard label="Prontas"         value={prontas}             icon={CheckCircle2}  color="text-purple-400" />
       </div>
 
-      {/* Filtros */}
       <div className="flex gap-2 flex-wrap items-center">
         <div className="flex gap-1 bg-[#1f2937] border border-gray-700 rounded-xl p-1 flex-wrap">
           {(['todos', 'orcamento', 'aprovado', 'producao', 'pronto', 'entregue', 'cancelado'] as Filtro[]).map(f => (
@@ -130,11 +125,11 @@ export function Vendas() {
             </button>
           ))}
         </div>
-        <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar por cliente, nº ou palavra-chave..."
+        <input value={busca} onChange={e => setBusca(e.target.value)}
+          placeholder="Buscar por cliente, nº ou palavra-chave..."
           className="flex-1 min-w-48 bg-[#1f2937] border border-gray-700 rounded-xl px-4 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500" />
       </div>
 
-      {/* Tabela */}
       <div className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">
         <table className="w-full text-sm">
           <thead>
@@ -157,15 +152,11 @@ export function Vendas() {
               return (
                 <tr key={v.id} onClick={() => abrirDetalhe(v)}
                   className="border-b border-gray-800 hover:bg-gray-800/30 transition-colors cursor-pointer">
-                  <td className="px-5 py-3 text-gray-500 font-mono text-xs">
-                    {v.numero ? `#${v.numero}` : '—'}
-                  </td>
+                  <td className="px-5 py-3 text-gray-500 font-mono text-xs">{v.numero ? `#${v.numero}` : '—'}</td>
                   <td className="px-5 py-3 font-medium text-white">{v.cliente_nome || '—'}</td>
                   <td className="px-5 py-3 text-gray-400 text-xs">{fmtData(v.data_venda)}</td>
                   <td className="px-5 py-3 text-gray-400 text-xs">{fmtData(v.data_entrega)}</td>
-                  <td className="px-5 py-3 text-right font-bold text-white">
-                    {fmtBRL(v.valor_total ?? v.total)}
-                  </td>
+                  <td className="px-5 py-3 text-right font-bold text-white">{fmtBRL(v.valor_total ?? v.total)}</td>
                   <td className="px-5 py-3 text-center">
                     <span className={`px-2 py-1 rounded-full text-[10px] font-bold border ${st.cor}`}>{st.label}</span>
                   </td>
@@ -193,7 +184,6 @@ export function Vendas() {
   /* ────────── DETALHE ────────── */
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
       <div className="flex items-center gap-4">
         <button onClick={fechar}
           className="text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 w-9 h-9 rounded-lg flex items-center justify-center transition-all">
@@ -208,11 +198,9 @@ export function Vendas() {
         {!isNovo && (
           <div className="flex items-center gap-2">
             <span className="text-xs text-gray-500">Status:</span>
-            <select
-              value={form.status}
+            <select value={form.status}
               onChange={e => { setF('status', e.target.value); atualizarStatus({ id: vendaId!, status: e.target.value as StatusVenda }); }}
-              className="bg-[#1f2937] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
-            >
+              className="bg-[#1f2937] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500">
               {Object.entries(STATUS_VENDA).map(([k, v]) => (
                 <option key={k} value={k}>{v.label}</option>
               ))}
@@ -226,10 +214,8 @@ export function Vendas() {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* Coluna principal */}
         <div className="xl:col-span-2 space-y-5">
 
-          {/* Dados do cliente */}
           <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5">
             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-1.5"><User className="w-3.5 h-3.5" /> Dados da Venda</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -262,14 +248,12 @@ export function Vendas() {
             </div>
           </div>
 
-          {/* Itens */}
           <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5">
             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-1.5"><Package className="w-3.5 h-3.5" /> Itens da Venda</h3>
             <ItensEditor itens={itens} onChange={setItens} />
           </div>
         </div>
 
-        {/* Coluna lateral — Resumo */}
         <div className="space-y-4">
           <div className="bg-[#1f2937] border-t-2 border-green-500 border-x border-b border-gray-700 rounded-xl p-5">
             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-1.5"><DollarSign className="w-3.5 h-3.5" /> Resumo</h3>
@@ -280,12 +264,10 @@ export function Vendas() {
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-400">Desconto global (%)</span>
-                <input
-                  type="number" min="0" max="100" step="0.1"
+                <input type="number" min="0" max="100" step="0.1"
                   value={form.desconto ?? 0}
                   onChange={e => setF('desconto', parseFloat(e.target.value) || 0)}
-                  className="w-20 bg-[#111827] border border-gray-700 rounded-lg px-2 py-1 text-white text-sm text-right focus:outline-none focus:border-blue-500"
-                />
+                  className="w-20 bg-[#111827] border border-gray-700 rounded-lg px-2 py-1 text-white text-sm text-right focus:outline-none focus:border-blue-500" />
               </div>
               {descGlobal > 0 && (
                 <div className="flex justify-between text-xs text-red-400">
@@ -305,7 +287,8 @@ export function Vendas() {
               <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-1.5"><Settings className="w-3.5 h-3.5" /> Status</h3>
               <div className="space-y-1.5">
                 {Object.entries(STATUS_VENDA).map(([k, v]) => (
-                  <button key={k} onClick={() => { setF('status', k); atualizarStatus({ id: vendaId!, status: k as StatusVenda }); }}
+                  <button key={k}
+                    onClick={() => { setF('status', k); atualizarStatus({ id: vendaId!, status: k as StatusVenda }); }}
                     className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold border transition-all ${
                       form.status === k ? v.cor + ' opacity-100' : 'border-gray-700 text-gray-500 hover:text-white hover:bg-gray-700/30'
                     }`}>
