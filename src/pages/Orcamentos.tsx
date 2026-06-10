@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { FileText, CheckCircle, Zap, Banknote, Layers, Scissors, Search, Plus, User, Package, DollarSign, Edit2, Trash2, Check, ArrowRight, Loader2 } from 'lucide-react';
+import { FileText, Zap, Banknote, Layers, Scissors, Plus, Edit2, Check, ArrowLeft, X, CornerDownRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useOrcamentos, useOrcamentoItens } from '../hooks/useOrcamentos';
 import { useMateriaisImpressao } from '../hooks/useMateriaisImpressao';
@@ -156,7 +156,9 @@ export function Orcamentos() {
     <div className="p-6 space-y-5">
       <div className="flex items-center gap-4">
         <button onClick={() => setView('lista')}
-          className="text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 w-9 h-9 rounded-lg flex items-center justify-center font-bold">←</button>
+          className="text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 w-9 h-9 rounded-lg flex items-center justify-center">
+          <ArrowLeft className="w-4 h-4" />
+        </button>
         <div>
           <h1 className="text-xl font-black text-white">Materiais de Impressão</h1>
           <p className="text-gray-500 text-sm">Materiais disponíveis nos orçamentos (precificados por m²)</p>
@@ -240,7 +242,9 @@ export function Orcamentos() {
                         <button onClick={() => { setMatEditId(m.id); setMatEditNome(m.nome); setMatEditPreco(String(m.preco_m2)); }}
                           className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 border border-blue-500/30">Editar</button>
                         <button onClick={() => { if (confirm(`Remover "${m.nome}"?`)) deletarMat(m.id); }}
-                          className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-red-500/15 text-red-400 hover:bg-red-500/25 border border-red-500/30">✕</button>
+                          className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-red-500/15 text-red-400 hover:bg-red-500/25 border border-red-500/30 flex items-center justify-center">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
                       </>
                     )}
                   </div>
@@ -258,7 +262,9 @@ export function Orcamentos() {
     <div className="p-6 space-y-5">
       <div className="flex items-center gap-4">
         <button onClick={() => setView('lista')}
-          className="text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 w-9 h-9 rounded-lg flex items-center justify-center font-bold">←</button>
+          className="text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 w-9 h-9 rounded-lg flex items-center justify-center">
+          <ArrowLeft className="w-4 h-4" />
+        </button>
         <div>
           <h1 className="text-xl font-black text-white">Acabamentos</h1>
           <p className="text-gray-500 text-sm">Opções de acabamento disponíveis nos orçamentos</p>
@@ -340,7 +346,9 @@ export function Orcamentos() {
                         <button onClick={() => { setAcabEditId(a.id); setAcabEditNome(a.nome); setAcabEditCusto(String(a.custo)); }}
                           className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 border border-blue-500/30">Editar</button>
                         <button onClick={() => { if (confirm(`Remover "${a.nome}"?`)) deletarAcab(a.id); }}
-                          className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-red-500/15 text-red-400 hover:bg-red-500/25 border border-red-500/30">✕</button>
+                          className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-red-500/15 text-red-400 hover:bg-red-500/25 border border-red-500/30 flex items-center justify-center">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
                       </>
                     )}
                   </div>
@@ -371,8 +379,8 @@ export function Orcamentos() {
             <Scissors className="w-4 h-4" /> Acabamentos
           </button>
           <button onClick={() => abrirDetalhe(null)}
-            className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all">
-            + Novo Orçamento
+            className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2">
+            <Plus className="w-4 h-4" /> Novo Orçamento
           </button>
         </div>
       </div>
@@ -442,7 +450,9 @@ export function Orcamentos() {
                         </button>
                       )}
                       <button onClick={() => { if (confirm('Remover?')) deletar(o.id); }}
-                        className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-red-500/15 text-red-400 hover:bg-red-500/25 border border-red-500/30">✕</button>
+                        className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-red-500/15 text-red-400 hover:bg-red-500/25 border border-red-500/30 flex items-center justify-center">
+                        <X className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -462,7 +472,9 @@ export function Orcamentos() {
     <div className="p-6 space-y-5">
       <div className="flex items-center gap-4 flex-wrap">
         <button onClick={fechar}
-          className="text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 w-9 h-9 rounded-lg flex items-center justify-center font-bold flex-shrink-0">←</button>
+          className="text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0">
+          <ArrowLeft className="w-4 h-4" />
+        </button>
         <div className="flex-1 min-w-0">
           <h1 className="text-xl font-black text-white truncate">
             {isNovo ? 'Novo Orçamento' : `Orçamento ${form.numero ? `#${form.numero}` : ''} — ${form.cliente_nome || 'Editar'}`}
@@ -513,8 +525,8 @@ export function Orcamentos() {
               <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Itens do Orçamento</h3>
               {!showEditor && !jaConvertido && (
                 <button onClick={() => { setEditandoIdx(null); setShowEditor(true); }}
-                  className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl font-bold text-xs transition-all">
-                  + Adicionar Item
+                  className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5">
+                  <Plus className="w-3.5 h-3.5" /> Adicionar Item
                 </button>
               )}
             </div>
@@ -549,7 +561,11 @@ export function Orcamentos() {
                         <td className="px-3 py-2.5">
                           <div className="font-medium text-white">{it.descricao}</div>
                           {it.acabamento_nome && it.acabamento_nome !== 'Sem acabamento' && (
-                            <div className="text-[9px] text-gray-500">↳ {it.acabamento_nome}</div>
+                            <div className="text-[9px] text-gray-500 flex items-center gap-1">
+                              <CornerDownRight className="w-3 h-3 flex-shrink-0" />
+                              {it.acabamento_nome}
+                              {it.acabamentos_por_folha ? ` (${it.acabamentos_por_folha}×${it.quantidade})` : ''}
+                            </div>
                           )}
                           {it.arte_inclusa && <div className="text-[9px] text-green-500">Arte inclusa</div>}
                         </td>
@@ -572,7 +588,9 @@ export function Orcamentos() {
                               <button onClick={() => { setEditandoIdx(i); setShowEditor(true); }}
                                 className="text-gray-500 hover:text-blue-400 transition-colors"><Edit2 className="w-3.5 h-3.5" /></button>
                               <button onClick={() => setItens(p => p.filter((_, idx) => idx !== i))}
-                                className="text-gray-500 hover:text-red-400 transition-colors">✕</button>
+                                className="text-gray-500 hover:text-red-400 transition-colors">
+                                <X className="w-3.5 h-3.5" />
+                              </button>
                             </div>
                           )}
                         </td>
@@ -586,8 +604,8 @@ export function Orcamentos() {
                 
                 <p className="text-sm text-gray-600">Nenhum item adicionado.</p>
                 <button onClick={() => setShowEditor(true)}
-                  className="mt-3 text-blue-400 hover:text-blue-300 text-xs font-bold underline">
-                  + Adicionar primeiro item
+                  className="mt-3 text-blue-400 hover:text-blue-300 text-xs font-bold underline flex items-center gap-1 mx-auto">
+                  <Plus className="w-3.5 h-3.5" /> Adicionar primeiro item
                 </button>
               </div>
             ) : null}

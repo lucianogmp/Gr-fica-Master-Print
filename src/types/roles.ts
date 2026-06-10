@@ -1,3 +1,4 @@
+// src/types/roles.ts
 export type Role = 'dono' | 'admin' | 'vendedor' | 'financeiro' | 'producao';
 
 export const ROLES: Record<Role, { label: string; cor: string; descricao: string }> = {
@@ -8,7 +9,6 @@ export const ROLES: Record<Role, { label: string; cor: string; descricao: string
   producao:  { label: 'Produção',   cor: 'text-orange-400', descricao: 'Produção e estoque' },
 };
 
-// Permissões por rota — quais roles têm acesso
 export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   '/':              ['dono', 'admin', 'vendedor', 'financeiro', 'producao'],
   '/vendas':        ['dono', 'admin', 'vendedor'],
@@ -20,6 +20,8 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   '/producao':      ['dono', 'admin', 'producao', 'vendedor'],
   '/produtos':      ['dono', 'admin', 'producao'],
   '/estoque':       ['dono', 'admin', 'producao'],
+  '/relatorios':    ['dono', 'admin', 'financeiro'],
+  '/audit-log':     ['dono'],                          // exclusivo do dono
   '/configuracoes': ['dono'],
 };
 

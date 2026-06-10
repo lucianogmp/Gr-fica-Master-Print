@@ -1,13 +1,16 @@
+// src/components/Layout.tsx
 import { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useRole } from '../hooks/useRole';
 import { ROLES, ROUTE_PERMISSIONS, Role } from '../types/roles';
 import { supabase } from '../lib/supabase';
+import { EstoqueAlertBanner } from './EstoqueAlertBanner';
 import toast from 'react-hot-toast';
 import {
   LayoutDashboard, ShoppingCart, FileText, Users, Landmark, TrendingUp,
   Package, Warehouse, Factory, TrendingDown, Settings, Bell, Menu, X,
+  ShieldCheck, BarChart3,
 } from 'lucide-react';
 
 const ALL_MENU = [
@@ -21,24 +24,24 @@ const ALL_MENU = [
   { path: '/estoque',      label: 'Estoque',         icon: Warehouse },
   { path: '/producao',     label: 'Produção',        icon: Factory },
   { path: '/custos',       label: 'Gestão de Custos', icon: TrendingDown },
+  { path: '/relatorios',   label: 'Relatórios',      icon: BarChart3 },
+  { path: '/audit-log',    label: 'Audit Log',       icon: ShieldCheck },
   { path: '/configuracoes',label: 'Configurações',   icon: Settings },
 ];
 
 export function Layout() {
-  const location = useLocation();
+  const location  = useLocation();
   const navigate  = useNavigate();
   const { user }  = useAuth();
   const { role, pode } = useRole();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // Filtra o menu pelo role do usuário
   const menuItems = ALL_MENU.filter(item => pode(item.path));
 
   const currentPage = ALL_MENU.find(i => i.path === location.pathname);
   const initials    = (user?.name ?? 'U').slice(0, 1).toUpperCase();
   const roleInfo    = role ? ROLES[role as Role] : null;
 
-  // Fecha o drawer ao trocar de rota (mobile)
   useEffect(() => { setMenuOpen(false); }, [location.pathname]);
 
   async function handleLogout() {
@@ -49,7 +52,7 @@ export function Layout() {
 
   return (
     <div className="flex h-screen bg-[#111827] text-gray-100 overflow-hidden">
-      {/* Backdrop (mobile) */}
+      {/* Backdrop mobile */}
       {menuOpen && (
         <div
           onClick={() => setMenuOpen(false)}
@@ -84,17 +87,30 @@ export function Layout() {
         <nav className="flex-1 overflow-y-auto p-4 space-y-1">
           {menuItems.map(item => {
             const isActive = location.pathname === item.path;
-            const Icon = item.icon;
+            const Icon     = item.icon;
+
+            // Separador visual antes de Relatórios e Audit Log
+            const isAdminSection = ['/relatorios', '/audit-log'].includes(item.path);
+            const prevItem       = menuItems[menuItems.indexOf(item) - 1];
+            const showSeparator  = isAdminSection && prevItem && !['/relatorios', '/audit-log'].includes(prevItem.path);
+
             return (
-              <Link key={item.path} to={item.path}
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                  isActive
-                    ? 'bg-blue-600 text-white shadow-lg'
-                    : 'text-gray-300 hover:bg-gray-700 hover:text-white'
-                }`}>
-                <Icon className="w-[18px] h-[18px] flex-shrink-0" />
-                {item.label}
-              </Link>
+              <div key={item.path}>
+                {showSeparator && (
+                  <div className="border-t border-gray-700/50 my-2" />
+                )}
+                <Link
+                  to={item.path}
+                  className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                    isActive
+                      ? 'bg-blue-600 text-white shadow-lg'
+                      : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                  }`}
+                >
+                  <Icon className="w-[18px] h-[18px] flex-shrink-0" />
+                  {item.label}
+                </Link>
+              </div>
             );
           })}
         </nav>
@@ -117,8 +133,10 @@ export function Layout() {
               </span>
             </div>
           )}
-          <button onClick={handleLogout}
-            className="w-full text-xs text-gray-400 hover:text-red-400 hover:bg-red-500/10 py-2 rounded-lg transition-all font-medium">
+          <button
+            onClick={handleLogout}
+            className="w-full text-xs text-gray-400 hover:text-red-400 hover:bg-red-500/10 py-2 rounded-lg transition-all font-medium"
+          >
             Sair da conta
           </button>
         </div>
@@ -126,7 +144,8 @@ export function Layout() {
 
       {/* Área Principal */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-        <header className="h-14 bg-[#1f2937] border-b border-gray-700 flex items-center justify-between px-4 md:px-8">
+        {/* Topbar */}
+        <header className="h-14 bg-[#1f2937] border-b border-gray-700 flex items-center justify-between px-4 md:px-8 flex-shrink-0">
           <div className="flex items-center gap-3 text-sm min-w-0">
             <button
               onClick={() => setMenuOpen(true)}
@@ -145,12 +164,19 @@ export function Layout() {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <button className="relative text-gray-300 hover:text-white transition-colors" aria-label="Notificações">
+            <button
+              className="relative text-gray-300 hover:text-white transition-colors"
+              aria-label="Notificações"
+            >
               <Bell className="w-5 h-5" />
             </button>
           </div>
         </header>
 
+        {/* Banner de alertas de estoque — aparece abaixo do topbar */}
+        <EstoqueAlertBanner />
+
+        {/* Conteúdo */}
         <main className="flex-1 overflow-y-auto bg-[#111827]">
           <div className="max-w-7xl mx-auto">
             <Outlet />

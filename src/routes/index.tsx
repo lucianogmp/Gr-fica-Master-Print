@@ -1,12 +1,12 @@
+// src/routes/index.tsx
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
-import { Layout }          from '../components/Layout';
-import { ProtectedRoute }  from '../components/ProtectedRoute';
-import { useAuth }         from '../hooks/useAuth';
+import { Layout }         from '../components/Layout';
+import { ProtectedRoute } from '../components/ProtectedRoute';
+import { useAuth }        from '../hooks/useAuth';
+import { Login }          from '../pages/Login';
 
-import { Login }         from '../pages/Login';
-
-// Lazy loaded pages for better performance
+// Lazy loaded pages
 const Dashboard     = lazy(() => import('../pages/Dashboard').then(m => ({ default: m.Dashboard })));
 const Vendas        = lazy(() => import('../pages/Vendas').then(m => ({ default: m.Vendas })));
 const Clientes      = lazy(() => import('../pages/Clientes').then(m => ({ default: m.Clientes })));
@@ -18,8 +18,9 @@ const Estoque       = lazy(() => import('../pages/Estoque').then(m => ({ default
 const Producao      = lazy(() => import('../pages/Producao').then(m => ({ default: m.Producao })));
 const GestaoCustos  = lazy(() => import('../pages/GestaoCustos').then(m => ({ default: m.GestaoCustos })));
 const Configuracoes = lazy(() => import('../pages/Configuracoes').then(m => ({ default: m.Configuracoes })));
+const Relatorios    = lazy(() => import('../pages/Relatorios').then(m => ({ default: m.Relatorios })));
+const AuditLog      = lazy(() => import('../pages/AuditLog').then(m => ({ default: m.AuditLog })));
 
-// Loading component
 function PageLoadingFallback() {
   return (
     <div className="min-h-screen bg-[#111827] flex items-center justify-center">
@@ -45,6 +46,8 @@ const ROTAS = [
   { path: '/estoque',       Page: Estoque,      rota: '/estoque'       },
   { path: '/producao',      Page: Producao,     rota: '/producao'      },
   { path: '/custos',        Page: GestaoCustos, rota: '/custos'        },
+  { path: '/relatorios',    Page: Relatorios,   rota: '/relatorios'    },
+  { path: '/audit-log',     Page: AuditLog,     rota: '/audit-log'     },
   { path: '/configuracoes', Page: Configuracoes,rota: '/configuracoes' },
 ];
 

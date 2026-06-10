@@ -1,11 +1,13 @@
+// src/pages/Producao.tsx
 import { useState, useMemo } from 'react';
 import { useProducao } from '../hooks/useProducao';
+import { useTrelloSync } from '../hooks/useTrelloSync';
 import { OrdemProducao, ETAPAS, PRIORIDADES, Etapa } from '../types/producao';
 import { ModalOrdem } from '../components/producao/ModalOrdem';
 import { KpiCard } from '../components/ui/KpiCard';
 import {
   Factory, ClipboardList, AlertCircle, AlarmClock, CheckCircle2,
-  Calendar, ShoppingCart, User, X, ArrowRight,
+  Calendar, ShoppingCart, User, X, ArrowRight, RefreshCw, ExternalLink,
 } from 'lucide-react';
 
 const fmtData = (d?: string | null) =>
@@ -14,31 +16,34 @@ const fmtData = (d?: string | null) =>
 function diasParaEntrega(data?: string | null): { texto: string; cor: string } | null {
   if (!data) return null;
   const diff = Math.ceil((new Date(data + 'T00:00:00').getTime() - Date.now()) / 86400000);
-  if (diff < 0)  return { texto: `${Math.abs(diff)}d atrasado`, cor: 'text-red-400' };
-  if (diff === 0) return { texto: 'Hoje!', cor: 'text-red-400' };
-  if (diff <= 2)  return { texto: `${diff}d`, cor: 'text-yellow-400' };
-  return { texto: `${diff}d`, cor: 'text-gray-500' };
+  if (diff < 0)   return { texto: `${Math.abs(diff)}d atrasado`, cor: 'text-red-400' };
+  if (diff === 0) return { texto: 'Hoje!',                       cor: 'text-red-400' };
+  if (diff <= 2)  return { texto: `${diff}d`,                    cor: 'text-yellow-400' };
+  return               { texto: `${diff}d`,                    cor: 'text-gray-500' };
 }
 
 export function Producao() {
   const { data: ordens = [], isLoading, criar, moverEtapa, atualizar, deletar } = useProducao();
+  const { sincronizarOrdem, sincronizarTudo, isSincronizando } = useTrelloSync();
 
-  const [modalOpen, setModalOpen]     = useState(false);
-  const [editando, setEditando]       = useState<OrdemProducao | null>(null);
+  const [modalOpen, setModalOpen]       = useState(false);
+  const [editando, setEditando]         = useState<OrdemProducao | null>(null);
   const [etapaInicial, setEtapaInicial] = useState<string>('fila');
-  const [dragId, setDragId]           = useState<string | null>(null);
-  const [dragOver, setDragOver]       = useState<string | null>(null);
+  const [dragId, setDragId]             = useState<string | null>(null);
+  const [dragOver, setDragOver]         = useState<string | null>(null);
 
   // KPIs
-  const total    = ordens.length;
-  const urgentes = ordens.filter(o => o.prioridade === 'urgente').length;
+  const total     = ordens.length;
+  const urgentes  = ordens.filter(o => o.prioridade === 'urgente').length;
   const atrasados = ordens.filter(o => {
     if (!o.data_entrega || o.etapa === 'entregue') return false;
     return new Date(o.data_entrega + 'T00:00:00') < new Date(new Date().setHours(0,0,0,0));
   }).length;
-  const prontos = ordens.filter(o => o.etapa === 'pronto').length;
+  const prontos   = ordens.filter(o => o.etapa === 'pronto').length;
 
-  // Agrupar por etapa
+  // Ordens abertas (não entregues) para sincronização em lote
+  const ordensAbertas = ordens.filter(o => o.etapa !== 'entregue');
+
   const porEtapa = useMemo(() => {
     const map: Record<string, OrdemProducao[]> = {};
     ETAPAS.forEach(e => { map[e.key] = []; });
@@ -47,7 +52,6 @@ export function Producao() {
       if (!map[key]) map[key] = [];
       map[key].push(o);
     });
-    // Ordenar por prioridade dentro de cada etapa
     const prioOrdem: Record<string, number> = { urgente: 0, alta: 1, normal: 2, baixa: 3 };
     Object.keys(map).forEach(k => {
       map[k].sort((a, b) => (prioOrdem[a.prioridade] ?? 2) - (prioOrdem[b.prioridade] ?? 2));
@@ -66,7 +70,6 @@ export function Producao() {
     setModalOpen(true);
   }
 
-  // Drag & drop
   function handleDragStart(id: string) { setDragId(id); }
   function handleDragOver(e: React.DragEvent, etapa: string) {
     e.preventDefault();
@@ -75,6 +78,9 @@ export function Producao() {
   function handleDrop(etapa: string) {
     if (dragId && etapa !== ordens.find(o => o.id === dragId)?.etapa) {
       moverEtapa({ id: dragId, etapa: etapa as Etapa });
+      // Sincroniza automaticamente com Trello após mover
+      const ordem = ordens.find(o => o.id === dragId);
+      if (ordem) sincronizarOrdem({ ...ordem, etapa });
     }
     setDragId(null);
     setDragOver(null);
@@ -85,15 +91,34 @@ export function Producao() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-start">
+      <div className="flex justify-between items-start flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-black text-white flex items-center gap-2"><Factory className="w-6 h-6 text-blue-400" /> Produção</h1>
-          <p className="text-gray-500 text-sm">Kanban de ordens de produção — arraste para mover entre etapas</p>
+          <h1 className="text-2xl font-black text-white flex items-center gap-2">
+            <Factory className="w-6 h-6 text-blue-400" /> Produção
+          </h1>
+          <p className="text-gray-500 text-sm">
+            Kanban — arraste para mover · sincroniza automaticamente com Trello
+          </p>
         </div>
-        <button onClick={() => abrirNova('fila')}
-          className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg shadow-blue-900/30">
-          + Nova Ordem
-        </button>
+        <div className="flex gap-2">
+          {/* Sincronizar tudo com Trello */}
+          <button
+            onClick={() => sincronizarTudo(ordensAbertas)}
+            disabled={isSincronizando || ordensAbertas.length === 0}
+            className="flex items-center gap-2 px-4 py-2.5 bg-[#0052CC] hover:bg-[#0065FF] disabled:opacity-40 text-white rounded-xl font-bold text-sm transition-all"
+            title="Sincronizar todas as ordens abertas com o Trello"
+          >
+            <RefreshCw className={`w-4 h-4 ${isSincronizando ? 'animate-spin' : ''}`} />
+            {isSincronizando ? 'Sincronizando...' : 'Sync Trello'}
+          </button>
+
+          <button
+            onClick={() => abrirNova('fila')}
+            className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg shadow-blue-900/30"
+          >
+            + Nova Ordem
+          </button>
+        </div>
       </div>
 
       {/* KPIs */}
@@ -108,8 +133,8 @@ export function Producao() {
       <div className="overflow-x-auto pb-4">
         <div className="flex gap-4 min-w-max">
           {ETAPAS.map(etapa => {
-            const cards    = porEtapa[etapa.key] ?? [];
-            const isOver   = dragOver === etapa.key;
+            const cards  = porEtapa[etapa.key] ?? [];
+            const isOver = dragOver === etapa.key;
 
             return (
               <div
@@ -118,9 +143,7 @@ export function Producao() {
                 onDrop={() => handleDrop(etapa.key)}
                 onDragLeave={() => setDragOver(null)}
                 className={`w-72 flex-shrink-0 rounded-xl border transition-all ${
-                  isOver
-                    ? 'border-blue-500 bg-blue-900/10'
-                    : 'border-gray-700 bg-[#1a2332]'
+                  isOver ? 'border-blue-500 bg-blue-900/10' : 'border-gray-700 bg-[#1a2332]'
                 }`}
               >
                 {/* Cabeçalho da coluna */}
@@ -132,8 +155,10 @@ export function Producao() {
                       {cards.length}
                     </span>
                   </div>
-                  <button onClick={() => abrirNova(etapa.key)}
-                    className="text-gray-600 hover:text-white w-6 h-6 flex items-center justify-center rounded hover:bg-gray-700 transition-all text-lg leading-none">
+                  <button
+                    onClick={() => abrirNova(etapa.key)}
+                    className="text-gray-600 hover:text-white w-6 h-6 flex items-center justify-center rounded hover:bg-gray-700 transition-all text-lg leading-none"
+                  >
                     +
                   </button>
                 </div>
@@ -149,10 +174,11 @@ export function Producao() {
                   )}
 
                   {cards.map(ordem => {
-                    const prio     = PRIORIDADES.find(p => p.key === ordem.prioridade);
-                    const prazo    = diasParaEntrega(ordem.data_entrega);
-                    const venda    = (ordem as any).vendas;
+                    const prio       = PRIORIDADES.find(p => p.key === ordem.prioridade);
+                    const prazo      = diasParaEntrega(ordem.data_entrega);
+                    const venda      = (ordem as any).vendas;
                     const isDragging = dragId === ordem.id;
+                    const temCard    = !!ordem.trello_card_id;
 
                     return (
                       <div
@@ -164,7 +190,7 @@ export function Producao() {
                           isDragging ? 'opacity-40 scale-95' : ''
                         }`}
                       >
-                        {/* Prioridade + data */}
+                        {/* Prioridade + prazo */}
                         <div className="flex items-center justify-between mb-2">
                           <span
                             className="text-[10px] font-black uppercase px-1.5 py-0.5 rounded"
@@ -172,11 +198,19 @@ export function Producao() {
                           >
                             {prio?.label ?? ordem.prioridade}
                           </span>
-                          {prazo && (
-                            <span className={`text-[10px] font-bold flex items-center gap-1 ${prazo.cor}`}>
-                              <Calendar className="w-3 h-3" /> {prazo.texto}
-                            </span>
-                          )}
+                          <div className="flex items-center gap-1.5">
+                            {/* Indicador de card Trello vinculado */}
+                            {temCard && (
+                              <span title="Card Trello vinculado" className="text-[#0052CC]">
+                                <ExternalLink className="w-3 h-3" />
+                              </span>
+                            )}
+                            {prazo && (
+                              <span className={`text-[10px] font-bold flex items-center gap-1 ${prazo.cor}`}>
+                                <Calendar className="w-3 h-3" /> {prazo.texto}
+                              </span>
+                            )}
+                          </div>
                         </div>
 
                         {/* Título */}
@@ -194,12 +228,23 @@ export function Producao() {
                           <p className="text-xs text-gray-500 line-clamp-2 mb-2">{ordem.descricao}</p>
                         )}
 
-                        {/* Responsável + ações */}
+                        {/* Footer: responsável + ações */}
                         <div className="flex items-center justify-between pt-2 border-t border-gray-700/50 mt-1">
                           <span className="text-[10px] text-gray-500 flex items-center gap-1">
-                            {ordem.responsavel ? <><User className="w-3 h-3" /> {ordem.responsavel}</> : ''}
+                            {ordem.responsavel
+                              ? <><User className="w-3 h-3" /> {ordem.responsavel}</>
+                              : ''}
                           </span>
                           <div className="flex gap-1">
+                            {/* Sincronizar card individual */}
+                            <button
+                              onClick={e => { e.stopPropagation(); sincronizarOrdem(ordem); }}
+                              disabled={isSincronizando}
+                              className="flex items-center px-1.5 py-0.5 rounded bg-[#0052CC]/20 hover:bg-[#0052CC]/40 text-[#4C9AFF] transition-all disabled:opacity-40"
+                              title={temCard ? 'Atualizar card no Trello' : 'Criar card no Trello'}
+                            >
+                              <RefreshCw className="w-3 h-3" />
+                            </button>
                             <button
                               onClick={e => { e.stopPropagation(); abrirEditar(ordem); }}
                               className="text-[10px] px-2 py-0.5 rounded bg-gray-700 hover:bg-gray-600 text-gray-300 transition-all"
@@ -207,7 +252,10 @@ export function Producao() {
                               Editar
                             </button>
                             <button
-                              onClick={e => { e.stopPropagation(); if (confirm('Remover ordem?')) deletar(ordem.id); }}
+                              onClick={e => {
+                                e.stopPropagation();
+                                if (confirm('Remover ordem?')) deletar(ordem.id);
+                              }}
                               className="flex items-center px-2 py-0.5 rounded bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-all"
                             >
                               <X className="w-3 h-3" />
@@ -220,11 +268,16 @@ export function Producao() {
                           <button
                             onClick={() => {
                               const idx = ETAPAS.findIndex(e => e.key === etapa.key);
-                              if (idx < ETAPAS.length - 1) moverEtapa({ id: ordem.id, etapa: ETAPAS[idx + 1].key as Etapa });
+                              if (idx < ETAPAS.length - 1) {
+                                const novaEtapa = ETAPAS[idx + 1].key as Etapa;
+                                moverEtapa({ id: ordem.id, etapa: novaEtapa });
+                                sincronizarOrdem({ ...ordem, etapa: novaEtapa });
+                              }
                             }}
                             className="mt-2 w-full text-[10px] font-bold py-1 rounded-lg border border-dashed border-gray-600 text-gray-500 hover:border-green-500/50 hover:text-green-400 hover:bg-green-500/5 transition-all flex items-center justify-center gap-1"
                           >
-                            <ArrowRight className="w-3 h-3" /> {ETAPAS[ETAPAS.findIndex(e => e.key === etapa.key) + 1]?.label}
+                            <ArrowRight className="w-3 h-3" />
+                            {ETAPAS[ETAPAS.findIndex(e => e.key === etapa.key) + 1]?.label}
                           </button>
                         )}
                       </div>
@@ -242,7 +295,10 @@ export function Producao() {
         editando={editando}
         etapaInicial={etapaInicial}
         onClose={() => { setModalOpen(false); setEditando(null); }}
-        onSalvar={dados => editando ? atualizar({ id: editando.id, payload: dados }) : criar(dados)}
+        onSalvar={dados => editando
+          ? atualizar({ id: editando.id, payload: dados })
+          : criar(dados)
+        }
       />
     </div>
   );
