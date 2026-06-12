@@ -13,7 +13,7 @@ export function useProdutos() {
     queryFn: async (): Promise<Produto[]> => {
       const { data, error } = await supabase
         .from('produtos')
-        .select('*, categorias(id, nome)')
+        .select('*')
         .order('nome');
       if (error) throw error;
       return data ?? [];
