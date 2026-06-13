@@ -1,18 +1,23 @@
 import { useState, useEffect } from 'react';
 import {
   Ruler, Pencil, FileText, DollarSign, Plus, X, AlertTriangle,
-  Tag, Ticket, RotateCw, Check, type LucideIcon,
+  Tag, Ticket, RotateCw, Check, Package, Search, type LucideIcon,
 } from 'lucide-react';
 import { OrcamentoItem, TipoCalculo, calcTaxaArte } from '../../types/orcamento';
 import { PAPEIS } from '../../types/calculadora';
 import { useMateriaisImpressao } from '../../hooks/useMateriaisImpressao';
 import { useAcabamentos } from '../../hooks/useAcabamentos';
 import { useCalculoFolhas } from '../../hooks/useCalculoFolhas';
+import { useProdutos } from '../../hooks/useProdutos';
+import { Produto } from '../../types/produto';
 
 const fmtBRL = (v: number) => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const IN = "bg-[#111827] border border-gray-700 rounded-lg px-2.5 py-2 text-white text-xs focus:outline-none focus:border-blue-500 transition-colors w-full";
 
-const TIPOS: { key: TipoCalculo; label: string; icon: LucideIcon }[] = [
+type TabMode = TipoCalculo | 'catalogo';
+
+const TIPOS: { key: TabMode; label: string; icon: LucideIcon }[] = [
+  { key: 'catalogo',     label: 'Catálogo',    icon: Package },
   { key: 'metro',        label: 'm² Material', icon: Ruler },
   { key: 'metro_manual', label: 'm² Manual',   icon: Pencil },
   { key: 'folha',        label: 'Por Folha',   icon: FileText },
@@ -28,7 +33,9 @@ interface Props {
 export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
   const { data: materiais = [] } = useMateriaisImpressao();
   const { data: acabamentos = [] } = useAcabamentos();
+  const { data: produtos = [] } = useProdutos();
 
+  const [tab, setTab]               = useState<TabMode>(editando ? editando.tipo_calculo : 'catalogo');
   const [tipo, setTipo]             = useState<TipoCalculo>(editando?.tipo_calculo ?? 'livre');
   const [descricao, setDescricao]   = useState(editando?.descricao ?? '');
   const [materialId, setMaterialId] = useState(editando?.material_id ?? '');
@@ -44,6 +51,27 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
   const [acabId, setAcabId]         = useState(editando?.acabamento_id ?? '');
   const [acabamentosPerFolha, setAcabamentosPerFolha] = useState(String(editando?.acabamentos_por_folha ?? ''));
   const [arteInclusa, setArteInclusa] = useState(editando?.arte_inclusa ?? false);
+
+  // Catálogo
+  const [buscaProd, setBuscaProd]     = useState('');
+  const [prodSel, setProdSel]         = useState<Produto | null>(null);
+  const [produtoId, setProdutoId]     = useState<string | null>(editando?.produto_id ?? null);
+
+  function handleTabChange(t: TabMode) {
+    setTab(t);
+    if (t !== 'catalogo') {
+      setTipo(t as TipoCalculo);
+      setProdSel(null);
+    }
+  }
+
+  function selecionarProduto(p: Produto) {
+    setProdSel(p);
+    setProdutoId(p.id);
+    setDescricao(p.nome);
+    setPrecoLivre(String(p.preco_venda ?? 0));
+    setTipo('livre');
+  }
 
   const matSel = materiais.find(m => m.id === materialId);
   const acabSel = acabamentos.find(a => a.id === acabId);
@@ -101,13 +129,15 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
 
   const prev   = buildPreview();
   const acabQtdOk = !acabId || (parseInt(acabamentosPerFolha) > 0);
-  const valido = descricao.trim().length > 0 && prev.total > 0 && acabQtdOk;
+  const catalogoValido = tab === 'catalogo' ? (prodSel !== null && parseInt(quantidade) > 0) : true;
+  const valido = descricao.trim().length > 0 && prev.total > 0 && acabQtdOk && catalogoValido;
 
   function handleAdicionar() {
     if (!valido) return;
     const item: OrcamentoItem = {
       descricao:       descricao.trim(),
       tipo_calculo:    tipo,
+      produto_id:      produtoId ?? null,
       material_id:     tipo === 'metro' ? (materialId || null) : null,
       preco_por_m2:    tipo === 'metro' ? (matSel?.preco_m2 ?? 0) : tipo === 'metro_manual' ? (parseFloat(precoM2) || 0) : null,
       largura_cm:      ['metro','metro_manual','folha'].includes(tipo) ? (parseFloat(largura) || null) : null,
@@ -127,6 +157,11 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
     onAdicionar(item);
   }
 
+  // produtos filtrados pela busca
+  const produtosFiltrados = produtos
+    .filter(p => p.status === 'ativo')
+    .filter(p => !buscaProd || p.nome.toLowerCase().includes(buscaProd.toLowerCase()));
+
   return (
     <div className="bg-[#0d1117] border border-blue-500/40 rounded-2xl p-5 space-y-4">
       <div className="flex items-center justify-between">
@@ -138,27 +173,117 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
         </button>
       </div>
 
-      {/* Tipo */}
-      <div className="grid grid-cols-4 gap-2">
+      {/* Abas de tipo */}
+      <div className="grid grid-cols-5 gap-1.5">
         {TIPOS.map(t => (
-          <button key={t.key} onClick={() => setTipo(t.key)}
-            className={`py-2.5 rounded-xl text-xs font-bold border transition-all flex flex-col items-center gap-1 ${
-              tipo === t.key ? 'bg-blue-600 border-blue-500 text-white' : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-white hover:border-gray-500'
+          <button key={t.key} onClick={() => handleTabChange(t.key)}
+            className={`py-2.5 rounded-xl text-[10px] font-bold border transition-all flex flex-col items-center gap-1 ${
+              tab === t.key
+                ? t.key === 'catalogo'
+                  ? 'bg-purple-600 border-purple-500 text-white'
+                  : 'bg-blue-600 border-blue-500 text-white'
+                : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-white hover:border-gray-500'
             }`}>
             <t.icon className="w-4 h-4" />{t.label}
           </button>
         ))}
       </div>
 
-      {/* Descrição */}
-      <div>
-        <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1.5">Descrição *</label>
-        <input value={descricao} onChange={e => setDescricao(e.target.value)}
-          className={IN + ' py-2.5 text-sm'} placeholder="Ex: Banner lona brilho 2×1m" />
-      </div>
+      {/* ── CATÁLOGO ── */}
+      {tab === 'catalogo' && (
+        <div className="space-y-3">
+          {/* Busca */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+            <input
+              value={buscaProd}
+              onChange={e => setBuscaProd(e.target.value)}
+              placeholder="Buscar produto por nome..."
+              className="w-full bg-[#111827] border border-gray-700 rounded-lg pl-9 pr-3 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-purple-500 transition-colors"
+            />
+          </div>
+
+          {/* Grid de produtos */}
+          {produtos.filter(p => p.status === 'ativo').length === 0 ? (
+            <p className="text-xs text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 rounded-lg px-3 py-3 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+              Nenhum produto ativo cadastrado. Acesse a aba Produtos para adicionar.
+            </p>
+          ) : (
+            <div className="grid grid-cols-2 gap-2 max-h-52 overflow-y-auto pr-1">
+              {produtosFiltrados.length === 0 ? (
+                <p className="col-span-2 text-center text-xs text-gray-600 py-4">Nenhum produto encontrado.</p>
+              ) : (
+                produtosFiltrados.map(p => (
+                  <button
+                    key={p.id}
+                    onClick={() => selecionarProduto(p)}
+                    className={`text-left px-3 py-2.5 rounded-xl border transition-all ${
+                      prodSel?.id === p.id
+                        ? 'bg-purple-600/30 border-purple-500 text-purple-200'
+                        : 'bg-gray-800 border-gray-700 text-gray-300 hover:border-purple-500/50 hover:bg-gray-700/60'
+                    }`}
+                  >
+                    <div className="font-bold text-xs truncate">{p.nome}</div>
+                    {p.sku && <div className="text-[10px] text-gray-500 font-mono mt-0.5">{p.sku}</div>}
+                    <div className="text-[11px] font-black text-green-400 mt-1">
+                      {Number(p.preco_venda ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          )}
+
+          {/* Produto selecionado — ajustar quantidade */}
+          {prodSel && (
+            <div className="bg-purple-900/20 border border-purple-500/30 rounded-xl p-3 space-y-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] text-purple-400 uppercase font-bold">Produto selecionado</p>
+                  <p className="text-sm font-bold text-white truncate mt-0.5">{prodSel.nome}</p>
+                  <p className="text-xs text-green-400 font-black">
+                    {Number(prodSel.preco_venda ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} / un
+                  </p>
+                </div>
+                <button onClick={() => { setProdSel(null); setProdutoId(null); setDescricao(''); setPrecoLivre(''); }}
+                  className="text-gray-500 hover:text-red-400 transition-colors flex-shrink-0 mt-0.5">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1.5">Descrição (editável)</label>
+                  <input value={descricao} onChange={e => setDescricao(e.target.value)}
+                    className="bg-[#111827] border border-gray-700 rounded-lg px-2.5 py-2 text-white text-xs focus:outline-none focus:border-purple-500 transition-colors w-full" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1.5">Quantidade</label>
+                  <input type="number" min="1" value={quantidade} onChange={e => setQuantidade(e.target.value)}
+                    className="bg-[#111827] border border-gray-700 rounded-lg px-2.5 py-2 text-white text-xs focus:outline-none focus:border-purple-500 transition-colors w-full text-center text-lg font-black" />
+                </div>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1.5">Preço unitário (R$)</label>
+                <input type="number" min="0" step="0.01" value={precoLivre} onChange={e => setPrecoLivre(e.target.value)}
+                  className="bg-[#111827] border border-gray-700 rounded-lg px-2.5 py-2 text-white text-sm focus:outline-none focus:border-purple-500 transition-colors w-full" />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Descrição — apenas para abas não-catálogo */}
+      {tab !== 'catalogo' && (
+        <div>
+          <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1.5">Descrição *</label>
+          <input value={descricao} onChange={e => setDescricao(e.target.value)}
+            className={IN + ' py-2.5 text-sm'} placeholder="Ex: Banner lona brilho 2×1m" />
+        </div>
+      )}
 
       {/* ── m² Material ── */}
-      {tipo === 'metro' && (
+      {tab === 'metro' && tipo === 'metro' && (
         <div className="space-y-3">
           <div>
             <label className="text-[10px] font-bold text-gray-500 uppercase block mb-2">
@@ -197,7 +322,7 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
       )}
 
       {/* ── m² Manual ── */}
-      {tipo === 'metro_manual' && (
+      {tab === 'metro_manual' && tipo === 'metro_manual' && (
         <div className="space-y-3">
           <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg px-3 py-2 text-xs text-yellow-300 flex items-center gap-2">
             <Pencil className="w-4 h-4 flex-shrink-0" />
@@ -219,7 +344,7 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
       )}
 
       {/* ── Por Folha ── */}
-      {tipo === 'folha' && (
+      {tab === 'folha' && tipo === 'folha' && (
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -274,7 +399,7 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
       )}
 
       {/* ── Preço Livre ── */}
-      {tipo === 'livre' && (
+      {tab === 'livre' && tipo === 'livre' && (
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1.5">Preço Unitário (R$) *</label>
@@ -289,8 +414,8 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
         </div>
       )}
 
-      {/* Acabamento */}
-      <div className="pt-3 border-t border-gray-800">
+      {/* Acabamento — oculto no catálogo enquanto produto não selecionado */}
+      {(tab !== 'catalogo' || prodSel) && <div className="pt-3 border-t border-gray-800">
         <label className="text-[10px] font-bold text-gray-500 uppercase block mb-2">Acabamento</label>
         <div className="flex flex-wrap gap-1.5 items-end">
           <button onClick={() => setAcabId('')}
@@ -315,10 +440,10 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
             </div>
           )}
         </div>
-      </div>
+      </div>}
 
-      {/* Arte */}
-      <div className="flex items-center justify-between py-2 border-t border-gray-800">
+      {/* Arte — oculto no catálogo enquanto produto não selecionado */}
+      {(tab !== 'catalogo' || prodSel) && <div className="flex items-center justify-between py-2 border-t border-gray-800">
         <label className="flex items-center gap-2 cursor-pointer" onClick={() => setArteInclusa(!arteInclusa)}>
           <div className={`w-10 h-5 rounded-full relative transition-all ${arteInclusa ? 'bg-green-600' : 'bg-gray-700'}`}>
             <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${arteInclusa ? 'left-5' : 'left-0.5'}`} />
@@ -334,7 +459,7 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
             })()}
           </div>
         )}
-      </div>
+      </div>}
 
       {/* Preview + botão */}
       <div className="flex items-end justify-between pt-3 border-t border-gray-700">
