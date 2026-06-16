@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { FileText, Zap, Banknote, Layers, Scissors, Plus, Edit2, Check, ArrowLeft, X, CornerDownRight } from 'lucide-react';
+import { FileText, Zap, Banknote, Layers, Scissors, Plus, Edit2, Check, ArrowLeft, X, CornerDownRight, Ruler } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useOrcamentos, useOrcamentoItens } from '../hooks/useOrcamentos';
 import { useMateriaisImpressao } from '../hooks/useMateriaisImpressao';
@@ -7,9 +7,11 @@ import { useAcabamentos } from '../hooks/useAcabamentos';
 import { Orcamento, OrcamentoItem, StatusOrcamento, STATUS_ORC } from '../types/orcamento';
 import { ItemOrcEditor } from '../components/orcamentos/ItemOrcEditor';
 import { ClienteSelector } from '../components/orcamentos/ClienteSelector';
+import { CalculadoraFolhas } from '../components/CalculadoraFolhas';
 import { KpiCard } from '../components/ui/KpiCard';
+import { useConfirm } from '../components/ui/ConfirmModal';
 
-type View = 'lista' | 'detalhe' | 'materiais' | 'acabamentos';
+type View = 'lista' | 'detalhe' | 'materiais' | 'acabamentos' | 'folhas';
 type Filtro = 'todos' | StatusOrcamento;
 
 const fmtBRL  = (v: number | null | undefined) => Number(v ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -30,6 +32,7 @@ export function Orcamentos() {
   const { data: acabamentos = [], criar: criarAcab, atualizar: atualizarAcab, deletar: deletarAcab } = useAcabamentos();
   const navigate = useNavigate();
 
+  const { confirmar, ConfirmModal } = useConfirm();
   const [view, setView]               = useState<View>('lista');
   const [orcId, setOrcId]             = useState<string | null>(null);
   const [form, setForm]               = useState({ ...NOVO_ORC });
@@ -151,8 +154,34 @@ export function Orcamentos() {
 
   if (isLoading) return <div className="p-8 text-blue-500 animate-pulse font-bold">Carregando Orçamentos...</div>;
 
+  /* ── CALCULADORA DE FOLHAS ── */
+  if (view === 'folhas') return (
+    <>
+    <ConfirmModal />
+    <div className="p-6 space-y-5">
+      <div className="flex items-center gap-4">
+        <button onClick={() => setView('lista')}
+          className="text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 w-9 h-9 rounded-lg flex items-center justify-center">
+          <ArrowLeft className="w-4 h-4" />
+        </button>
+        <div>
+          <h1 className="text-xl font-black text-white">Calculadora de Folhas</h1>
+          <p className="text-gray-500 text-sm">
+            Ferramenta auxiliar — calcula quantas folhas são necessárias para um serviço.
+            Não entra no cálculo do orçamento.
+          </p>
+        </div>
+      </div>
+
+      <CalculadoraFolhas />
+    </div>
+    </>
+  );
+
   /* ── MATERIAIS ── */
   if (view === 'materiais') return (
+    <>
+    <ConfirmModal />
     <div className="p-6 space-y-5">
       <div className="flex items-center gap-4">
         <button onClick={() => setView('lista')}
@@ -241,7 +270,7 @@ export function Orcamentos() {
                       <>
                         <button onClick={() => { setMatEditId(m.id); setMatEditNome(m.nome); setMatEditPreco(String(m.preco_m2)); }}
                           className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 border border-blue-500/30">Editar</button>
-                        <button onClick={() => { if (confirm(`Remover "${m.nome}"?`)) deletarMat(m.id); }}
+                        <button onClick={async () => { if (await confirmar(`Remover o material "${m.nome}"?`, "Remover Material")) deletarMat(m.id); }}
                           className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-red-500/15 text-red-400 hover:bg-red-500/25 border border-red-500/30 flex items-center justify-center">
                           <X className="w-3.5 h-3.5" />
                         </button>
@@ -255,10 +284,13 @@ export function Orcamentos() {
         </table>
       </div>
     </div>
+    </>
   );
 
   /* ── ACABAMENTOS ── */
   if (view === 'acabamentos') return (
+    <>
+    <ConfirmModal />
     <div className="p-6 space-y-5">
       <div className="flex items-center gap-4">
         <button onClick={() => setView('lista')}
@@ -345,7 +377,7 @@ export function Orcamentos() {
                       <>
                         <button onClick={() => { setAcabEditId(a.id); setAcabEditNome(a.nome); setAcabEditCusto(String(a.custo)); }}
                           className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 border border-blue-500/30">Editar</button>
-                        <button onClick={() => { if (confirm(`Remover "${a.nome}"?`)) deletarAcab(a.id); }}
+                        <button onClick={async () => { if (await confirmar(`Remover o acabamento "${a.nome}"?`, "Remover Acabamento")) deletarAcab(a.id); }}
                           className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-red-500/15 text-red-400 hover:bg-red-500/25 border border-red-500/30 flex items-center justify-center">
                           <X className="w-3.5 h-3.5" />
                         </button>
@@ -359,10 +391,13 @@ export function Orcamentos() {
         </table>
       </div>
     </div>
+    </>
   );
 
   /* ── LISTA ── */
   if (view === 'lista') return (
+    <>
+    <ConfirmModal />
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-start">
         <div>
@@ -370,6 +405,10 @@ export function Orcamentos() {
           <p className="text-gray-500 text-sm">{orcamentos.length} orçamento(s)</p>
         </div>
         <div className="flex gap-2">
+          <button onClick={() => setView('folhas')}
+            className="bg-gray-700 hover:bg-gray-600 text-gray-300 px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2">
+            <Ruler className="w-4 h-4" /> Calc. Folhas
+          </button>
           <button onClick={() => setView('materiais')}
             className="bg-gray-700 hover:bg-gray-600 text-gray-300 px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2">
             <Layers className="w-4 h-4" /> Materiais
@@ -449,7 +488,7 @@ export function Orcamentos() {
                           Converter em Venda
                         </button>
                       )}
-                      <button onClick={() => { if (confirm('Remover?')) deletar(o.id); }}
+                      <button onClick={async () => { if (await confirmar('Deseja remover este orçamento? Esta ação não pode ser desfeita.', 'Remover Orçamento')) deletar(o.id); }}
                         className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-red-500/15 text-red-400 hover:bg-red-500/25 border border-red-500/30 flex items-center justify-center">
                         <X className="w-3.5 h-3.5" />
                       </button>
@@ -462,6 +501,7 @@ export function Orcamentos() {
         </table>
       </div>
     </div>
+    </>
   );
 
   /* ── DETALHE ── */
@@ -469,6 +509,8 @@ export function Orcamentos() {
   const jaConvertido = orcAtual?.status === 'convertido';
 
   return (
+    <>
+    <ConfirmModal />
     <div className="p-6 space-y-5">
       <div className="flex items-center gap-4 flex-wrap">
         <button onClick={fechar}
@@ -567,7 +609,7 @@ export function Orcamentos() {
                               {it.acabamentos_por_folha ? ` (${it.acabamentos_por_folha}×${it.quantidade})` : ''}
                             </div>
                           )}
-                          {it.arte_inclusa && <div className="text-[9px] text-green-500">Arte inclusa</div>}
+                          {it.arte_inclusa && <div className="text-[9px] text-green-500">Acréscimo da Arte</div>}
                         </td>
                         <td className="px-3 py-2.5 text-center">
                           <span className="text-[9px] font-bold bg-gray-700 text-gray-300 px-1.5 py-0.5 rounded-full">
@@ -685,5 +727,6 @@ export function Orcamentos() {
         </div>
       </div>
     </div>
+    </>
   );
 }

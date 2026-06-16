@@ -23,6 +23,8 @@ export interface OrcamentoItem {
   acabamento_custo?: number | null;
   acabamentos_por_folha?: number | null;
   arte_inclusa?: boolean;
+  // Área (m²) usada quando o item vem de um produto com unidade_medida='m2'.
+  area_m2?: number | null;
 }
 
 export interface Orcamento {

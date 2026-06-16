@@ -10,9 +10,10 @@ interface PrecPanelProps {
   onPrecoChange: (v: number) => void;
   gc: GcData;
   tempo: number;
+  porMetroQuadrado?: boolean;
 }
 
-export function PrecPanel({ custos, preco, onPrecoChange, gc, tempo }: PrecPanelProps) {
+export function PrecPanel({ custos, preco, onPrecoChange, gc, tempo, porMetroQuadrado }: PrecPanelProps) {
   const { custoBOM, maoObra, acabamento, outros, overhead, total } = custos;
   const lucro  = preco - total;
   const margem = total > 0 && preco > 0 ? ((preco - total) / preco) * 100 : preco > 0 ? 100 : 0;
@@ -83,7 +84,7 @@ export function PrecPanel({ custos, preco, onPrecoChange, gc, tempo }: PrecPanel
       {/* Preço de Venda */}
       <div className="bg-[#1f2937] border-t-2 border-green-500/60 border-x border-b border-gray-700 rounded-xl p-4">
         <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-          <Tag className="w-3.5 h-3.5" /> Preço de Venda
+          <Tag className="w-3.5 h-3.5" /> Preço de Venda {porMetroQuadrado && '(por m²)'}
         </p>
         <div className="flex items-center bg-[#111827] border border-gray-700 rounded-lg overflow-hidden focus-within:border-green-500 transition-colors">
           <span className="px-3 text-gray-500 text-sm font-bold bg-gray-800 border-r border-gray-700 py-3">R$</span>

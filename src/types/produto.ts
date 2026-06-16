@@ -1,4 +1,5 @@
 export type StatusProduto = 'ativo' | 'inativo' | 'rascunho';
+export type UnidadeMedida = 'unidade' | 'm2';
 
 export interface Categoria {
   id: string;
@@ -16,12 +17,19 @@ export interface Produto {
   custo_mao_obra: number;
   custo_acabamento: number;
   custo_operacional: number;
-  tempo_producao: string | null;   // text no banco
+  tempo_producao: string | null;
   icone_svg?: string | null;
   maquina?: string | null;
   setor?: string | null;
   acabamento?: string | null;
   checklist?: string | null;
+  /**
+   * 'unidade' (padrão) — preço/custo por peça.
+   * 'm2'      — preço/custo por metro quadrado; a área é informada
+   *             no orçamento/venda para calcular o total.
+   */
+  unidade_medida: UnidadeMedida;
+  terceirizado?: boolean | null;
   empresa_id?: string;
   created_at?: string;
   updated_at?: string;
