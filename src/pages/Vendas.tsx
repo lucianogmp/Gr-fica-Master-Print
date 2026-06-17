@@ -86,6 +86,42 @@ export function Vendas() {
     observacoes: form.observacoes,
   };
 
+  const [imprimindoId, setImprimindoId] = useState<string | null>(null);
+  const vendaImprimir = vendas.find(v => v.id === imprimindoId) ?? null;
+  const { data: itensImprimir } = useVendaItens(imprimindoId);
+
+  const docImpressaoLista: DocumentoImpressaoData | null =
+    vendaImprimir && itensImprimir
+      ? {
+          tipo: 'venda',
+          numero: vendaImprimir.numero ?? null,
+          data: vendaImprimir.data_venda ?? null,
+          dataEntrega: vendaImprimir.data_entrega ?? null,
+          clienteNome: vendaImprimir.cliente_nome,
+          itens: itensImprimir.map(i => ({
+            descricao: i.descricao,
+            quantidade: Number(i.quantidade),
+            unidade: i.unidade ?? 'un',
+            precoUnitario: Number(i.preco_unitario),
+            desconto: Number(i.desconto ?? 0),
+            total: Number(i.total),
+          })),
+          subtotal: itensImprimir.reduce((s, i) => s + Number(i.total), 0),
+          descontoGlobalPct: Number(vendaImprimir.desconto ?? 0),
+          total: Number(vendaImprimir.valor_total ?? vendaImprimir.total ?? 0),
+          observacoes: vendaImprimir.observacoes,
+        }
+      : null;
+
+  useEffect(() => {
+    if (!imprimindoId || !vendaImprimir || !itensImprimir) return;
+    const t = setTimeout(() => {
+      window.print();
+      setImprimindoId(null);
+    }, 150);
+    return () => clearTimeout(t);
+  }, [imprimindoId, vendaImprimir, itensImprimir]);
+
   async function handleSalvar() {
     const payload = {
       ...form,
@@ -121,7 +157,15 @@ export function Vendas() {
 
   /* ────────── LISTA ────────── */
   if (view === 'lista') return (
-    <div className="p-6 space-y-6">
+    <>
+    {`
+      @media print {
+        body * { visibility: hidden; }
+        #print-area-venda-lista, #print-area-venda-lista * { visibility: visible; }
+        #print-area-venda-lista { position: absolute; left: 0; top: 0; width: 100%; }
+      }
+    `}
+    <div id="print-area-venda-lista" className="p-6 space-y-6">
       <div className="flex justify-between items-start">
         <div>
           <h1 className="text-2xl font-black text-white flex items-center gap-2"><ShoppingCart className="w-6 h-6 text-blue-400" /> Vendas</h1>
@@ -192,6 +236,10 @@ export function Vendas() {
                         className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 border border-blue-500/30 transition-all">
                         Editar
                       </button>
+                      <button onClick={() => setImprimindoId(v.id)} disabled={imprimindoId === v.id}
+                        className="flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-lg bg-gray-500/15 text-gray-300 hover:bg-gray-500/25 border border-gray-500/30 disabled:opacity-40 transition-all">
+                        {imprimindoId === v.id ? '...' : 'Imprimir'}
+                      </button>
                       <button onClick={() => { if (confirm('Remover esta venda?')) deletar(v.id); }}
                         className="flex items-center justify-center px-2.5 py-1 rounded-lg bg-red-500/15 text-red-400 hover:bg-red-500/25 border border-red-500/30 transition-all">
                         <X className="w-3.5 h-3.5" />
@@ -205,6 +253,12 @@ export function Vendas() {
         </table>
       </div>
     </div>
+    {docImpressaoLista && (
+      <div className="hidden">
+        <DocumentoImpressao layout={layoutVenda} empresa={vendaImprimir ?? {}} documento={docImpressaoLista} />
+      </div>
+    )}
+    </>
   );
 
   /* ────────── DETALHE ────────── */
