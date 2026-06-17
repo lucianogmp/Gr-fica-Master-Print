@@ -36,6 +36,15 @@
   box-shadow: 0 8px 32px 0 var(--shadow-card) !important;
 }
 
+:root[data-theme="light"] .bg-gray-700,
+:root[data-theme="light"] .bg-gray-800,
+:root[data-theme="light"] .bg-gray-800\/40,
+:root[data-theme="light"] .bg-gray-800\/50 {
+  background-color: rgba(241, 245, 249, 0.92) !important;
+  border-color: var(--glass-border) !important;
+  color: var(--text-secondary) !important;
+}
+
 :root[data-theme="light"] aside.bg-\[\#1f2937\],
 :root[data-theme="light"] header.bg-\[\#1f2937\] {
   background: var(--surface-strong-bg) !important;
@@ -93,6 +102,13 @@
 :root[data-theme="light"] .text-gray-500 { color: var(--text-subtle) !important; }
 :root[data-theme="light"] .text-gray-400 { color: var(--text-muted) !important; }
 
+:root[data-theme="light"] .bg-gray-700 .text-gray-300,
+:root[data-theme="light"] .bg-gray-700.text-gray-300,
+:root[data-theme="light"] .bg-gray-800 .text-gray-300,
+:root[data-theme="light"] .bg-gray-800.text-gray-300 {
+  color: var(--text-secondary) !important;
+}
+
 :root[data-theme="light"] .bg-blue-600,
 :root[data-theme="light"] .bg-blue-600 *,
 :root[data-theme="light"] button[type="submit"],
@@ -106,6 +122,13 @@
 }
 
 :root[data-theme="light"] .hover\:bg-gray-700:hover {
+  background-color: rgba(37, 99, 235, 0.08) !important;
+}
+
+:root[data-theme="light"] .hover\:bg-gray-600:hover,
+:root[data-theme="light"] .hover\:bg-gray-800\/20:hover,
+:root[data-theme="light"] .hover\:bg-gray-800\/30:hover,
+:root[data-theme="light"] .hover\:bg-gray-700\/30:hover {
   background-color: rgba(37, 99, 235, 0.08) !important;
 }
 
