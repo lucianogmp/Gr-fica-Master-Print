@@ -2,11 +2,14 @@ import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { Moon, Sun } from 'lucide-react';
+import { useTheme } from '../hooks/useTheme';
 
 export function Login() {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [loading, setLoading] = useState(false);
+  const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
   async function handleLogin(e: React.FormEvent) {
@@ -23,6 +26,15 @@ export function Login() {
 
   return (
     <div className="min-h-screen bg-[#111827] flex items-center justify-center p-4">
+      <button
+        onClick={toggleTheme}
+        className="theme-toggle fixed right-4 top-4 text-gray-300 hover:text-white transition-colors"
+        aria-label={isDark ? 'Ativar tema claro' : 'Ativar tema escuro'}
+        title={isDark ? 'Tema claro' : 'Tema escuro'}
+      >
+        {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+      </button>
+
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-8">
