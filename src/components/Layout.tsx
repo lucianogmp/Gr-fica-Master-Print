@@ -6,11 +6,12 @@ import { useRole } from '../hooks/useRole';
 import { ROLES, ROUTE_PERMISSIONS, Role } from '../types/roles';
 import { supabase } from '../lib/supabase';
 import { EstoqueAlertBanner } from './EstoqueAlertBanner';
+import { useTheme } from '../hooks/useTheme';
 import toast from 'react-hot-toast';
 import {
   LayoutDashboard, ShoppingCart, FileText, Users, Landmark, TrendingUp,
   Package, Warehouse, Factory, TrendingDown, Settings, Bell, Menu, X,
-  ShieldCheck, BarChart3,
+  ShieldCheck, BarChart3, Moon, Sun,
 } from 'lucide-react';
 
 const ALL_MENU = [
@@ -34,6 +35,7 @@ export function Layout() {
   const navigate  = useNavigate();
   const { user }  = useAuth();
   const { role, pode } = useRole();
+  const { isDark, toggleTheme } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const menuItems = ALL_MENU.filter(item => pode(item.path));
@@ -164,6 +166,14 @@ export function Layout() {
             </div>
           </div>
           <div className="flex items-center gap-4">
+            <button
+              onClick={toggleTheme}
+              className="theme-toggle relative text-gray-300 hover:text-white transition-colors"
+              aria-label={isDark ? 'Ativar tema claro' : 'Ativar tema escuro'}
+              title={isDark ? 'Tema claro' : 'Tema escuro'}
+            >
+              {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            </button>
             <button
               className="relative text-gray-300 hover:text-white transition-colors"
               aria-label="Notificações"
