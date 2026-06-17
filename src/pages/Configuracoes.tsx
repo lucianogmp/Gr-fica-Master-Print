@@ -11,13 +11,15 @@ import { useRole } from '../hooks/useRole';
 import { Configuracoes as ConfigType } from '../types/configuracoes';
 import { ROLES, Role } from '../types/roles';
 import { Modal } from '../components/ui/Modal';
+import { EditorLayoutImpressao } from '../components/configuracoes/EditorLayoutImpressao';
+import { DEFAULT_LAYOUT_VENDA, DEFAULT_LAYOUT_ORCAMENTO } from '../types/layoutImpressao';
 import {
   Building2, DollarSign, FileText, Settings, Link2, Users, Wrench,
   BarChart3, Plus, Hash, Palette, Lock, ClipboardList, CreditCard,
-  Save, Check, User, type LucideIcon,
+  Save, Check, User, Printer, type LucideIcon,
 } from 'lucide-react';
 
-type Aba = 'empresa' | 'precificacao' | 'orcamentos' | 'sistema' | 'integracoes' | 'usuarios';
+type Aba = 'empresa' | 'precificacao' | 'orcamentos' | 'impressao' | 'sistema' | 'integracoes' | 'usuarios';
 
 const IN   = "w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors";
 const IN_N = IN + " [appearance:textfield]";
@@ -89,6 +91,7 @@ export function Configuracoes() {
   const [form, setForm]   = useState<Partial<ConfigType>>({});
   const [aba, setAba]     = useState<Aba>('empresa');
   const [dirty, setDirty] = useState(false);
+  const [subAbaImpressao, setSubAbaImpressao] = useState('venda');
 
   const [modalConvite, setModalConvite] = useState(false);
   const [conviteForm, setConviteForm]   = useState({ email: '', nome: '', role: 'vendedor' as Role });
@@ -120,6 +123,7 @@ export function Configuracoes() {
     { key: 'empresa',      label: 'Empresa',      icon: Building2 },
     { key: 'precificacao', label: 'Precificação',  icon: DollarSign },
     { key: 'orcamentos',   label: 'Orçamentos',    icon: FileText },
+    { key: 'impressao',    label: 'Impressão',    icon: Printer },
     { key: 'sistema',      label: 'Sistema',       icon: Settings },
     { key: 'integracoes',  label: 'Integrações',   icon: Link2 },
     { key: 'usuarios',     label: 'Usuários',      icon: Users },
@@ -325,6 +329,38 @@ export function Configuracoes() {
               <div><Lbl>Rodapé</Lbl><textarea rows={2} value={txt('orc_rodape')} onChange={e => set('orc_rodape', e.target.value)} className={IN + ' resize-none'} /></div>
             </Row>
           </Section>
+        </div>
+      )}
+
+      {aba === 'impressao' && (
+        <div className="space-y-5">
+          <div className="flex gap-2 flex-wrap">
+            <button onClick={() => setSubAbaImpressao('venda')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${subAbaImpressao === 'venda' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'}`}>
+              Venda
+            </button>
+            <button onClick={() => setSubAbaImpressao('orcamento')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${subAbaImpressao === 'orcamento' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'}`}>
+              Orçamento
+            </button>
+          </div>
+
+          {subAbaImpressao === 'venda' && (
+            <EditorLayoutImpressao
+              tipo="venda"
+              value={form.layout_impressao_venda ?? DEFAULT_LAYOUT_VENDA}
+              onChange={v => set('layout_impressao_venda', v)}
+              empresa={form}
+            />
+          )}
+          {subAbaImpressao === 'orcamento' && (
+            <EditorLayoutImpressao
+              tipo="orcamento"
+              value={form.layout_impressao_orcamento ?? DEFAULT_LAYOUT_ORCAMENTO}
+              onChange={v => set('layout_impressao_orcamento', v)}
+              empresa={form}
+            />
+          )}
         </div>
       )}
 

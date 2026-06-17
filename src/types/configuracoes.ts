@@ -1,3 +1,5 @@
+import { LayoutImpressaoConfig } from './layoutImpressao';
+
 export interface Configuracoes {
   id: string;
   // Empresa
@@ -48,6 +50,8 @@ export interface Configuracoes {
   mp_access_token?: string | null;
   mp_pix_chave?: string | null;
   mp_webhook_url?: string | null;
+  layout_impressao_venda?: LayoutImpressaoConfig | null;
+  layout_impressao_orcamento?: LayoutImpressaoConfig | null;
   // Segurança
   seg_tempo_sessao?: number | null;
   updated_at?: string;

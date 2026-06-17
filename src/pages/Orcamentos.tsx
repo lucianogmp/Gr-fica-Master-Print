@@ -1,5 +1,8 @@
 import { useState, useMemo } from 'react';
-import { FileText, Zap, Banknote, Layers, Scissors, Plus, Edit2, Check, ArrowLeft, X, CornerDownRight, Ruler } from 'lucide-react';
+import { FileText, Zap, Banknote, Layers, Scissors, Plus, Edit2, Check, ArrowLeft, X, CornerDownRight, Ruler, Printer } from 'lucide-react';
+import { useConfiguracoes } from '../hooks/useConfiguracoes';
+import { DocumentoImpressao, DocumentoImpressaoData } from '../components/impressao/DocumentoImpressao';
+import { DEFAULT_LAYOUT_ORCAMENTO } from '../types/layoutImpressao';
 import { useNavigate } from 'react-router-dom';
 import { useOrcamentos, useOrcamentoItens } from '../hooks/useOrcamentos';
 import { useMateriaisImpressao } from '../hooks/useMateriaisImpressao';
@@ -72,6 +75,29 @@ export function Orcamentos() {
   const subtotal   = itens.reduce((s, i) => s + Number(i.total), 0);
   const descGlobal = Number(form.desconto ?? 0);
   const totalFinal = subtotal * (1 - descGlobal / 100);
+
+  const { data: cfg } = useConfiguracoes();
+  const layoutOrcamento = { ...DEFAULT_LAYOUT_ORCAMENTO, ...(cfg?.layout_impressao_orcamento ?? {}) };
+
+  const docImpressaoOrcamento: DocumentoImpressaoData = {
+    tipo: 'orcamento',
+    numero: form.numero ?? null,
+    data: form.created_at ?? null,
+    dataEntrega: null,
+    clienteNome: form.cliente_nome,
+    itens: itens.map(i => ({
+      descricao: i.descricao,
+      quantidade: Number(i.quantidade),
+      unidade: undefined,
+      precoUnitario: Number(i.preco_unitario),
+      desconto: 0,
+      total: Number(i.total),
+    })),
+    subtotal,
+    descontoGlobalPct: descGlobal,
+    total: totalFinal,
+    observacoes: form.observacoes,
+  };
 
   function setF(k: keyof typeof NOVO_ORC, v: any) { setForm(p => ({ ...p, [k]: v })); }
 
@@ -514,8 +540,15 @@ export function Orcamentos() {
 
   return (
     <>
+    {`
+      @media print {
+        body * { visibility: hidden; }
+        #print-area-orcamento, #print-area-orcamento * { visibility: visible; }
+        #print-area-orcamento { position: absolute; left: 0; top: 0; width: 100%; }
+      }
+    `}
     <ConfirmModal />
-    <div className="p-6 space-y-5">
+    <div id="print-area-orcamento" className="p-6 space-y-5">
       <div className="flex items-center gap-4 flex-wrap">
         <button onClick={fechar}
           className="text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -538,6 +571,12 @@ export function Orcamentos() {
             <button onClick={handleConverter} disabled={isConvertendo}
               className="bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white px-5 py-2 rounded-xl font-bold text-sm transition-all">
               {isConvertendo ? 'Convertendo...' : 'Converter em Venda'}
+            </button>
+          )}
+          {!isNovo && (
+            <button onClick={() => window.print()}
+              className="bg-gray-700 hover:bg-gray-600 text-gray-300 px-4 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-2">
+              <Printer className="w-4 h-4" /> Imprimir
             </button>
           )}
           {jaConvertido && (

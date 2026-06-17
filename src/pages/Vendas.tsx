@@ -6,8 +6,11 @@ import { ItensEditor } from '../components/vendas/ItensEditor';
 import { KpiCard } from '../components/ui/KpiCard';
 import {
   ShoppingCart, DollarSign, ClipboardList, Factory, CheckCircle2,
-  ArrowLeft, Save, User, Package, Settings, X,
+  ArrowLeft, Save, User, Package, Settings, X, Printer,
 } from 'lucide-react';
+import { useConfiguracoes } from '../hooks/useConfiguracoes';
+import { DocumentoImpressao, DocumentoImpressaoData } from '../components/impressao/DocumentoImpressao';
+import { DEFAULT_LAYOUT_VENDA } from '../types/layoutImpressao';
 
 type View = 'lista' | 'detalhe';
 type Filtro = 'todos' | StatusVenda;
@@ -59,6 +62,29 @@ export function Vendas() {
   const totalItens  = itens.reduce((s, i) => s + Number(i.total), 0);
   const descGlobal  = Number(form.desconto ?? 0);
   const totalFinal  = totalItens * (1 - descGlobal / 100);
+
+  const { data: cfg } = useConfiguracoes();
+  const layoutVenda = { ...DEFAULT_LAYOUT_VENDA, ...(cfg?.layout_impressao_venda ?? {}) };
+
+  const docImpressaoVenda: DocumentoImpressaoData = {
+    tipo: 'venda',
+    numero: (form as any).numero ?? null,
+    data: form.data_venda ?? null,
+    dataEntrega: form.data_entrega ?? null,
+    clienteNome: form.cliente_nome,
+    itens: itens.map(i => ({
+      descricao: i.descricao,
+      quantidade: Number(i.quantidade),
+      unidade: i.unidade ?? 'un',
+      precoUnitario: Number(i.preco_unitario),
+      desconto: Number(i.desconto ?? 0),
+      total: Number(i.total),
+    })),
+    subtotal: totalItens,
+    descontoGlobalPct: descGlobal,
+    total: totalFinal,
+    observacoes: form.observacoes,
+  };
 
   async function handleSalvar() {
     const payload = {
@@ -183,7 +209,15 @@ export function Vendas() {
 
   /* ────────── DETALHE ────────── */
   return (
-    <div className="p-6 space-y-6">
+    <>
+    {`
+      @media print {
+        body * { visibility: hidden; }
+        #print-area-venda, #print-area-venda * { visibility: visible; }
+        #print-area-venda { position: absolute; left: 0; top: 0; width: 100%; }
+      }
+    `}
+    <div id="print-area-venda" className="p-6 space-y-6">
       <div className="flex items-center gap-4">
         <button onClick={fechar}
           className="text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 w-9 h-9 rounded-lg flex items-center justify-center transition-all">
@@ -206,6 +240,12 @@ export function Vendas() {
               ))}
             </select>
           </div>
+        )}
+        {!isNovo && (
+          <button onClick={() => window.print()}
+            className="bg-gray-700 hover:bg-gray-600 text-gray-300 px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2">
+            <Printer className="w-4 h-4" /> Imprimir
+          </button>
         )}
         <button onClick={handleSalvar} disabled={isSaving || !form.cliente_nome.trim()}
           className="bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white px-6 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2">
@@ -301,5 +341,6 @@ export function Vendas() {
         </div>
       </div>
     </div>
+    </>
   );
 }

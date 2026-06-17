@@ -15,6 +15,54 @@
   --danger-glow: rgba(239, 68, 68, 0.35);
   --warning-glow: rgba(245, 158, 11, 0.35);
   --body-bg: radial-gradient(circle at 50% 0%, #0c0d16 0%, #040408 100%);
+  --body-text: #f3f4f6;
+  --surface-bg: rgba(13, 13, 25, 0.55);
+  --surface-strong-bg: rgba(10, 10, 18, 0.7);
+  --surface-soft-bg: rgba(10, 10, 18, 0.25);
+  --input-bg: rgba(7, 7, 12, 0.6);
+  --input-focus-bg: rgba(7, 7, 12, 0.8);
+  --table-head-bg: rgba(255, 255, 255, 0.03);
+  --row-border: rgba(255, 255, 255, 0.04);
+  --row-alt-bg: rgba(255, 255, 255, 0.012);
+  --row-hover-bg: rgba(255, 255, 255, 0.05);
+  --text-primary: #ffffff;
+  --text-secondary: #f3f4f6;
+  --text-muted: #b6bfce;
+  --text-subtle: #9aa5b8;
+  --text-faint: #8b95a7;
+  --shadow-strong: rgba(0, 0, 0, 0.55);
+  --shadow-card: rgba(0, 0, 0, 0.4);
+  --active-link-text: #ffffff;
+}
+
+:root[data-theme="light"] {
+  --glass-bg: rgba(255, 255, 255, 0.78);
+  --glass-border: rgba(15, 23, 42, 0.12);
+  --glass-border-hover: rgba(37, 99, 235, 0.32);
+  --glass-glow: rgba(37, 99, 235, 0.12);
+  --primary-glow: rgba(37, 99, 235, 0.24);
+  --success-glow: rgba(5, 150, 105, 0.22);
+  --danger-glow: rgba(220, 38, 38, 0.22);
+  --warning-glow: rgba(217, 119, 6, 0.22);
+  --body-bg: radial-gradient(circle at 50% 0%, #f8fbff 0%, #e8edf5 100%);
+  --body-text: #111827;
+  --surface-bg: rgba(255, 255, 255, 0.82);
+  --surface-strong-bg: rgba(255, 255, 255, 0.92);
+  --surface-soft-bg: rgba(241, 245, 249, 0.8);
+  --input-bg: rgba(255, 255, 255, 0.9);
+  --input-focus-bg: #ffffff;
+  --table-head-bg: rgba(15, 23, 42, 0.04);
+  --row-border: rgba(15, 23, 42, 0.08);
+  --row-alt-bg: rgba(15, 23, 42, 0.025);
+  --row-hover-bg: rgba(37, 99, 235, 0.07);
+  --text-primary: #0f172a;
+  --text-secondary: #1f2937;
+  --text-muted: #475569;
+  --text-subtle: #64748b;
+  --text-faint: #7c8798;
+  --shadow-strong: rgba(15, 23, 42, 0.16);
+  --shadow-card: rgba(15, 23, 42, 0.12);
+  --active-link-text: #ffffff;
 }
 
 /* ─── Tipografia Global ─── */
@@ -27,7 +75,7 @@ body {
   padding: 0;
   background: var(--body-bg) !important;
   background-attachment: fixed !important;
-  color: #f3f4f6 !important;
+  color: var(--body-text) !important;
   -webkit-font-smoothing: antialiased !important;
   min-height: 100vh;
 }
@@ -118,7 +166,7 @@ p.text-gray-500, p.text-muted {
   backdrop-filter: blur(20px) saturate(180%) !important;
   -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
   border: 1px solid var(--glass-border) !important;
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4) !important;
+  box-shadow: 0 8px 32px 0 var(--shadow-card) !important;
   border-radius: 1rem !important;
 }
 
@@ -153,7 +201,7 @@ div.bg-\[\#1a222f\]:hover,
 .ds-card:hover {
   transform: translateY(-4px) scale(1.015) !important;
   border-color: var(--glass-border-hover) !important;
-  box-shadow: 0 20px 40px 0 rgba(0, 0, 0, 0.55), 
+  box-shadow: 0 20px 40px 0 var(--shadow-strong), 
               0 0 20px rgba(59, 130, 246, 0.05),
               inset 0 0 12px rgba(255, 255, 255, 0.04) !important;
 }
@@ -169,13 +217,13 @@ header.bg-\[\#1f2937\],
 
 aside.bg-\[\#1f2937\] {
   border-right: 1px solid var(--glass-border) !important;
-  background: rgba(10, 10, 18, 0.7) !important;
+  background: var(--surface-strong-bg) !important;
   border-radius: 0 !important;
 }
 
 header.bg-\[\#1f2937\] {
   border-bottom: 1px solid var(--glass-border) !important;
-  background: rgba(10, 10, 18, 0.5) !important;
+  background: var(--surface-strong-bg) !important;
   border-radius: 0 !important;
   animation: slideUp 0.5s ease-out forwards;
 }
@@ -195,7 +243,7 @@ aside h1,
 .overflow-x-auto {
   border: 1px solid var(--glass-border) !important;
   border-radius: 0.75rem !important;
-  background: rgba(10, 10, 18, 0.25) !important;
+  background: var(--surface-soft-bg) !important;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
 }
@@ -212,27 +260,27 @@ table thead th,
   font-size: 0.72rem !important;
   letter-spacing: 0.08em !important;
   font-weight: 600 !important;
-  color: #9ca3af !important;
-  background: rgba(255, 255, 255, 0.03) !important;
+  color: var(--text-subtle) !important;
+  background: var(--table-head-bg) !important;
   padding: 0.85rem 1rem !important;
   border-bottom: 1px solid var(--glass-border) !important;
 }
 
 /* Linhas e Zebra-striping */
 table tbody tr {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important;
+  border-bottom: 1px solid var(--row-border) !important;
   transition: background-color 300ms ease !important;
 }
 
 table tbody tr:nth-child(even),
 table tbody tr.row-alt {
-  background: rgba(255, 255, 255, 0.012) !important;
+  background: var(--row-alt-bg) !important;
 }
 
 /* Hover de Linhas */
 table tbody tr:hover,
 .data-table tr:hover td {
-  background: rgba(255, 255, 255, 0.05) !important;
+  background: var(--row-hover-bg) !important;
 }
 
 table tbody td {
@@ -244,7 +292,7 @@ table tbody td {
 /* ─── Abas (Tabs) com Indicador Deslizante ─── */
 .flex.gap-1.bg-\[\#1f2937\],
 .bg-\[\#1f2937\].p-1 {
-  background: rgba(6, 6, 12, 0.6) !important;
+  background: var(--surface-soft-bg) !important;
   border: 1px solid var(--glass-border) !important;
   border-radius: 0.75rem !important;
   padding: 0.25rem !important;
@@ -268,10 +316,10 @@ input,
 select,
 textarea,
 .w-full.bg-\[\#111827\].border.border-gray-700 {
-  background: rgba(7, 7, 12, 0.6) !important;
+  background: var(--input-bg) !important;
   border: 1px solid var(--glass-border) !important;
   border-radius: 0.5rem !important;
-  color: #ffffff !important;
+  color: var(--text-primary) !important;
   padding: 0.75rem 1rem !important;
   font-size: 0.82rem !important;
   transition: all 300ms ease !important;
@@ -286,7 +334,7 @@ textarea:focus,
   box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.5), 
               0 0 15px rgba(59, 130, 246, 0.3) !important;
   outline: none !important;
-  background: rgba(7, 7, 12, 0.8) !important;
+  background: var(--input-focus-bg) !important;
 }
 
 /* ─── Camada de Glow e Respiração em Ícones ─── */
@@ -325,11 +373,40 @@ textarea:focus,
 /* ─── Acessibilidade: Contraste de Texto ─── */
 /* gray-500 (#6b7280) e gray-600 (#4b5563) ficam abaixo do AA sobre o fundo
    quase-preto. Elevamos o tom mínimo mantendo a hierarquia visual. */
-.text-gray-600 { color: #8b95a7 !important; }
-.text-gray-500 { color: #9aa5b8 !important; }
-.text-gray-400 { color: #b6bfce !important; }
+.text-gray-600 { color: var(--text-faint) !important; }
+.text-gray-500 { color: var(--text-subtle) !important; }
+.text-gray-400 { color: var(--text-muted) !important; }
 /* placeholders um pouco mais visíveis */
-::placeholder { color: #8b95a7 !important; opacity: 1 !important; }
+::placeholder { color: var(--text-faint) !important; opacity: 1 !important; }
+
+:root[data-theme="light"] .text-white,
+:root[data-theme="light"] .text-gray-100,
+:root[data-theme="light"] .text-gray-200,
+:root[data-theme="light"] .text-gray-300 {
+  color: var(--text-primary) !important;
+}
+
+:root[data-theme="light"] .bg-blue-600,
+:root[data-theme="light"] .bg-blue-600 *,
+:root[data-theme="light"] button[type="submit"],
+:root[data-theme="light"] button[type="submit"] *,
+:root[data-theme="light"] .text-white.bg-blue-600 {
+  color: var(--active-link-text) !important;
+}
+
+:root[data-theme="light"] .border-gray-700,
+:root[data-theme="light"] .border-gray-700\/50 {
+  border-color: var(--glass-border) !important;
+}
+
+:root[data-theme="light"] .hover\:bg-gray-700:hover {
+  background-color: rgba(37, 99, 235, 0.08) !important;
+}
+
+:root[data-theme="light"] .hover\:text-white:hover,
+:root[data-theme="light"] .theme-toggle:hover {
+  color: #2563eb !important;
+}
 
 /* ─── Skeleton / Shimmer ─── */
 @keyframes skeleton-shimmer {
