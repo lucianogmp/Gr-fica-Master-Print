@@ -540,13 +540,13 @@ export function Orcamentos() {
 
   return (
     <>
-    {`
+    <style>{`
       @media print {
         body * { visibility: hidden; }
         #print-area-orcamento, #print-area-orcamento * { visibility: visible; }
         #print-area-orcamento { position: absolute; left: 0; top: 0; width: 100%; }
       }
-    `}
+    `}</style>
     <ConfirmModal />
     <div id="print-area-orcamento" className="p-6 space-y-5">
       <div className="flex items-center gap-4 flex-wrap">

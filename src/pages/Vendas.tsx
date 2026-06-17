@@ -158,13 +158,13 @@ export function Vendas() {
   /* ────────── LISTA ────────── */
   if (view === 'lista') return (
     <>
-    {`
+    <style>{`
       @media print {
         body * { visibility: hidden; }
         #print-area-venda-lista, #print-area-venda-lista * { visibility: visible; }
         #print-area-venda-lista { position: absolute; left: 0; top: 0; width: 100%; }
       }
-    `}
+    `}</style>
     <div id="print-area-venda-lista" className="p-6 space-y-6">
       <div className="flex justify-between items-start">
         <div>
@@ -264,13 +264,13 @@ export function Vendas() {
   /* ────────── DETALHE ────────── */
   return (
     <>
-    {`
+    <style>{`
       @media print {
         body * { visibility: hidden; }
         #print-area-venda, #print-area-venda * { visibility: visible; }
         #print-area-venda { position: absolute; left: 0; top: 0; width: 100%; }
       }
-    `}
+    `}</style>
     <div id="print-area-venda" className="p-6 space-y-6">
       <div className="flex items-center gap-4">
         <button onClick={fechar}
