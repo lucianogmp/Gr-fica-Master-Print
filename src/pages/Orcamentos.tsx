@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { useOrcamentos, useOrcamentoItens } from '../hooks/useOrcamentos';
 import { useMateriaisImpressao } from '../hooks/useMateriaisImpressao';
 import { useAcabamentos } from '../hooks/useAcabamentos';
+import { useProdutos } from '../hooks/useProdutos';
+import { useCategorias } from '../hooks/useCategorias';
 import { Orcamento, OrcamentoItem, StatusOrcamento, STATUS_ORC } from '../types/orcamento';
 import { ItemOrcEditor } from '../components/orcamentos/ItemOrcEditor';
 import { ClienteSelector } from '../components/orcamentos/ClienteSelector';
@@ -30,6 +32,8 @@ export function Orcamentos() {
   const { data: orcamentos = [], isLoading, criar, atualizar, atualizarStatus, converterEmVenda, deletar, isSaving, isConvertendo } = useOrcamentos();
   const { data: materiais = [], criar: criarMat, atualizar: atualizarMat, deletar: deletarMat } = useMateriaisImpressao();
   const { data: acabamentos = [], criar: criarAcab, atualizar: atualizarAcab, deletar: deletarAcab } = useAcabamentos();
+  const { data: produtos = [] } = useProdutos();
+  const { data: categorias = [] } = useCategorias();
   const navigate = useNavigate();
 
   const { confirmar, ConfirmModal } = useConfirm();
@@ -589,8 +593,7 @@ export function Orcamentos() {
                   <thead>
                     <tr className="text-[10px] font-bold text-gray-500 uppercase bg-gray-800/50 border-b border-gray-700">
                       <th className="px-3 py-2 text-left">Descrição</th>
-                      <th className="px-3 py-2 text-center">Tipo</th>
-                      <th className="px-3 py-2 text-center">Dim.</th>
+                      <th className="px-3 py-2 text-center">Categoria</th>
                       <th className="px-3 py-2 text-right w-14">Qtd</th>
                       <th className="px-3 py-2 text-right w-24">Unit.</th>
                       <th className="px-3 py-2 text-right w-24">Total</th>
@@ -598,7 +601,11 @@ export function Orcamentos() {
                     </tr>
                   </thead>
                   <tbody>
-                    {itens.map((it, i) => (
+                    {itens.map((it, i) => {
+                      const produto = produtos.find(p => p.id === it.produto_id);
+                      const categoria = categorias.find(c => c.id === produto?.categoria_id);
+                      const nomeCategoria = categoria ? categoria.nome : '';
+                      return (
                       <tr key={i} className="border-b border-gray-800 hover:bg-gray-800/20">
                         <td className="px-3 py-2.5">
                           <div className="font-medium text-white">{it.descricao}</div>
@@ -612,14 +619,11 @@ export function Orcamentos() {
                           {it.arte_inclusa && <div className="text-[9px] text-green-500">Acréscimo da Arte</div>}
                         </td>
                         <td className="px-3 py-2.5 text-center">
-                          <span className="text-[9px] font-bold bg-gray-700 text-gray-300 px-1.5 py-0.5 rounded-full">
-                            {TIPO_LABEL[it.tipo_calculo] ?? it.tipo_calculo}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2.5 text-center text-gray-400">
-                          {(it.tipo_calculo === 'metro' || it.tipo_calculo === 'metro_manual') && it.largura_cm && it.altura_cm
-                            ? `${it.largura_cm}×${it.altura_cm}cm`
-                            : it.tipo_calculo === 'folha' ? it.folha_tipo : '—'}
+                          {nomeCategoria && (
+                            <span className="text-[9px] font-bold bg-gray-700 text-gray-300 px-1.5 py-0.5 rounded-full">
+                              {nomeCategoria}
+                            </span>
+                          )}
                         </td>
                         <td className="px-3 py-2.5 text-right text-white">{it.quantidade}</td>
                         <td className="px-3 py-2.5 text-right text-gray-300">{fmtBRL(it.preco_unitario)}</td>
@@ -637,7 +641,8 @@ export function Orcamentos() {
                           )}
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

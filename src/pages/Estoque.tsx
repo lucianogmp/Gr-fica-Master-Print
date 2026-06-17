@@ -4,6 +4,7 @@ import { MateriaPrima, statusEstoque } from '../types/estoque';
 import { KpiCard } from '../components/ui/KpiCard';
 import { ModalMP } from '../components/estoque/ModalMP';
 import { ModalMov } from '../components/estoque/ModalMov';
+import { useConfirm } from '../components/ui/ConfirmModal';
 import {
   Warehouse, Package, AlertTriangle, AlertCircle, DollarSign,
   BarChart3, Settings, ClipboardList, ArrowUp, ArrowDown, type LucideIcon,
@@ -14,6 +15,7 @@ type Aba = 'saldo' | 'gerenciar' | 'historico';
 export function Estoque() {
   const { data: mps = [], isLoading, criar, atualizar, deletar } = useMateriasPrimas();
   const { data: movimentos = [], registrar, isRegistrando } = useMovimentos();
+  const { confirmar, ConfirmModal } = useConfirm();
 
   const [aba, setAba]             = useState<Aba>('saldo');
   const [busca, setBusca]         = useState('');
@@ -203,7 +205,7 @@ export function Estoque() {
                         Editar
                       </button>
                       <button
-                        onClick={() => { if (confirm(`Remover "${mp.nome}"?`)) deletar(mp.id); }}
+                        onClick={async () => { if (await confirmar(`Remover "${mp.nome}"?`)) deletar(mp.id); }}
                         className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-red-500/15 text-red-400 hover:bg-red-500/25 border border-red-500/30 transition-all"
                       >
                         Excluir
@@ -282,6 +284,7 @@ export function Estoque() {
         onClose={() => setMovMP(null)}
         onConfirmar={registrar}
       />
+      <ConfirmModal />
     </div>
   );
 }

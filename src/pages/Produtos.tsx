@@ -13,13 +13,14 @@ import { KpiCard } from '../components/ui/KpiCard';
 import { Modal } from '../components/ui/Modal';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
+import { useConfirm } from '../components/ui/ConfirmModal';
 import {
-  ArrowLeft, Plus, Scissors, Package, CheckCircle2, Tag,
+  ArrowLeft, Plus, Scissors, Package, CheckCircle2, Tag, Tags,
   ClipboardList, Factory, Handshake, Briefcase, Save, X,
   Ruler,
 } from 'lucide-react';
 
-type View = 'lista' | 'detalhe' | 'acabamentos';
+type View = 'lista' | 'detalhe' | 'acabamentos' | 'categorias';
 
 const STATUS_COR: Record<string, string> = {
   ativo:    'bg-green-500/15 text-green-400 border-green-500/30',
@@ -63,6 +64,8 @@ function ModalNovaMateriaPrima({ open, onClose, onCriada }: {
   const VAZIO = { nome: '', categoria: '', unidade: 'un', custo_unitario: '', estoque_minimo: '', saldo_inicial: '' };
   const [form, setForm]     = useState(VAZIO);
   const [salvando, setSalvando] = useState(false);
+  const { data: categorias = [] } = useCategorias();
+  const [modalCat, setModalCat] = useState(false);
   function set(f: string, v: string) { setForm(p => ({ ...p, [f]: v })); }
   async function handleSalvar() {
     if (!form.nome.trim()) return;
@@ -88,6 +91,7 @@ function ModalNovaMateriaPrima({ open, onClose, onCriada }: {
     finally { setSalvando(false); }
   }
   return (
+    <>
     <Modal open={open} onClose={onClose}
       title={<span className="flex items-center gap-1.5"><Plus className="w-4 h-4 text-blue-400" /> Nova Matéria-Prima</span>}
       maxWidth="480px"
@@ -106,7 +110,16 @@ function ModalNovaMateriaPrima({ open, onClose, onCriada }: {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Categoria</label>
-            <input value={form.categoria} onChange={e => set('categoria', e.target.value)} className={IN} placeholder="Ex: Papel, Tinta..." />
+            <div className="flex gap-2">
+              <select value={form.categoria} onChange={e => set('categoria', e.target.value)} className={IN + ' flex-1'}>
+                <option value="">Sem categoria</option>
+                {categorias.map(c => <option key={c.id} value={c.nome}>{c.nome}</option>)}
+              </select>
+              <button onClick={() => setModalCat(true)} title="Criar nova categoria"
+                className="flex-shrink-0 w-10 h-10 bg-green-600/20 hover:bg-green-600/40 border border-green-500/30 text-green-400 rounded-lg flex items-center justify-center transition-all">
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
           </div>
           <div>
             <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Unidade</label>
@@ -137,6 +150,9 @@ function ModalNovaMateriaPrima({ open, onClose, onCriada }: {
         </div>
       </div>
     </Modal>
+    <ModalNovaCategoria open={modalCat} onClose={() => setModalCat(false)}
+        onCriada={(id, nome) => { set('categoria', nome); setModalCat(false); }} />
+    </>
   );
 }
 
@@ -147,15 +163,14 @@ function ModalNovaCategoria({ open, onClose, onCriada }: {
 }) {
   const [nome, setNome]     = useState('');
   const [salvando, setSalvando] = useState(false);
+  const { criar } = useCategorias();
+
   async function handleSalvar() {
     if (!nome.trim()) return;
     setSalvando(true);
     try {
-      const { data, error } = await supabase
-        .from('categorias').insert({ nome: nome.trim() }).select('id, nome').single();
-      if (error) throw error;
-      toast.success('Categoria criada!');
-      onCriada(data.id, data.nome);
+      const cat = await criar.mutateAsync(nome.trim());
+      onCriada(cat.id, cat.nome);
       setNome(''); onClose();
     } catch (e: any) { toast.error(e.message); }
     finally { setSalvando(false); }
@@ -260,11 +275,12 @@ function MaquinasEditor({ maquinas, disponiveis, tempoHoras, onChange }: {
 // ── Componente principal ───────────────────────────────────────────────────
 export function Produtos() {
   const { data: produtos = [], isLoading, criar, atualizar, deletar, isSaving } = useProdutos();
-  const { data: categorias  = [] } = useCategorias();
+  const { data: categorias  = [], criar: criarCat, atualizar: atualizarCat, deletar: deletarCat } = useCategorias();
   const { data: materias    = [] } = useMateriasPrimas();
   const { data: gc }               = useGestaoCustos();
   const { data: deprs       = [] } = useDepreciacao();
   const { data: acabamentos = [], criar: criarAcab, atualizar: atualizarAcab, deletar: deletarAcab } = useAcabamentos();
+  const { confirmar, ConfirmModal } = useConfirm();
 
   const [view, setView]         = useState<View>('lista');
   const [produtoId, setProdutoId] = useState<string | null>(null);
@@ -280,6 +296,10 @@ export function Produtos() {
   const [acabNome, setAcabNome]   = useState('');
   const [acabCusto, setAcabCusto] = useState('');
   const [salvandoAcab, setSalvandoAcab] = useState(false);
+
+  // Categorias form
+  const [catNomeLista, setCatNomeLista]   = useState('');
+  const [salvandoCatLista, setSalvandoCatLista] = useState(false);
 
   const isNovo      = produtoId === '__novo__';
   const gcData      = gc ?? { depr: 0, fixos: 0, total: 0, porHora: 0 };
@@ -365,6 +385,15 @@ export function Produtos() {
     } finally { setSalvandoAcab(false); }
   }
 
+  async function handleSalvarCatLista() {
+    if (!catNomeLista.trim()) return;
+    setSalvandoCatLista(true);
+    try {
+      await criarCat(catNomeLista.trim());
+      setCatNomeLista('');
+    } finally { setSalvandoCatLista(false); }
+  }
+
   const filtrados = useMemo(() =>
     produtos.filter(p =>
       !busca ||
@@ -437,7 +466,80 @@ export function Produtos() {
                   </button>
                 </td>
                 <td className="px-5 py-3 text-center">
-                  <button onClick={() => { if (confirm(`Remover "${a.nome}"?`)) deletarAcab(a.id); }}
+                  <button onClick={async () => { if (await confirmar(`Remover "${a.nome}"?`)) deletarAcab(a.id); }}
+                    className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-red-500/15 text-red-400 hover:bg-red-500/25 border border-red-500/30">
+                    Excluir
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
+  // ── VIEW: CATEGORIAS ──────────────────────────────────────────────────────
+  if (view === 'categorias') return (
+    <div className="p-6 space-y-6">
+      <div className="flex items-center gap-4">
+        <button onClick={() => setView('lista')}
+          className="text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 w-9 h-9 rounded-lg flex items-center justify-center">
+          <ArrowLeft className="w-4 h-4" />
+        </button>
+        <div>
+          <h1 className="text-xl font-black text-white flex items-center gap-2"><Tags className="w-5 h-5 text-blue-400" /> Gerenciar Categorias</h1>
+          <p className="text-gray-500 text-sm">Categorias de produtos e matérias-primas</p>
+        </div>
+      </div>
+      <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5">
+        <h3 className="text-xs font-bold text-gray-400 uppercase mb-4 flex items-center gap-1.5"><Plus className="w-3.5 h-3.5" /> Nova Categoria</h3>
+        <div className="flex gap-3 items-end">
+          <div className="flex-1">
+            <label className="text-[10px] text-gray-500 uppercase block mb-1.5">Nome *</label>
+            <input value={catNomeLista} onChange={e => setCatNomeLista(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleSalvarCatLista(); }}
+              className={IN} placeholder="Ex: Papel, Impressão, Adesivo..." />
+          </div>
+          <button onClick={handleSalvarCatLista} disabled={salvandoCatLista || !catNomeLista.trim()}
+            className="bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all flex-shrink-0">
+            {salvandoCatLista ? 'Salvando...' : 'Adicionar'}
+          </button>
+        </div>
+      </div>
+      <div className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-gray-400 text-[10px] font-bold uppercase border-b border-gray-700 bg-gray-800/40">
+              <th className="px-5 py-3 text-left">Nome (Clique para editar)</th>
+              <th className="px-5 py-3 text-center w-24">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {categorias.length === 0 && (
+              <tr><td colSpan={2} className="px-5 py-12 text-center text-gray-600">Nenhuma categoria cadastrada.</td></tr>
+            )}
+            {categorias.map(c => (
+              <tr key={c.id} className="border-b border-gray-800 hover:bg-gray-800/30">
+                <td className="px-5 py-3 font-medium text-white">
+                  <input
+                    defaultValue={c.nome}
+                    onBlur={(e) => {
+                      const val = e.target.value.trim();
+                      if (val && val !== c.nome) {
+                        atualizarCat({ id: c.id, nome: val });
+                      } else {
+                        e.target.value = c.nome;
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') e.currentTarget.blur();
+                    }}
+                    className="bg-transparent border border-transparent hover:border-gray-700 rounded px-2 py-1 focus:outline-none focus:border-blue-500 text-white w-full max-w-sm transition-colors"
+                  />
+                </td>
+                <td className="px-5 py-3 text-center">
+                  <button onClick={async () => { if (await confirmar(`Remover "${c.nome}"? Pode causar erros se já estiver em uso.`)) deletarCat(c.id); }}
                     className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-red-500/15 text-red-400 hover:bg-red-500/25 border border-red-500/30">
                     Excluir
                   </button>
@@ -459,6 +561,10 @@ export function Produtos() {
           <p className="text-gray-500 text-sm">{produtos.length} produto(s) cadastrado(s)</p>
         </div>
         <div className="flex gap-2">
+          <button onClick={() => setView('categorias')}
+            className="bg-gray-700 hover:bg-gray-600 text-gray-300 px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2">
+            <Tags className="w-4 h-4" /> Categorias
+          </button>
           <button onClick={() => setView('acabamentos')}
             className="bg-gray-700 hover:bg-gray-600 text-gray-300 px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2">
             <Scissors className="w-4 h-4" /> Acabamentos
@@ -539,7 +645,7 @@ export function Produtos() {
                     <div className="flex gap-2 justify-center">
                       <button onClick={() => abrirDetalhe(p)}
                         className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 border border-blue-500/30">Editar</button>
-                      <button onClick={() => { if (confirm(`Remover "${p.nome}"?`)) deletar(p.id); }}
+                      <button onClick={async () => { if (await confirmar(`Remover "${p.nome}"?`)) deletar(p.id); }}
                         className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-red-500/15 text-red-400 hover:bg-red-500/25 border border-red-500/30">Excluir</button>
                     </div>
                   </td>
@@ -847,6 +953,7 @@ export function Produtos() {
           </div>
         </div>
       </div>
+      <ConfirmModal />
     </>
   );
 }
