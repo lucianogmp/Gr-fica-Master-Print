@@ -38,9 +38,10 @@
 
 :root[data-theme="light"] .bg-gray-700,
 :root[data-theme="light"] .bg-gray-800,
+:root[data-theme="light"] .bg-gray-800\/30,
 :root[data-theme="light"] .bg-gray-800\/40,
 :root[data-theme="light"] .bg-gray-800\/50 {
-  background-color: rgba(241, 245, 249, 0.92) !important;
+  background-color: rgba(248, 250, 252, 0.94) !important;
   border-color: var(--glass-border) !important;
   color: var(--text-secondary) !important;
 }
@@ -111,13 +112,20 @@
 
 :root[data-theme="light"] .bg-blue-600,
 :root[data-theme="light"] .bg-blue-600 *,
+:root[data-theme="light"] .bg-green-600,
+:root[data-theme="light"] .bg-green-600 *,
+:root[data-theme="light"] .bg-red-600,
+:root[data-theme="light"] .bg-red-600 *,
+:root[data-theme="light"] .bg-purple-600,
+:root[data-theme="light"] .bg-purple-600 *,
 :root[data-theme="light"] button[type="submit"],
 :root[data-theme="light"] button[type="submit"] * {
   color: #ffffff !important;
 }
 
 :root[data-theme="light"] .border-gray-700,
-:root[data-theme="light"] .border-gray-700\/50 {
+:root[data-theme="light"] .border-gray-700\/50,
+:root[data-theme="light"] .border-gray-700\/60 {
   border-color: var(--glass-border) !important;
 }
 
