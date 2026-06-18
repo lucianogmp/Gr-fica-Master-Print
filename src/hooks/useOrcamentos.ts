@@ -117,7 +117,6 @@ export function useOrcamentos() {
           desconto:     orc.desconto ?? 0,
           observacoes:  orc.observacoes,
           valor_total:  orc.total ?? 0,
-          total:        orc.total ?? 0,
           data_venda:   new Date().toISOString().split('T')[0],
         })
         .select()
