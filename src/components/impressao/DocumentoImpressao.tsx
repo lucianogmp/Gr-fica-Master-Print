@@ -1,14 +1,18 @@
 // src/components/impressao/DocumentoImpressao.tsx
 //
 // Template visual do documento impresso (Venda ou Orçamento).
-// É usado em dois lugares:
+// Usado em dois lugares:
 //   1) Na pré-visualização ao vivo do editor de layout (Configurações → Impressão)
-//   2) Na impressão real da Venda/Orçamento (window.print())
+//   2) Na janela de impressão real (ver imprimirDocumento.tsx)
 //
-// Sempre renderizado em "papel branco" (fundo claro, texto escuro),
-// independente do tema escuro do resto do sistema — é o documento
-// que o cliente vai receber.
+// IMPORTANTE: este componente usa apenas estilos inline (style={...}),
+// nunca classes Tailwind. Isso é proposital — quando o documento é
+// renderizado dentro da janela de impressão (um documento HTML novo,
+// em branco, sem o CSS compilado do app), classes Tailwind não teriam
+// nenhum efeito e o documento sairia sem estilo nenhum. Com estilo
+// inline, o visual é sempre idêntico, em qualquer contexto.
 
+import type { CSSProperties } from 'react';
 import { LayoutImpressaoConfig } from '../../types/layoutImpressao';
 import type { Configuracoes } from '../../types/configuracoes';
 
@@ -52,128 +56,135 @@ interface DocumentoImpressaoProps {
   layout: LayoutImpressaoConfig;
   empresa: Partial<Configuracoes>;
   documento: DocumentoImpressaoData;
-  className?: string;
+  /** Estilos extras aplicados na página (ex: sombra na pré-visualização) */
+  style?: CSSProperties;
 }
 
-export function DocumentoImpressao({ layout, empresa, documento: doc, className = '' }: DocumentoImpressaoProps) {
+export function DocumentoImpressao({ layout, empresa, documento: doc, style }: DocumentoImpressaoProps) {
   const cor = layout.corDestaque || '#3b82f6';
   const isOrcamento = doc.tipo === 'orcamento';
   const descontoGlobal = Number(doc.descontoGlobalPct ?? 0);
+
   const colSpanItens =
-    1 + // descrição
+    1 +
     (layout.colunasItens.quantidade ? 1 : 0) +
     (layout.colunasItens.unidade ? 1 : 0) +
     (layout.colunasItens.precoUnitario ? 1 : 0) +
     (layout.colunasItens.desconto ? 1 : 0) +
-    1; // total
+    1;
+
+  const labelStyle: CSSProperties = {
+    fontSize: 10, fontWeight: 700, color: '#6b7280',
+    textTransform: 'uppercase', margin: '0 0 4px',
+  };
 
   return (
     <div
-      className={`bg-white text-gray-900 p-8 w-[210mm] min-h-[297mm] mx-auto shadow-xl ${className}`}
-      style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}
+      style={{
+        background: '#ffffff',
+        color: '#111827',
+        padding: 32,
+        width: '210mm',
+        minHeight: '297mm',
+        margin: '0 auto',
+        fontFamily: 'Arial, Helvetica, sans-serif',
+        boxSizing: 'border-box',
+        ...style,
+      }}
     >
       {/* Cabeçalho */}
-      <div className="flex justify-between items-start border-b-2 pb-4 mb-6" style={{ borderColor: cor }}>
-        <div className="flex items-center gap-3">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: `2px solid ${cor}`, paddingBottom: 16, marginBottom: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {layout.mostrarLogo && empresa.empresa_logo_url && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={empresa.empresa_logo_url} alt="Logo" className="h-14 w-auto object-contain" />
+            <img src={empresa.empresa_logo_url} alt="Logo" style={{ height: 56, width: 'auto', objectFit: 'contain' }} />
           )}
           {layout.mostrarDadosEmpresa && (
             <div>
-              <p className="text-lg font-black leading-tight">{empresa.empresa_nome || 'Sua Empresa'}</p>
+              <p style={{ fontSize: 18, fontWeight: 900, margin: 0, lineHeight: 1.2 }}>{empresa.empresa_nome || 'Sua Empresa'}</p>
               {layout.mostrarCnpj && empresa.empresa_cnpj && (
-                <p className="text-xs text-gray-600">CNPJ: {empresa.empresa_cnpj}</p>
+                <p style={{ fontSize: 12, color: '#4b5563', margin: '2px 0 0' }}>CNPJ: {empresa.empresa_cnpj}</p>
               )}
               {layout.mostrarEndereco && empresa.empresa_endereco && (
-                <p className="text-xs text-gray-600">{empresa.empresa_endereco}</p>
+                <p style={{ fontSize: 12, color: '#4b5563', margin: '2px 0 0' }}>{empresa.empresa_endereco}</p>
               )}
               {layout.mostrarContato && (empresa.empresa_telefone || empresa.empresa_email) && (
-                <p className="text-xs text-gray-600">
+                <p style={{ fontSize: 12, color: '#4b5563', margin: '2px 0 0' }}>
                   {[empresa.empresa_telefone, empresa.empresa_email].filter(Boolean).join(' · ')}
                 </p>
               )}
             </div>
           )}
         </div>
-        <div className="text-right flex-shrink-0">
-          <p className="text-xl font-black" style={{ color: cor }}>{layout.tituloDocumento}</p>
+        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+          <p style={{ fontSize: 20, fontWeight: 900, color: cor, margin: 0 }}>{layout.tituloDocumento}</p>
           {layout.mostrarNumeroDocumento && (
-            <p className="text-sm text-gray-600">{doc.numero ? `Nº ${doc.numero}` : 'Nº —'}</p>
+            <p style={{ fontSize: 14, color: '#4b5563', margin: '2px 0 0' }}>{doc.numero ? `Nº ${doc.numero}` : 'Nº —'}</p>
           )}
-          <p className="text-xs text-gray-500">{fmtData(doc.data)}</p>
+          <p style={{ fontSize: 12, color: '#6b7280', margin: '2px 0 0' }}>{fmtData(doc.data)}</p>
         </div>
       </div>
 
       {layout.textoCabecalhoExtra && (
-        <p className="text-xs text-gray-600 mb-4 italic">{layout.textoCabecalhoExtra}</p>
+        <p style={{ fontSize: 12, color: '#4b5563', marginBottom: 16, fontStyle: 'italic' }}>{layout.textoCabecalhoExtra}</p>
       )}
 
       {/* Cliente */}
-      <div className="mb-5">
-        <p className="text-[10px] font-bold text-gray-500 uppercase mb-1">Cliente</p>
-        <p className="text-sm font-bold">{doc.clienteNome || '—'}</p>
+      <div style={{ marginBottom: 20 }}>
+        <p style={labelStyle}>Cliente</p>
+        <p style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>{doc.clienteNome || '—'}</p>
         {doc.dataEntrega && (
-          <p className="text-xs text-gray-600">Entrega prevista: {fmtData(doc.dataEntrega)}</p>
+          <p style={{ fontSize: 12, color: '#4b5563', margin: '2px 0 0' }}>Entrega prevista: {fmtData(doc.dataEntrega)}</p>
         )}
         {isOrcamento && layout.mostrarValidade && empresa.orc_validade_dias && (
-          <p className="text-xs text-gray-600">Validade da proposta: {empresa.orc_validade_dias} dia(s)</p>
+          <p style={{ fontSize: 12, color: '#4b5563', margin: '2px 0 0' }}>Validade da proposta: {empresa.orc_validade_dias} dia(s)</p>
         )}
       </div>
 
       {/* Itens */}
-      <table className="w-full text-xs border-collapse mb-4">
+      <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse', marginBottom: 16 }}>
         <thead>
           <tr style={{ backgroundColor: cor + '15' }}>
-            <th className="text-left p-2 border-b" style={{ borderColor: cor }}>Descrição</th>
-            {layout.colunasItens.quantidade && (
-              <th className="text-right p-2 border-b" style={{ borderColor: cor }}>Qtd.</th>
-            )}
-            {layout.colunasItens.unidade && (
-              <th className="text-center p-2 border-b" style={{ borderColor: cor }}>Un.</th>
-            )}
-            {layout.colunasItens.precoUnitario && (
-              <th className="text-right p-2 border-b" style={{ borderColor: cor }}>Preço Unit.</th>
-            )}
-            {layout.colunasItens.desconto && (
-              <th className="text-right p-2 border-b" style={{ borderColor: cor }}>Desc.</th>
-            )}
-            <th className="text-right p-2 border-b" style={{ borderColor: cor }}>Total</th>
+            <th style={{ textAlign: 'left', padding: 8, borderBottom: `1px solid ${cor}` }}>Descrição</th>
+            {layout.colunasItens.quantidade && <th style={{ textAlign: 'right', padding: 8, borderBottom: `1px solid ${cor}` }}>Qtd.</th>}
+            {layout.colunasItens.unidade && <th style={{ textAlign: 'center', padding: 8, borderBottom: `1px solid ${cor}` }}>Un.</th>}
+            {layout.colunasItens.precoUnitario && <th style={{ textAlign: 'right', padding: 8, borderBottom: `1px solid ${cor}` }}>Preço Unit.</th>}
+            {layout.colunasItens.desconto && <th style={{ textAlign: 'right', padding: 8, borderBottom: `1px solid ${cor}` }}>Desc.</th>}
+            <th style={{ textAlign: 'right', padding: 8, borderBottom: `1px solid ${cor}` }}>Total</th>
           </tr>
         </thead>
         <tbody>
           {doc.itens.length === 0 && (
-            <tr><td colSpan={colSpanItens} className="text-center text-gray-400 py-6">Nenhum item</td></tr>
+            <tr><td colSpan={colSpanItens} style={{ textAlign: 'center', color: '#9ca3af', padding: '24px 0' }}>Nenhum item</td></tr>
           )}
           {doc.itens.map((it, i) => (
-            <tr key={i} className="border-b border-gray-200">
-              <td className="p-2">{it.descricao}</td>
-              {layout.colunasItens.quantidade && <td className="p-2 text-right">{it.quantidade}</td>}
-              {layout.colunasItens.unidade && <td className="p-2 text-center">{it.unidade || 'un'}</td>}
-              {layout.colunasItens.precoUnitario && <td className="p-2 text-right">{fmtBRL(it.precoUnitario)}</td>}
+            <tr key={i} style={{ borderBottom: '1px solid #e5e7eb' }}>
+              <td style={{ padding: 8 }}>{it.descricao}</td>
+              {layout.colunasItens.quantidade && <td style={{ padding: 8, textAlign: 'right' }}>{it.quantidade}</td>}
+              {layout.colunasItens.unidade && <td style={{ padding: 8, textAlign: 'center' }}>{it.unidade || 'un'}</td>}
+              {layout.colunasItens.precoUnitario && <td style={{ padding: 8, textAlign: 'right' }}>{fmtBRL(it.precoUnitario)}</td>}
               {layout.colunasItens.desconto && (
-                <td className="p-2 text-right">{it.desconto ? `${it.desconto}%` : '—'}</td>
+                <td style={{ padding: 8, textAlign: 'right' }}>{it.desconto ? `${it.desconto}%` : '—'}</td>
               )}
-              <td className="p-2 text-right font-bold">{fmtBRL(it.total)}</td>
+              <td style={{ padding: 8, textAlign: 'right', fontWeight: 700 }}>{fmtBRL(it.total)}</td>
             </tr>
           ))}
         </tbody>
       </table>
 
       {/* Totais */}
-      <div className="flex justify-end mb-6">
-        <div className="w-56 space-y-1 text-sm">
-          <div className="flex justify-between">
-            <span className="text-gray-600">Subtotal</span>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 24 }}>
+        <div style={{ width: 224, fontSize: 14 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+            <span style={{ color: '#4b5563' }}>Subtotal</span>
             <span>{fmtBRL(doc.subtotal)}</span>
           </div>
           {descontoGlobal > 0 && (
-            <div className="flex justify-between text-red-600">
+            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#dc2626', marginBottom: 4 }}>
               <span>Desconto ({descontoGlobal}%)</span>
               <span>-{fmtBRL((doc.subtotal * descontoGlobal) / 100)}</span>
             </div>
           )}
-          <div className="flex justify-between font-black text-base pt-1 border-t" style={{ borderColor: cor }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 900, fontSize: 16, paddingTop: 4, borderTop: `1px solid ${cor}` }}>
             <span>Total</span>
             <span style={{ color: cor }}>{fmtBRL(doc.total)}</span>
           </div>
@@ -182,30 +193,30 @@ export function DocumentoImpressao({ layout, empresa, documento: doc, className 
 
       {/* Observações */}
       {layout.mostrarObservacoes && doc.observacoes && (
-        <div className="mb-5">
-          <p className="text-[10px] font-bold text-gray-500 uppercase mb-1">Observações</p>
-          <p className="text-xs text-gray-700 whitespace-pre-wrap">{doc.observacoes}</p>
+        <div style={{ marginBottom: 20 }}>
+          <p style={labelStyle}>Observações</p>
+          <p style={{ fontSize: 12, color: '#374151', whiteSpace: 'pre-wrap', margin: 0 }}>{doc.observacoes}</p>
         </div>
       )}
 
       {/* Garantia (apenas orçamento) */}
       {isOrcamento && layout.mostrarGarantia && empresa.orc_garantia && (
-        <div className="mb-5">
-          <p className="text-[10px] font-bold text-gray-500 uppercase mb-1">Garantia</p>
-          <p className="text-xs text-gray-700 whitespace-pre-wrap">{empresa.orc_garantia}</p>
+        <div style={{ marginBottom: 20 }}>
+          <p style={labelStyle}>Garantia</p>
+          <p style={{ fontSize: 12, color: '#374151', whiteSpace: 'pre-wrap', margin: 0 }}>{empresa.orc_garantia}</p>
         </div>
       )}
 
       {/* Assinatura */}
       {layout.mostrarAssinatura && (
-        <div className="mt-12 grid grid-cols-2 gap-8 text-xs text-gray-600">
-          <div className="border-t border-gray-400 pt-2 text-center">Assinatura do Cliente</div>
-          <div className="border-t border-gray-400 pt-2 text-center">{empresa.empresa_nome || 'Empresa'}</div>
+        <div style={{ marginTop: 48, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32, fontSize: 12, color: '#4b5563' }}>
+          <div style={{ borderTop: '1px solid #9ca3af', paddingTop: 8, textAlign: 'center' }}>Assinatura do Cliente</div>
+          <div style={{ borderTop: '1px solid #9ca3af', paddingTop: 8, textAlign: 'center' }}>{empresa.empresa_nome || 'Empresa'}</div>
         </div>
       )}
 
       {/* Rodapé */}
-      <div className="mt-10 pt-3 border-t text-[10px] text-gray-500 text-center" style={{ borderColor: cor }}>
+      <div style={{ marginTop: 40, paddingTop: 12, borderTop: `1px solid ${cor}`, fontSize: 10, color: '#6b7280', textAlign: 'center' }}>
         {layout.textoRodape || (isOrcamento ? empresa.orc_rodape : empresa.empresa_rodape) || ''}
       </div>
     </div>

@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
 import { FileText, Zap, Banknote, Layers, Scissors, Plus, Edit2, Check, ArrowLeft, X, CornerDownRight, Ruler, Printer } from 'lucide-react';
 import { useConfiguracoes } from '../hooks/useConfiguracoes';
-import { DocumentoImpressao, DocumentoImpressaoData } from '../components/impressao/DocumentoImpressao';
+import { DocumentoImpressaoData } from '../components/impressao/DocumentoImpressao';
+import { imprimirDocumento } from '../components/impressao/imprimirDocumento';
 import { DEFAULT_LAYOUT_ORCAMENTO } from '../types/layoutImpressao';
 import { useNavigate } from 'react-router-dom';
 import { useOrcamentos, useOrcamentoItens } from '../hooks/useOrcamentos';
@@ -540,15 +541,8 @@ export function Orcamentos() {
 
   return (
     <>
-    <style>{`
-      @media print {
-        body * { visibility: hidden; }
-        #print-area-orcamento, #print-area-orcamento * { visibility: visible; }
-        #print-area-orcamento { position: absolute; left: 0; top: 0; width: 100%; }
-      }
-    `}</style>
     <ConfirmModal />
-    <div id="print-area-orcamento" className="p-6 space-y-5">
+    <div className="p-6 space-y-5">
       <div className="flex items-center gap-4 flex-wrap">
         <button onClick={fechar}
           className="text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -574,7 +568,7 @@ export function Orcamentos() {
             </button>
           )}
           {!isNovo && (
-            <button onClick={() => window.print()}
+            <button onClick={() => imprimirDocumento(layoutOrcamento, cfg ?? {}, docImpressaoOrcamento)}
               className="bg-gray-700 hover:bg-gray-600 text-gray-300 px-4 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-2">
               <Printer className="w-4 h-4" /> Imprimir
             </button>

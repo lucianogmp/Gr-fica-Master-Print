@@ -6,7 +6,6 @@ import toast from 'react-hot-toast';
 
 type OrcPayload = Omit<Orcamento, 'id' | 'created_at' | 'updated_at'>;
 
-// Serializa itens para o formato esperado pela RPC
 function serializarItens(itens: OrcamentoItem[]) {
   return itens.map(i => ({
     descricao:             i.descricao,
@@ -14,18 +13,18 @@ function serializarItens(itens: OrcamentoItem[]) {
     quantidade:            i.quantidade,
     preco_unitario:        i.preco_unitario,
     total:                 i.total,
-    largura_cm:            i.largura_cm ?? null,
-    altura_cm:             i.altura_cm ?? null,
-    preco_por_m2:          i.preco_por_m2 ?? null,
-    material_id:           i.material_id ?? null,
-    folha_tipo:            i.folha_tipo ?? null,
-    itens_por_folha:       i.itens_por_folha ?? null,
-    preco_por_folha:       i.preco_por_folha ?? null,
-    acabamento_id:         i.acabamento_id ?? null,
-    acabamento_nome:       i.acabamento_nome ?? null,
-    acabamento_custo:      i.acabamento_custo ?? null,
+    largura_cm:            i.largura_cm            ?? null,
+    altura_cm:             i.altura_cm             ?? null,
+    preco_por_m2:          i.preco_por_m2          ?? null,
+    material_id:           i.material_id           ?? null,
+    folha_tipo:            i.folha_tipo            ?? null,
+    itens_por_folha:       i.itens_por_folha       ?? null,
+    preco_por_folha:       i.preco_por_folha       ?? null,
+    acabamento_id:         i.acabamento_id         ?? null,
+    acabamento_nome:       i.acabamento_nome       ?? null,
+    acabamento_custo:      i.acabamento_custo      ?? null,
     acabamentos_por_folha: i.acabamentos_por_folha ?? null,
-    arte_inclusa:          i.arte_inclusa ?? false,
+    arte_inclusa:          i.arte_inclusa          ?? false,
   }));
 }
 
@@ -55,7 +54,6 @@ export function useOrcamentos() {
 
       const id = (data as Orcamento).id;
 
-      // Salva itens atomicamente via RPC
       const { error: iErr } = await supabase.rpc('salvar_itens_orcamento', {
         p_orcamento_id: id,
         p_itens: serializarItens(itens),
@@ -84,7 +82,6 @@ export function useOrcamentos() {
         .eq('id', id);
       if (error) throw error;
 
-      // Substitui itens atomicamente se foram fornecidos
       if (itens !== undefined) {
         const { error: iErr } = await supabase.rpc('salvar_itens_orcamento', {
           p_orcamento_id: id,
@@ -125,22 +122,25 @@ export function useOrcamentos() {
 
       const vendaId = (venda as any).id;
 
-      // 2. Salva itens da venda atomicamente
+      // 2. Salva itens da venda — propaga produto_id vindo do item do orçamento
+      const itensMapeados = itens.map(i => ({
+        produto_id:     i.produto_id     ?? null,
+        descricao:      i.descricao,
+        quantidade:     i.quantidade,
+        preco_unitario: i.preco_unitario,
+        desconto:       0,
+        obs:            null,
+        unidade:        'un',
+        total:          i.total,
+      }));
+
       const { error: iErr } = await supabase.rpc('salvar_itens_venda', {
         p_venda_id: vendaId,
-        p_itens: itens.map(i => ({
-          descricao:      i.descricao,
-          quantidade:     i.quantidade,
-          preco_unitario: i.preco_unitario,
-          desconto:       0,
-          obs:            null,
-          unidade:        'un',
-          total:          i.total,
-        })),
+        p_itens: itensMapeados,
       });
       if (iErr) throw iErr;
 
-      // 3. Marca orçamento como convertido e vincula à venda
+      // 3. Marca orçamento como convertido
       const { error: uErr } = await supabase
         .from('orcamentos')
         .update({ status: 'convertido', venda_id: vendaId })
@@ -159,7 +159,6 @@ export function useOrcamentos() {
 
   const deletar = useMutation({
     mutationFn: async (id: string) => {
-      // Deleta itens primeiro (FK), depois o orçamento
       await supabase.from('orcamento_itens').delete().eq('orcamento_id', id);
       const { error } = await supabase.from('orcamentos').delete().eq('id', id);
       if (error) throw error;

@@ -9,7 +9,8 @@ import {
   ArrowLeft, Save, User, Package, Settings, X, Printer,
 } from 'lucide-react';
 import { useConfiguracoes } from '../hooks/useConfiguracoes';
-import { DocumentoImpressao, DocumentoImpressaoData } from '../components/impressao/DocumentoImpressao';
+import { DocumentoImpressaoData } from '../components/impressao/DocumentoImpressao';
+import { imprimirDocumento } from '../components/impressao/imprimirDocumento';
 import { DEFAULT_LAYOUT_VENDA } from '../types/layoutImpressao';
 
 type View = 'lista' | 'detalhe';
@@ -114,13 +115,10 @@ export function Vendas() {
       : null;
 
   useEffect(() => {
-    if (!imprimindoId || !vendaImprimir || !itensImprimir) return;
-    const t = setTimeout(() => {
-      window.print();
-      setImprimindoId(null);
-    }, 150);
-    return () => clearTimeout(t);
-  }, [imprimindoId, vendaImprimir, itensImprimir]);
+    if (!imprimindoId || !docImpressaoLista) return;
+    imprimirDocumento(layoutVenda, cfg ?? {}, docImpressaoLista);
+    setImprimindoId(null);
+  }, [imprimindoId, docImpressaoLista]);
 
   async function handleSalvar() {
     const payload = {
@@ -157,15 +155,7 @@ export function Vendas() {
 
   /* ────────── LISTA ────────── */
   if (view === 'lista') return (
-    <>
-    <style>{`
-      @media print {
-        body * { visibility: hidden; }
-        #print-area-venda-lista, #print-area-venda-lista * { visibility: visible; }
-        #print-area-venda-lista { position: absolute; left: 0; top: 0; width: 100%; }
-      }
-    `}</style>
-    <div id="print-area-venda-lista" className="p-6 space-y-6">
+    <div className="p-6 space-y-6">
       <div className="flex justify-between items-start">
         <div>
           <h1 className="text-2xl font-black text-white flex items-center gap-2"><ShoppingCart className="w-6 h-6 text-blue-400" /> Vendas</h1>
@@ -253,25 +243,11 @@ export function Vendas() {
         </table>
       </div>
     </div>
-    {docImpressaoLista && (
-      <div className="hidden">
-        <DocumentoImpressao layout={layoutVenda} empresa={vendaImprimir ?? {}} documento={docImpressaoLista} />
-      </div>
-    )}
-    </>
   );
 
   /* ────────── DETALHE ────────── */
   return (
-    <>
-    <style>{`
-      @media print {
-        body * { visibility: hidden; }
-        #print-area-venda, #print-area-venda * { visibility: visible; }
-        #print-area-venda { position: absolute; left: 0; top: 0; width: 100%; }
-      }
-    `}</style>
-    <div id="print-area-venda" className="p-6 space-y-6">
+    <div className="p-6 space-y-6">
       <div className="flex items-center gap-4">
         <button onClick={fechar}
           className="text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 w-9 h-9 rounded-lg flex items-center justify-center transition-all">
@@ -279,7 +255,7 @@ export function Vendas() {
         </button>
         <div className="flex-1">
           <h1 className="text-xl font-black text-white">
-            {isNovo ? 'Nova Venda' : `Venda ${form.numero ? `#${form.numero}` : ''} — ${form.cliente_nome || 'Editar'}`}
+            {isNovo ? 'Nova Venda' : `Venda ${(form as any).numero ? `#${(form as any).numero}` : ''} — ${form.cliente_nome || 'Editar'}`}
           </h1>
           <p className="text-gray-500 text-sm">{isNovo ? 'Preencha os dados e salve' : 'Edite e salve as alterações'}</p>
         </div>
@@ -296,7 +272,7 @@ export function Vendas() {
           </div>
         )}
         {!isNovo && (
-          <button onClick={() => window.print()}
+          <button onClick={() => imprimirDocumento(layoutVenda, cfg ?? {}, docImpressaoVenda)}
             className="bg-gray-700 hover:bg-gray-600 text-gray-300 px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2">
             <Printer className="w-4 h-4" /> Imprimir
           </button>
@@ -395,6 +371,5 @@ export function Vendas() {
         </div>
       </div>
     </div>
-    </>
   );
 }

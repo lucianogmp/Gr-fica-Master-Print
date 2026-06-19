@@ -1,3 +1,4 @@
+// src/types/venda.ts
 export type StatusVenda = 'orcamento' | 'aprovado' | 'producao' | 'pronto' | 'entregue' | 'cancelado';
 
 export interface Venda {
@@ -22,6 +23,7 @@ export interface Venda {
 export interface VendaItem {
   id?: string;
   venda_id?: string;
+  /** Vínculo com o produto do catálogo — null para itens manuais */
   produto_id?: string | null;
   descricao: string;
   quantidade: number;

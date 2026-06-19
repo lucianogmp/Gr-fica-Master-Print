@@ -6,6 +6,20 @@ import toast from 'react-hot-toast';
 
 type VendaPayload = Omit<Venda, 'id' | 'created_at' | 'updated_at' | 'numero'>;
 
+/** Serializa itens para o formato da RPC, incluindo produto_id */
+function serializarItens(itens: VendaItem[]) {
+  return itens.map(i => ({
+    produto_id:     i.produto_id     ?? null,
+    descricao:      i.descricao,
+    quantidade:     i.quantidade,
+    preco_unitario: i.preco_unitario,
+    desconto:       i.desconto       ?? 0,
+    obs:            i.obs            ?? null,
+    unidade:        i.unidade        ?? 'un',
+    total:          i.total,
+  }));
+}
+
 export function useVendas() {
   const qc = useQueryClient();
 
@@ -23,7 +37,6 @@ export function useVendas() {
 
   const criar = useMutation({
     mutationFn: async ({ venda, itens }: { venda: VendaPayload; itens: VendaItem[] }) => {
-      // 1. Cria a venda
       const { data, error } = await supabase
         .from('vendas')
         .insert(venda)
@@ -33,19 +46,10 @@ export function useVendas() {
 
       const vendaId = (data as Venda).id;
 
-      // 2. Salva itens via RPC atômica (delete+insert em uma transação)
       if (itens.length > 0) {
         const { error: iErr } = await supabase.rpc('salvar_itens_venda', {
           p_venda_id: vendaId,
-          p_itens: itens.map(i => ({
-            descricao:      i.descricao,
-            quantidade:     i.quantidade,
-            preco_unitario: i.preco_unitario,
-            desconto:       i.desconto ?? 0,
-            obs:            i.obs ?? null,
-            unidade:        i.unidade ?? 'un',
-            total:          i.total,
-          })),
+          p_itens: serializarItens(itens),
         });
         if (iErr) throw iErr;
       }
@@ -70,26 +74,16 @@ export function useVendas() {
       payload: Partial<VendaPayload>;
       itens?: VendaItem[];
     }) => {
-      // 1. Atualiza cabeçalho da venda
       const { error } = await supabase
         .from('vendas')
         .update({ ...payload, updated_at: new Date().toISOString() })
         .eq('id', id);
       if (error) throw error;
 
-      // 2. Se itens foram passados, substitui atomicamente via RPC
       if (itens !== undefined) {
         const { error: iErr } = await supabase.rpc('salvar_itens_venda', {
           p_venda_id: id,
-          p_itens: itens.map(i => ({
-            descricao:      i.descricao,
-            quantidade:     i.quantidade,
-            preco_unitario: i.preco_unitario,
-            desconto:       i.desconto ?? 0,
-            obs:            i.obs ?? null,
-            unidade:        i.unidade ?? 'un',
-            total:          i.total,
-          })),
+          p_itens: serializarItens(itens),
         });
         if (iErr) throw iErr;
       }
@@ -119,8 +113,6 @@ export function useVendas() {
 
   const deletar = useMutation({
     mutationFn: async (id: string) => {
-      // venda_itens tem ON DELETE CASCADE se configurado,
-      // senão a RPC cuida — aqui deletamos a venda e o Postgres cascateia
       const { error } = await supabase.from('vendas').delete().eq('id', id);
       if (error) throw error;
     },
