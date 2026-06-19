@@ -41,14 +41,15 @@ export function Vendas() {
   const { data: itensCarregados } = useVendaItens(isNovo ? null : vendaId);
 
   useEffect(() => {
-    if (itensCarregados && !isNovo) setItens(itensCarregados);
-  }, [itensCarregados, isNovo]);
+    if (isNovo) return;
+    if (itensCarregados !== undefined) setItens(itensCarregados);
+  }, [itensCarregados, isNovo, vendaId]);
 
   function abrirDetalhe(v: Venda | null) {
     if (v) {
+      setItens([]); // limpa itens anteriores enquanto a query carrega
       setVendaId(v.id);
       setForm({ ...NOVA_VENDA, ...v });
-      // itens carregados via useVendaItens acima
     } else {
       setVendaId('__novo__');
       setForm({ ...NOVA_VENDA, data_venda: new Date().toISOString().split('T')[0] });

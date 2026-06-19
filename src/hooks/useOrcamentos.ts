@@ -149,9 +149,10 @@ export function useOrcamentos() {
 
       return vendaId;
     },
-    onSuccess: () => {
+    onSuccess: (vendaId) => {
       qc.invalidateQueries({ queryKey: ['orcamentos'] });
       qc.invalidateQueries({ queryKey: ['vendas'] });
+      qc.invalidateQueries({ queryKey: ['venda-itens', vendaId] });
       toast.success('Orçamento convertido em venda!');
     },
     onError: (e: any) => toast.error(e.message),
