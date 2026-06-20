@@ -38,6 +38,8 @@ export interface DocumentoImpressaoData {
   subtotal: number;
   descontoGlobalPct?: number | null;
   total: number;
+  valorPago?: number | null;
+  formaPagamento?: string | null;
   observacoes?: string | null;
 }
 
@@ -188,6 +190,20 @@ export function DocumentoImpressao({ layout, empresa, documento: doc, style }: D
             <span>Total</span>
             <span style={{ color: cor }}>{fmtBRL(doc.total)}</span>
           </div>
+          {doc.valorPago != null && doc.valorPago > 0 && (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+                <span style={{ color: '#4b5563' }}>Valor Pago{doc.formaPagamento ? ` (${doc.formaPagamento})` : ''}</span>
+                <span style={{ color: '#16a34a' }}>{fmtBRL(doc.valorPago)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 900, fontSize: 14, marginTop: 4, paddingTop: 4, borderTop: `1px dashed #d1d5db` }}>
+                <span>Falta Pagar</span>
+                <span style={{ color: Math.max(0, doc.total - doc.valorPago) === 0 ? '#16a34a' : '#ea580c' }}>
+                  {Math.max(0, doc.total - doc.valorPago) === 0 ? 'QUITADO' : fmtBRL(Math.max(0, doc.total - doc.valorPago))}
+                </span>
+              </div>
+            </>
+          )}
         </div>
       </div>
 

@@ -20,11 +20,12 @@ const fmtBRL  = (v: number | null | undefined) => Number(v ?? 0).toLocaleString(
 const fmtData = (d?: string | null) => d ? new Date(d + 'T00:00:00').toLocaleDateString('pt-BR') : '—';
 const IN = "w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors";
 
-const NOVA_VENDA: Omit<Venda, 'id' | 'created_at' | 'updated_at' | 'numero'> = {
+const NOVA_VENDA: Omit<Venda, 'id' | 'created_at' | 'updated_at' | 'numero' | 'total'> = {
   cliente_nome: '', status: 'orcamento', desconto: 0,
   observacoes: '', consumidor_final: false,
   data_entrega: '', data_venda: new Date().toISOString().split('T')[0],
-  vendedor: '', palavra_chave: '', tipo: '', valor_total: 0, total: 0,
+  vendedor: '', palavra_chave: '', tipo: '', valor_total: 0,
+  valor_pago: 0, forma_pagamento: '',
 };
 
 export function Vendas() {
@@ -85,6 +86,8 @@ export function Vendas() {
     subtotal: totalItens,
     descontoGlobalPct: descGlobal,
     total: totalFinal,
+    valorPago: form.valor_pago,
+    formaPagamento: form.forma_pagamento,
     observacoes: form.observacoes,
   };
 
@@ -111,6 +114,8 @@ export function Vendas() {
           subtotal: itensImprimir.reduce((s, i) => s + Number(i.total), 0),
           descontoGlobalPct: Number(vendaImprimir.desconto ?? 0),
           total: Number(vendaImprimir.valor_total ?? vendaImprimir.total ?? 0),
+          valorPago: vendaImprimir.valor_pago,
+          formaPagamento: vendaImprimir.forma_pagamento,
           observacoes: vendaImprimir.observacoes,
         }
       : null;
@@ -125,15 +130,14 @@ export function Vendas() {
     const payload = {
       ...form,
       valor_total: totalFinal,
-      total:       totalFinal,
     };
-    const { id: _id, created_at: _c, updated_at: _u, numero: _n, ...clean } =
-      { id: '', created_at: '', updated_at: '', numero: 0, ...payload };
+    // total é coluna generated no banco — descarta id, timestamps, numero e total
+    const { id: _id, created_at: _c, updated_at: _u, numero: _n, total: _t, ...clean } =
+      { id: '', created_at: '', updated_at: '', numero: 0, total: 0, ...payload };
 
     if (isNovo) {
       await criar({ venda: clean as any, itens });
     } else if (vendaId) {
-      // atualizar agora aceita itens e usa RPC atômica internamente
       await atualizar({ id: vendaId, payload: clean as any, itens });
     }
     fechar();
@@ -349,6 +353,39 @@ export function Vendas() {
               <div className="pt-3 border-t border-gray-700 flex justify-between items-center">
                 <span className="font-bold text-white">Total</span>
                 <span className="text-2xl font-black text-green-400">{fmtBRL(totalFinal)}</span>
+              </div>
+              <div className="pt-3 border-t border-gray-700 space-y-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-400">Valor Pago (R$)</span>
+                  <input type="number" min="0" step="0.01"
+                    value={form.valor_pago ?? ''}
+                    onChange={e => setF('valor_pago', e.target.value === '' ? null : parseFloat(e.target.value))}
+                    className="w-24 bg-[#111827] border border-gray-700 rounded-lg px-2 py-1 text-white text-sm text-right focus:outline-none focus:border-blue-500" />
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-400">Forma de Pgto</span>
+                  <select value={form.forma_pagamento ?? ''} onChange={e => setF('forma_pagamento', e.target.value)}
+                    className="w-32 bg-[#111827] border border-gray-700 rounded-lg px-2 py-1 text-white text-sm focus:outline-none focus:border-blue-500">
+                    <option value="">Nenhuma</option>
+                    <option value="Dinheiro">Dinheiro</option>
+                    <option value="PIX">PIX</option>
+                    <option value="Cartão de Crédito">Crédito</option>
+                    <option value="Cartão de Débito">Débito</option>
+                    <option value="Boleto">Boleto</option>
+                    <option value="Transferência">Transferência</option>
+                  </select>
+                </div>
+                <div className="pt-2 flex justify-between items-center">
+                  <span className="font-bold text-white">Falta Pagar</span>
+                  {(() => {
+                    const pago = Number(form.valor_pago ?? 0);
+                    const saldo = Math.max(0, totalFinal - pago);
+                    if (saldo <= 0 && totalFinal > 0) {
+                      return <span className="text-xs font-black bg-green-500/20 text-green-400 px-2 py-1 rounded-lg">QUITADO</span>;
+                    }
+                    return <span className="text-lg font-black text-yellow-400">{fmtBRL(saldo)}</span>;
+                  })()}
+                </div>
               </div>
             </div>
           </div>

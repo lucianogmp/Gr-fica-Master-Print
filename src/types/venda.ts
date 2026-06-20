@@ -16,6 +16,8 @@ export interface Venda {
   vendedor?: string | null;
   palavra_chave?: string | null;
   tipo?: string | null;
+  valor_pago?: number | null;
+  forma_pagamento?: string | null;
   created_at?: string;
   updated_at?: string;
 }

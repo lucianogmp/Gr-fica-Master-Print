@@ -37,9 +37,11 @@ export function useVendas() {
 
   const criar = useMutation({
     mutationFn: async ({ venda, itens }: { venda: VendaPayload; itens: VendaItem[] }) => {
+      // total é generated column no banco — não pode ser inserido
+      const { total: _t, ...vendaSemTotal } = venda as any;
       const { data, error } = await supabase
         .from('vendas')
-        .insert(venda)
+        .insert(vendaSemTotal)
         .select()
         .single();
       if (error) throw error;
@@ -74,9 +76,10 @@ export function useVendas() {
       payload: Partial<VendaPayload>;
       itens?: VendaItem[];
     }) => {
+      const { total: _t, ...payloadSemTotal } = payload as any;
       const { error } = await supabase
         .from('vendas')
-        .update({ ...payload, updated_at: new Date().toISOString() })
+        .update({ ...payloadSemTotal, updated_at: new Date().toISOString() })
         .eq('id', id);
       if (error) throw error;
 
