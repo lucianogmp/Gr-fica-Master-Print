@@ -43,7 +43,7 @@ export function Orcamentos() {
   const { confirmar, ConfirmModal } = useConfirm();
   const [view, setView]               = useState<View>('lista');
   const [orcId, setOrcId]             = useState<string | null>(null);
-  const [form, setForm]               = useState({ ...NOVO_ORC });
+  const [form, setForm]               = useState<Partial<Orcamento>>({ ...NOVO_ORC });
   const [itens, setItens]             = useState<OrcamentoItem[]>([]);
   const [showEditor, setShowEditor]   = useState(false);
   const [editandoIdx, setEditandoIdx] = useState<number | null>(null);
@@ -85,7 +85,7 @@ export function Orcamentos() {
     numero: form.numero ?? null,
     data: form.created_at ?? null,
     dataEntrega: null,
-    clienteNome: form.cliente_nome,
+    clienteNome: form.cliente_nome ?? '',
     itens: itens.map(i => ({
       descricao: i.descricao,
       quantidade: Number(i.quantidade),

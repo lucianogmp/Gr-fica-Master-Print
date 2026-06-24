@@ -1,8 +1,6 @@
 // src/pages/Configuracoes.tsx
 //
-// CORREÇÃO: o arquivo original definia um hook local `useSalvarToken` que
-// chamava /api/salvar-token (rota inexistente) em vez de usar o hook real
-// de src/hooks/useConfiguracoes.ts que usa supabase.rpc('salvar_token').
+// Adicionada aba "Vendas" com formas de pagamento, parcelamento e prazos padrão.
 
 import { useState, useEffect } from 'react';
 import { useConfiguracoes, useSalvarToken } from '../hooks/useConfiguracoes';
@@ -12,14 +10,23 @@ import { Configuracoes as ConfigType } from '../types/configuracoes';
 import { ROLES, Role } from '../types/roles';
 import { Modal } from '../components/ui/Modal';
 import { EditorLayoutImpressao } from '../components/configuracoes/EditorLayoutImpressao';
+import { AbaVendas } from '../components/configuracoes/AbaVendas';
 import { DEFAULT_LAYOUT_VENDA, DEFAULT_LAYOUT_ORCAMENTO } from '../types/layoutImpressao';
 import {
   Building2, DollarSign, FileText, Settings, Link2, Users, Wrench,
   BarChart3, Plus, Hash, Palette, Lock, ClipboardList, CreditCard,
-  Save, Check, User, Printer, type LucideIcon,
+  Save, Check, User, Printer, ShoppingCart, type LucideIcon,
 } from 'lucide-react';
 
-type Aba = 'empresa' | 'precificacao' | 'orcamentos' | 'impressao' | 'sistema' | 'integracoes' | 'usuarios';
+type Aba =
+  | 'empresa'
+  | 'precificacao'
+  | 'orcamentos'
+  | 'vendas'
+  | 'impressao'
+  | 'sistema'
+  | 'integracoes'
+  | 'usuarios';
 
 const IN   = "w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors";
 const IN_N = IN + " [appearance:textfield]";
@@ -43,44 +50,33 @@ function Row({ children, cols = 2 }: { children: React.ReactNode; cols?: number 
   return <div className={`grid grid-cols-1 md:grid-cols-${cols} gap-4`}>{children}</div>;
 }
 
-// TokenField usa o hook real que chama supabase.rpc('salvar_token')
-// que persiste no Vault — nunca trafega em plaintext pelo banco
 function TokenField({ label, nome }: { label: string; nome: string }) {
-  const { mutate, isPending } = useSalvarToken()
-  const [valor, setValor] = useState('')
-  const [salvo, setSalvo]   = useState(false)
+  const { mutate, isPending } = useSalvarToken();
+  const [valor, setValor] = useState('');
+  const [salvo, setSalvo] = useState(false);
 
   return (
     <div>
-      <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">
-        {label}
-      </label>
+      <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">{label}</label>
       <div className="flex gap-2">
         <input
           type="password"
           value={valor}
-          onChange={e => { setValor(e.target.value); setSalvo(false) }}
+          onChange={e => { setValor(e.target.value); setSalvo(false); }}
           placeholder="Cole o token aqui..."
           className="flex-1 bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500"
         />
         <button
-          onClick={() =>
-            mutate(
-              { nome, valor },
-              { onSuccess: () => { setValor(''); setSalvo(true) } }
-            )
-          }
+          onClick={() => mutate({ nome, valor }, { onSuccess: () => { setValor(''); setSalvo(true); } })}
           disabled={isPending || !valor.trim()}
           className="px-4 py-2 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white rounded-lg text-sm font-bold transition-all"
         >
           {isPending ? '...' : salvo ? '✓ Salvo' : 'Salvar'}
         </button>
       </div>
-      <p className="text-xs text-gray-500 mt-1">
-        Armazenado cifrado no Vault — nunca exposto no frontend.
-      </p>
+      <p className="text-xs text-gray-500 mt-1">Armazenado cifrado no Vault — nunca exposto no frontend.</p>
     </div>
-  )
+  );
 }
 
 export function Configuracoes() {
@@ -104,6 +100,7 @@ export function Configuracoes() {
     setForm(f => ({ ...f, [field]: val }));
     setDirty(true);
   }
+
   function num(field: keyof ConfigType) { return (form[field] as number | null | undefined) ?? ''; }
   function txt(field: keyof ConfigType) { return (form[field] as string | null | undefined) ?? ''; }
 
@@ -123,7 +120,8 @@ export function Configuracoes() {
     { key: 'empresa',      label: 'Empresa',      icon: Building2 },
     { key: 'precificacao', label: 'Precificação',  icon: DollarSign },
     { key: 'orcamentos',   label: 'Orçamentos',    icon: FileText },
-    { key: 'impressao',    label: 'Impressão',    icon: Printer },
+    { key: 'vendas',       label: 'Vendas',        icon: ShoppingCart },
+    { key: 'impressao',    label: 'Impressão',     icon: Printer },
     { key: 'sistema',      label: 'Sistema',       icon: Settings },
     { key: 'integracoes',  label: 'Integrações',   icon: Link2 },
     { key: 'usuarios',     label: 'Usuários',      icon: Users },
@@ -135,12 +133,17 @@ export function Configuracoes() {
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-2xl font-black text-white flex items-center gap-2"><Wrench className="w-6 h-6 text-blue-400" /> Configurações</h1>
+          <h1 className="text-2xl font-black text-white flex items-center gap-2">
+            <Wrench className="w-6 h-6 text-blue-400" /> Configurações
+          </h1>
           <p className="text-gray-500 text-sm">Dados da empresa, precificação e integrações</p>
         </div>
         {aba !== 'usuarios' && (
-          <button onClick={handleSalvar} disabled={isSaving || !dirty}
-            className="bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white px-6 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2">
+          <button
+            onClick={handleSalvar}
+            disabled={isSaving || !dirty}
+            className="bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white px-6 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2"
+          >
             {dirty ? <Save className="w-4 h-4" /> : <Check className="w-4 h-4" />}
             {isSaving ? 'Salvando...' : dirty ? 'Salvar Alterações' : 'Salvo'}
           </button>
@@ -150,14 +153,22 @@ export function Configuracoes() {
       {/* Abas */}
       <div className="flex gap-1 bg-[#1f2937] border border-gray-700 rounded-xl p-1 flex-wrap">
         {ABAS.map(a => (
-          <button key={a.key} onClick={() => setAba(a.key)}
+          <button
+            key={a.key}
+            onClick={() => setAba(a.key)}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${
               aba === a.key ? 'bg-blue-600 text-white shadow' : 'text-gray-400 hover:text-white'
-            }`}>
+            }`}
+          >
             <a.icon className="w-4 h-4" />{a.label}
           </button>
         ))}
       </div>
+
+      {/* ─── ABA VENDAS ─── */}
+      {aba === 'vendas' && (
+        <AbaVendas form={form} set={set} />
+      )}
 
       {/* ─── USUÁRIOS ─── */}
       {aba === 'usuarios' && (
@@ -168,8 +179,10 @@ export function Configuracoes() {
               <p className="text-xs text-gray-500">{usuarios.length} usuário(s) cadastrado(s)</p>
             </div>
             {isDono && (
-              <button onClick={() => setModalConvite(true)}
-                className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all">
+              <button
+                onClick={() => setModalConvite(true)}
+                className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all"
+              >
                 + Convidar Usuário
               </button>
             )}
@@ -212,11 +225,10 @@ export function Configuracoes() {
                           : 'Nunca'}
                       </td>
                       <td className="px-5 py-3 text-center">
-                        {roleInfo ? (
-                          <span className={`text-xs font-bold ${roleInfo.cor}`}>● {roleInfo.label}</span>
-                        ) : (
-                          <span className="text-xs text-red-400 font-bold">Sem perfil</span>
-                        )}
+                        {roleInfo
+                          ? <span className={`text-xs font-bold ${roleInfo.cor}`}>● {roleInfo.label}</span>
+                          : <span className="text-xs text-red-400 font-bold">Sem perfil</span>
+                        }
                       </td>
                       {isDono && (
                         <td className="px-5 py-3 text-center">
@@ -332,19 +344,22 @@ export function Configuracoes() {
         </div>
       )}
 
+      {/* ─── IMPRESSÃO ─── */}
       {aba === 'impressao' && (
         <div className="space-y-5">
           <div className="flex gap-2 flex-wrap">
-            <button onClick={() => setSubAbaImpressao('venda')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${subAbaImpressao === 'venda' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'}`}>
-              Venda
-            </button>
-            <button onClick={() => setSubAbaImpressao('orcamento')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${subAbaImpressao === 'orcamento' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'}`}>
-              Orçamento
-            </button>
+            {['venda', 'orcamento'].map(t => (
+              <button
+                key={t}
+                onClick={() => setSubAbaImpressao(t)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all capitalize ${
+                  subAbaImpressao === t ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                {t === 'venda' ? 'Venda' : 'Orçamento'}
+              </button>
+            ))}
           </div>
-
           {subAbaImpressao === 'venda' && (
             <EditorLayoutImpressao
               tipo="venda"
@@ -370,7 +385,8 @@ export function Configuracoes() {
           <Section title="Identidade" icon={Palette}>
             <Row cols={2}>
               <div><Lbl>Nome do sistema</Lbl><input value={txt('sistema_nome')} onChange={e => set('sistema_nome', e.target.value)} className={IN} /></div>
-              <div><Lbl>Cor de destaque (hex)</Lbl>
+              <div>
+                <Lbl>Cor de destaque (hex)</Lbl>
                 <div className="flex gap-2">
                   <input value={txt('tema_accent_color')} onChange={e => set('tema_accent_color', e.target.value)} className={IN} placeholder="#3b82f6" />
                   {txt('tema_accent_color') && (
@@ -381,7 +397,8 @@ export function Configuracoes() {
             </Row>
           </Section>
           <Section title="Segurança" icon={Lock}>
-            <div><Lbl>Timeout de sessão (minutos)</Lbl>
+            <div>
+              <Lbl>Timeout de sessão (minutos)</Lbl>
               <input type="number" min="5" step="5" value={num('seg_tempo_sessao')} onChange={e => set('seg_tempo_sessao', parseInt(e.target.value) || null)} className={IN_N + ' max-w-xs'} placeholder="60" />
             </div>
           </Section>
@@ -413,7 +430,9 @@ export function Configuracoes() {
       )}
 
       {/* Modal convidar usuário */}
-      <Modal open={modalConvite} onClose={() => setModalConvite(false)}
+      <Modal
+        open={modalConvite}
+        onClose={() => setModalConvite(false)}
         title={<span className="flex items-center gap-1.5"><User className="w-4 h-4" /> Convidar Usuário</span>}
         maxWidth="440px"
         actions={
@@ -424,19 +443,23 @@ export function Configuracoes() {
               {isConvidando ? 'Enviando...' : 'Convidar'}
             </button>
           </>
-        }>
+        }
+      >
         <div className="space-y-4">
-          <div><Lbl>E-mail *</Lbl>
+          <div>
+            <Lbl>E-mail *</Lbl>
             <input autoFocus type="email" value={conviteForm.email}
               onChange={e => setConviteForm(f => ({ ...f, email: e.target.value }))}
               className={IN} placeholder="colaborador@email.com" />
           </div>
-          <div><Lbl>Nome</Lbl>
+          <div>
+            <Lbl>Nome</Lbl>
             <input value={conviteForm.nome}
               onChange={e => setConviteForm(f => ({ ...f, nome: e.target.value }))}
               className={IN} placeholder="Nome do colaborador" />
           </div>
-          <div><Lbl>Perfil de acesso</Lbl>
+          <div>
+            <Lbl>Perfil de acesso</Lbl>
             <select value={conviteForm.role}
               onChange={e => setConviteForm(f => ({ ...f, role: e.target.value as Role }))}
               className={IN}>
@@ -454,8 +477,11 @@ export function Configuracoes() {
       {/* Botão flutuante de salvar */}
       {dirty && aba !== 'usuarios' && (
         <div className="fixed bottom-6 right-6 z-40">
-          <button onClick={handleSalvar} disabled={isSaving}
-            className="bg-green-600 hover:bg-green-500 disabled:opacity-60 text-white px-6 py-3 rounded-2xl font-bold text-sm shadow-2xl transition-all flex items-center gap-2">
+          <button
+            onClick={handleSalvar}
+            disabled={isSaving}
+            className="bg-green-600 hover:bg-green-500 disabled:opacity-60 text-white px-6 py-3 rounded-2xl font-bold text-sm shadow-2xl transition-all flex items-center gap-2"
+          >
             <Save className="w-4 h-4" /> {isSaving ? 'Salvando...' : 'Salvar alterações'}
           </button>
         </div>

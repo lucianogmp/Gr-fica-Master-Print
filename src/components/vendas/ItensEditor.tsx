@@ -1,11 +1,7 @@
 // src/components/vendas/ItensEditor.tsx
 //
-// Agora com duas formas de adicionar item:
-//   1) Buscar e clicar num produto já cadastrado em Produtos (preço e
-//      unidade vêm preenchidos automaticamente, e o item fica vinculado
-//      via produto_id).
-//   2) Cadastro manual (descrição livre), para serviços ou itens fora
-//      do catálogo — como já funcionava antes.
+// Editor de itens da venda com campos sempre visíveis,
+// largura adequada e texto branco garantido.
 
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { VendaItem } from '../../types/venda';
@@ -14,7 +10,22 @@ import { useProdutos } from '../../hooks/useProdutos';
 import { X, Search, Package } from 'lucide-react';
 
 const fmtBRL = (v: number) => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-const IN = "bg-[#111827] border border-gray-700 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500 transition-colors w-full [color-scheme:dark]";
+
+// Input base — texto sempre branco, fundo escuro, sem quebra
+const IN = [
+  'bg-[#111827]',
+  'border border-gray-700',
+  'rounded-lg',
+  'px-2',
+  'py-1.5',
+  'text-white',
+  'text-xs',
+  'focus:outline-none',
+  'focus:border-blue-500',
+  'transition-colors',
+  'w-full',
+  '[color-scheme:dark]',
+].join(' ');
 
 interface ItensEditorProps {
   itens: VendaItem[];
@@ -27,18 +38,18 @@ const ITEM_VAZIO: Omit<VendaItem, 'total'> = {
 };
 
 export function ItensEditor({ itens, onChange }: ItensEditorProps) {
-  const [novoItem, setNovoItem] = useState({ ...ITEM_VAZIO });
-  const [buscaProduto, setBuscaProduto] = useState('');
-  const [mostrarSugestoes, setMostrarSugestoes] = useState(false);
+  const [novoItem, setNovoItem]           = useState({ ...ITEM_VAZIO });
+  const [buscaProduto, setBuscaProduto]   = useState('');
+  const [mostrarSugestoes, setMostrar]    = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { data: produtos = [] } = useProdutos();
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
-        setMostrarSugestoes(false);
-      }
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node))
+        setMostrar(false);
     }
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
@@ -48,9 +59,9 @@ export function ItensEditor({ itens, onChange }: ItensEditorProps) {
 
   const produtosFiltrados = useMemo(() => {
     if (!buscaProduto.trim()) return produtosAtivos.slice(0, 8);
-    const termo = buscaProduto.toLowerCase();
+    const t = buscaProduto.toLowerCase();
     return produtosAtivos
-      .filter(p => p.nome.toLowerCase().includes(termo) || (p.sku ?? '').toLowerCase().includes(termo))
+      .filter(p => p.nome.toLowerCase().includes(t) || (p.sku ?? '').toLowerCase().includes(t))
       .slice(0, 8);
   }, [produtosAtivos, buscaProduto]);
 
@@ -72,7 +83,7 @@ export function ItensEditor({ itens, onChange }: ItensEditorProps) {
     };
     onChange([...itens, item]);
     setBuscaProduto('');
-    setMostrarSugestoes(false);
+    setMostrar(false);
   }
 
   function adicionarItem() {
@@ -102,29 +113,38 @@ export function ItensEditor({ itens, onChange }: ItensEditorProps) {
 
   const subtotal = itens.reduce((s, i) => s + Number(i.total), 0);
 
+  // Busca com debounce
+  function handleBuscaChange(v: string) {
+    setBuscaProduto(v);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setMostrar(true), 150);
+  }
+
   return (
     <div className="space-y-3">
 
-      {/* Buscar produto do catálogo */}
+      {/* ── Buscar produto do catálogo ── */}
       <div className="bg-[#111827] border border-blue-500/30 rounded-xl p-3 space-y-2" ref={wrapRef}>
         <p className="text-[10px] font-bold text-blue-400 uppercase flex items-center gap-1.5">
           <Package className="w-3.5 h-3.5" /> Adicionar produto do catálogo
         </p>
-        <div className="relative flex items-center">
-          <Search className="absolute left-3 w-3.5 h-3.5 text-gray-500 pointer-events-none z-10" />
+        <div className="relative">
+          <Search className="absolute left-3 w-3.5 h-3.5 text-gray-500 pointer-events-none top-1/2 -translate-y-1/2 z-10" />
           <input
             value={buscaProduto}
-            onChange={e => { setBuscaProduto(e.target.value); setMostrarSugestoes(true); }}
-            onFocus={() => setMostrarSugestoes(true)}
-            placeholder="Buscar produto cadastrado por nome ou SKU..."
+            onChange={e => handleBuscaChange(e.target.value)}
+            onFocus={() => setMostrar(true)}
+            placeholder="Buscar produto por nome ou SKU..."
             className="w-full bg-[#0d1117] border border-gray-700 rounded-lg pl-9 pr-3 py-2 text-white text-xs placeholder-gray-600 focus:outline-none focus:border-blue-500 transition-colors [color-scheme:dark]"
           />
           {mostrarSugestoes && (
             <div
               style={{
-                position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, zIndex: 50,
-                backgroundColor: '#0f1824', border: '1px solid #374151', borderRadius: 12,
-                boxShadow: '0 20px 60px rgba(0,0,0,0.8)', overflow: 'hidden', maxHeight: 260, overflowY: 'auto',
+                position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4,
+                zIndex: 9999, backgroundColor: '#0f1824', border: '1px solid #374151',
+                borderRadius: 12, boxShadow: '0 20px 60px rgba(0,0,0,0.8)',
+                overflow: 'hidden', maxHeight: 280, overflowY: 'auto',
+                backdropFilter: 'none', WebkitBackdropFilter: 'none',
               }}
             >
               {produtosFiltrados.length === 0 ? (
@@ -136,8 +156,9 @@ export function ItensEditor({ itens, onChange }: ItensEditorProps) {
                     key={p.id}
                     onMouseDown={e => { e.preventDefault(); adicionarDoCatalogo(p); }}
                     style={{
-                      width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      padding: '10px 14px', backgroundColor: 'transparent', borderBottom: '1px solid #1f2937',
+                      width: '100%', display: 'flex', alignItems: 'center',
+                      justifyContent: 'space-between', padding: '10px 14px',
+                      backgroundColor: 'transparent', borderBottom: '1px solid #1f2937',
                       cursor: 'pointer', textAlign: 'left',
                     }}
                     className="hover:bg-blue-900/20 transition-colors"
@@ -146,9 +167,7 @@ export function ItensEditor({ itens, onChange }: ItensEditorProps) {
                       <p className="text-white text-xs font-bold truncate flex items-center gap-1.5">
                         {p.nome}
                         {eM2 && (
-                          <span className="text-[8px] font-black bg-blue-500/20 text-blue-400 border border-blue-500/30 px-1 py-0.5 rounded flex-shrink-0">
-                            m²
-                          </span>
+                          <span className="text-[8px] font-black bg-blue-500/20 text-blue-400 border border-blue-500/30 px-1 py-0.5 rounded flex-shrink-0">m²</span>
                         )}
                       </p>
                       {p.sku && <p className="text-[10px] text-gray-500 font-mono">{p.sku}</p>}
@@ -167,90 +186,170 @@ export function ItensEditor({ itens, onChange }: ItensEditorProps) {
         )}
       </div>
 
-      {/* Tabela de itens */}
-      <div className="overflow-x-auto rounded-xl border border-gray-700">
-        <table className="w-full text-xs">
-          <thead>
-            <tr className="text-[10px] font-bold text-gray-500 uppercase bg-gray-800/50 border-b border-gray-700">
-              <th className="px-3 py-2 text-left">Descrição</th>
-              <th className="px-3 py-2 text-center w-16">Un.</th>
-              <th className="px-3 py-2 text-right w-20">Qtd.</th>
-              <th className="px-3 py-2 text-right w-28">Preço Unit.</th>
-              <th className="px-3 py-2 text-right w-20">Desc.%</th>
-              <th className="px-3 py-2 text-right w-28">Total</th>
-              <th className="px-3 py-2 w-8"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {itens.length === 0 && (
-              <tr><td colSpan={7} className="px-4 py-6 text-center text-gray-600">Nenhum item adicionado.</td></tr>
-            )}
-            {itens.map((it, i) => (
-              <tr key={i} className="border-b border-gray-800 hover:bg-gray-800/20">
-                <td className="px-2 py-1.5">
-                  <input value={it.descricao} onChange={e => atualizarItem(i, 'descricao', e.target.value)} className={IN} />
-                </td>
-                <td className="px-2 py-1.5">
-                  <input value={it.unidade ?? 'un'} onChange={e => atualizarItem(i, 'unidade', e.target.value)} className={IN + ' text-center'} />
-                </td>
-                <td className="px-2 py-1.5">
-                  <input type="number" min="0.001" step="0.001" value={it.quantidade}
-                    onChange={e => atualizarItem(i, 'quantidade', parseFloat(e.target.value) || 0)} className={IN + ' text-right'} />
-                </td>
-                <td className="px-2 py-1.5">
-                  <input type="number" min="0" step="0.01" value={it.preco_unitario}
-                    onChange={e => atualizarItem(i, 'preco_unitario', parseFloat(e.target.value) || 0)} className={IN + ' text-right'} />
-                </td>
-                <td className="px-2 py-1.5">
-                  <input type="number" min="0" max="100" step="0.1" value={it.desconto ?? 0}
-                    onChange={e => atualizarItem(i, 'desconto', parseFloat(e.target.value) || 0)} className={IN + ' text-right'} />
-                </td>
-                <td className="px-3 py-1.5 text-right font-bold text-white">{fmtBRL(it.total)}</td>
-                <td className="px-2 py-1.5">
-                  <button onClick={() => removerItem(i)} className="inline-flex text-gray-600 hover:text-red-400 transition-colors"><X className="w-3.5 h-3.5" /></button>
-                </td>
+      {/* ── Tabela de itens ── */}
+      {itens.length > 0 && (
+        <div className="overflow-x-auto rounded-xl border border-gray-700">
+          <table className="w-full" style={{ minWidth: 680 }}>
+            <thead>
+              <tr className="text-[10px] font-bold text-gray-400 uppercase bg-gray-800/50 border-b border-gray-700">
+                <th className="px-3 py-2 text-left" style={{ minWidth: 200 }}>Descrição</th>
+                <th className="px-2 py-2 text-center" style={{ width: 70 }}>Un.</th>
+                <th className="px-2 py-2 text-center" style={{ width: 90 }}>Qtd.</th>
+                <th className="px-2 py-2 text-center" style={{ width: 120 }}>Preço Unit.</th>
+                <th className="px-2 py-2 text-center" style={{ width: 80 }}>Desc.%</th>
+                <th className="px-3 py-2 text-right" style={{ width: 110 }}>Total</th>
+                <th className="px-2 py-2 text-center" style={{ width: 36 }}></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {itens.map((it, i) => (
+                <tr key={i} className="border-b border-gray-800 hover:bg-gray-800/20">
+                  <td className="px-2 py-2">
+                    <input
+                      value={it.descricao}
+                      onChange={e => atualizarItem(i, 'descricao', e.target.value)}
+                      className={IN}
+                      style={{ color: '#ffffff' }}
+                    />
+                  </td>
+                  <td className="px-1 py-2">
+                    <input
+                      value={it.unidade ?? 'un'}
+                      onChange={e => atualizarItem(i, 'unidade', e.target.value)}
+                      className={IN + ' text-center'}
+                      style={{ color: '#ffffff' }}
+                    />
+                  </td>
+                  <td className="px-1 py-2">
+                    <input
+                      type="number"
+                      min="0.001"
+                      step="0.001"
+                      value={it.quantidade}
+                      onChange={e => atualizarItem(i, 'quantidade', parseFloat(e.target.value) || 0)}
+                      className={IN + ' text-center'}
+                      style={{ color: '#ffffff' }}
+                    />
+                  </td>
+                  <td className="px-1 py-2">
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={it.preco_unitario}
+                      onChange={e => atualizarItem(i, 'preco_unitario', parseFloat(e.target.value) || 0)}
+                      className={IN + ' text-right'}
+                      style={{ color: '#ffffff' }}
+                    />
+                  </td>
+                  <td className="px-1 py-2">
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.1"
+                      value={it.desconto ?? 0}
+                      onChange={e => atualizarItem(i, 'desconto', parseFloat(e.target.value) || 0)}
+                      className={IN + ' text-center'}
+                      style={{ color: '#ffffff' }}
+                    />
+                  </td>
+                  <td className="px-3 py-2 text-right font-bold text-white text-xs whitespace-nowrap">
+                    {fmtBRL(it.total)}
+                  </td>
+                  <td className="px-2 py-2 text-center">
+                    <button
+                      onClick={() => removerItem(i)}
+                      className="text-gray-600 hover:text-red-400 transition-colors inline-flex"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
-      {/* Linha de novo item manual */}
+      {/* ── Linha de novo item manual ── */}
       <div className="bg-[#111827] border border-dashed border-gray-700 rounded-xl p-3">
-        <p className="text-[10px] font-bold text-gray-500 uppercase mb-2">+ Adicionar item manual (fora do catálogo)</p>
-        <div className="grid grid-cols-6 gap-2 items-end">
-          <div className="col-span-2">
+        <p className="text-[10px] font-bold text-gray-500 uppercase mb-2">
+          + Adicionar item manual (fora do catálogo)
+        </p>
+        <div className="grid gap-2" style={{ gridTemplateColumns: '2fr 80px 100px 120px 80px auto' }}>
+          <div>
             <label className="text-[9px] text-gray-600 uppercase block mb-1">Descrição *</label>
-            <input value={novoItem.descricao} onChange={e => setNovoItem(f => ({ ...f, descricao: e.target.value }))}
-              placeholder="Nome do produto / serviço" className={IN}
-              onKeyDown={e => { if (e.key === 'Enter') adicionarItem(); }} />
+            <input
+              value={novoItem.descricao}
+              onChange={e => setNovoItem(f => ({ ...f, descricao: e.target.value }))}
+              placeholder="Nome do produto / serviço"
+              className={IN}
+              style={{ color: '#ffffff' }}
+              onKeyDown={e => { if (e.key === 'Enter') adicionarItem(); }}
+            />
           </div>
           <div>
             <label className="text-[9px] text-gray-600 uppercase block mb-1">Unidade</label>
-            <input value={novoItem.unidade ?? 'un'} onChange={e => setNovoItem(f => ({ ...f, unidade: e.target.value }))} className={IN} />
+            <input
+              value={novoItem.unidade ?? 'un'}
+              onChange={e => setNovoItem(f => ({ ...f, unidade: e.target.value }))}
+              className={IN + ' text-center'}
+              style={{ color: '#ffffff' }}
+            />
           </div>
           <div>
             <label className="text-[9px] text-gray-600 uppercase block mb-1">Qtd.</label>
-            <input type="number" min="0.001" step="0.001" value={novoItem.quantidade}
-              onChange={e => setNovoItem(f => ({ ...f, quantidade: parseFloat(e.target.value) || 1 }))} className={IN + ' text-right'} />
+            <input
+              type="number"
+              min="0.001"
+              step="0.001"
+              value={novoItem.quantidade}
+              onChange={e => setNovoItem(f => ({ ...f, quantidade: parseFloat(e.target.value) || 1 }))}
+              className={IN + ' text-center'}
+              style={{ color: '#ffffff' }}
+            />
           </div>
           <div>
             <label className="text-[9px] text-gray-600 uppercase block mb-1">Preço Unit. (R$) *</label>
-            <input type="number" min="0" step="0.01" value={novoItem.preco_unitario || ''}
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={novoItem.preco_unitario || ''}
               onChange={e => setNovoItem(f => ({ ...f, preco_unitario: parseFloat(e.target.value) || 0 }))}
-              placeholder="0,00" className={IN + ' text-right'} />
+              placeholder="0,00"
+              className={IN + ' text-right'}
+              style={{ color: '#ffffff' }}
+            />
           </div>
           <div>
-            <button onClick={adicionarItem}
+            <label className="text-[9px] text-gray-600 uppercase block mb-1">Desc.%</label>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              step="0.1"
+              value={novoItem.desconto || ''}
+              onChange={e => setNovoItem(f => ({ ...f, desconto: parseFloat(e.target.value) || 0 }))}
+              placeholder="0"
+              className={IN + ' text-center'}
+              style={{ color: '#ffffff' }}
+            />
+          </div>
+          <div className="flex items-end">
+            <button
+              onClick={adicionarItem}
               disabled={!novoItem.descricao.trim() || novoItem.preco_unitario <= 0}
-              className="w-full py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white rounded-lg text-xs font-bold transition-all">
+              className="w-full py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white rounded-lg text-xs font-bold transition-all whitespace-nowrap"
+            >
               Adicionar
             </button>
           </div>
         </div>
       </div>
 
-      {/* Subtotal */}
+      {/* ── Subtotal ── */}
       {itens.length > 0 && (
         <div className="flex justify-end">
           <div className="bg-[#1f2937] border border-gray-700 rounded-xl px-5 py-3 text-right">

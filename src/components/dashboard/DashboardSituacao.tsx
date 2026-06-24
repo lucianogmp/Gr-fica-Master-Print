@@ -1,15 +1,15 @@
-const CARD_BASE = "bg-[#1a2332] border border-gray-700/60 rounded-xl";
+const CARD_BASE = "bg-[#1a2332] border border-gray-700/60 rounded-xl h-full flex flex-col";
 
 export function DashboardSituacao({ data }: { data: any }) {
   return (
     <div className={`${CARD_BASE} p-4`}>
       <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-4">Vendas por Situação</h3>
-      <div className="flex items-center gap-4">
-        <div className="text-center">
+      <div className="flex-1 flex items-center gap-4">
+        <div className="text-center w-20">
           <p className="text-3xl font-black text-white">{data?.totalVendas ?? 0}</p>
           <p className="text-[9px] text-gray-600">Total</p>
         </div>
-        <div className="flex-1 space-y-1.5">
+        <div className="flex-1 flex flex-col justify-center space-y-2">
           {[
             { label: 'Pendente',    key: 'pendente',    cor: '#f59e0b' },
             { label: 'Em execução', key: 'em_execucao', cor: '#3b82f6' },

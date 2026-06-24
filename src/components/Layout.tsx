@@ -188,7 +188,7 @@ export function Layout() {
 
         {/* Conteúdo */}
         <main className="flex-1 overflow-y-auto bg-[#111827]">
-          <div className="max-w-7xl mx-auto">
+          <div className="w-full">
             <Outlet />
           </div>
         </main>

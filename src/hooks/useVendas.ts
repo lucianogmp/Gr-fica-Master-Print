@@ -6,7 +6,6 @@ import toast from 'react-hot-toast';
 
 type VendaPayload = Omit<Venda, 'id' | 'created_at' | 'updated_at' | 'numero'>;
 
-/** Serializa itens para o formato da RPC, incluindo produto_id */
 function serializarItens(itens: VendaItem[]) {
   return itens.map(i => ({
     produto_id:     i.produto_id     ?? null,
@@ -16,6 +15,7 @@ function serializarItens(itens: VendaItem[]) {
     desconto:       i.desconto       ?? 0,
     obs:            i.obs            ?? null,
     unidade:        i.unidade        ?? 'un',
+    area_m2:        i.area_m2        ?? null,
     total:          i.total,
   }));
 }
@@ -37,7 +37,6 @@ export function useVendas() {
 
   const criar = useMutation({
     mutationFn: async ({ venda, itens }: { venda: VendaPayload; itens: VendaItem[] }) => {
-      // total é generated column no banco — não pode ser inserido
       const { total: _t, ...vendaSemTotal } = venda as any;
       const { data, error } = await supabase
         .from('vendas')
@@ -56,11 +55,15 @@ export function useVendas() {
         if (iErr) throw iErr;
       }
 
+      // Gera lançamento financeiro automaticamente
+      await gerarLancamentoReceita(data as Venda);
+
       return data as Venda;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['vendas'] });
       qc.invalidateQueries({ queryKey: ['dashboard-metrics'] });
+      qc.invalidateQueries({ queryKey: ['lancamentos'] });
       toast.success('Venda criada!');
     },
     onError: (e: any) => toast.error(e.message),
@@ -107,9 +110,10 @@ export function useVendas() {
         .eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ['vendas'] });
       qc.invalidateQueries({ queryKey: ['dashboard-metrics'] });
+      // Se foi para produção, criar OP automaticamente é feito na página
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -134,6 +138,27 @@ export function useVendas() {
     deletar:         deletar.mutate,
     isSaving:        criar.isPending || atualizar.isPending,
   };
+}
+
+// Gera lançamento de conta a receber ao criar venda
+async function gerarLancamentoReceita(venda: Venda) {
+  try {
+    const total = Number(venda.valor_total ?? venda.total ?? 0);
+    if (total <= 0) return;
+
+    await supabase.from('lancamentos').insert({
+      tipo:           'receita',
+      descricao:      `Venda #${venda.numero ?? ''} — ${venda.cliente_nome}`,
+      valor:          total,
+      status:         'pendente',
+      categoria:      'Venda',
+      cliente_nome:   venda.cliente_nome,
+      venda_id:       venda.id,
+      data_vencimento: venda.data_entrega ?? new Date().toISOString().slice(0, 10),
+    });
+  } catch (e) {
+    console.warn('Aviso: não foi possível gerar lançamento automático', e);
+  }
 }
 
 export function useVendaItens(vendaId: string | null) {

@@ -20,7 +20,7 @@ function StatusBadge({ status, venc }: { status: string; venc?: string | null })
   );
 }
 
-const CARD_BASE = "bg-[#1a2332] border border-gray-700/60 rounded-xl";
+const CARD_BASE = "bg-[#1a2332] border border-gray-700/60 rounded-xl h-full flex flex-col";
 
 export function DashboardAccounts({ data }: { data: any }) {
   const navigate = useNavigate();
@@ -33,31 +33,33 @@ export function DashboardAccounts({ data }: { data: any }) {
           <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Contas a Receber</h3>
           <button onClick={() => navigate('/financeiro')} className="text-[10px] text-blue-400 hover:text-blue-300 font-bold transition-colors flex items-center gap-0.5">Ver todas <ArrowRight className="w-3 h-3" /></button>
         </div>
-        <table className="w-full text-xs">
-          <thead>
-            <tr className="text-gray-600 uppercase text-[9px] border-b border-gray-800">
-              <th className="pb-2 text-left font-bold">Cliente</th>
-              <th className="pb-2 text-left font-bold">Vencimento</th>
-              <th className="pb-2 text-right font-bold">Valor</th>
-              <th className="pb-2 text-center font-bold">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(data?.contasReceber ?? []).length === 0 && (
-              <tr><td colSpan={4} className="py-6 text-center text-gray-600">Nenhuma conta a receber</td></tr>
-            )}
-            {(data?.contasReceber ?? []).map((c: any) => (
-              <tr key={c.id} className="border-b border-gray-800/50 hover:bg-gray-800/20">
-                <td className="py-2 text-gray-300 max-w-24 truncate">{c.cliente_nome || c.descricao}</td>
-                <td className="py-2 text-gray-400">{fmtData(c.data_vencimento)}</td>
-                <td className="py-2 text-right font-bold text-green-400">{fmtBRL(c.valor)}</td>
-                <td className="py-2 text-center">
-                  <StatusBadge status={c.status} venc={c.data_vencimento} />
-                </td>
+        <div className="flex-1 overflow-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="text-gray-600 uppercase text-[9px] border-b border-gray-800">
+                <th className="pb-3 text-left font-bold">Cliente</th>
+                <th className="pb-3 text-left font-bold">Vencimento</th>
+                <th className="pb-3 text-right font-bold">Valor</th>
+                <th className="pb-3 text-center font-bold">Status</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {(data?.contasReceber ?? []).length === 0 && (
+                <tr><td colSpan={4} className="py-8 text-center text-gray-600">Nenhuma conta a receber</td></tr>
+              )}
+              {(data?.contasReceber ?? []).map((c: any) => (
+                <tr key={c.id} className="border-b border-gray-800/50 hover:bg-gray-800/20">
+                  <td className="py-3.5 text-gray-300 max-w-24 truncate">{c.cliente_nome || c.descricao}</td>
+                  <td className="py-3.5 text-gray-400">{fmtData(c.data_vencimento)}</td>
+                  <td className="py-3.5 text-right font-bold text-green-400">{fmtBRL(c.valor)}</td>
+                  <td className="py-3.5 text-center">
+                    <StatusBadge status={c.status} venc={c.data_vencimento} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Contas a Pagar */}
@@ -66,31 +68,33 @@ export function DashboardAccounts({ data }: { data: any }) {
           <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Contas a Pagar</h3>
           <button onClick={() => navigate('/financeiro')} className="text-[10px] text-blue-400 hover:text-blue-300 font-bold transition-colors flex items-center gap-0.5">Ver todas <ArrowRight className="w-3 h-3" /></button>
         </div>
-        <table className="w-full text-xs">
-          <thead>
-            <tr className="text-gray-600 uppercase text-[9px] border-b border-gray-800">
-              <th className="pb-2 text-left font-bold">Fornecedor</th>
-              <th className="pb-2 text-left font-bold">Vencimento</th>
-              <th className="pb-2 text-right font-bold">Valor</th>
-              <th className="pb-2 text-center font-bold">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(data?.contasPagar ?? []).length === 0 && (
-              <tr><td colSpan={4} className="py-6 text-center text-gray-600">Nenhuma conta a pagar</td></tr>
-            )}
-            {(data?.contasPagar ?? []).map((c: any) => (
-              <tr key={c.id} className="border-b border-gray-800/50 hover:bg-gray-800/20">
-                <td className="py-2 text-gray-300 max-w-24 truncate">{c.cliente_nome || c.descricao}</td>
-                <td className="py-2 text-gray-400">{fmtData(c.data_vencimento)}</td>
-                <td className="py-2 text-right font-bold text-red-400">{fmtBRL(c.valor)}</td>
-                <td className="py-2 text-center">
-                  <StatusBadge status={c.status} venc={c.data_vencimento} />
-                </td>
+        <div className="flex-1 overflow-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="text-gray-600 uppercase text-[9px] border-b border-gray-800">
+                <th className="pb-3 text-left font-bold">Fornecedor</th>
+                <th className="pb-3 text-left font-bold">Vencimento</th>
+                <th className="pb-3 text-right font-bold">Valor</th>
+                <th className="pb-3 text-center font-bold">Status</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {(data?.contasPagar ?? []).length === 0 && (
+                <tr><td colSpan={4} className="py-8 text-center text-gray-600">Nenhuma conta a pagar</td></tr>
+              )}
+              {(data?.contasPagar ?? []).map((c: any) => (
+                <tr key={c.id} className="border-b border-gray-800/50 hover:bg-gray-800/20">
+                  <td className="py-3.5 text-gray-300 max-w-24 truncate">{c.cliente_nome || c.descricao}</td>
+                  <td className="py-3.5 text-gray-400">{fmtData(c.data_vencimento)}</td>
+                  <td className="py-3.5 text-right font-bold text-red-400">{fmtBRL(c.valor)}</td>
+                  <td className="py-3.5 text-center">
+                    <StatusBadge status={c.status} venc={c.data_vencimento} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </>
   );

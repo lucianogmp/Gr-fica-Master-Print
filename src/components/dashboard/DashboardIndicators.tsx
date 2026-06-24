@@ -8,7 +8,7 @@ const fmtBRL = (v: number | null | undefined) =>
 
 const fmtPct = (v: number) => `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`;
 
-const CARD_BASE = "bg-[#1a2332] border border-gray-700/60 rounded-xl";
+const CARD_BASE = "bg-[#1a2332] border border-gray-700/60 rounded-xl h-full flex flex-col";
 
 export function DashboardIndicators({ data }: { data: any }) {
   const navigate = useNavigate();
@@ -18,7 +18,8 @@ export function DashboardIndicators({ data }: { data: any }) {
       <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
         <TrendingUp className="w-3.5 h-3.5" /> Indicadores Financeiros
       </h3>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="flex-1 flex flex-col justify-between">
+        <div className="grid grid-cols-2 gap-2">
         {[
           { label: 'Ticket Médio',       valor: fmtBRL(data?.ticketMedio), sub: `${(data?.top5Clientes?.length ?? 0)} clientes`, cor: '#3b82f6', icon: Ticket },
           { label: 'Margem de Lucro',    valor: `${(data?.margemContrib ?? 0).toFixed(1)}%`, sub: '', cor: '#10b981', icon: TrendingUp },
@@ -50,6 +51,7 @@ export function DashboardIndicators({ data }: { data: any }) {
           <p className="text-sm font-black text-white">{data?.prodEmAnd ?? 0}</p>
           <p className="text-[9px] text-blue-400">Acompanhar</p>
         </button>
+      </div>
       </div>
     </div>
   );
