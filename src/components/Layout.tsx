@@ -1,4 +1,5 @@
 // src/components/Layout.tsx
+// FluxoCaixa removido do menu lateral — agora é sub-aba dentro de Financeiro
 import { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
@@ -9,25 +10,25 @@ import { EstoqueAlertBanner } from './EstoqueAlertBanner';
 import { useTheme } from '../hooks/useTheme';
 import toast from 'react-hot-toast';
 import {
-  LayoutDashboard, ShoppingCart, FileText, Users, Landmark, TrendingUp,
+  LayoutDashboard, ShoppingCart, FileText, Users, Landmark,
   Package, Warehouse, Factory, TrendingDown, Settings, Bell, Menu, X,
   ShieldCheck, BarChart3, Moon, Sun,
 } from 'lucide-react';
 
 const ALL_MENU = [
-  { path: '/',             label: 'Dashboard',       icon: LayoutDashboard },
-  { path: '/vendas',       label: 'Vendas',          icon: ShoppingCart },
-  { path: '/orcamentos',   label: 'Orçamentos',      icon: FileText },
-  { path: '/clientes',     label: 'Clientes',        icon: Users },
-  { path: '/financeiro',   label: 'Financeiro',      icon: Landmark },
-  { path: '/fluxo-caixa',  label: 'Fluxo de Caixa',  icon: TrendingUp },
-  { path: '/produtos',     label: 'Produtos',        icon: Package },
-  { path: '/estoque',      label: 'Estoque',         icon: Warehouse },
-  { path: '/producao',     label: 'Produção',        icon: Factory },
-  { path: '/custos',       label: 'Gestão de Custos', icon: TrendingDown },
-  { path: '/relatorios',   label: 'Relatórios',      icon: BarChart3 },
-  { path: '/audit-log',    label: 'Audit Log',       icon: ShieldCheck },
-  { path: '/configuracoes',label: 'Configurações',   icon: Settings },
+  { path: '/',              label: 'Dashboard',        icon: LayoutDashboard },
+  { path: '/vendas',        label: 'Vendas',           icon: ShoppingCart },
+  { path: '/orcamentos',    label: 'Orçamentos',       icon: FileText },
+  { path: '/clientes',      label: 'Clientes',         icon: Users },
+  { path: '/financeiro',    label: 'Financeiro',       icon: Landmark },
+  // Fluxo de Caixa removido — está dentro de Financeiro como sub-aba
+  { path: '/produtos',      label: 'Produtos',         icon: Package },
+  { path: '/estoque',       label: 'Estoque',          icon: Warehouse },
+  { path: '/producao',      label: 'Produção',         icon: Factory },
+  { path: '/custos',        label: 'Gestão de Custos', icon: TrendingDown },
+  { path: '/relatorios',    label: 'Relatórios',       icon: BarChart3 },
+  { path: '/audit-log',     label: 'Audit Log',        icon: ShieldCheck },
+  { path: '/configuracoes', label: 'Configurações',    icon: Settings },
 ];
 
 export function Layout() {
@@ -91,7 +92,6 @@ export function Layout() {
             const isActive = location.pathname === item.path;
             const Icon     = item.icon;
 
-            // Separador visual antes de Relatórios e Audit Log
             const isAdminSection = ['/relatorios', '/audit-log'].includes(item.path);
             const prevItem       = menuItems[menuItems.indexOf(item) - 1];
             const showSeparator  = isAdminSection && prevItem && !['/relatorios', '/audit-log'].includes(prevItem.path);
@@ -170,25 +170,21 @@ export function Layout() {
               onClick={toggleTheme}
               className="theme-toggle relative text-gray-300 hover:text-white transition-colors"
               aria-label={isDark ? 'Ativar tema claro' : 'Ativar tema escuro'}
-              title={isDark ? 'Tema claro' : 'Tema escuro'}
             >
               {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
-            <button
-              className="relative text-gray-300 hover:text-white transition-colors"
-              aria-label="Notificações"
-            >
+            <button className="relative text-gray-300 hover:text-white transition-colors" aria-label="Notificações">
               <Bell className="w-5 h-5" />
             </button>
           </div>
         </header>
 
-        {/* Banner de alertas de estoque — aparece abaixo do topbar */}
+        {/* Banner de alertas de estoque */}
         <EstoqueAlertBanner />
 
         {/* Conteúdo */}
         <main className="flex-1 overflow-y-auto bg-[#111827]">
-          <div className="w-full">
+          <div className="max-w-7xl mx-auto">
             <Outlet />
           </div>
         </main>

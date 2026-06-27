@@ -1,21 +1,18 @@
 // src/types/configuracoes.ts
 import { LayoutImpressaoConfig } from './layoutImpressao';
 
-// Taxa por número de parcelas — cada entrada é uma linha da tabela
+// Taxa por número de parcelas
 export interface TaxaParcela {
-  parcelas: number;   // 1, 2, 3, ... 12 (ou mais)
-  taxa_pct: number;   // % cobrada do cliente nessa quantidade de parcelas
-                      // 0 = sem acréscimo (à vista ou sem juros)
+  parcelas: number;
+  taxa_pct: number; // 0 = sem acréscimo
 }
 
-// Configuração completa de uma forma de pagamento
+// Configuração de uma forma de pagamento
 export interface FormasPagamentoConfig {
   nome: string;
   ativo: boolean;
   permite_parcelamento: boolean;
   max_parcelas: number;
-  // Tabela de taxas: uma linha por número de parcelas
-  // Ex: [{parcelas:1, taxa_pct:0}, {parcelas:2, taxa_pct:2.99}, ...]
   tabela_taxas: TaxaParcela[];
 }
 
@@ -83,8 +80,9 @@ export interface Configuracoes {
   updated_at?: string;
 }
 
-// Gera tabela de taxas padrão para N parcelas
-// (todas zeradas — usuário preenche manualmente)
+// ── Helpers exportados ────────────────────────────────────────────────────────
+
+/** Gera tabela de taxas zerada para N parcelas */
 export function gerarTabelaTaxas(maxParcelas: number): TaxaParcela[] {
   return Array.from({ length: maxParcelas }, (_, i) => ({
     parcelas: i + 1,
@@ -92,22 +90,38 @@ export function gerarTabelaTaxas(maxParcelas: number): TaxaParcela[] {
   }));
 }
 
-// Retorna a taxa de uma forma para N parcelas (0 se não encontrar)
+/** Retorna a taxa de uma forma para N parcelas (0 se não encontrar) */
 export function getTaxaParcela(
   forma: FormasPagamentoConfig | undefined,
-  parcelas: number
+  parcelas: number,
 ): number {
   if (!forma) return 0;
   const entrada = forma.tabela_taxas?.find(t => t.parcelas === parcelas);
   return entrada?.taxa_pct ?? 0;
 }
 
-// Calcula o total com acréscimo de parcelamento
+/** Calcula total com acréscimo */
 export function calcTotalComTaxa(totalBase: number, taxaPct: number): number {
   return totalBase * (1 + taxaPct / 100);
 }
 
-// Formas de pagamento padrão (tabela de taxas zerada — usuário configura)
+/**
+ * Parse seguro de formas_pagamento — aceita array, string JSON ou null.
+ * Exportado para reuso em Financeiro, PainelFinanceiro, AbaVendas, etc.
+ */
+export function parseFormas(raw: any): FormasPagamentoConfig[] {
+  if (!raw) return FORMAS_PAGAMENTO_DEFAULT;
+  if (Array.isArray(raw)) return raw.length > 0 ? raw : FORMAS_PAGAMENTO_DEFAULT;
+  if (typeof raw === 'string') {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    } catch { /* ignora */ }
+  }
+  return FORMAS_PAGAMENTO_DEFAULT;
+}
+
+/** Formas de pagamento padrão (tabelas zeradas — usuário configura) */
 export const FORMAS_PAGAMENTO_DEFAULT: FormasPagamentoConfig[] = [
   {
     nome: 'Dinheiro',
@@ -135,7 +149,6 @@ export const FORMAS_PAGAMENTO_DEFAULT: FormasPagamentoConfig[] = [
     ativo: true,
     permite_parcelamento: true,
     max_parcelas: 12,
-    // Taxas zeradas — usuário preenche conforme sua maquininha
     tabela_taxas: gerarTabelaTaxas(12),
   },
   {

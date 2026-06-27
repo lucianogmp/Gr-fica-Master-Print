@@ -1,4 +1,5 @@
 // src/routes/index.tsx
+// FluxoCaixa removido como rota separada — está dentro de Financeiro (sub-aba)
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
 import { Layout }         from '../components/Layout';
@@ -6,13 +7,11 @@ import { ProtectedRoute } from '../components/ProtectedRoute';
 import { useAuth }        from '../hooks/useAuth';
 import { Login }          from '../pages/Login';
 
-// Lazy loaded pages
 const Dashboard     = lazy(() => import('../pages/Dashboard').then(m => ({ default: m.Dashboard })));
 const Vendas        = lazy(() => import('../pages/Vendas').then(m => ({ default: m.Vendas })));
 const Clientes      = lazy(() => import('../pages/Clientes').then(m => ({ default: m.Clientes })));
 const Orcamentos    = lazy(() => import('../pages/Orcamentos').then(m => ({ default: m.Orcamentos })));
 const Financeiro    = lazy(() => import('../pages/Financeiro').then(m => ({ default: m.Financeiro })));
-const FluxoCaixa    = lazy(() => import('../pages/FluxoCaixa').then(m => ({ default: m.FluxoCaixa })));
 const Produtos      = lazy(() => import('../pages/Produtos').then(m => ({ default: m.Produtos })));
 const Estoque       = lazy(() => import('../pages/Estoque').then(m => ({ default: m.Estoque })));
 const Producao      = lazy(() => import('../pages/Producao').then(m => ({ default: m.Producao })));
@@ -41,7 +40,7 @@ const ROTAS = [
   { path: '/orcamentos',    Page: Orcamentos,   rota: '/orcamentos'    },
   { path: '/clientes',      Page: Clientes,     rota: '/clientes'      },
   { path: '/financeiro',    Page: Financeiro,   rota: '/financeiro'    },
-  { path: '/fluxo-caixa',   Page: FluxoCaixa,   rota: '/fluxo-caixa'   },
+  // /fluxo-caixa agora redireciona para /financeiro (sub-aba fluxo)
   { path: '/produtos',      Page: Produtos,     rota: '/produtos'      },
   { path: '/estoque',       Page: Estoque,      rota: '/estoque'       },
   { path: '/producao',      Page: Producao,     rota: '/producao'      },
@@ -86,6 +85,9 @@ export function AppRoutes() {
               }
             />
           ))}
+
+          {/* Redireciona rota antiga do Fluxo de Caixa para Financeiro */}
+          <Route path="/fluxo-caixa" element={<Navigate to="/financeiro" replace />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />
