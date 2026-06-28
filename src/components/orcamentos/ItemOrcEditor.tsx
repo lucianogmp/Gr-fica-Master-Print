@@ -18,9 +18,9 @@ const IN_BASE =
 type TabMode = TipoCalculo | 'catalogo';
 
 const TIPOS: { key: TabMode; label: string; icon: LucideIcon }[] = [
-  { key: 'catalogo',     label: 'Catálogo',    icon: Package },
-  { key: 'metro',        label: 'm² Material', icon: Ruler },
-  { key: 'metro_manual', label: 'm² Manual',   icon: Pencil },
+  { key: 'catalogo', label: 'Catálogo', icon: Package },
+  { key: 'metro', label: 'm² Material', icon: Ruler },
+  { key: 'metro_manual', label: 'm² Manual', icon: Pencil },
 ];
 
 // ── Sub-componentes declarados ANTES do componente principal ─────────────────
@@ -56,7 +56,7 @@ function NumInput({
       className={[
         className ?? IN_BASE,
         center ? 'text-center' : '',
-        big    ? 'text-xl font-black py-3' : '',
+        big ? 'text-xl font-black py-3' : '',
       ].join(' ')}
     />
   );
@@ -111,30 +111,30 @@ interface Props {
 }
 
 export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
-  const { data: materiais   = [] } = useMateriaisImpressao();
+  const { data: materiais = [] } = useMateriaisImpressao();
   const { data: acabamentos = [] } = useAcabamentos();
-  const { data: produtos    = [] } = useProdutos();
+  const { data: produtos = [] } = useProdutos();
 
-  const [tab, setTab]       = useState<TabMode>(
+  const [tab, setTab] = useState<TabMode>(
     editando ? (editando.tipo_calculo as TabMode) : 'catalogo',
   );
-  const [tipo, setTipo]     = useState<TipoCalculo>(editando?.tipo_calculo ?? 'metro');
-  const [descricao, setDescricao]   = useState(editando?.descricao ?? '');
+  const [tipo, setTipo] = useState<TipoCalculo>(editando?.tipo_calculo ?? 'metro');
+  const [descricao, setDescricao] = useState(editando?.descricao ?? '');
   const [materialId, setMaterialId] = useState(editando?.material_id ?? '');
-  const [precoM2, setPrecoM2]       = useState(String(editando?.preco_por_m2 ?? ''));
-  const [largura, setLargura]       = useState(String(editando?.largura_cm ?? ''));
-  const [altura, setAltura]         = useState(String(editando?.altura_cm ?? ''));
+  const [precoM2, setPrecoM2] = useState(String(editando?.preco_por_m2 ?? ''));
+  const [largura, setLargura] = useState(String(editando?.largura_cm ?? ''));
+  const [altura, setAltura] = useState(String(editando?.altura_cm ?? ''));
   const [quantidade, setQuantidade] = useState(String(editando?.quantidade ?? 1));
   const [precoLivre, setPrecoLivre] = useState(String(editando?.preco_unitario ?? ''));
-  const [acabId, setAcabId]         = useState(editando?.acabamento_id ?? '');
-  const [acabQtd, setAcabQtd]       = useState(String(editando?.acabamentos_por_folha ?? ''));
+  const [acabId, setAcabId] = useState(editando?.acabamento_id ?? '');
+  const [acabQtd, setAcabQtd] = useState(String(editando?.acabamentos_por_folha ?? ''));
   const [arteInclusa, setArteInclusa] = useState(editando?.arte_inclusa ?? false);
 
   // Catálogo
   const [buscaProd, setBuscaProd] = useState('');
-  const [prodSel, setProdSel]     = useState<Produto | null>(null);
+  const [prodSel, setProdSel] = useState<Produto | null>(null);
   const [produtoId, setProdutoId] = useState<string | null>(editando?.produto_id ?? null);
-  const [areaM2, setAreaM2]       = useState(
+  const [areaM2, setAreaM2] = useState(
     editando?.area_m2 != null ? String(editando.area_m2) : '',
   );
 
@@ -157,37 +157,37 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
     if (!editando || editando.produto_id !== p.id) setAreaM2('');
   }
 
-  const matSel  = materiais.find(m => m.id === materialId);
+  const matSel = materiais.find(m => m.id === materialId);
   const acabSel = acabamentos.find(a => a.id === acabId);
   const prodPorM2 = !!prodSel && (prodSel as any).unidade_medida === 'm2';
 
   // ── cálculo do preview ─────────────────────────────────────────────────────
 
   function buildPreview() {
-    const qtd      = parseFloat(quantidade) || 1;
-    const qtdAcab  = parseInt(acabQtd) || 0;
+    const qtd = parseFloat(quantidade) || 1;
+    const qtdAcab = parseInt(acabQtd) || 0;
     const custAcab = acabSel ? Number(acabSel.custo) * qtdAcab * qtd : 0;
-    let unitario   = 0;
+    let unitario = 0;
     let area: number | undefined;
 
     if (tipo === 'metro') {
       const w = parseFloat(largura) / 100;
-      const h = parseFloat(altura)  / 100;
-      area      = w * h;
-      unitario  = area * Number(matSel?.preco_m2 ?? 0);
+      const h = parseFloat(altura) / 100;
+      area = w * h;
+      unitario = area * Number(matSel?.preco_m2 ?? 0);
     } else if (tipo === 'metro_manual') {
       const w = parseFloat(largura) / 100;
-      const h = parseFloat(altura)  / 100;
-      area      = w * h;
-      unitario  = area * (parseFloat(precoM2) || 0);
+      const h = parseFloat(altura) / 100;
+      area = w * h;
+      unitario = area * (parseFloat(precoM2) || 0);
     } else if (prodPorM2) {
-      area      = parseFloat(areaM2) || 0;
-      unitario  = area * (parseFloat(precoLivre) || 0);
+      area = parseFloat(areaM2) || 0;
+      unitario = area * (parseFloat(precoLivre) || 0);
     } else {
-      unitario  = parseFloat(precoLivre) || 0;
+      unitario = parseFloat(precoLivre) || 0;
     }
 
-    let subtotal  = unitario * qtd + custAcab;
+    let subtotal = unitario * qtd + custAcab;
     let arteValor = 0;
     if (arteInclusa && subtotal > 0) {
       const pct = calcTaxaArte(subtotal);
@@ -200,7 +200,7 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
   const prev = buildPreview();
 
   const acabQtdOk = !acabId || parseInt(acabQtd) > 0;
-  const areaOk    = !prodPorM2 || parseFloat(areaM2) > 0;
+  const areaOk = !prodPorM2 || parseFloat(areaM2) > 0;
   const catalogoValido =
     tab === 'catalogo'
       ? prodSel !== null && parseFloat(quantidade) > 0 && areaOk
@@ -212,30 +212,36 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
 
   function handleAdicionar() {
     if (!valido) return;
+    const qtd = parseFloat(quantidade) || 1;
+    // preco_unitario deve incluir o acréscimo da arte para que
+    // preco_unitario × quantidade == total (sem o acabamento, que é custo separado)
+    // total = (unitario * qtd + custAcab) * (1 + pctArte/100)
+    // => precoUnitarioComArte = total / qtd  — forma mais simples e sempre consistente
+    const precoUnitarioFinal = qtd > 0 ? prev.total / qtd : prev.total;
     const item: OrcamentoItem = {
-      descricao:     descricao.trim(),
-      tipo_calculo:  tipo,
-      produto_id:    produtoId ?? null,
-      material_id:   tipo === 'metro' ? (materialId || null) : null,
+      descricao: descricao.trim(),
+      tipo_calculo: tipo,
+      produto_id: produtoId ?? null,
+      material_id: tipo === 'metro' ? (materialId || null) : null,
       preco_por_m2:
-        tipo === 'metro'        ? (matSel?.preco_m2 ?? 0)
-        : tipo === 'metro_manual' ? (parseFloat(precoM2) || 0)
-        : prodPorM2               ? (parseFloat(precoLivre) || 0)
-        : null,
-      largura_cm:    ['metro', 'metro_manual'].includes(tipo) ? (parseFloat(largura) || null) : null,
-      altura_cm:     ['metro', 'metro_manual'].includes(tipo) ? (parseFloat(altura)  || null) : null,
-      area_m2:       prodPorM2 ? (parseFloat(areaM2) || null) : null,
-      folha_tipo:    null,
-      itens_por_folha:  null,
-      preco_por_folha:  null,
-      quantidade:    parseFloat(quantidade) || 1,
-      preco_unitario: prev.unitario,
-      total:         prev.total,
-      acabamento_id:   acabId || null,
+        tipo === 'metro' ? (matSel?.preco_m2 ?? 0)
+          : tipo === 'metro_manual' ? (parseFloat(precoM2) || 0)
+            : prodPorM2 ? (parseFloat(precoLivre) || 0)
+              : null,
+      largura_cm: ['metro', 'metro_manual'].includes(tipo) ? (parseFloat(largura) || null) : null,
+      altura_cm: ['metro', 'metro_manual'].includes(tipo) ? (parseFloat(altura) || null) : null,
+      area_m2: prodPorM2 ? (parseFloat(areaM2) || null) : null,
+      folha_tipo: null,
+      itens_por_folha: null,
+      preco_por_folha: null,
+      quantidade: qtd,
+      preco_unitario: precoUnitarioFinal,
+      total: prev.total,
+      acabamento_id: acabId || null,
       acabamento_nome: acabSel?.nome ?? null,
       acabamento_custo: acabSel?.custo ?? null,
       acabamentos_por_folha: acabId ? (parseInt(acabQtd) || null) : null,
-      arte_inclusa:  arteInclusa,
+      arte_inclusa: arteInclusa,
     };
     onAdicionar(item);
   }
@@ -256,7 +262,7 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
         <h4 className="text-sm font-bold text-blue-300 flex items-center gap-2">
           {editando
             ? <><Pencil className="w-4 h-4" /> Editar Item</>
-            : <><Plus   className="w-4 h-4" /> Novo Item</>}
+            : <><Plus className="w-4 h-4" /> Novo Item</>}
         </h4>
         <button
           onClick={onCancelar}
@@ -433,7 +439,7 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
               {/* Resumo m² */}
               {prodPorM2 && parseFloat(areaM2) > 0 && parseFloat(precoLivre) > 0 && (
                 <InfoRow items={[
-                  { label: 'Área',     value: `${(parseFloat(areaM2) || 0).toFixed(3)} m²` },
+                  { label: 'Área', value: `${(parseFloat(areaM2) || 0).toFixed(3)} m²` },
                   { label: 'Preço/m²', value: fmtBRL(parseFloat(precoLivre) || 0) },
                   { label: 'Subtotal', value: fmtBRL(prev.unitario) },
                 ]} />
@@ -492,7 +498,7 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
           {matSel && prev.area && prev.area > 0 && (
             <InfoRow items={[
               { label: 'Preço/m²', value: fmtBRL(matSel.preco_m2) },
-              { label: 'Área',     value: `${prev.area.toFixed(4)} m²` },
+              { label: 'Área', value: `${prev.area.toFixed(4)} m²` },
               { label: 'Unitário', value: fmtBRL(prev.unitario) },
             ]} />
           )}
@@ -520,7 +526,7 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
           <DimQtd l={largura} a={altura} q={quantidade} setL={setLargura} setA={setAltura} setQ={setQuantidade} />
           {prev.area && prev.area > 0 && parseFloat(precoM2) > 0 && (
             <InfoRow items={[
-              { label: 'Área',     value: `${prev.area.toFixed(4)} m²` },
+              { label: 'Área', value: `${prev.area.toFixed(4)} m²` },
               { label: 'Unitário', value: fmtBRL(prev.unitario) },
             ]} />
           )}
@@ -609,9 +615,9 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
             <>
               <p className="text-[10px] text-gray-500">Total do item</p>
               <p className="text-3xl font-black text-green-400">{fmtBRL(prev.total)}</p>
-              {parseFloat(quantidade) > 1 && prev.unitario > 0 && (
+              {parseFloat(quantidade) > 1 && prev.total > 0 && (
                 <p className="text-[10px] text-gray-600">
-                  {fmtBRL(prev.unitario)} × {quantidade}
+                  {fmtBRL(prev.total / (parseFloat(quantidade) || 1))} × {quantidade}
                 </p>
               )}
               {prodPorM2 && prev.area != null && (
@@ -637,8 +643,8 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
               )}
               {(['metro', 'metro_manual'] as TipoCalculo[]).includes(tipo) &&
                 (!parseFloat(largura) || !parseFloat(altura)) && (
-                <p className="text-[10px] text-red-500 mt-0.5">• Dimensões obrigatórias</p>
-              )}
+                  <p className="text-[10px] text-red-500 mt-0.5">• Dimensões obrigatórias</p>
+                )}
               {prodPorM2 && !areaOk && (
                 <p className="text-[10px] text-red-500 mt-0.5">• Informe a área em m²</p>
               )}
@@ -661,7 +667,7 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
         >
           {editando
             ? <span className="flex items-center gap-1.5"><Check className="w-4 h-4" /> Atualizar</span>
-            : <span className="flex items-center gap-1.5"><Plus  className="w-4 h-4" /> Adicionar</span>}
+            : <span className="flex items-center gap-1.5"><Plus className="w-4 h-4" /> Adicionar</span>}
         </button>
       </div>
     </div>

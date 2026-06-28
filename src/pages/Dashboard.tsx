@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { RefreshCw } from 'lucide-react';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { KpiGridSkeleton, CardSkeleton } from '../components/ui/Skeleton';
 import { DashboardHeader } from '../components/dashboard/DashboardHeader';
@@ -12,7 +13,7 @@ import { DashboardIndicators } from '../components/dashboard/DashboardIndicators
 
 export function Dashboard() {
   const [mes, setMes] = useState(() => new Date().toISOString().slice(0, 7));
-  const { data, isLoading } = useDashboardData(mes);
+  const { data, isLoading, isFetching, refetch } = useDashboardData(mes);
 
   if (isLoading) return (
     <div className="p-5 space-y-4">
@@ -37,16 +38,36 @@ export function Dashboard() {
 
   return (
     <div className="p-5 space-y-4 min-h-screen">
-      <DashboardHeader mes={mes} setMes={setMes} />
+      {/* Header com botão de refresh */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1">
+          <DashboardHeader mes={mes} setMes={setMes} />
+        </div>
+        <button
+          onClick={() => refetch()}
+          disabled={isFetching}
+          title="Atualizar dados"
+          className={[
+            'flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold border transition-all mt-1 flex-shrink-0',
+            isFetching
+              ? 'bg-gray-800 border-gray-700 text-gray-500 cursor-not-allowed'
+              : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-blue-500 hover:text-blue-300 cursor-pointer',
+          ].join(' ')}
+        >
+          <RefreshCw className={['w-3.5 h-3.5', isFetching ? 'animate-spin' : ''].join(' ')} />
+          {isFetching ? 'Atualizando...' : 'Atualizar'}
+        </button>
+      </div>
+
       <DashboardKpis data={data} />
       <DashboardCharts data={data} />
-      
+
       {/* Row 3: Contas a Receber + Contas a Pagar + Avisos (5 colunas: 2+2+1) */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
         <DashboardAccounts data={data} />
         <DashboardAlerts data={data} />
       </div>
-      
+
       {/* Row 4: Situação + Rankings + Indicadores (4 colunas: 1+1+1+1 distribuído) */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
         <DashboardSituacao data={data} />

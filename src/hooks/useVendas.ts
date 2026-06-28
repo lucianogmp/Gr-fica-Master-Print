@@ -110,10 +110,9 @@ export function useVendas() {
         .eq('id', id);
       if (error) throw error;
     },
-    onSuccess: (_, vars) => {
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['vendas'] });
       qc.invalidateQueries({ queryKey: ['dashboard-metrics'] });
-      // Se foi para produção, criar OP automaticamente é feito na página
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -158,6 +157,70 @@ async function gerarLancamentoReceita(venda: Venda) {
     });
   } catch (e) {
     console.warn('Aviso: não foi possível gerar lançamento automático', e);
+  }
+}
+
+// Ao finalizar/entregar venda: marca o lançamento pendente como pago (ou cria se não existir)
+async function sincronizarLancamentoPago(vendaId: string) {
+  try {
+    const hoje = new Date().toISOString().slice(0, 10);
+
+    // Busca lançamento pendente desta venda
+    const { data: lancPendente } = await supabase
+      .from('lancamentos')
+      .select('id,valor')
+      .eq('venda_id', vendaId)
+      .eq('tipo', 'receita')
+      .neq('status', 'pago')
+      .neq('status', 'cancelado')
+      .is('origem', null)
+      .maybeSingle();
+
+    if (lancPendente?.id) {
+      // Marca o lançamento pendente como pago
+      await supabase
+        .from('lancamentos')
+        .update({ status: 'pago', data_pagamento: hoje })
+        .eq('id', lancPendente.id);
+    } else {
+      // Não existe lançamento ainda — cria um novo já como pago
+      const { data: venda } = await supabase
+        .from('vendas')
+        .select('numero,cliente_nome,valor_total,total,data_entrega,forma_pagamento')
+        .eq('id', vendaId)
+        .single();
+
+      if (!venda) return;
+      const total = Number(venda.valor_total ?? venda.total ?? 0);
+      if (total <= 0) return;
+
+      // Verifica se já existe algum lançamento pago para não duplicar
+      const { data: lancPago } = await supabase
+        .from('lancamentos')
+        .select('id')
+        .eq('venda_id', vendaId)
+        .eq('tipo', 'receita')
+        .eq('status', 'pago')
+        .is('origem', null)
+        .maybeSingle();
+
+      if (!lancPago) {
+        await supabase.from('lancamentos').insert({
+          tipo: 'receita',
+          descricao: `Venda #${venda.numero ?? 'S/N'} — ${venda.cliente_nome}`,
+          valor: total,
+          status: 'pago',
+          categoria: 'Venda',
+          cliente_nome: venda.cliente_nome,
+          venda_id: vendaId,
+          data_vencimento: venda.data_entrega ?? hoje,
+          data_pagamento: hoje,
+          forma_pagamento: venda.forma_pagamento ?? null,
+        });
+      }
+    }
+  } catch (e) {
+    console.warn('Aviso: não foi possível sincronizar lançamento ao finalizar venda', e);
   }
 }
 

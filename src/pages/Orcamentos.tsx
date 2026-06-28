@@ -90,7 +90,7 @@ export function Orcamentos() {
       descricao: i.descricao,
       quantidade: Number(i.quantidade),
       unidade: undefined,
-      precoUnitario: Number(i.preco_unitario),
+      precoUnitario: Number(i.total) / (Number(i.quantidade) || 1),
       desconto: 0,
       total: Number(i.total),
     })),
@@ -659,7 +659,7 @@ export function Orcamentos() {
                           )}
                         </td>
                         <td className="px-3 py-2.5 text-right text-white">{it.quantidade}</td>
-                        <td className="px-3 py-2.5 text-right text-gray-300">{fmtBRL(it.preco_unitario)}</td>
+                        <td className="px-3 py-2.5 text-right text-gray-300">{fmtBRL(Number(it.total) / (Number(it.quantidade) || 1))}</td>
                         <td className="px-3 py-2.5 text-right font-black text-white">{fmtBRL(it.total)}</td>
                         <td className="px-3 py-2.5">
                           {!jaConvertido && (

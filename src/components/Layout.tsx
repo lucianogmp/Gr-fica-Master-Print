@@ -16,25 +16,25 @@ import {
 } from 'lucide-react';
 
 const ALL_MENU = [
-  { path: '/',              label: 'Dashboard',        icon: LayoutDashboard },
-  { path: '/vendas',        label: 'Vendas',           icon: ShoppingCart },
-  { path: '/orcamentos',    label: 'Orçamentos',       icon: FileText },
-  { path: '/clientes',      label: 'Clientes',         icon: Users },
-  { path: '/financeiro',    label: 'Financeiro',       icon: Landmark },
+  { path: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/vendas', label: 'Vendas', icon: ShoppingCart },
+  { path: '/orcamentos', label: 'Orçamentos', icon: FileText },
+  { path: '/clientes', label: 'Clientes', icon: Users },
+  { path: '/financeiro', label: 'Financeiro', icon: Landmark },
   // Fluxo de Caixa removido — está dentro de Financeiro como sub-aba
-  { path: '/produtos',      label: 'Produtos',         icon: Package },
-  { path: '/estoque',       label: 'Estoque',          icon: Warehouse },
-  { path: '/producao',      label: 'Produção',         icon: Factory },
-  { path: '/custos',        label: 'Gestão de Custos', icon: TrendingDown },
-  { path: '/relatorios',    label: 'Relatórios',       icon: BarChart3 },
-  { path: '/audit-log',     label: 'Audit Log',        icon: ShieldCheck },
-  { path: '/configuracoes', label: 'Configurações',    icon: Settings },
+  { path: '/produtos', label: 'Produtos', icon: Package },
+  { path: '/estoque', label: 'Estoque', icon: Warehouse },
+  { path: '/producao', label: 'Produção', icon: Factory },
+  { path: '/custos', label: 'Gestão de Custos', icon: TrendingDown },
+  { path: '/relatorios', label: 'Relatórios', icon: BarChart3 },
+  { path: '/audit-log', label: 'Audit Log', icon: ShieldCheck },
+  { path: '/configuracoes', label: 'Configurações', icon: Settings },
 ];
 
 export function Layout() {
-  const location  = useLocation();
-  const navigate  = useNavigate();
-  const { user }  = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const { role, pode } = useRole();
   const { isDark, toggleTheme } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -42,8 +42,8 @@ export function Layout() {
   const menuItems = ALL_MENU.filter(item => pode(item.path));
 
   const currentPage = ALL_MENU.find(i => i.path === location.pathname);
-  const initials    = (user?.name ?? 'U').slice(0, 1).toUpperCase();
-  const roleInfo    = role ? ROLES[role as Role] : null;
+  const initials = (user?.name ?? 'U').slice(0, 1).toUpperCase();
+  const roleInfo = role ? ROLES[role as Role] : null;
 
   useEffect(() => { setMenuOpen(false); }, [location.pathname]);
 
@@ -90,11 +90,11 @@ export function Layout() {
         <nav className="flex-1 overflow-y-auto p-4 space-y-1">
           {menuItems.map(item => {
             const isActive = location.pathname === item.path;
-            const Icon     = item.icon;
+            const Icon = item.icon;
 
             const isAdminSection = ['/relatorios', '/audit-log'].includes(item.path);
-            const prevItem       = menuItems[menuItems.indexOf(item) - 1];
-            const showSeparator  = isAdminSection && prevItem && !['/relatorios', '/audit-log'].includes(prevItem.path);
+            const prevItem = menuItems[menuItems.indexOf(item) - 1];
+            const showSeparator = isAdminSection && prevItem && !['/relatorios', '/audit-log'].includes(prevItem.path);
 
             return (
               <div key={item.path}>
@@ -103,11 +103,10 @@ export function Layout() {
                 )}
                 <Link
                   to={item.path}
-                  className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                    isActive
+                  className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${isActive
                       ? 'bg-blue-600 text-white shadow-lg'
                       : 'text-gray-300 hover:bg-gray-700 hover:text-white'
-                  }`}
+                    }`}
                 >
                   <Icon className="w-[18px] h-[18px] flex-shrink-0" />
                   {item.label}
@@ -184,9 +183,7 @@ export function Layout() {
 
         {/* Conteúdo */}
         <main className="flex-1 overflow-y-auto bg-[#111827]">
-          <div className="max-w-7xl mx-auto">
-            <Outlet />
-          </div>
+          <Outlet />
         </main>
       </div>
     </div>

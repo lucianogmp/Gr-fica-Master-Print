@@ -20,9 +20,10 @@ interface Props {
   value: string;
   clienteId?: string | null;
   onChange: (nome: string, id?: string | null) => void;
+  hideLabel?: boolean;
 }
 
-export function ClienteSelectorVenda({ value, clienteId, onChange }: Props) {
+export function ClienteSelectorVenda({ value, clienteId, onChange, hideLabel }: Props) {
   const [busca, setBusca]         = useState(value);
   const [opcoes, setOpcoes]       = useState<ClienteSimples[]>([]);
   const [aberto, setAberto]       = useState(false);
@@ -106,8 +107,8 @@ export function ClienteSelectorVenda({ value, clienteId, onChange }: Props) {
   const IN = "w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors";
 
   return (
-    <div ref={wrapRef} className="space-y-2">
-      <label className="text-xs font-bold text-gray-400 uppercase block">Cliente *</label>
+    <div ref={wrapRef} className="space-y-1.5">
+      {!hideLabel && <label className="text-xs font-bold text-gray-400 uppercase block">Cliente *</label>}
 
       <div className="flex gap-2">
         <div className="relative flex-1">

@@ -149,7 +149,7 @@ export function Vendas() {
   const subtotalDescont = subtotal - descontoValor;
   const totalSemJuros   = subtotalDescont + Number(form.frete || 0) + Number(form.taxa_adicional || 0);
   const jurosTotalPct   = form.juros * (form.parcelas - 1);
-  const totalFinal      = totalSemJuros * (1 + jurosTotalPct / 100);
+  const totalFinal      = totalSemJuros; // A taxa é da maquininha e não repassada ao cliente
 
   // Mudar status + criar OP automática ao entrar em produção
   async function handleMudarStatus(novoStatus: StatusVenda) {
@@ -441,167 +441,146 @@ export function Vendas() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <div className="space-y-5">
 
-          {/* ── Coluna principal ── */}
-          <div className="xl:col-span-2 space-y-5">
+          {/* ── Linha 1: Dados da Venda + Status — card único compacto ── */}
+          <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-4">
+            <div className="flex gap-4">
 
-            {/* Dados da venda */}
-            <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5">
-              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">
-                Dados da Venda
-              </h3>
-              <div className="space-y-4">
-                {/* Cliente com autocomplete */}
-                <ClienteSelectorVenda
-                  value={form.cliente_nome}
-                  clienteId={form.cliente_id}
-                  onChange={(nome, id) => { setF('cliente_nome', nome); setF('cliente_id', id ?? null); }}
-                />
+              {/* Campos — cresce */}
+              <div className="flex-1 min-w-0 space-y-2.5">
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Linha A: Cliente + Vendedor */}
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Data da Venda</label>
-                    <input
-                      type="date"
-                      value={form.data_venda ?? ''}
-                      onChange={e => setF('data_venda', e.target.value)}
-                      className={IN}
+                    <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Cliente *</label>
+                    <ClienteSelectorVenda
+                      hideLabel
+                      value={form.cliente_nome}
+                      clienteId={form.cliente_id}
+                      onChange={(nome, id) => { setF('cliente_nome', nome); setF('cliente_id', id ?? null); }}
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5 flex items-center gap-1">
-                      <Calendar className="w-3 h-3" />
-                      Data de Entrega
+                    <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Vendedor</label>
+                    <VendedorSelector
+                      value={form.vendedor}
+                      vendedorId={form.vendedor_id}
+                      onChange={(nome, id) => { setF('vendedor', nome); setF('vendedor_id', id ?? null); }}
+                    />
+                  </div>
+                </div>
+
+                {/* Linha B: Datas + Palavra-chave + Tipo */}
+                <div className="grid grid-cols-4 gap-3">
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Data da Venda</label>
+                    <input type="date" value={form.data_venda ?? ''}
+                      onChange={e => setF('data_venda', e.target.value)} className={IN} />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1 flex items-center gap-1">
+                      <Calendar className="w-3 h-3" /> Entrega
                       {cfg?.venda_prazo_entrega_dias && (
-                        <span className="text-[9px] text-blue-400 font-normal ml-1">
-                          (padrão: {cfg.venda_prazo_entrega_dias} dias)
-                        </span>
+                        <span className="text-[9px] text-blue-400 font-normal">({cfg.venda_prazo_entrega_dias}d)</span>
                       )}
                     </label>
-                    <input
-                      type="date"
-                      value={form.data_entrega ?? ''}
-                      onChange={e => setF('data_entrega', e.target.value)}
-                      className={IN}
-                    />
+                    <input type="date" value={form.data_entrega ?? ''}
+                      onChange={e => setF('data_entrega', e.target.value)} className={IN} />
                   </div>
-                </div>
-
-                {/* Vendedor com autocomplete */}
-                <VendedorSelector
-                  value={form.vendedor}
-                  vendedorId={form.vendedor_id}
-                  onChange={(nome, id) => { setF('vendedor', nome); setF('vendedor_id', id ?? null); }}
-                />
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Palavra-chave</label>
-                    <input
-                      value={form.palavra_chave ?? ''}
+                    <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Palavra-chave</label>
+                    <input value={form.palavra_chave ?? ''}
                       onChange={e => setF('palavra_chave', e.target.value)}
-                      className={IN}
-                      placeholder="Tag para busca rápida"
-                    />
+                      className={IN} placeholder="Tag busca rápida" />
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Tipo</label>
-                    <input
-                      value={form.tipo ?? ''}
+                    <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Tipo</label>
+                    <input value={form.tipo ?? ''}
                       onChange={e => setF('tipo', e.target.value)}
-                      className={IN}
-                      placeholder="Categoria interna"
-                    />
+                      className={IN} placeholder="Categoria" />
                   </div>
                 </div>
 
+                {/* Linha C: Observações */}
                 <div>
-                  <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Observações</label>
-                  <textarea
-                    rows={2}
-                    value={form.observacoes ?? ''}
+                  <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Observações</label>
+                  <textarea rows={2} value={form.observacoes ?? ''}
                     onChange={e => setF('observacoes', e.target.value)}
                     className={IN + ' resize-none'}
-                    placeholder="Observações para o cliente, instrução de entrega..."
-                  />
+                    placeholder="Observações para o cliente, instrução de entrega..." />
                 </div>
               </div>
-            </div>
 
-            {/* Itens */}
-            <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5">
-              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-1.5">
-                <Package className="w-3.5 h-3.5" /> Itens da Venda
-              </h3>
-              <ItensEditor itens={itens} onChange={setItens} />
+              {/* Divisor vertical */}
+              <div className="w-px bg-gray-700/60 flex-shrink-0" />
+
+              {/* Status — coluna estreita */}
+              <div className="w-44 flex-shrink-0 flex flex-col">
+                <p className="text-[10px] font-bold text-gray-500 uppercase mb-2 flex items-center gap-1">
+                  <Settings className="w-3 h-3" /> Status
+                </p>
+                <div className="space-y-1 flex-1">
+                  {Object.entries(STATUS_VENDA).map(([k, v]) => (
+                    <button
+                      key={k}
+                      onClick={() => handleMudarStatus(k as StatusVenda)}
+                      className={`w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] font-bold border transition-all flex items-center justify-between ${
+                        form.status === k
+                          ? v.cor + ' opacity-100'
+                          : 'border-gray-700 text-gray-500 hover:text-white hover:bg-gray-700/30'
+                      }`}
+                    >
+                      {v.label}
+                      {k === 'producao' && (
+                        <span className="text-[8px] text-yellow-400 font-normal">OP auto</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+                {form.status === 'producao' && !isNovo && (
+                  <div className="mt-2 flex items-start gap-1.5 bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-2">
+                    <AlertTriangle className="w-3 h-3 text-yellow-400 flex-shrink-0 mt-0.5" />
+                    <p className="text-[9px] text-yellow-300">Verifique a OP criada automaticamente.</p>
+                  </div>
+                )}
+              </div>
+
             </div>
           </div>
 
-          {/* ── Coluna lateral ── */}
-          <div className="space-y-4">
-
-            {/* Painel financeiro completo */}
-            <PainelFinanceiro
-              subtotal={subtotal}
-              desconto={form.desconto}
-              frete={form.frete}
-              taxaAdicional={form.taxa_adicional}
-              parcelas={form.parcelas}
-              juros={form.juros}
-              formaPagamento={form.forma_pagamento}
-              valorPago={form.valor_pago}
-              pagamentos={pagamentos}
-              cfg={cfg}
-              vendaId={vendaId}
-              onDescontoChange={v => setF('desconto', v)}
-              onFreteChange={v => setF('frete', v)}
-              onTaxaChange={v => setF('taxa_adicional', v)}
-              onParcelasChange={v => setF('parcelas', v)}
-              onJurosChange={v => setF('juros', v)}
-              onFormaPagamentoChange={v => setF('forma_pagamento', v)}
-              onRegistrarPagamento={registrarPagamento}
-              onExcluirPagamento={excluirPagamento}
-              isRegistrando={isRegistrando}
-            />
-
-            {/* Status */}
-            <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5">
-              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                <Settings className="w-3.5 h-3.5" /> Status da Venda
-              </h3>
-              <div className="space-y-1.5">
-                {Object.entries(STATUS_VENDA).map(([k, v]) => (
-                  <button
-                    key={k}
-                    onClick={() => handleMudarStatus(k as StatusVenda)}
-                    className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold border transition-all flex items-center justify-between ${
-                      form.status === k
-                        ? v.cor + ' opacity-100'
-                        : 'border-gray-700 text-gray-500 hover:text-white hover:bg-gray-700/30'
-                    }`}
-                  >
-                    {v.label}
-                    {k === 'producao' && (
-                      <span className="text-[9px] text-yellow-400 font-normal">
-                        cria OP auto
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </div>
-
-              {/* Aviso de OP automática */}
-              {form.status === 'producao' && !isNovo && (
-                <div className="mt-3 flex items-start gap-2 bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-2.5">
-                  <AlertTriangle className="w-3.5 h-3.5 text-yellow-400 flex-shrink-0 mt-0.5" />
-                  <p className="text-[10px] text-yellow-300">
-                    Em Produção — verifique a Ordem de Produção criada automaticamente.
-                  </p>
-                </div>
-              )}
-            </div>
+          {/* ── Linha 2: Itens da Venda — full width ── */}
+          <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5">
+            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-1.5">
+              <Package className="w-3.5 h-3.5" /> Itens da Venda
+            </h3>
+            <ItensEditor itens={itens} onChange={setItens} />
           </div>
+
+          {/* ── Linha 3: Resumo Financeiro — full width ── */}
+          <PainelFinanceiro
+            subtotal={subtotal}
+            desconto={form.desconto}
+            frete={form.frete}
+            taxaAdicional={form.taxa_adicional}
+            parcelas={form.parcelas}
+            juros={form.juros}
+            formaPagamento={form.forma_pagamento}
+            valorPago={vendaId !== '__novo__' ? pagamentos.reduce((s, p) => s + p.valor, 0) : Number(form.valor_pago || 0)}
+            pagamentos={pagamentos}
+            cfg={cfg}
+            vendaId={vendaId}
+            onDescontoChange={v => setF('desconto', v)}
+            onFreteChange={v => setF('frete', v)}
+            onTaxaChange={v => setF('taxa_adicional', v)}
+            onParcelasChange={v => setF('parcelas', v)}
+            onJurosChange={v => setF('juros', v)}
+            onFormaPagamentoChange={v => setF('forma_pagamento', v)}
+            onRegistrarPagamento={registrarPagamento}
+            onExcluirPagamento={excluirPagamento}
+            isRegistrando={isRegistrando}
+          />
+
         </div>
       </div>
     </>
