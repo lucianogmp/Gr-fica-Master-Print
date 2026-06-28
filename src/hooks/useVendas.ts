@@ -119,11 +119,20 @@ export function useVendas() {
 
   const deletar = useMutation({
     mutationFn: async (id: string) => {
+      // 1. Remove lançamentos financeiros vinculados a esta venda
+      await supabase.from('lancamentos').delete().eq('venda_id', id);
+
+      // 2. Remove pagamentos vinculados
+      await supabase.from('pagamentos_venda').delete().eq('venda_id', id);
+
+      // 3. Remove a venda em si
       const { error } = await supabase.from('vendas').delete().eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['vendas'] });
+      qc.invalidateQueries({ queryKey: ['lancamentos'] });
+      qc.invalidateQueries({ queryKey: ['dashboard-metrics'] });
       toast.success('Venda removida.');
     },
     onError: (e: any) => toast.error(e.message),

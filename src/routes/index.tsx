@@ -37,6 +37,7 @@ function PageLoadingFallback() {
 const ROTAS = [
   { path: '/',              Page: Dashboard,    rota: '/'              },
   { path: '/vendas',        Page: Vendas,       rota: '/vendas'        },
+  { path: '/vendas/:id',   Page: Vendas,       rota: '/vendas'        },
   { path: '/orcamentos',    Page: Orcamentos,   rota: '/orcamentos'    },
   { path: '/clientes',      Page: Clientes,     rota: '/clientes'      },
   { path: '/financeiro',    Page: Financeiro,   rota: '/financeiro'    },

@@ -10,6 +10,7 @@
 // página com um estado "origem=financeiro". Ao fechar/salvar, volta para cá.
 
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useLancamentos } from '../hooks/useLancamentos';
 import { useVendas, useVendaItens } from '../hooks/useVendas';
 import { usePagamentosVenda } from '../hooks/usePagamentosVenda';
@@ -36,7 +37,7 @@ import {
   ArrowUp, ArrowDown, AlertCircle, Check, X, ShoppingCart,
   DollarSign, CreditCard, ArrowLeft, Save, Package,
   Settings, Printer, Calendar, AlertTriangle, BarChart3,
-  Wallet, Sparkles, ArrowDownToLine, ArrowUpFromLine,
+  Wallet, Sparkles, ArrowDownToLine, ArrowUpFromLine, ExternalLink,
   type LucideIcon,
 } from 'lucide-react';
 import { DocumentoImpressaoData } from '../components/impressao/DocumentoImpressao';
@@ -103,7 +104,15 @@ const NOVA_VENDA_FORM = {
   forma_pagamento: '',
 };
 
+// Extrai venda_id de observações no formato "pagamento_venda:UUID"
+function extrairVendaId(obs?: string | null): string | null {
+  if (!obs) return null;
+  const match = obs.match(/pagamento_venda[:\-_]([a-f0-9-]{36})/i);
+  return match ? match[1] : null;
+}
+
 export function Financeiro() {
+  const navigate = useNavigate();
   const { data: lancamentos = [], isLoading: loadLanc, criar, atualizar, pagar, deletar, isSaving } = useLancamentos();
   const { data: vendas = [], isLoading: loadVendas, atualizar: atualizarVenda, isSaving: isSavingVenda } = useVendas();
   const { data: movimentos = [], isLoading: loadMov } = useCaixaMovimentos();
@@ -616,7 +625,18 @@ export function Financeiro() {
                             <span className={l.tipo === 'receita' ? 'text-green-400' : 'text-red-400'}>
                               {l.tipo === 'receita' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />}
                             </span>
-                            <span className="font-medium text-white">{l.descricao}</span>
+                            <div>
+                              <span className="font-medium text-white">{l.descricao}</span>
+                              {extrairVendaId(l.observacoes) && (
+                                <button
+                                  onClick={e => { e.stopPropagation(); navigate(`/vendas/${extrairVendaId(l.observacoes)}`); }}
+                                  className="ml-2 inline-flex items-center gap-0.5 text-[10px] font-bold text-blue-400 hover:text-blue-300 transition-colors"
+                                  title="Ir para venda de origem"
+                                >
+                                  <ExternalLink className="w-2.5 h-2.5" /> venda
+                                </button>
+                              )}
+                            </div>
                           </div>
                         </td>
                         <td className="px-5 py-3 text-gray-400 text-xs">{l.categoria || '—'}</td>
@@ -806,32 +826,29 @@ export function Financeiro() {
 
         {/* ─── SUB-ABA: FLUXO DE CAIXA ─── */}
         {subAba === 'fluxo' && (
-          <div className="space-y-6">
+          <div className="space-y-4">
             <div className="flex items-center gap-3 flex-wrap">
               <input type="month" value={mesFx} onChange={e => setMesFx(e.target.value)}
-                className="bg-[#1f2937] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500" />
+                className="bg-[#1f2937] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500 [color-scheme:dark]" />
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <KpiCard label="Entradas no mês"  value={fmtBRL(entradas)} icon={ArrowUp}          color="text-green-400" />
-              <KpiCard label="Saídas no mês"    value={fmtBRL(saidas)}   icon={ArrowDown}         color="text-red-400" />
-              <KpiCard label="Saldo do mês"     value={fmtBRL(saldo)}    icon={Wallet}            color={saldo >= 0 ? 'text-blue-400' : 'text-red-400'} />
-              <KpiCard label="Saldo projetado"  value={fmtBRL(saldo + receber - pagar2)} icon={Sparkles} color="text-purple-400" />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-[#1f2937] border border-green-500/20 rounded-xl p-5">
-                <p className="text-xs font-bold text-gray-500 uppercase mb-3 flex items-center gap-1.5">
-                  <ArrowDownToLine className="w-3.5 h-3.5 text-green-400" /> A receber (pendente)
-                </p>
-                <p className="text-2xl font-black text-green-400">{fmtBRL(receber)}</p>
-              </div>
-              <div className="bg-[#1f2937] border border-red-500/20 rounded-xl p-5">
-                <p className="text-xs font-bold text-gray-500 uppercase mb-3 flex items-center gap-1.5">
-                  <ArrowUpFromLine className="w-3.5 h-3.5 text-red-400" /> A pagar (pendente)
-                </p>
-                <p className="text-2xl font-black text-red-400">{fmtBRL(pagar2)}</p>
-              </div>
+            {/* KPIs compactos em linha */}
+            <div className="bg-[#1f2937] border border-gray-700 rounded-xl px-4 py-3 flex items-center flex-wrap divide-x divide-gray-700">
+              {[
+                { label: 'Entradas',  value: fmtBRL(entradas), color: 'text-green-400',  icon: ArrowUp },
+                { label: 'Saídas',    value: fmtBRL(saidas),   color: 'text-red-400',    icon: ArrowDown },
+                { label: 'Saldo',     value: fmtBRL(saldo),    color: saldo >= 0 ? 'text-blue-400' : 'text-red-400', icon: Wallet },
+                { label: 'Projetado', value: fmtBRL(saldo + receber - pagar2), color: 'text-purple-400', icon: Sparkles },
+                { label: 'A receber', value: fmtBRL(receber),  color: 'text-green-400',  icon: ArrowDownToLine },
+                { label: 'A pagar',   value: fmtBRL(pagar2),   color: 'text-red-400',    icon: ArrowUpFromLine },
+              ].map(({ label, value, color, icon: Icon }) => (
+                <div key={label} className="flex-1 min-w-[110px] px-4 first:pl-0 last:pr-0">
+                  <p className="text-[10px] font-bold text-gray-500 uppercase flex items-center gap-1 mb-0.5">
+                    <Icon className={`w-3 h-3 ${color}`} /> {label}
+                  </p>
+                  <p className={`text-sm font-black ${color}`}>{value}</p>
+                </div>
+              ))}
             </div>
 
             {datas.length === 0 ? (
@@ -858,24 +875,32 @@ export function Financeiro() {
                           </span>
                         </div>
                       </div>
-                      {movs.map(m => (
-                        <div key={m.id} className="flex items-center justify-between px-5 py-2.5 border-b border-gray-800 last:border-b-0 hover:bg-gray-800/20 transition-colors">
-                          <div className="flex items-center gap-3">
-                            <span className={m.tipo === 'entrada' ? 'text-green-400' : 'text-red-400'}>
-                              {m.tipo === 'entrada' ? <ArrowUp className="w-5 h-5" /> : <ArrowDown className="w-5 h-5" />}
+                      {movs.map(m => {
+                        const vendaIdMov = extrairVendaId(m.observacoes ?? m.origem);
+                        return (
+                          <div key={m.id} className="flex items-center gap-3 px-4 py-2 border-b border-gray-800/60 last:border-0 hover:bg-gray-800/20 transition-colors group">
+                            <span className={`flex-shrink-0 ${m.tipo === 'entrada' ? 'text-green-400' : 'text-red-400'}`}>
+                              {m.tipo === 'entrada' ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowDown className="w-3.5 h-3.5" />}
                             </span>
-                            <div>
-                              <p className="text-sm font-medium text-white">{m.descricao}</p>
-                              <p className="text-[10px] text-gray-500">
-                                {[m.cliente_nome, m.origem, m.observacoes].filter(Boolean).join(' · ')}
-                              </p>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium text-white truncate">{m.descricao}</p>
+                              {m.cliente_nome && <p className="text-[10px] text-gray-500 truncate">{m.cliente_nome}</p>}
                             </div>
+                            {vendaIdMov && (
+                              <button
+                                onClick={() => navigate(`/vendas/${vendaIdMov}`)}
+                                className="flex-shrink-0 opacity-0 group-hover:opacity-100 flex items-center gap-1 text-[10px] font-bold text-blue-400 hover:text-blue-300 transition-all"
+                                title="Ir para venda"
+                              >
+                                <ExternalLink className="w-3 h-3" /> venda
+                              </button>
+                            )}
+                            <span className={`flex-shrink-0 font-black text-xs ${m.tipo === 'entrada' ? 'text-green-400' : 'text-red-400'}`}>
+                              {m.tipo === 'entrada' ? '+' : '-'}{fmtBRL(Number(m.valor))}
+                            </span>
                           </div>
-                          <span className={`font-black text-sm ${m.tipo === 'entrada' ? 'text-green-400' : 'text-red-400'}`}>
-                            {m.tipo === 'entrada' ? '+' : '-'}{fmtBRL(Number(m.valor))}
-                          </span>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   );
                 })}

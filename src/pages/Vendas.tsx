@@ -1,5 +1,6 @@
 // src/pages/Vendas.tsx
 import { useState, useMemo, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useVendas, useVendaItens } from '../hooks/useVendas';
 import { usePagamentosVenda } from '../hooks/usePagamentosVenda';
 import { useConfiguracoes } from '../hooks/useConfiguracoes';
@@ -51,18 +52,28 @@ const NOVA_VENDA = {
 };
 
 export function Vendas() {
+  const { id: idParam } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+
   const { data: vendas = [], isLoading, criar, atualizar, atualizarStatus, deletar, isSaving } = useVendas();
   const { data: cfg } = useConfiguracoes();
   const { criar: criarOP } = useProducao();
   const { confirmar, ConfirmModal } = useConfirm();
 
-  const [view, setView]       = useState<View>('lista');
-  const [vendaId, setVendaId] = useState<string | null>(null);
+  const [view, setView]       = useState<View>(idParam ? 'detalhe' : 'lista');
+  const [vendaId, setVendaId] = useState<string | null>(idParam ?? null);
   const [form, setForm]       = useState({ ...NOVA_VENDA });
   const [itens, setItens]     = useState<VendaItem[]>([]);
   const [filtro, setFiltro]   = useState<Filtro>('todos');
   const [busca, setBusca]     = useState('');
 
+  // Sincroniza URL com estado ao navegar para /vendas/:id
+  useEffect(() => {
+    if (idParam && idParam !== vendaId) {
+      setVendaId(idParam);
+      setView('detalhe');
+    }
+  }, [idParam]);
   const isNovo = vendaId === '__novo__';
   const { data: itensCarregados } = useVendaItens(isNovo ? null : vendaId);
   const {
@@ -137,6 +148,8 @@ export function Vendas() {
     setVendaId(null);
     setForm({ ...NOVA_VENDA });
     setItens([]);
+    // Limpa a URL se veio de /vendas/:id
+    if (idParam) navigate('/vendas', { replace: true });
   }
 
   function setF(f: keyof typeof NOVA_VENDA, v: any) {
