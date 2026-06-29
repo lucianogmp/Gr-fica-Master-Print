@@ -91,9 +91,9 @@ export function useDashboardData(mes: string) {
           .limit(200),
 
         // ✅ Pagamentos de vendas dos últimos 6 meses — fonte de verdade para receita
-        // Independe do status da venda: captura parcelas, entradas antecipadas, etc.
+        // juros_pct incluído para calcular valor líquido (bruto - taxa maquininha)
         supabase.from('pagamentos_venda')
-          .select('valor,data_pagamento')
+          .select('valor,juros_pct,data_pagamento')
           .gte('data_pagamento', start6),
       ]);
 
@@ -109,10 +109,16 @@ export function useDashboardData(mes: string) {
       // ─── Helpers ────────────────────────────────────────────────────────────
 
       // Receita real: soma de pagamentos_venda por data_pagamento no intervalo
+      // Usa valor líquido = bruto - taxa da maquininha (juros_pct), pois a taxa é desconto definitivo
       const somaPagementos = (s: string, e: string) =>
         pagamentos
           .filter(p => (p.data_pagamento ?? '') >= s && (p.data_pagamento ?? '') <= e)
-          .reduce((acc, p) => acc + Number(p.valor ?? 0), 0);
+          .reduce((acc, p) => {
+            const bruto = Number(p.valor ?? 0);
+            const taxa  = Number((p as any).juros_pct ?? 0);
+            const liq   = taxa > 0 ? bruto * (1 - taxa / 100) : bruto;
+            return acc + liq;
+          }, 0);
 
       // Receita manual: lançamentos de receita SEM venda vinculada (ex: serviços avulsos)
       // Usa data_vencimento pois são lançamentos manuais
@@ -195,7 +201,7 @@ export function useDashboardData(mes: string) {
       // ─── Top 5 clientes ──────────────────────────────────────────────────────
 
       const clienteMap: Record<string, number> = {};
-      vendas.forEach(v => {
+      vendas.filter(v => v.status !== 'cancelado').forEach(v => {
         const nome = v.cliente_nome || 'Sem cliente';
         clienteMap[nome] = (clienteMap[nome] || 0) + Number(v.valor_total ?? 0);
       });

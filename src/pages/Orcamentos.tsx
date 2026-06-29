@@ -172,13 +172,17 @@ export function Orcamentos() {
     setAcabEditId(null);
   }
 
-  const totalOrc    = orcamentos.length;
+  const totalOrc    = orcamentos.filter(o => o.status !== 'convertido').length;
   const aprovados   = orcamentos.filter(o => o.status === 'aprovado').length;
   const convertidos = orcamentos.filter(o => o.status === 'convertido').length;
-  const valorTotal  = orcamentos.filter(o => o.status !== 'recusado').reduce((s, o) => s + Number(o.total ?? 0), 0);
+  const valorTotal  = orcamentos.filter(o => o.status !== 'recusado' && o.status !== 'convertido').reduce((s, o) => s + Number(o.total ?? 0), 0);
 
   const filtrados = useMemo(() => orcamentos
-    .filter(o => filtro === 'todos' || o.status === filtro)
+    .filter(o => {
+      // Convertidos só aparecem se o filtro for explicitamente 'convertido'
+      if (o.status === 'convertido' && filtro !== 'convertido') return false;
+      return filtro === 'todos' || o.status === filtro;
+    })
     .filter(o => !busca || o.cliente_nome.toLowerCase().includes(busca.toLowerCase()) ||
       (o.numero ? String(o.numero).includes(busca) : false))
   , [orcamentos, filtro, busca]);
@@ -458,7 +462,9 @@ export function Orcamentos() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <KpiCard label="Total"       value={totalOrc}           icon={FileText} color="text-blue-400" />
         <KpiCard label="Aprovados"   value={aprovados}          icon={Check } color="text-green-400" />
-        <KpiCard label="Convertidos" value={convertidos}        icon={Zap} color="text-purple-400" />
+        <div onClick={() => navigate('/vendas')} className="cursor-pointer" title="Clique para ver as vendas geradas">
+          <KpiCard label="Convertidos → Vendas" value={convertidos} icon={Zap} color="text-purple-400" />
+        </div>
         <KpiCard label="Valor total" value={fmtBRL(valorTotal)} icon={Banknote} color="text-yellow-400" />
       </div>
 

@@ -265,7 +265,10 @@ export function Vendas() {
       vendedor_id:     form.vendedor_id,
       palavra_chave:   form.palavra_chave,
       tipo:            form.tipo,
-      valor_total:     totalFinal,
+      // Preserva valor_total já calculado pela maquininha se há pagamentos registrados.
+      // Se não há pagamentos, usa totalFinal (valor bruto dos itens).
+      // O recalcularFinanceiroVenda (usePagamentosVenda) é a fonte de verdade quando há pagamentos.
+      valor_total:     pagamentos.length > 0 ? (form.valor_total || totalFinal) : totalFinal,
       valor_pago:      form.valor_pago,
       forma_pagamento: form.forma_pagamento,
     };
@@ -369,7 +372,16 @@ export function Vendas() {
                     <td className="px-5 py-3 text-gray-400 text-xs">{fmtData(v.data_venda)}</td>
                     <td className="px-5 py-3 text-gray-400 text-xs">{fmtData(v.data_entrega)}</td>
                     <td className="px-5 py-3 text-right">
-                      <div className="font-bold text-white">{fmtBRL(v.valor_total ?? v.total)}</div>
+                      <div className="font-bold text-white">
+                        {fmtBRL(v.valor_total ?? v.total)}
+                        {/* Mostra valor original riscado se houver desconto de maquininha */}
+                        {Number((v as any).valor_original ?? 0) > 0 &&
+                         Number((v as any).valor_original) > Number(v.valor_total ?? v.total ?? 0) && (
+                          <span className="ml-1 text-[9px] text-gray-600 line-through font-normal">
+                            {fmtBRL((v as any).valor_original)}
+                          </span>
+                        )}
+                      </div>
                       {quitado
                         ? <div className="text-[9px] text-green-400 font-bold">QUITADO</div>
                         : totalPago > 0

@@ -531,11 +531,11 @@ export function Financeiro() {
             </h1>
             <p className="text-gray-500 text-sm">Lançamentos, vendas, fluxo de caixa e resumo</p>
           </div>
-          {subAba === 'lancamentos' && (
+          {(subAba === 'lancamentos' || subAba === 'fluxo') && (
             <div className="flex gap-2">
               <button onClick={() => { setEditandoLanc(null); setTipoInicial('receita'); setModalOpen(true); }}
                 className="bg-green-600 hover:bg-green-500 text-white px-4 py-2.5 rounded-xl font-bold text-sm transition-all">
-                + Receita
+                + Entrada
               </button>
               <button onClick={() => { setEditandoLanc(null); setTipoInicial('despesa'); setModalOpen(true); }}
                 className="bg-red-600 hover:bg-red-500 text-white px-4 py-2.5 rounded-xl font-bold text-sm transition-all">
@@ -618,6 +618,7 @@ export function Financeiro() {
                   )}
                   {lancsFiltrados.map(l => {
                     const st = l.statusCalc;
+                    const isDeVenda = !!l.venda_id;
                     return (
                       <tr key={l.id} className="border-b border-gray-800 hover:bg-gray-800/30 transition-colors">
                         <td className="px-5 py-3">
@@ -627,14 +628,10 @@ export function Financeiro() {
                             </span>
                             <div>
                               <span className="font-medium text-white">{l.descricao}</span>
-                              {extrairVendaId(l.observacoes) && (
-                                <button
-                                  onClick={e => { e.stopPropagation(); navigate(`/vendas/${extrairVendaId(l.observacoes)}`); }}
-                                  className="ml-2 inline-flex items-center gap-0.5 text-[10px] font-bold text-blue-400 hover:text-blue-300 transition-colors"
-                                  title="Ir para venda de origem"
-                                >
-                                  <ExternalLink className="w-2.5 h-2.5" /> venda
-                                </button>
+                              {isDeVenda && (
+                                <span className="ml-2 text-[9px] font-bold bg-blue-500/20 text-blue-400 border border-blue-500/30 px-1.5 py-0.5 rounded-full">
+                                  venda
+                                </span>
                               )}
                             </div>
                           </div>
@@ -651,22 +648,33 @@ export function Financeiro() {
                           </span>
                         </td>
                         <td className="px-5 py-3 text-center">
-                          <div className="flex gap-1 justify-center">
-                            {st !== 'pago' && st !== 'cancelado' && (
-                              <button onClick={() => pagar({ id: l.id })}
-                                className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg bg-green-500/15 text-green-400 hover:bg-green-500/25 border border-green-500/30 transition-all">
-                                <Check className="w-3 h-3" /> Pagar
+                          {isDeVenda ? (
+                            /* Lançamento gerado por venda — só navega para a venda, sem editar/pagar */
+                            <button
+                              onClick={() => navigate(`/vendas/${l.venda_id}`)}
+                              className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 border border-blue-500/30 transition-all mx-auto"
+                            >
+                              <ExternalLink className="w-3 h-3" /> Ver venda
+                            </button>
+                          ) : (
+                            /* Lançamento manual — ações completas */
+                            <div className="flex gap-1 justify-center">
+                              {st !== 'pago' && st !== 'cancelado' && (
+                                <button onClick={() => pagar({ id: l.id })}
+                                  className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg bg-green-500/15 text-green-400 hover:bg-green-500/25 border border-green-500/30 transition-all">
+                                  <Check className="w-3 h-3" /> Pagar
+                                </button>
+                              )}
+                              <button onClick={() => { setEditandoLanc(l); setModalOpen(true); }}
+                                className="text-[10px] font-bold px-2 py-1 rounded-lg bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 border border-blue-500/30 transition-all">
+                                Editar
                               </button>
-                            )}
-                            <button onClick={() => { setEditandoLanc(l); setModalOpen(true); }}
-                              className="text-[10px] font-bold px-2 py-1 rounded-lg bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 border border-blue-500/30 transition-all">
-                              Editar
-                            </button>
-                            <button onClick={async () => { if (await confirmar('Remover este lançamento?')) deletar(l.id); }}
-                              className="flex items-center justify-center px-2 py-1 rounded-lg bg-red-500/15 text-red-400 hover:bg-red-500/25 border border-red-500/30 transition-all">
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
+                              <button onClick={async () => { if (await confirmar('Remover este lançamento?')) deletar(l.id); }}
+                                className="flex items-center justify-center px-2 py-1 rounded-lg bg-red-500/15 text-red-400 hover:bg-red-500/25 border border-red-500/30 transition-all">
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          )}
                         </td>
                       </tr>
                     );
@@ -826,29 +834,32 @@ export function Financeiro() {
 
         {/* ─── SUB-ABA: FLUXO DE CAIXA ─── */}
         {subAba === 'fluxo' && (
-          <div className="space-y-4">
+          <div className="space-y-6">
             <div className="flex items-center gap-3 flex-wrap">
               <input type="month" value={mesFx} onChange={e => setMesFx(e.target.value)}
-                className="bg-[#1f2937] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500 [color-scheme:dark]" />
+                className="bg-[#1f2937] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500" />
             </div>
 
-            {/* KPIs compactos em linha */}
-            <div className="bg-[#1f2937] border border-gray-700 rounded-xl px-4 py-3 flex items-center flex-wrap divide-x divide-gray-700">
-              {[
-                { label: 'Entradas',  value: fmtBRL(entradas), color: 'text-green-400',  icon: ArrowUp },
-                { label: 'Saídas',    value: fmtBRL(saidas),   color: 'text-red-400',    icon: ArrowDown },
-                { label: 'Saldo',     value: fmtBRL(saldo),    color: saldo >= 0 ? 'text-blue-400' : 'text-red-400', icon: Wallet },
-                { label: 'Projetado', value: fmtBRL(saldo + receber - pagar2), color: 'text-purple-400', icon: Sparkles },
-                { label: 'A receber', value: fmtBRL(receber),  color: 'text-green-400',  icon: ArrowDownToLine },
-                { label: 'A pagar',   value: fmtBRL(pagar2),   color: 'text-red-400',    icon: ArrowUpFromLine },
-              ].map(({ label, value, color, icon: Icon }) => (
-                <div key={label} className="flex-1 min-w-[110px] px-4 first:pl-0 last:pr-0">
-                  <p className="text-[10px] font-bold text-gray-500 uppercase flex items-center gap-1 mb-0.5">
-                    <Icon className={`w-3 h-3 ${color}`} /> {label}
-                  </p>
-                  <p className={`text-sm font-black ${color}`}>{value}</p>
-                </div>
-              ))}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <KpiCard label="Entradas no mês"  value={fmtBRL(entradas)} icon={ArrowUp}          color="text-green-400" />
+              <KpiCard label="Saídas no mês"    value={fmtBRL(saidas)}   icon={ArrowDown}         color="text-red-400" />
+              <KpiCard label="Saldo do mês"     value={fmtBRL(saldo)}    icon={Wallet}            color={saldo >= 0 ? 'text-blue-400' : 'text-red-400'} />
+              <KpiCard label="Saldo projetado"  value={fmtBRL(saldo + receber - pagar2)} icon={Sparkles} color="text-purple-400" />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-[#1f2937] border border-green-500/20 rounded-xl p-5">
+                <p className="text-xs font-bold text-gray-500 uppercase mb-3 flex items-center gap-1.5">
+                  <ArrowDownToLine className="w-3.5 h-3.5 text-green-400" /> A receber (pendente)
+                </p>
+                <p className="text-2xl font-black text-green-400">{fmtBRL(receber)}</p>
+              </div>
+              <div className="bg-[#1f2937] border border-red-500/20 rounded-xl p-5">
+                <p className="text-xs font-bold text-gray-500 uppercase mb-3 flex items-center gap-1.5">
+                  <ArrowUpFromLine className="w-3.5 h-3.5 text-red-400" /> A pagar (pendente)
+                </p>
+                <p className="text-2xl font-black text-red-400">{fmtBRL(pagar2)}</p>
+              </div>
             </div>
 
             {datas.length === 0 ? (
@@ -875,32 +886,24 @@ export function Financeiro() {
                           </span>
                         </div>
                       </div>
-                      {movs.map(m => {
-                        const vendaIdMov = extrairVendaId(m.observacoes ?? m.origem);
-                        return (
-                          <div key={m.id} className="flex items-center gap-3 px-4 py-2 border-b border-gray-800/60 last:border-0 hover:bg-gray-800/20 transition-colors group">
-                            <span className={`flex-shrink-0 ${m.tipo === 'entrada' ? 'text-green-400' : 'text-red-400'}`}>
-                              {m.tipo === 'entrada' ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowDown className="w-3.5 h-3.5" />}
+                      {movs.map(m => (
+                        <div key={m.id} className="flex items-center justify-between px-5 py-2.5 border-b border-gray-800 last:border-b-0 hover:bg-gray-800/20 transition-colors">
+                          <div className="flex items-center gap-3">
+                            <span className={m.tipo === 'entrada' ? 'text-green-400' : 'text-red-400'}>
+                              {m.tipo === 'entrada' ? <ArrowUp className="w-5 h-5" /> : <ArrowDown className="w-5 h-5" />}
                             </span>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-medium text-white truncate">{m.descricao}</p>
-                              {m.cliente_nome && <p className="text-[10px] text-gray-500 truncate">{m.cliente_nome}</p>}
+                            <div>
+                              <p className="text-sm font-medium text-white">{m.descricao}</p>
+                              <p className="text-[10px] text-gray-500">
+                                {[m.cliente_nome, m.origem, m.observacoes].filter(Boolean).join(' · ')}
+                              </p>
                             </div>
-                            {vendaIdMov && (
-                              <button
-                                onClick={() => navigate(`/vendas/${vendaIdMov}`)}
-                                className="flex-shrink-0 opacity-0 group-hover:opacity-100 flex items-center gap-1 text-[10px] font-bold text-blue-400 hover:text-blue-300 transition-all"
-                                title="Ir para venda"
-                              >
-                                <ExternalLink className="w-3 h-3" /> venda
-                              </button>
-                            )}
-                            <span className={`flex-shrink-0 font-black text-xs ${m.tipo === 'entrada' ? 'text-green-400' : 'text-red-400'}`}>
-                              {m.tipo === 'entrada' ? '+' : '-'}{fmtBRL(Number(m.valor))}
-                            </span>
                           </div>
-                        );
-                      })}
+                          <span className={`font-black text-sm ${m.tipo === 'entrada' ? 'text-green-400' : 'text-red-400'}`}>
+                            {m.tipo === 'entrada' ? '+' : '-'}{fmtBRL(Number(m.valor))}
+                          </span>
+                        </div>
+                      ))}
                     </div>
                   );
                 })}

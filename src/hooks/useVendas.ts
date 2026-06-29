@@ -93,9 +93,29 @@ export function useVendas() {
         });
         if (iErr) throw iErr;
       }
+
+      // Atualiza lançamento financeiro vinculado se o valor mudou e não há pagamentos ainda.
+      // Com pagamentos, recalcularFinanceiroVenda (usePagamentosVenda) cuida disso.
+      if (payload.valor_total !== undefined) {
+        const { data: pagamentos } = await supabase
+          .from('pagamentos_venda')
+          .select('id')
+          .eq('venda_id', id)
+          .limit(1);
+        if (!pagamentos || pagamentos.length === 0) {
+          await supabase
+            .from('lancamentos')
+            .update({ valor: payload.valor_total })
+            .eq('venda_id', id)
+            .eq('tipo', 'receita')
+            .neq('status', 'pago')
+            .neq('status', 'cancelado');
+        }
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['vendas'] });
+      qc.invalidateQueries({ queryKey: ['lancamentos'] });
       qc.invalidateQueries({ queryKey: ['dashboard-metrics'] });
       toast.success('Venda atualizada!');
     },
