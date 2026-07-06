@@ -1,3 +1,4 @@
+// src/hooks/useClientes.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { Cliente } from '../types/cliente';
@@ -31,9 +32,10 @@ export function useClientes() {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (cliente: Omit<Cliente, 'id' | 'created_at'>) => {
-      const { error } = await supabase.from('clientes').insert(cliente);
+    mutationFn: async (cliente: Omit<Cliente, 'id' | 'created_at' | 'updated_at'>) => {
+      const { data, error } = await supabase.from('clientes').insert(cliente).select().single();
       if (error) throw error;
+      return data as Cliente;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['clientes'] });
@@ -42,10 +44,43 @@ export function useClientes() {
     onError: () => toast.error('Erro ao criar cliente.'),
   });
 
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, payload }: { id: string; payload: Partial<Cliente> }) => {
+      const { error } = await supabase
+        .from('clientes')
+        .update({ ...payload, updated_at: new Date().toISOString() })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['clientes'] });
+      toast.success('Cliente atualizado!');
+    },
+    onError: () => toast.error('Erro ao atualizar cliente.'),
+  });
+
   return {
     ...query,
     deleteCliente: deleteMutation.mutate,
-    createCliente: createMutation.mutate,
+    createCliente: createMutation.mutateAsync,
+    updateCliente: updateMutation.mutate,
     isCreating: createMutation.isPending,
+    isUpdating: updateMutation.isPending,
   };
+}
+
+export function useCliente(id: string | null) {
+  return useQuery({
+    queryKey: ['cliente', id],
+    enabled: !!id,
+    queryFn: async (): Promise<Cliente | null> => {
+      const { data, error } = await supabase
+        .from('clientes')
+        .select('*')
+        .eq('id', id!)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
 }

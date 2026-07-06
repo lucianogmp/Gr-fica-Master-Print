@@ -17,8 +17,9 @@ export interface RelatorioFinanceiroFiltros {
   status?: string;
 }
 
-function valorVenda(v: { valor_total?: number | null; total?: number | null }) {
-  return Number(v.valor_total ?? v.total ?? 0);
+// valor_total é a fonte de verdade — não usa 'total' (coluna gerada que pode causar 500)
+function valorVenda(v: { valor_total?: number | null }) {
+  return Number(v.valor_total ?? 0);
 }
 
 // ── Relatório de Vendas ─────────────────────────────────────────────────────
@@ -31,7 +32,6 @@ export interface VendaRelatorio {
   data_venda: string | null;
   data_entrega: string | null;
   valor_total: number | null;
-  total: number | null;
   desconto: number;
   vendedor: string | null;
   created_at?: string | null;
@@ -51,11 +51,12 @@ export function useRelatorioVendas(filtros: RelatorioVendasFiltros) {
     queryKey: ['relatorio-vendas', filtros],
     enabled: !!filtros.data_inicio && !!filtros.data_fim,
     queryFn: async () => {
+      // Não inclui 'total' (coluna gerada) — usa só valor_total
       let q = supabase
         .from('vendas')
         .select(`
           id, numero, cliente_nome, status, data_venda,
-          data_entrega, valor_total, total, desconto, vendedor, created_at
+          data_entrega, valor_total, desconto, vendedor, created_at
         `)
         .order('created_at', { ascending: true });
 
@@ -63,7 +64,7 @@ export function useRelatorioVendas(filtros: RelatorioVendasFiltros) {
       if (filtros.cliente) q = q.ilike('cliente_nome', `%${filtros.cliente}%`);
 
       const { data, error } = await q;
-      if (error) throw error;
+      if (error) throw new Error(error.message);
 
       const vendas = ((data ?? []) as VendaRelatorio[]).filter(v => {
         const ref = v.data_venda?.slice(0, 10) ?? v.created_at?.slice(0, 10);
@@ -154,7 +155,7 @@ export function useRelatorioFinanceiro(filtros: RelatorioFinanceiroFiltros) {
     queryFn: async () => {
       let q = supabase
         .from('lancamentos')
-        .select('*')
+        .select('id, tipo, descricao, valor, status, categoria, cliente_nome, data_vencimento, data_pagamento, forma_pagamento')
         .gte('data_vencimento', filtros.data_inicio)
         .lte('data_vencimento', filtros.data_fim)
         .order('data_vencimento', { ascending: true });
@@ -164,7 +165,7 @@ export function useRelatorioFinanceiro(filtros: RelatorioFinanceiroFiltros) {
       if (filtros.status)    q = q.eq('status', filtros.status);
 
       const { data, error } = await q;
-      if (error) throw error;
+      if (error) throw new Error(error.message);
 
       const lancamentos = (data ?? []) as LancamentoRelatorio[];
 
@@ -196,11 +197,7 @@ export function useRelatorioFinanceiro(filtros: RelatorioFinanceiroFiltros) {
         catMap[key].total += Number(l.valor);
       });
       resumo.por_categoria = Object.entries(catMap)
-        .map(([key, d]) => ({
-          categoria: key.split('__')[1],
-          tipo: d.tipo,
-          total: d.total,
-        }))
+        .map(([key, d]) => ({ categoria: key.split('__')[1], tipo: d.tipo, total: d.total }))
         .sort((a, b) => b.total - a.total);
 
       const mesMap: Record<string, { receita: number; despesa: number }> = {};

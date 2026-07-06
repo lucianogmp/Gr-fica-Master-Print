@@ -13,6 +13,7 @@ export interface CaixaMovimento {
   observacoes?: string | null;
   origem?: string | null;
   venda_id?: string | null;
+  conta_id?: string | null;   // ← novo: vínculo com conta bancária
   created_at?: string;
 }
 
@@ -21,8 +22,15 @@ type Payload = Omit<CaixaMovimento, 'id' | 'created_at'>;
 export function useCaixaMovimentos() {
   const qc = useQueryClient();
 
+  const KEYS = ['caixa-movimentos'];
+  function invalidar() {
+    qc.invalidateQueries({ queryKey: ['caixa-movimentos'] });
+    qc.invalidateQueries({ queryKey: ['saldo-contas'] });
+    qc.invalidateQueries({ queryKey: ['dashboard-metrics'] });
+  }
+
   const query = useQuery({
-    queryKey: ['caixa-movimentos'],
+    queryKey: KEYS,
     queryFn: async (): Promise<CaixaMovimento[]> => {
       const { data, error } = await supabase
         .from('caixa_movimentos')
@@ -43,12 +51,8 @@ export function useCaixaMovimentos() {
       if (error) throw error;
       return data as CaixaMovimento;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['caixa-movimentos'] });
-      qc.invalidateQueries({ queryKey: ['dashboard-metrics'] });
-      toast.success('Movimento registrado!');
-    },
-    onError: (e: any) => toast.error(e.message),
+    onSuccess: () => { invalidar(); toast.success('Movimento registrado!'); },
+    onError:   (e: any) => toast.error(e.message),
   });
 
   const atualizar = useMutation({
@@ -59,12 +63,8 @@ export function useCaixaMovimentos() {
         .eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['caixa-movimentos'] });
-      qc.invalidateQueries({ queryKey: ['dashboard-metrics'] });
-      toast.success('Movimento atualizado!');
-    },
-    onError: (e: any) => toast.error(e.message),
+    onSuccess: () => { invalidar(); toast.success('Movimento atualizado!'); },
+    onError:   (e: any) => toast.error(e.message),
   });
 
   const deletar = useMutation({
@@ -75,19 +75,15 @@ export function useCaixaMovimentos() {
         .eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['caixa-movimentos'] });
-      qc.invalidateQueries({ queryKey: ['dashboard-metrics'] });
-      toast.success('Movimento removido.');
-    },
-    onError: (e: any) => toast.error(e.message),
+    onSuccess: () => { invalidar(); toast.success('Movimento removido.'); },
+    onError:   (e: any) => toast.error(e.message),
   });
 
   return {
     ...query,
-    criar:    criar.mutateAsync,
+    criar:     criar.mutateAsync,
     atualizar: atualizar.mutateAsync,
-    deletar:  deletar.mutate,
-    isSaving: criar.isPending || atualizar.isPending,
+    deletar:   deletar.mutate,
+    isSaving:  criar.isPending || atualizar.isPending,
   };
 }
