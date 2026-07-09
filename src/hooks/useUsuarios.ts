@@ -39,40 +39,71 @@ export function useUsuarios() {
     onError: (e: any) => toast.error(e.message),
   });
 
-  // src/hooks/useUsuarios.ts  — substituir convidarUsuario
-const convidarUsuario = useMutation({
-  mutationFn: async ({ email, nome, role }: { email: string; nome: string; role: Role }) => {
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) throw new Error('Sessão expirada.')
+  const convidarUsuario = useMutation({
+    mutationFn: async ({ email, nome, role }: { email: string; nome: string; role: Role }) => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Sessão expirada.')
 
-    const res = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/convidar-usuario`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type':  'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-          'apikey':        import.meta.env.VITE_SUPABASE_ANON_KEY,
-        },
-        body: JSON.stringify({ email, nome, role }),
-      }
-    )
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/convidar-usuario`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type':  'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+            'apikey':        import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({ email, nome, role }),
+        }
+      )
 
-    const json = await res.json()
-    if (!res.ok) throw new Error(json.error ?? 'Erro ao convidar usuário.')
-    return json
-  },
-  onSuccess: () => {
-    qc.invalidateQueries({ queryKey: ['usuarios-admin'] })
-    toast.success('Convite enviado! O usuário receberá um e-mail.')
-  },
-  onError: (e: any) => toast.error(e.message),
-})
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? 'Erro ao convidar usuário.')
+      return json
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['usuarios-admin'] })
+      toast.success('Convite enviado! O usuário receberá um e-mail.')
+    },
+    onError: (e: any) => toast.error(e.message),
+  })
+
+  // NOVO — exclusão de usuário
+  const excluirUsuario = useMutation({
+    mutationFn: async (userId: string) => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Sessão expirada.')
+
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/excluir-usuario`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type':  'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+            'apikey':        import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({ userId }),
+        }
+      )
+
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? 'Erro ao excluir usuário.')
+      return json
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['usuarios-admin'] })
+      toast.success('Usuário excluído.')
+    },
+    onError: (e: any) => toast.error(e.message),
+  })
 
   return {
     ...query,
     definirRole:     definirRole.mutateAsync,
     convidarUsuario: convidarUsuario.mutateAsync,
     isConvidando:    convidarUsuario.isPending,
+    excluirUsuario:  excluirUsuario.mutateAsync,
+    isExcluindo:     excluirUsuario.isPending,
   };
 }

@@ -34,6 +34,13 @@ export interface DocumentoImpressaoData {
   /** apenas Venda */
   dataEntrega?: string | null;
   clienteNome: string;
+  /** NOVO — dados de contato do cliente, exibidos no bloco Cliente */
+  clienteTelefone?: string | null;
+  clienteEmail?: string | null;
+  clienteEndereco?: string | null;
+  /** NOVO — coluna direita ao lado do cliente */
+  situacao?: string | null;
+  vendedorNome?: string | null;
   itens: ItemDocumentoImpressao[];
   subtotal: number;
   descontoGlobalPct?: number | null;
@@ -95,35 +102,46 @@ export function DocumentoImpressao({ layout, empresa, documento: doc, style }: D
       }}
     >
       {/* Cabeçalho */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: `2px solid ${cor}`, paddingBottom: 16, marginBottom: 24 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {layout.mostrarLogo && empresa.empresa_logo_url && (
-            <img src={empresa.empresa_logo_url} alt="Logo" style={{ height: 56, width: 'auto', objectFit: 'contain' }} />
-          )}
-          {layout.mostrarDadosEmpresa && (
-            <div>
-              <p style={{ fontSize: 18, fontWeight: 900, margin: 0, lineHeight: 1.2 }}>{empresa.empresa_nome || 'Sua Empresa'}</p>
-              {layout.mostrarCnpj && empresa.empresa_cnpj && (
-                <p style={{ fontSize: 12, color: '#4b5563', margin: '2px 0 0' }}>CNPJ: {empresa.empresa_cnpj}</p>
-              )}
-              {layout.mostrarEndereco && empresa.empresa_endereco && (
-                <p style={{ fontSize: 12, color: '#4b5563', margin: '2px 0 0' }}>{empresa.empresa_endereco}</p>
-              )}
-              {layout.mostrarContato && (empresa.empresa_telefone || empresa.empresa_email) && (
-                <p style={{ fontSize: 12, color: '#4b5563', margin: '2px 0 0' }}>
-                  {[empresa.empresa_telefone, empresa.empresa_email].filter(Boolean).join(' · ')}
-                </p>
-              )}
-            </div>
-          )}
+      <div style={{ position: 'relative', marginBottom: 24 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', paddingBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {layout.mostrarLogo && empresa.empresa_logo_url && (
+              <img src={empresa.empresa_logo_url} alt="Logo" style={{ height: 56, width: 'auto', objectFit: 'contain' }} />
+            )}
+            {layout.mostrarDadosEmpresa && (
+              <div>
+                <p style={{ fontSize: 18, fontWeight: 900, margin: 0, lineHeight: 1.2 }}>{empresa.empresa_nome || 'Sua Empresa'}</p>
+                {layout.mostrarCnpj && empresa.empresa_cnpj && (
+                  <p style={{ fontSize: 12, color: '#4b5563', margin: '2px 0 0' }}>CNPJ: {empresa.empresa_cnpj}</p>
+                )}
+                {layout.mostrarEndereco && empresa.empresa_endereco && (
+                  <p style={{ fontSize: 12, color: '#4b5563', margin: '2px 0 0' }}>{empresa.empresa_endereco}</p>
+                )}
+                {layout.mostrarContato && (empresa.empresa_telefone || empresa.empresa_email) && (
+                  <p style={{ fontSize: 12, color: '#4b5563', margin: '2px 0 0' }}>
+                    {[empresa.empresa_telefone, empresa.empresa_email].filter(Boolean).join(' · ')}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+          <div style={{ textAlign: 'right', flexShrink: 0, position: 'relative', paddingRight: 8 }}>
+            <p style={{ fontSize: 22, fontWeight: 900, color: cor, margin: 0, letterSpacing: 0.5 }}>{layout.tituloDocumento}</p>
+            {layout.mostrarNumeroDocumento && (
+              <p style={{ fontSize: 14, color: '#6b7280', margin: '2px 0 0' }}>{doc.numero ? `Nº ${doc.numero}` : 'Nº —'}</p>
+            )}
+          </div>
         </div>
-        <div style={{ textAlign: 'right', flexShrink: 0 }}>
-          <p style={{ fontSize: 20, fontWeight: 900, color: cor, margin: 0 }}>{layout.tituloDocumento}</p>
-          {layout.mostrarNumeroDocumento && (
-            <p style={{ fontSize: 14, color: '#4b5563', margin: '2px 0 0' }}>{doc.numero ? `Nº ${doc.numero}` : 'Nº —'}</p>
-          )}
-          <p style={{ fontSize: 12, color: '#6b7280', margin: '2px 0 0' }}>{fmtData(doc.data)}</p>
-        </div>
+
+        {/* Divisor diagonal — linha reta que "quebra" em diagonal perto do título */}
+        <svg
+          viewBox="0 0 800 24"
+          preserveAspectRatio="none"
+          style={{ width: '100%', height: 24, display: 'block' }}
+        >
+          <polyline points="0,4 620,4 700,22" fill="none" stroke={cor} strokeWidth={2} />
+          <polyline points="700,22 800,0 800,24 720,24" fill="#1f2937" opacity={0.85} />
+        </svg>
       </div>
 
       {layout.textoCabecalhoExtra && (
@@ -131,15 +149,27 @@ export function DocumentoImpressao({ layout, empresa, documento: doc, style }: D
       )}
 
       {/* Cliente */}
-      <div style={{ marginBottom: 20 }}>
-        <p style={labelStyle}>Cliente</p>
-        <p style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>{doc.clienteNome || '—'}</p>
-        {doc.dataEntrega && (
-          <p style={{ fontSize: 12, color: '#4b5563', margin: '2px 0 0' }}>Entrega prevista: {fmtData(doc.dataEntrega)}</p>
-        )}
-        {isOrcamento && layout.mostrarValidade && empresa.orc_validade_dias && (
-          <p style={{ fontSize: 12, color: '#4b5563', margin: '2px 0 0' }}>Validade da proposta: {empresa.orc_validade_dias} dia(s)</p>
-        )}
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 24, marginBottom: 20 }}>
+        <div style={{ flex: 1 }}>
+          <p style={{ ...labelStyle, display: 'inline-block', backgroundColor: cor + '15', padding: '3px 10px', borderRadius: 4 }}>
+            Cliente
+          </p>
+          <p style={{ fontSize: 14, fontWeight: 700, margin: '6px 0 0' }}>{doc.clienteNome || '—'}</p>
+          <p style={{ fontSize: 12, color: '#4b5563', margin: '4px 0 0' }}>Telefone: {doc.clienteTelefone || ''}</p>
+          <p style={{ fontSize: 12, color: '#4b5563', margin: '2px 0 0' }}>Email: {doc.clienteEmail || ''}</p>
+          <p style={{ fontSize: 12, color: '#4b5563', margin: '2px 0 0' }}>Endereço: {doc.clienteEndereco || ''}</p>
+          {doc.dataEntrega && (
+            <p style={{ fontSize: 12, color: '#4b5563', margin: '4px 0 0' }}>Entrega prevista: {fmtData(doc.dataEntrega)}</p>
+          )}
+        </div>
+        <div style={{ textAlign: 'right', fontSize: 12, color: '#4b5563', flexShrink: 0, paddingTop: 4 }}>
+          <p style={{ margin: 0 }}>Data: {fmtData(doc.data)}</p>
+          {doc.situacao && <p style={{ margin: '2px 0 0' }}>Situação: {doc.situacao}</p>}
+          {doc.vendedorNome && <p style={{ margin: '2px 0 0' }}>Vendedor: {doc.vendedorNome}</p>}
+          {isOrcamento && layout.mostrarValidade && empresa.orc_validade_dias && (
+            <p style={{ margin: '2px 0 0' }}>Validade da proposta: {empresa.orc_validade_dias} dia(s)</p>
+          )}
+        </div>
       </div>
 
       {/* Itens */}
@@ -231,9 +261,27 @@ export function DocumentoImpressao({ layout, empresa, documento: doc, style }: D
         </div>
       )}
 
-      {/* Rodapé */}
-      <div style={{ marginTop: 40, paddingTop: 12, borderTop: `1px solid ${cor}`, fontSize: 10, color: '#6b7280', textAlign: 'center' }}>
-        {layout.textoRodape || (isOrcamento ? empresa.orc_rodape : empresa.empresa_rodape) || ''}
+      {/* Rodapé — barra escura com corte diagonal azul na ponta */}
+      <div style={{ position: 'relative', marginTop: 40, height: 32, display: 'flex', alignItems: 'center' }}>
+        <div
+          style={{
+            position: 'absolute', inset: 0,
+            backgroundColor: '#374151',
+            display: 'flex', alignItems: 'center',
+            paddingLeft: 16,
+          }}
+        >
+          <span style={{ fontSize: 11, color: '#e5e7eb' }}>
+            {layout.textoRodape || (isOrcamento ? empresa.orc_rodape : empresa.empresa_rodape) || ''}
+          </span>
+        </div>
+        <svg
+          viewBox="0 0 120 32"
+          preserveAspectRatio="none"
+          style={{ position: 'absolute', right: 0, top: 0, height: '100%', width: 120 }}
+        >
+          <polygon points="40,0 120,0 120,32 0,32" fill={cor} />
+        </svg>
       </div>
     </div>
   );

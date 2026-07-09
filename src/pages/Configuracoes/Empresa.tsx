@@ -2,8 +2,9 @@
 import { useState, useEffect } from 'react';
 import { useConfiguracoes } from '../../hooks/useConfiguracoes';
 import { Configuracoes as ConfigType } from '../../types/configuracoes';
-import { Building2, Save, Check } from 'lucide-react';
+import { Building2, Save, Check, MonitorCog } from 'lucide-react';
 import { IN, Lbl, Section, Row } from './utils';
+import { UploadLogo } from './UploadLogo';
 
 export function Empresa() {
   const { data: cfg, isLoading, salvar, isSaving } = useConfiguracoes();
@@ -57,8 +58,29 @@ export function Empresa() {
           <div><Lbl>Site</Lbl><input value={txt('empresa_site')} onChange={e => set('empresa_site', e.target.value)} className={IN} /></div>
           <div><Lbl>Endereço</Lbl><input value={txt('empresa_endereco')} onChange={e => set('empresa_endereco', e.target.value)} className={IN} /></div>
         </Row>
-        <div><Lbl>URL do Logo</Lbl><input value={txt('empresa_logo_url')} onChange={e => set('empresa_logo_url', e.target.value)} className={IN} /></div>
+        <UploadLogo
+          value={txt('empresa_logo_url')}
+          onChange={(url: string) => set('empresa_logo_url', url)}
+        />
         <div><Lbl>Rodapé padrão</Lbl><textarea rows={2} value={txt('empresa_rodape')} onChange={e => set('empresa_rodape', e.target.value)} className={IN + ' resize-none'} /></div>
+      </Section>
+
+      <Section title="Logo do Sistema (Sidebar)" icon={MonitorCog}>
+        <p className="text-xs text-gray-500 -mt-2 mb-2">
+          Exibido no lugar do texto "MASTER PRINT" na barra lateral. Envie uma versão para cada tema.
+        </p>
+        <Row cols={2}>
+          <UploadLogo
+            label="Logo — Tema Escuro"
+            value={txt('sistema_logo_url')}
+            onChange={(url: string) => set('sistema_logo_url', url)}
+          />
+          <UploadLogo
+            label="Logo — Tema Claro"
+            value={txt('sistema_logo_url_dark')}
+            onChange={(url: string) => set('sistema_logo_url_dark', url)}
+          />
+        </Row>
       </Section>
 
       {dirty && (

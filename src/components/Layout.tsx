@@ -7,6 +7,7 @@ import { ROLES, ROUTE_PERMISSIONS, Role } from '../types/roles';
 import { supabase } from '../lib/supabase';
 import { EstoqueAlertBanner } from './EstoqueAlertBanner';
 import { useTheme } from '../hooks/useTheme';
+import { useConfiguracoes } from '../hooks/useConfiguracoes';
 import toast from 'react-hot-toast';
 import {
   LayoutDashboard, ShoppingCart, Users, Landmark, FileText,
@@ -206,6 +207,7 @@ export function Layout() {
   const { user } = useAuth();
   const { role, pode } = useRole();
   const { isDark, toggleTheme } = useTheme();
+  const { data: cfg } = useConfiguracoes();
   const [menuOpen, setMenuOpen] = useState(false);
 
   // Quais accordions estão abertos (por label)
@@ -301,20 +303,29 @@ export function Layout() {
           ${menuOpen ? 'translate-x-0' : '-translate-x-full'}`}
       >
         {/* Logo */}
-        <div className="p-6 border-b border-gray-700 flex items-center justify-between flex-shrink-0">
-          <div>
-            <h1 className="text-xl font-black tracking-tighter text-blue-500">
-              MASTER <span className="text-white">PRINT</span>
-            </h1>
-            <p className="text-[10px] text-gray-400 mt-0.5">Sistema de Gestão</p>
-          </div>
+        <div className="p-6 border-b border-gray-700 flex-shrink-0 relative">
           <button
             onClick={() => setMenuOpen(false)}
-            className="md:hidden text-gray-400 hover:text-white"
+            className="md:hidden absolute top-4 right-4 text-gray-400 hover:text-white"
             aria-label="Fechar menu"
           >
             <X className="w-5 h-5" />
           </button>
+
+          <div className="flex flex-col items-center text-center gap-1.5">
+            {(isDark ? cfg?.sistema_logo_url : cfg?.sistema_logo_url_dark) ? (
+              <img
+                src={isDark ? cfg!.sistema_logo_url! : cfg!.sistema_logo_url_dark!}
+                alt="Master Print"
+                className="h-14 w-auto object-contain"
+              />
+            ) : (
+              <h1 className="text-xl font-black tracking-tighter text-blue-500">
+                MASTER <span className="text-white">PRINT</span>
+              </h1>
+            )}
+            <p className="text-xs text-gray-400">Sistema de Gestão</p>
+          </div>
         </div>
 
         {/* Nav */}

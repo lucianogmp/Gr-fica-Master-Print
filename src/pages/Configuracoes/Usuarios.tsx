@@ -4,20 +4,27 @@ import { useUsuarios, UsuarioAdmin } from '../../hooks/useUsuarios';
 import { useRole } from '../../hooks/useRole';
 import { ROLES, Role } from '../../types/roles';
 import { Modal } from '../../components/ui/Modal';
-import { Users, User } from 'lucide-react';
+import { Users, User, Trash2 } from 'lucide-react';
 import { IN, Lbl } from './utils';
 
 export function Usuarios() {
-  const { data: usuarios = [], isLoading, definirRole, convidarUsuario, isConvidando } = useUsuarios();
+  const { data: usuarios = [], isLoading, definirRole, convidarUsuario, isConvidando, excluirUsuario, isExcluindo } = useUsuarios();
   const { isDono } = useRole();
 
   const [modalConvite, setModalConvite] = useState(false);
   const [conviteForm, setConviteForm]   = useState({ email: '', nome: '', role: 'vendedor' as Role });
+  const [usuarioParaExcluir, setUsuarioParaExcluir] = useState<UsuarioAdmin | null>(null);
 
   async function handleConvitar() {
     await convidarUsuario(conviteForm);
     setModalConvite(false);
     setConviteForm({ email: '', nome: '', role: 'vendedor' });
+  }
+
+  async function handleExcluir() {
+    if (!usuarioParaExcluir) return;
+    await excluirUsuario(usuarioParaExcluir.id);
+    setUsuarioParaExcluir(null);
   }
 
   return (
@@ -46,14 +53,15 @@ export function Usuarios() {
               <th className="px-5 py-3 text-left">Último acesso</th>
               <th className="px-5 py-3 text-center">Perfil</th>
               {isDono && <th className="px-5 py-3 text-center">Alterar perfil</th>}
+              {isDono && <th className="px-5 py-3 text-center">Excluir</th>}
             </tr>
           </thead>
           <tbody>
             {isLoading && (
-              <tr><td colSpan={5} className="px-5 py-8 text-center text-blue-500 animate-pulse">Carregando usuários...</td></tr>
+              <tr><td colSpan={6} className="px-5 py-8 text-center text-blue-500 animate-pulse">Carregando usuários...</td></tr>
             )}
             {!isLoading && usuarios.length === 0 && (
-              <tr><td colSpan={5} className="px-5 py-8 text-center text-gray-600">Nenhum usuário encontrado.</td></tr>
+              <tr><td colSpan={6} className="px-5 py-8 text-center text-gray-600">Nenhum usuário encontrado.</td></tr>
             )}
             {usuarios.map((u: UsuarioAdmin) => {
               const roleInfo = u.role ? ROLES[u.role] : null;
@@ -88,6 +96,17 @@ export function Usuarios() {
                           <option key={key} value={key}>{r.label}</option>
                         ))}
                       </select>
+                    </td>
+                  )}
+                  {isDono && (
+                    <td className="px-5 py-3 text-center">
+                      <button
+                        onClick={() => setUsuarioParaExcluir(u)}
+                        title="Excluir usuário"
+                        className="text-gray-500 hover:text-red-400 transition-colors p-1.5 rounded-lg hover:bg-red-500/10"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </td>
                   )}
                 </tr>
@@ -140,6 +159,23 @@ export function Usuarios() {
             O usuário receberá um e-mail para definir a senha e acessar o sistema.
           </div>
         </div>
+      </Modal>
+
+      {/* Confirmação de exclusão */}
+      <Modal open={!!usuarioParaExcluir} onClose={() => setUsuarioParaExcluir(null)}
+        title={<span className="flex items-center gap-1.5 text-red-400"><Trash2 className="w-4 h-4" /> Excluir Usuário</span>}
+        maxWidth="420px"
+        actions={<>
+          <button onClick={() => setUsuarioParaExcluir(null)} className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-sm font-medium transition-all">Cancelar</button>
+          <button onClick={handleExcluir} disabled={isExcluindo}
+            className="px-5 py-2 bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white rounded-lg text-sm font-bold transition-all">
+            {isExcluindo ? 'Excluindo...' : 'Excluir'}
+          </button>
+        </>}>
+        <p className="text-sm text-gray-300">
+          Tem certeza que deseja excluir <span className="font-bold text-white">{usuarioParaExcluir?.nome || usuarioParaExcluir?.email}</span>?
+          Essa ação não pode ser desfeita — o acesso ao sistema será removido imediatamente.
+        </p>
       </Modal>
     </div>
   );

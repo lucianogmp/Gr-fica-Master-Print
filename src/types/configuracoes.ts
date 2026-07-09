@@ -59,6 +59,8 @@ export interface Configuracoes {
   formas_pagamento?: FormasPagamentoConfig[] | null;
   // Sistema
   sistema_nome?: string | null;
+  sistema_logo_url?: string | null;
+  sistema_logo_url_dark?: string | null;
   tema_accent_color?: string | null;
   tema_modo?: string | null;
   // Integrações — Trello
