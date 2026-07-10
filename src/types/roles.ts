@@ -11,7 +11,8 @@ export const ROLES: Record<Role, { label: string; cor: string; descricao: string
 
 export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   // ── Dashboard ──
-  '/': ['dono', 'admin', 'vendedor', 'financeiro', 'producao'],
+  // vendedor não tem acesso ao Dashboard (dados de faturamento da empresa)
+  '/': ['dono', 'admin', 'financeiro', 'producao'],
 
   // ── Vendas ──
   '/vendas':           ['dono', 'admin', 'vendedor'],
@@ -34,17 +35,20 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   '/financeiro/lancamentos':   ['dono', 'admin', 'financeiro'],
   '/financeiro/receber':       ['dono', 'admin', 'financeiro'],
   '/financeiro/pagar':         ['dono', 'admin', 'financeiro'],
-  '/financeiro/fluxo-caixa':   ['dono', 'admin', 'financeiro'],
+  // vendedor precisa acompanhar o caixa físico do dia a dia, mas não o resto do Financeiro
+  '/financeiro/fluxo-caixa':   ['dono', 'admin', 'financeiro', 'vendedor'],
   '/financeiro/conciliacao':   ['dono', 'admin', 'financeiro'],
   '/financeiro/resumo':        ['dono', 'admin', 'financeiro'],
 
   // ── Produtos ──
+  // vendedor só consulta Catálogo e Kits (sem editar) — sem acesso a
+  // Tabela de Preços nem Serviços
   '/produtos':            ['dono', 'admin', 'producao'],
   '/produtos/catalogo':   ['dono', 'admin', 'producao', 'vendedor'],
   '/produtos/categorias': ['dono', 'admin', 'producao'],
-  '/produtos/precos':     ['dono', 'admin', 'producao', 'vendedor'],
+  '/produtos/precos':     ['dono', 'admin', 'producao'],
   '/produtos/kits':       ['dono', 'admin', 'producao', 'vendedor'],
-  '/produtos/servicos':   ['dono', 'admin', 'producao', 'vendedor'],
+  '/produtos/servicos':   ['dono', 'admin', 'producao'],
 
   // ── Estoque ──
   '/estoque':           ['dono', 'admin', 'producao'],

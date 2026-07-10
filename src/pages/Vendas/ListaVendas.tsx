@@ -5,6 +5,7 @@ import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useVendas, useVendaItens } from '../../hooks/useVendas';
 import { useConfiguracoes } from '../../hooks/useConfiguracoes';
+import { useRole } from '../../hooks/useRole';
 import { Venda, StatusVenda, STATUS_VENDA } from '../../types/venda';
 import { KpiCard } from '../../components/ui/KpiCard';
 import { useConfirm } from '../../components/ui/ConfirmModal';
@@ -57,6 +58,7 @@ export function ListaVendas({
   const { data: vendasTodas = [], isLoading, deletar } = useVendas();
   const { data: cfg } = useConfiguracoes();
   const { confirmar, ConfirmModal } = useConfirm();
+  const { isVendedor } = useRole();
 
   const [filtroExtra, setFiltroExtra] = useState<'todos' | StatusVenda>('todos');
   const [busca, setBusca] = useState('');
@@ -113,7 +115,7 @@ export function ListaVendas({
   }
 
   // KPIs padrão se não vier customizado
-  const kpisAtivos: KpiConfig[] = kpis ?? [
+  const kpisBase: KpiConfig[] = kpis ?? [
     {
       label: 'Total',
       icon: DollarSign,
@@ -127,6 +129,10 @@ export function ListaVendas({
       calcular: (lista) => lista.length,
     },
   ];
+
+  // Vendedor não vê o valor total consolidado de vendas — só o valor de
+  // cada venda individualmente na tabela. Sem opção de revelar aqui.
+  const kpisAtivos = kpisBase.filter(k => !(isVendedor && k.label === 'Total'));
 
   if (isLoading) return <div className="p-8 text-blue-500 animate-pulse font-bold">Carregando...</div>;
 

@@ -4,6 +4,7 @@ import { lazy, Suspense } from 'react';
 import { Layout }         from '../components/Layout';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 import { useAuth }        from '../hooks/useAuth';
+import { useRole }        from '../hooks/useRole';
 import { Login }          from '../pages/Login';
 import { AceitarConvite } from '../pages/AceitarConvite';
 
@@ -36,10 +37,7 @@ const FinanceiroConciliacao = lazy(() => import('../pages/Financeiro/Conciliacao
 const FinanceiroResumo      = lazy(() => import('../pages/Financeiro/ResumoFinanceiro').then(m => ({ default: m.ResumoFinanceiro })));
 
 // ─── Produtos (sub-rotas) ────────────────────────────────────────────────────
-// Catálogo = o Produtos.tsx existente (lista + detalhe completo com BOM/preço)
 const ProdutosCatalogo   = lazy(() => import('../pages/Produtos').then(m => ({ default: m.Produtos })));
-// As demais sub-rotas ainda usam o Produtos.tsx enquanto não têm página própria.
-// Serão substituídas gradualmente.
 const ProdutosCategorias = lazy(() => import('../pages/Produtos/Categorias').then(m => ({ default: m.Categorias })));
 const ProdutosPrecos     = lazy(() => import('../pages/Produtos/TabelaPrecos').then(m => ({ default: m.TabelaPrecos })));
 const ProdutosKits       = lazy(() => import('../pages/Produtos/Kits').then(m => ({ default: m.Kits })));
@@ -98,6 +96,23 @@ function PR({ rota, children }: { rota: string; children: React.ReactNode }) {
   );
 }
 
+// ─── Rota inicial ("/") ──────────────────────────────────────────────────────
+// vendedor não tem Dashboard: em vez de bater na tela de "Acesso negado",
+// manda ele direto para a área que ele de fato usa (Pedidos de venda).
+function IndexRoute() {
+  const { role } = useRole();
+
+  if (role === 'vendedor') {
+    return <Navigate to="/vendas/pedidos" replace />;
+  }
+
+  return (
+    <PR rota="/">
+      <Dashboard />
+    </PR>
+  );
+}
+
 // ─── AppRoutes ───────────────────────────────────────────────────────────────
 export function AppRoutes() {
   const { user, loading } = useAuth();
@@ -123,9 +138,9 @@ export function AppRoutes() {
         <Route path="/" element={user ? <Layout /> : <Navigate to="/login" replace />}>
 
           {/* Dashboard */}
-          <Route index element={<PR rota="/"><Dashboard /></PR>} />
+          <Route index element={<IndexRoute />} />
 
-          {/* ── Orçamentos ── RESTAURADO */}
+          {/* ── Orçamentos ── */}
           <Route path="orcamentos" element={<PR rota="/orcamentos"><Orcamentos /></PR>} />
 
           {/* ── Vendas ── */}

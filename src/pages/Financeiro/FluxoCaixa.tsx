@@ -4,10 +4,11 @@ import { useCaixaMovimentos } from '../../hooks/useCaixaMovimentos';
 import { useLancamentos } from '../../hooks/useLancamentos';
 import { useContasBancarias } from '../../hooks/useContasBancarias';
 import { useConfirm } from '../../components/ui/ConfirmModal';
+import { useRole } from '../../hooks/useRole';
 import { KpiCard } from '../../components/ui/KpiCard';
 import {
   TrendingUp, ArrowUp, ArrowDown, Wallet, Sparkles,
-  ArrowDownToLine, ArrowUpFromLine, Plus, X, Save,
+  ArrowDownToLine, ArrowUpFromLine, Plus, X, Save, Eye, EyeOff,
 } from 'lucide-react';
 
 const fmtBRL  = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -29,10 +30,16 @@ export function FluxoCaixa() {
   const { data: lancamentos = [] } = useLancamentos();
   const { data: contas = [] } = useContasBancarias();
   const { confirmar, ConfirmModal } = useConfirm();
+  const { isVendedor } = useRole();
 
   const [mesFx, setMesFx]       = useState(() => new Date().toISOString().slice(0, 7));
   const [showModal, setShowModal] = useState(false);
   const [form, setForm]          = useState({ ...NOVO_MOV });
+  // Vendedor não precisa acompanhar o total consolidado do caixa — só os
+  // lançamentos do dia a dia. Fica oculto por padrão, com opção de revelar.
+  const [mostrarTotais, setMostrarTotais] = useState(!isVendedor);
+
+  const ocultar = (valor: number) => (mostrarTotais ? fmtBRL(valor) : 'R$ ••••••');
 
   const contasAtivas = contas.filter(c => c.ativo);
 
@@ -191,6 +198,13 @@ export function FluxoCaixa() {
             <input type="month" value={mesFx} onChange={e => setMesFx(e.target.value)}
               className="bg-[#1f2937] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500" />
             <button
+              onClick={() => setMostrarTotais(v => !v)}
+              title={mostrarTotais ? 'Ocultar totais' : 'Mostrar totais'}
+              className="bg-[#1f2937] border border-gray-700 hover:border-gray-600 text-gray-300 hover:text-white p-2.5 rounded-xl transition-all"
+            >
+              {mostrarTotais ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+            </button>
+            <button
               onClick={() => setShowModal(true)}
               className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 shadow-lg shadow-blue-900/30"
             >
@@ -201,10 +215,10 @@ export function FluxoCaixa() {
 
         {/* KPIs */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <KpiCard label="Entradas no mês"  value={fmtBRL(entradas)} icon={ArrowUp}    color="text-green-400" />
-          <KpiCard label="Saídas no mês"    value={fmtBRL(saidas)}   icon={ArrowDown}  color="text-red-400" />
-          <KpiCard label="Saldo do mês"     value={fmtBRL(saldo)}    icon={Wallet}     color={saldo >= 0 ? 'text-blue-400' : 'text-red-400'} />
-          <KpiCard label="Saldo projetado"  value={fmtBRL(saldo + receber - pagar)} icon={Sparkles} color="text-purple-400" />
+          <KpiCard label="Entradas no mês"  value={ocultar(entradas)} icon={ArrowUp}    color="text-green-400" />
+          <KpiCard label="Saídas no mês"    value={ocultar(saidas)}   icon={ArrowDown}  color="text-red-400" />
+          <KpiCard label="Saldo do mês"     value={ocultar(saldo)}    icon={Wallet}     color={saldo >= 0 ? 'text-blue-400' : 'text-red-400'} />
+          <KpiCard label="Saldo projetado"  value={ocultar(saldo + receber - pagar)} icon={Sparkles} color="text-purple-400" />
         </div>
 
         {/* A receber / A pagar */}
@@ -213,13 +227,13 @@ export function FluxoCaixa() {
             <p className="text-xs font-bold text-gray-500 uppercase mb-3 flex items-center gap-1.5">
               <ArrowDownToLine className="w-3.5 h-3.5 text-green-400" /> A receber (pendente)
             </p>
-            <p className="text-2xl font-black text-green-400">{fmtBRL(receber)}</p>
+            <p className="text-2xl font-black text-green-400">{ocultar(receber)}</p>
           </div>
           <div className="bg-[#1f2937] border border-red-500/20 rounded-xl p-5">
             <p className="text-xs font-bold text-gray-500 uppercase mb-3 flex items-center gap-1.5">
               <ArrowUpFromLine className="w-3.5 h-3.5 text-red-400" /> A pagar (pendente)
             </p>
-            <p className="text-2xl font-black text-red-400">{fmtBRL(pagar)}</p>
+            <p className="text-2xl font-black text-red-400">{ocultar(pagar)}</p>
           </div>
         </div>
 
@@ -244,10 +258,10 @@ export function FluxoCaixa() {
                   <div className="flex items-center justify-between px-5 py-3 border-b border-gray-700 bg-gray-800/40">
                     <span className="text-sm font-bold text-white">{fmtData(data)}</span>
                     <div className="flex gap-4 text-xs">
-                      {entDia > 0 && <span className="text-green-400 font-bold">+{fmtBRL(entDia)}</span>}
-                      {saiDia > 0 && <span className="text-red-400 font-bold">-{fmtBRL(saiDia)}</span>}
+                      {entDia > 0 && <span className="text-green-400 font-bold">+{ocultar(entDia)}</span>}
+                      {saiDia > 0 && <span className="text-red-400 font-bold">-{ocultar(saiDia)}</span>}
                       <span className={`font-black ${entDia - saiDia >= 0 ? 'text-blue-400' : 'text-red-400'}`}>
-                        = {fmtBRL(entDia - saiDia)}
+                        = {ocultar(entDia - saiDia)}
                       </span>
                     </div>
                   </div>

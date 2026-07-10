@@ -251,11 +251,21 @@ export function Layout() {
     navigate('/login');
   }
 
-  // Filtra itens sem permissão
-  const menuItems = ALL_MENU.filter(item => {
-    const rota = item.rota ?? item.path ?? '/';
-    return pode(rota);
-  });
+  // Filtra itens sem permissão. Para grupos com sub-itens, mostra o grupo
+  // se ao menos UM sub-item for permitido, e dentro dele só os sub-itens
+  // que o perfil realmente pode acessar (ex: vendedor vê só "Fluxo de Caixa"
+  // dentro do grupo Financeiro, não os demais).
+  const menuItems = ALL_MENU
+    .map(item => {
+      if (!item.children) return item;
+      const filhosPermitidos = item.children.filter(c => pode(c.path));
+      return { ...item, children: filhosPermitidos };
+    })
+    .filter(item => {
+      if (item.children) return item.children.length > 0;
+      const rota = item.rota ?? item.path ?? '/';
+      return pode(rota);
+    });
 
   // Label da página atual (para o breadcrumb)
   function getCurrentPageLabel(): string {
