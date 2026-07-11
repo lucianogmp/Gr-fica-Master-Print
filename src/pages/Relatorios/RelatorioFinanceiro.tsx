@@ -178,6 +178,7 @@ export function RelatorioFinanceiro() {
                         {tipo === 'receita' ? 'Receitas por Categoria' : 'Despesas por Categoria'}
                       </p>
                     </div>
+                    <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <tbody>
                         {cats.map(c => (
@@ -190,6 +191,7 @@ export function RelatorioFinanceiro() {
                         ))}
                       </tbody>
                     </table>
+                    </div>
                   </div>
                 );
               })}
@@ -199,6 +201,7 @@ export function RelatorioFinanceiro() {
               <div className="px-5 py-3 border-b border-gray-700">
                 <p className="text-xs font-bold text-gray-400 uppercase">Lançamentos ({rel.data.lancamentos.length})</p>
               </div>
+              <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-gray-400 text-[10px] font-bold uppercase bg-gray-800/40">
@@ -223,6 +226,7 @@ export function RelatorioFinanceiro() {
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
           </div>
         )}

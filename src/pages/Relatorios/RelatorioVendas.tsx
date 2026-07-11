@@ -167,6 +167,7 @@ export function RelatorioVendas() {
               <div className="px-5 py-3 border-b border-gray-700">
                 <p className="text-xs font-bold text-gray-400 uppercase">Top Clientes</p>
               </div>
+              <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-gray-400 text-[10px] font-bold uppercase bg-gray-800/40">
@@ -187,12 +188,14 @@ export function RelatorioVendas() {
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
 
             <div className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">
               <div className="px-5 py-3 border-b border-gray-700">
                 <p className="text-xs font-bold text-gray-400 uppercase">Todas as Vendas ({rel.data.vendas.length})</p>
               </div>
+              <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-gray-400 text-[10px] font-bold uppercase bg-gray-800/40">
@@ -227,6 +230,7 @@ export function RelatorioVendas() {
                   </tr>
                 </tfoot>
               </table>
+              </div>
             </div>
           </div>
         )}

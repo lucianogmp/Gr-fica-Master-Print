@@ -147,6 +147,7 @@ export function Clientes() {
               className="w-full bg-[#111827] border border-gray-700 rounded-lg px-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500"
             />
           </div>
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-gray-400 text-xs font-bold uppercase border-b border-gray-700">
@@ -194,6 +195,7 @@ export function Clientes() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
     </>

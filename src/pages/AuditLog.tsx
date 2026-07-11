@@ -214,6 +214,7 @@ export function AuditLog() {
           </div>
         )}
         {!isLoading && !error && (
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-gray-400 text-[10px] font-bold uppercase border-b border-gray-700 bg-gray-800/40">
@@ -237,6 +238,7 @@ export function AuditLog() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 

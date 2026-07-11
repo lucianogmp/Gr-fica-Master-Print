@@ -34,6 +34,7 @@ export function DashboardAccounts({ data }: { data: any }) {
           <button onClick={() => navigate('/financeiro')} className="text-[10px] text-blue-400 hover:text-blue-300 font-bold transition-colors flex items-center gap-0.5">Ver todas <ArrowRight className="w-3 h-3" /></button>
         </div>
         <div className="flex-1 overflow-auto">
+          <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
               <tr className="text-gray-600 uppercase text-[9px] border-b border-gray-800">
@@ -59,6 +60,7 @@ export function DashboardAccounts({ data }: { data: any }) {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
 
@@ -69,6 +71,7 @@ export function DashboardAccounts({ data }: { data: any }) {
           <button onClick={() => navigate('/financeiro')} className="text-[10px] text-blue-400 hover:text-blue-300 font-bold transition-colors flex items-center gap-0.5">Ver todas <ArrowRight className="w-3 h-3" /></button>
         </div>
         <div className="flex-1 overflow-auto">
+          <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
               <tr className="text-gray-600 uppercase text-[9px] border-b border-gray-800">
@@ -94,6 +97,7 @@ export function DashboardAccounts({ data }: { data: any }) {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
     </>

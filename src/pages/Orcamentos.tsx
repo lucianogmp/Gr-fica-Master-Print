@@ -232,20 +232,20 @@ export function Orcamentos() {
       {/* Novo */}
       <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5">
         <h3 className="text-xs font-bold text-gray-400 uppercase mb-4 flex items-center gap-2"><Plus className="w-3.5 h-3.5" />Novo Material</h3>
-        <div className="flex gap-3 items-end">
+        <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
           <div className="flex-1">
             <label className="text-[10px] text-gray-500 uppercase block mb-1.5">Nome *</label>
             <input value={matNome} onChange={e => setMatNome(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') salvarMaterial(); }}
               className={IN} placeholder="Ex: Lona Fosca, Adesivo Vinil..." />
           </div>
-          <div className="w-40">
+          <div className="w-full sm:w-40">
             <label className="text-[10px] text-gray-500 uppercase block mb-1.5">Preço por m² (R$)</label>
             <input type="number" min="0" step="0.01" value={matPreco}
               onChange={e => setMatPreco(e.target.value)} className={IN} placeholder="0,00" />
           </div>
           <button onClick={salvarMaterial} disabled={salvandoMat || !matNome.trim()}
-            className="bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all">
+            className="bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all w-full sm:w-auto">
             {salvandoMat ? '...' : 'Adicionar'}
           </button>
         </div>
@@ -253,6 +253,7 @@ export function Orcamentos() {
 
       {/* Lista */}
       <div className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="text-gray-400 text-[10px] font-bold uppercase border-b border-gray-700 bg-gray-800/40">
@@ -317,6 +318,7 @@ export function Orcamentos() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
     </>
@@ -340,26 +342,27 @@ export function Orcamentos() {
 
       <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5">
         <h3 className="text-xs font-bold text-gray-400 uppercase mb-4 flex items-center gap-2"><Plus className="w-3.5 h-3.5" />Novo Acabamento</h3>
-        <div className="flex gap-3 items-end">
+        <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
           <div className="flex-1">
             <label className="text-[10px] text-gray-500 uppercase block mb-1.5">Nome *</label>
             <input value={acabNome} onChange={e => setAcabNome(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') salvarAcabamento(); }}
               className={IN} placeholder="Ex: Ilhós, Laminação Fosca..." />
           </div>
-          <div className="w-40">
+          <div className="w-full sm:w-40">
             <label className="text-[10px] text-gray-500 uppercase block mb-1.5">Custo por un (R$)</label>
             <input type="number" min="0" step="0.01" value={acabCusto}
               onChange={e => setAcabCusto(e.target.value)} className={IN} placeholder="0,00" />
           </div>
           <button onClick={salvarAcabamento} disabled={salvandoAcab || !acabNome.trim()}
-            className="bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all">
+            className="bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all w-full sm:w-auto">
             {salvandoAcab ? '...' : 'Adicionar'}
           </button>
         </div>
       </div>
 
       <div className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="text-gray-400 text-[10px] font-bold uppercase border-b border-gray-700 bg-gray-800/40">
@@ -424,6 +427,7 @@ export function Orcamentos() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
     </>
@@ -434,27 +438,27 @@ export function Orcamentos() {
     <>
     <ConfirmModal />
     <div className="p-6 space-y-6">
-      <div className="flex justify-between items-start">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
         <div>
           <h1 className="text-2xl font-black text-white">Orçamentos</h1>
           <p className="text-gray-500 text-sm">{orcamentos.length} orçamento(s)</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <button onClick={() => setView('folhas')}
-            className="bg-gray-700 hover:bg-gray-600 text-gray-300 px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2">
-            <Ruler className="w-4 h-4" /> Calc. Folhas
+            className="bg-gray-700 hover:bg-gray-600 text-gray-300 px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 whitespace-nowrap">
+            <Ruler className="w-4 h-4 flex-shrink-0" /> Calc. Folhas
           </button>
           <button onClick={() => setView('materiais')}
-            className="bg-gray-700 hover:bg-gray-600 text-gray-300 px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2">
-            <Layers className="w-4 h-4" /> Materiais
+            className="bg-gray-700 hover:bg-gray-600 text-gray-300 px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 whitespace-nowrap">
+            <Layers className="w-4 h-4 flex-shrink-0" /> Materiais
           </button>
           <button onClick={() => setView('acabamentos')}
-            className="bg-gray-700 hover:bg-gray-600 text-gray-300 px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2">
-            <Scissors className="w-4 h-4" /> Acabamentos
+            className="bg-gray-700 hover:bg-gray-600 text-gray-300 px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 whitespace-nowrap">
+            <Scissors className="w-4 h-4 flex-shrink-0" /> Acabamentos
           </button>
           <button onClick={() => abrirDetalhe(null)}
-            className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2">
-            <Plus className="w-4 h-4" /> Novo Orçamento
+            className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 whitespace-nowrap">
+            <Plus className="w-4 h-4 flex-shrink-0" /> Novo Orçamento
           </button>
         </div>
       </div>
@@ -482,6 +486,7 @@ export function Orcamentos() {
       </div>
 
       <div className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="text-gray-400 text-[10px] font-bold uppercase border-b border-gray-700 bg-gray-800/40">
@@ -536,6 +541,7 @@ export function Orcamentos() {
             })}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
     </>

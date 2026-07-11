@@ -67,6 +67,7 @@ export function EstoqueAtual() {
             placeholder="Buscar por nome ou categoria..."
             className="w-full bg-[#111827] border border-gray-700 rounded-lg px-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500" />
         </div>
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="text-gray-400 text-[10px] font-bold uppercase border-b border-gray-700 bg-gray-800/40">
@@ -119,6 +120,7 @@ export function EstoqueAtual() {
             })}
           </tbody>
         </table>
+        </div>
       </div>
 
       <ModalMP

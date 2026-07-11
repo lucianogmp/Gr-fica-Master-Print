@@ -301,6 +301,7 @@ export function Relatorios() {
                   <div className="px-5 py-3 border-b border-gray-700 print:border-gray-300">
                     <p className="text-xs font-bold text-gray-400 uppercase">Top Clientes</p>
                   </div>
+                  <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="text-gray-400 text-[10px] font-bold uppercase bg-gray-800/40 print:bg-gray-100">
@@ -321,6 +322,7 @@ export function Relatorios() {
                       ))}
                     </tbody>
                   </table>
+                  </div>
                 </div>
 
                 {/* Lista completa de vendas */}
@@ -330,6 +332,7 @@ export function Relatorios() {
                       Todas as Vendas ({relV.data.vendas.length})
                     </p>
                   </div>
+                  <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="text-gray-400 text-[10px] font-bold uppercase bg-gray-800/40 print:bg-gray-100">
@@ -364,6 +367,7 @@ export function Relatorios() {
                       </tr>
                     </tfoot>
                   </table>
+                  </div>
                 </div>
               </div>
             )}
@@ -466,6 +470,7 @@ export function Relatorios() {
                             {tipo === 'receita' ? 'Receitas por Categoria' : 'Despesas por Categoria'}
                           </p>
                         </div>
+                        <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                           <tbody>
                             {cats.map(c => (
@@ -478,6 +483,7 @@ export function Relatorios() {
                             ))}
                           </tbody>
                         </table>
+                        </div>
                       </div>
                     );
                   })}
@@ -490,6 +496,7 @@ export function Relatorios() {
                       Lançamentos ({relF.data.lancamentos.length})
                     </p>
                   </div>
+                  <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="text-gray-400 text-[10px] font-bold uppercase bg-gray-800/40">
@@ -514,6 +521,7 @@ export function Relatorios() {
                       ))}
                     </tbody>
                   </table>
+                  </div>
                 </div>
               </div>
             )}

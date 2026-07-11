@@ -32,7 +32,7 @@ export function Gerenciar() {
         <div className="flex items-start justify-between flex-wrap gap-3">
           <div>
             <h1 className="text-2xl font-black text-white flex items-center gap-2">
-              <PackageSearch className="w-6 h-6 text-blue-400" /> Entradas e Saídas
+              <PackageSearch className="w-6 h-6 text-blue-400" /> Gerenciar Estoque
             </h1>
             <p className="text-gray-500 text-sm">{mps.length} matéria(s)-prima(s) cadastrada(s)</p>
           </div>
@@ -50,6 +50,7 @@ export function Gerenciar() {
               placeholder="Buscar por nome ou categoria..."
               className="w-full bg-[#111827] border border-gray-700 rounded-lg px-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500" />
           </div>
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-gray-400 text-[10px] font-bold uppercase border-b border-gray-700 bg-gray-800/40">
@@ -103,6 +104,7 @@ export function Gerenciar() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
 

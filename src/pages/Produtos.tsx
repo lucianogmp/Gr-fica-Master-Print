@@ -442,6 +442,7 @@ export function Produtos() {
         </div>
       </div>
       <div className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="text-gray-400 text-[10px] font-bold uppercase border-b border-gray-700 bg-gray-800/40">
@@ -475,6 +476,7 @@ export function Produtos() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );
@@ -508,6 +510,7 @@ export function Produtos() {
         </div>
       </div>
       <div className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="text-gray-400 text-[10px] font-bold uppercase border-b border-gray-700 bg-gray-800/40">
@@ -548,6 +551,7 @@ export function Produtos() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );
@@ -555,22 +559,22 @@ export function Produtos() {
   // ── VIEW: LISTA ────────────────────────────────────────────────────────────
   if (view === 'lista') return (
     <div className="p-6 space-y-6">
-      <div className="flex justify-between items-start">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
         <div>
           <h1 className="text-2xl font-black text-white flex items-center gap-2"><Package className="w-6 h-6 text-blue-400" /> Produtos</h1>
           <p className="text-gray-500 text-sm">{produtos.length} produto(s) cadastrado(s)</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <button onClick={() => setView('categorias')}
-            className="bg-gray-700 hover:bg-gray-600 text-gray-300 px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2">
-            <Tags className="w-4 h-4" /> Categorias
+            className="bg-gray-700 hover:bg-gray-600 text-gray-300 px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 whitespace-nowrap">
+            <Tags className="w-4 h-4 flex-shrink-0" /> Categorias
           </button>
           <button onClick={() => setView('acabamentos')}
-            className="bg-gray-700 hover:bg-gray-600 text-gray-300 px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2">
-            <Scissors className="w-4 h-4" /> Acabamentos
+            className="bg-gray-700 hover:bg-gray-600 text-gray-300 px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 whitespace-nowrap">
+            <Scissors className="w-4 h-4 flex-shrink-0" /> Acabamentos
           </button>
           <button onClick={() => abrirDetalhe(null)}
-            className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg shadow-blue-900/30">
+            className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg shadow-blue-900/30 whitespace-nowrap">
             + Novo Produto
           </button>
         </div>
@@ -588,6 +592,7 @@ export function Produtos() {
           <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar por nome ou SKU..."
             className="w-full bg-[#111827] border border-gray-700 rounded-lg px-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500" />
         </div>
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="text-gray-400 text-[10px] font-bold uppercase border-b border-gray-700 bg-gray-800/40">
@@ -654,6 +659,7 @@ export function Produtos() {
             })}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

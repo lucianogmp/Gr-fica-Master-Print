@@ -31,6 +31,7 @@ export function Servicos() {
         </div>
       ) : (
         <div className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-gray-400 text-[10px] font-bold uppercase border-b border-gray-700 bg-gray-800/40">
@@ -58,6 +59,7 @@ export function Servicos() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>

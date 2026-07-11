@@ -106,6 +106,7 @@ export function Estoque() {
             <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar..."
               className="w-full bg-[#111827] border border-gray-700 rounded-lg px-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500" />
           </div>
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-gray-400 text-[10px] font-bold uppercase border-b border-gray-700 bg-gray-800/40">
@@ -160,6 +161,7 @@ export function Estoque() {
               })}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
@@ -170,6 +172,7 @@ export function Estoque() {
             <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar..."
               className="w-full bg-[#111827] border border-gray-700 rounded-lg px-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500" />
           </div>
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-gray-400 text-[10px] font-bold uppercase border-b border-gray-700 bg-gray-800/40">
@@ -216,6 +219,7 @@ export function Estoque() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
@@ -226,6 +230,7 @@ export function Estoque() {
             <input value={filtroMov} onChange={e => setFiltroMov(e.target.value)} placeholder="Filtrar por matéria-prima ou motivo..."
               className="w-full bg-[#111827] border border-gray-700 rounded-lg px-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500" />
           </div>
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-gray-400 text-[10px] font-bold uppercase border-b border-gray-700 bg-gray-800/40">
@@ -266,6 +271,7 @@ export function Estoque() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
