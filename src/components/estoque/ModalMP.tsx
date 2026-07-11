@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Modal } from '../ui/Modal';
 import { MateriaPrima } from '../../types/estoque';
 import { Pencil, Plus } from 'lucide-react';
+import { MoneyInput } from '../ui/MoneyInput';
 import { useCategorias } from '../../hooks/useCategorias';
 import toast from 'react-hot-toast';
 
@@ -11,12 +12,12 @@ type FormData = {
   nome: string;
   categoria: string;
   unidade: string;
-  custo_unitario: string;
+  custo_unitario: number;
   estoque_minimo: string;
   saldo_inicial: string;
 };
 
-const EMPTY: FormData = { nome: '', categoria: '', unidade: 'un', custo_unitario: '', estoque_minimo: '', saldo_inicial: '' };
+const EMPTY: FormData = { nome: '', categoria: '', unidade: 'un', custo_unitario: 0, estoque_minimo: '', saldo_inicial: '' };
 
 interface ModalMPProps {
   open: boolean;
@@ -39,7 +40,7 @@ export function ModalMP({ open, editando, onClose, onSalvar }: ModalMPProps) {
         nome:           editando.nome,
         categoria:      editando.categoria ?? '',
         unidade:        editando.unidade,
-        custo_unitario: String(editando.custo_unitario),
+        custo_unitario: Number(editando.custo_unitario) || 0,
         estoque_minimo: String(editando.estoque_minimo ?? ''),
         saldo_inicial:  '',
       });
@@ -48,8 +49,11 @@ export function ModalMP({ open, editando, onClose, onSalvar }: ModalMPProps) {
     }
   }, [editando, open]);
 
-  function set(field: keyof FormData, val: string) {
+  function set(field: Exclude<keyof FormData, 'custo_unitario'>, val: string) {
     setForm(f => ({ ...f, [field]: val }));
+  }
+  function setCustoUnitario(val: number) {
+    setForm(f => ({ ...f, custo_unitario: val }));
   }
 
   async function handleSalvar() {
@@ -60,7 +64,7 @@ export function ModalMP({ open, editando, onClose, onSalvar }: ModalMPProps) {
         nome:           form.nome.trim(),
         categoria:      form.categoria.trim() || null,
         unidade:        form.unidade,
-        custo_unitario: parseFloat(form.custo_unitario) || 0,
+        custo_unitario: form.custo_unitario || 0,
         estoque_minimo: parseFloat(form.estoque_minimo) || 0,
         ...(!editando ? { saldo_inicial: parseFloat(form.saldo_inicial) || 0 } : {}),
       });
@@ -119,8 +123,8 @@ export function ModalMP({ open, editando, onClose, onSalvar }: ModalMPProps) {
 
         <div className="grid grid-cols-2 gap-4">
           <Field label="Custo por Unidade (R$)">
-            <input type="number" min="0" step="0.01" value={form.custo_unitario}
-              onChange={e => set('custo_unitario', e.target.value)}
+            <MoneyInput value={form.custo_unitario}
+              onChange={setCustoUnitario}
               className={INPUT} placeholder="0,00" />
           </Field>
           <Field label="Estoque Mínimo">

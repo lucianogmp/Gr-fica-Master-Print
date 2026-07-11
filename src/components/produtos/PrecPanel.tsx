@@ -1,6 +1,7 @@
 import { GcData } from '../../hooks/useGestaoCustos';
 import { CustosProduto } from '../../types/produto';
 import { Calculator, Lightbulb, Tag, Star } from 'lucide-react';
+import { MoneyInput } from '../ui/MoneyInput';
 
 const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -88,10 +89,9 @@ export function PrecPanel({ custos, preco, onPrecoChange, gc, tempo, porMetroQua
         </p>
         <div className="flex items-center bg-[#111827] border border-gray-700 rounded-lg overflow-hidden focus-within:border-green-500 transition-colors">
           <span className="px-3 text-gray-500 text-sm font-bold bg-gray-800 border-r border-gray-700 py-3">R$</span>
-          <input
-            type="number" min="0" step="0.01"
-            value={preco || ''}
-            onChange={e => onPrecoChange(parseFloat(e.target.value) || 0)}
+          <MoneyInput
+            value={preco}
+            onChange={onPrecoChange}
             placeholder="0,00"
             className="flex-1 bg-transparent px-3 py-3 text-xl font-black text-white focus:outline-none"
           />

@@ -8,9 +8,10 @@ import { useConfirm } from '../../components/ui/ConfirmModal';
 import { Configuracoes as ConfigType } from '../../types/configuracoes';
 import { AbaVendas } from '../../components/configuracoes/AbaVendas';
 import { CreditCard, Building2, Plus, X, Pencil, Save, Check } from 'lucide-react';
+import { MoneyInput } from '../../components/ui/MoneyInput';
 import { IN, IN_N, Lbl, Section, Row } from './utils';
 
-const FORM_CONTA_VAZIO = { nome: '', tipo: 'caixa' as TipoConta, banco: '', agencia: '', conta: '', saldo_inicial: '', observacoes: '' };
+const FORM_CONTA_VAZIO = { nome: '', tipo: 'caixa' as TipoConta, banco: '', agencia: '', conta: '', saldo_inicial: 0 as number, observacoes: '' };
 
 export function FormasPagamento() {
   const { data: cfg, isLoading, salvar, isSaving } = useConfiguracoes();
@@ -47,7 +48,7 @@ export function FormasPagamento() {
       banco:          c.banco ?? '',
       agencia:        c.agencia ?? '',
       conta:          c.conta ?? '',
-      saldo_inicial:  String(c.saldo_inicial),
+      saldo_inicial:  Number(c.saldo_inicial) || 0,
       observacoes:    c.observacoes ?? '',
     });
     setShowFormConta(true);
@@ -61,7 +62,7 @@ export function FormasPagamento() {
       banco:         formConta.banco || null,
       agencia:       formConta.agencia || null,
       conta:         formConta.conta || null,
-      saldo_inicial: parseFloat(formConta.saldo_inicial) || 0,
+      saldo_inicial: formConta.saldo_inicial || 0,
       observacoes:   formConta.observacoes || null,
       ativo:         true,
       ordem:         editandoContaId ? contas.find(c => c.id === editandoContaId)?.ordem ?? 0 : contas.length + 1,
@@ -132,8 +133,8 @@ export function FormasPagamento() {
                 </div>
                 <div>
                   <Lbl>Saldo Inicial (R$)</Lbl>
-                  <input type="number" min="0" step="0.01" value={formConta.saldo_inicial}
-                    onChange={e => setFormConta(f => ({ ...f, saldo_inicial: e.target.value }))} className={IN} placeholder="0,00" />
+                  <MoneyInput value={formConta.saldo_inicial}
+                    onChange={v => setFormConta(f => ({ ...f, saldo_inicial: v }))} className={IN} placeholder="0,00" />
                 </div>
                 <div>
                   <Lbl>Banco</Lbl>

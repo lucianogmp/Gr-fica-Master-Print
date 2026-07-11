@@ -8,6 +8,7 @@ import { useMateriaisImpressao } from '../../hooks/useMateriaisImpressao';
 import { useAcabamentos } from '../../hooks/useAcabamentos';
 import { useProdutos } from '../../hooks/useProdutos';
 import { Produto } from '../../types/produto';
+import { MoneyInput } from '../ui/MoneyInput';
 
 const fmtBRL = (v: number) =>
   Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -298,11 +299,12 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
         <div className="space-y-3">
           {/* Busca */}
           <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
             <input
               value={buscaProd}
               onChange={e => setBuscaProd(e.target.value)}
               placeholder="Buscar produto por nome..."
-              className="w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-purple-500 transition-colors"
+              className="w-full bg-[#111827] border border-gray-700 rounded-lg pl-9 pr-3 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-purple-500 transition-colors"
             />
           </div>
 
@@ -394,10 +396,9 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
                   <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1.5">
                     {prodPorM2 ? 'Preço por m² (R$)' : 'Preço unitário (R$)'}
                   </label>
-                  <NumInput
+                  <MoneyInput
                     value={precoLivre}
-                    onChange={setPrecoLivre}
-                    step="0.01" min="0"
+                    onChange={v => setPrecoLivre(String(v))}
                     className="bg-[#111827] border border-gray-700 rounded-lg px-2.5 py-2 text-white text-sm focus:outline-none focus:border-purple-500 transition-colors w-full"
                   />
                 </div>
@@ -513,13 +514,11 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
           </div>
           <div>
             <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1.5">Preço por m² (R$)</label>
-            <NumInput
+            <MoneyInput
               value={precoM2}
-              onChange={setPrecoM2}
-              step="0.01" min="0"
-              center big
+              onChange={v => setPrecoM2(String(v))}
               placeholder="0,00"
-              className={IN_BASE + ' text-yellow-300'}
+              className={IN_BASE + ' text-yellow-300 text-center text-xl font-black py-3'}
             />
           </div>
           <DimQtd l={largura} a={altura} q={quantidade} setL={setLargura} setA={setAltura} setQ={setQuantidade} />

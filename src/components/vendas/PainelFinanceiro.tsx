@@ -9,6 +9,7 @@ import {
   calcTotalComTaxa,
 } from '../../types/configuracoes';
 import { DollarSign, Plus, Trash2, CreditCard, Calendar, User, ChevronDown, ChevronUp } from 'lucide-react';
+import { MoneyInput } from '../ui/MoneyInput';
 
 const fmtBRL = (v: number | null | undefined) =>
   Number(v ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -57,8 +58,8 @@ export function PainelFinanceiro({
 }: Props) {
   const [showNovoPag, setShowNovoPag]     = useState(false);
   const [showHistorico, setShowHistorico] = useState(false);
-  const [novoPag, setNovoPag] = useState({
-    valor: '', forma: formaPagamento || 'PIX',
+  const [novoPag, setNovoPag] = useState<{ valor: number; forma: string; data: string; obs: string; parcelas: number }>({
+    valor: 0, forma: formaPagamento || 'PIX',
     data: new Date().toISOString().slice(0, 10), obs: '', parcelas: 1,
   });
 
@@ -67,7 +68,7 @@ export function PainelFinanceiro({
   const permiteParc      = formaNovoPag?.permite_parcelamento;
   const maxParcelas      = formaNovoPag?.max_parcelas ?? 1;
   const taxaPctNovoPag   = getTaxaParcela(formaNovoPag, novoPag.parcelas);
-  const valorNovoPag     = parseFloat(novoPag.valor) || 0;
+  const valorNovoPag     = novoPag.valor || 0;
   const taxaMaquininha   = calcTotalComTaxa(valorNovoPag, taxaPctNovoPag) - valorNovoPag;
 
   // Valor líquido de cada pagamento = bruto - taxa maquininha
@@ -97,7 +98,7 @@ export function PainelFinanceiro({
     if (!vendaId || !novoPag.valor) return;
     await onRegistrarPagamento({
       venda_id:        vendaId,
-      valor:           parseFloat(novoPag.valor),
+      valor:           novoPag.valor,
       forma_pagamento: novoPag.forma,
       parcelas:        permiteParc && novoPag.parcelas > 1 ? novoPag.parcelas : null,
       juros_pct:       taxaPctNovoPag > 0 ? taxaPctNovoPag : null,
@@ -106,7 +107,7 @@ export function PainelFinanceiro({
       usuario_id:      null,
       usuario_nome:    null,
     });
-    setNovoPag({ valor: '', forma: formaPagamento || 'PIX', data: new Date().toISOString().slice(0, 10), obs: '', parcelas: 1 });
+    setNovoPag({ valor: 0, forma: formaPagamento || 'PIX', data: new Date().toISOString().slice(0, 10), obs: '', parcelas: 1 });
     setShowNovoPag(false);
   }
 
@@ -145,10 +146,9 @@ export function PainelFinanceiro({
         {/* Frete */}
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <span className="text-[10px] text-gray-500 uppercase">Frete (R$)</span>
-          <input
-            type="number" min="0" step="0.01"
-            value={frete || ''}
-            onChange={e => onFreteChange(parseFloat(e.target.value) || 0)}
+          <MoneyInput
+            value={frete}
+            onChange={onFreteChange}
             className={IN_SM}
             style={{ width: 88 }}
             placeholder="0,00"
@@ -158,10 +158,9 @@ export function PainelFinanceiro({
         {/* Taxas */}
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <span className="text-[10px] text-gray-500 uppercase">Taxas (R$)</span>
-          <input
-            type="number" min="0" step="0.01"
-            value={taxaAdicional || ''}
-            onChange={e => onTaxaChange(parseFloat(e.target.value) || 0)}
+          <MoneyInput
+            value={taxaAdicional}
+            onChange={onTaxaChange}
             className={IN_SM}
             style={{ width: 88 }}
             placeholder="0,00"
@@ -274,8 +273,8 @@ export function PainelFinanceiro({
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div>
               <label className="text-[10px] text-gray-500 uppercase block mb-1">Valor (R$) *</label>
-              <input type="number" min="0.01" step="0.01" value={novoPag.valor}
-                onChange={e => setNovoPag(f => ({ ...f, valor: e.target.value }))}
+              <MoneyInput value={novoPag.valor}
+                onChange={v => setNovoPag(f => ({ ...f, valor: v }))}
                 className={IN} placeholder="0,00" autoFocus />
             </div>
             <div>

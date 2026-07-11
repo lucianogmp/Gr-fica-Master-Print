@@ -4,6 +4,7 @@ import { useConfiguracoes } from '../../hooks/useConfiguracoes';
 import { Configuracoes as ConfigType } from '../../types/configuracoes';
 import { Settings, Save, Check, Palette, Lock, BarChart3, Hash, FileText, Plus } from 'lucide-react';
 import { IN, IN_N, Lbl, Section, Row } from './utils';
+import { MoneyInput } from '../../components/ui/MoneyInput';
 
 export function Sistema() {
   const { data: cfg, isLoading, salvar, isSaving } = useConfiguracoes();
@@ -90,8 +91,8 @@ export function Sistema() {
         <Row cols={2}>
           <div>
             <Lbl>Pedido mínimo (R$)</Lbl>
-            <input type="number" min="0" step="0.01" value={num('prec_min_pedido')}
-              onChange={e => set('prec_min_pedido', parseFloat(e.target.value) || null)} className={IN_N} />
+            <MoneyInput value={num('prec_min_pedido')}
+              onChange={v => set('prec_min_pedido', v || null)} className={IN_N} />
           </div>
           <div>
             <Lbl>Horas produtivas/mês</Lbl>

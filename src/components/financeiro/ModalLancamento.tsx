@@ -2,13 +2,14 @@ import { useState, useEffect } from 'react';
 import { Modal } from '../ui/Modal';
 import { Lancamento, CATEGORIAS_RECEITA, CATEGORIAS_DESPESA, FORMAS_PAGAMENTO } from '../../types/financeiro';
 import { Pencil, Plus, ArrowUp, ArrowDown } from 'lucide-react';
+import { MoneyInput } from '../ui/MoneyInput';
 
 const IN = "w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors";
 
 type FormData = {
   tipo: 'receita' | 'despesa';
   descricao: string;
-  valor: string;
+  valor: number;
   categoria: string;
   data_vencimento: string;
   forma_pagamento: string;
@@ -18,7 +19,7 @@ type FormData = {
 };
 
 const EMPTY: FormData = {
-  tipo: 'despesa', descricao: '', valor: '', categoria: '',
+  tipo: 'despesa', descricao: '', valor: 0, categoria: '',
   data_vencimento: '', forma_pagamento: '', cliente_nome: '', observacoes: '', status: 'pendente',
 };
 
@@ -39,7 +40,7 @@ export function ModalLancamento({ open, editando, tipoInicial, onClose, onSalvar
       setForm({
         tipo:            editando.tipo,
         descricao:       editando.descricao,
-        valor:           String(editando.valor),
+        valor:           Number(editando.valor) || 0,
         categoria:       editando.categoria ?? '',
         data_vencimento: editando.data_vencimento ?? '',
         forma_pagamento: editando.forma_pagamento ?? '',
@@ -52,7 +53,8 @@ export function ModalLancamento({ open, editando, tipoInicial, onClose, onSalvar
     }
   }, [editando, tipoInicial, open]);
 
-  function set(f: keyof FormData, v: string) { setForm(p => ({ ...p, [f]: v })); }
+  function set(f: Exclude<keyof FormData, 'valor'>, v: string) { setForm(p => ({ ...p, [f]: v })); }
+  function setValor(v: number) { setForm(p => ({ ...p, valor: v })); }
 
   async function handleSalvar() {
     if (!form.descricao.trim() || !form.valor) return;
@@ -61,7 +63,7 @@ export function ModalLancamento({ open, editando, tipoInicial, onClose, onSalvar
       await onSalvar({
         tipo:            form.tipo,
         descricao:       form.descricao.trim(),
-        valor:           parseFloat(form.valor),
+        valor:           form.valor,
         categoria:       form.categoria || null,
         data_vencimento: form.data_vencimento || null,
         forma_pagamento: form.forma_pagamento || null,
@@ -120,7 +122,7 @@ export function ModalLancamento({ open, editando, tipoInicial, onClose, onSalvar
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Valor (R$) *</label>
-            <input type="number" min="0" step="0.01" value={form.valor} onChange={e => set('valor', e.target.value)} className={IN} placeholder="0,00" />
+            <MoneyInput value={form.valor} onChange={setValor} className={IN} placeholder="0,00" />
           </div>
           <div>
             <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Status</label>

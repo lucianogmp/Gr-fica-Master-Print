@@ -3,6 +3,7 @@ import { useCustosFixos, useDepreciacao } from '../hooks/useGestaoBase';
 import { useGestaoCustos } from '../hooks/useGestaoCustos';
 import { Modal } from '../components/ui/Modal';
 import { KpiCard } from '../components/ui/KpiCard';
+import { MoneyInput } from '../components/ui/MoneyInput';
 import {
   TrendingDown, Building2, DollarSign, Timer, BarChart3, Plus, type LucideIcon,
 } from 'lucide-react';
@@ -22,8 +23,8 @@ export function GestaoCustos() {
   const [salvando, setSalvando]   = useState(false);
 
   // Forms
-  const [formFixo, setFormFixo] = useState({ nome: '', categoria: '', valor_mensal: '', ativo: true, observacoes: '' });
-  const [formDepr, setFormDepr] = useState({ nome: '', categoria: '', valor: '', vida_util_anos: '', data_aquisicao: '', observacoes: '' });
+  const [formFixo, setFormFixo] = useState<{ nome: string; categoria: string; valor_mensal: number; ativo: boolean; observacoes: string }>({ nome: '', categoria: '', valor_mensal: 0, ativo: true, observacoes: '' });
+  const [formDepr, setFormDepr] = useState<{ nome: string; categoria: string; valor: number; vida_util_anos: string; data_aquisicao: string; observacoes: string }>({ nome: '', categoria: '', valor: 0, vida_util_anos: '', data_aquisicao: '', observacoes: '' });
 
   const gcData = gc ?? { depr: 0, fixos: 0, total: 0, porHora: 0 };
 
@@ -34,11 +35,11 @@ export function GestaoCustos() {
       await criarFixo({
         nome:         formFixo.nome.trim(),
         categoria:    formFixo.categoria || null,
-        valor_mensal: parseFloat(formFixo.valor_mensal),
+        valor_mensal: formFixo.valor_mensal,
         ativo:        formFixo.ativo,
         observacoes:  formFixo.observacoes || null,
       } as any);
-      setFormFixo({ nome: '', categoria: '', valor_mensal: '', ativo: true, observacoes: '' });
+      setFormFixo({ nome: '', categoria: '', valor_mensal: 0, ativo: true, observacoes: '' });
       setModalFixo(false);
     } finally { setSalvando(false); }
   }
@@ -50,12 +51,12 @@ export function GestaoCustos() {
       await criarDepr({
         nome:            formDepr.nome.trim(),
         categoria:       formDepr.categoria || null,
-        valor:           parseFloat(formDepr.valor),
+        valor:           formDepr.valor,
         vida_util_anos:  parseFloat(formDepr.vida_util_anos),
         data_aquisicao:  formDepr.data_aquisicao || null,
         observacoes:     formDepr.observacoes || null,
       } as any);
-      setFormDepr({ nome: '', categoria: '', valor: '', vida_util_anos: '', data_aquisicao: '', observacoes: '' });
+      setFormDepr({ nome: '', categoria: '', valor: 0, vida_util_anos: '', data_aquisicao: '', observacoes: '' });
       setModalDepr(false);
     } finally { setSalvando(false); }
   }
@@ -259,7 +260,7 @@ export function GestaoCustos() {
             <div><label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Categoria</label>
               <input value={formFixo.categoria} onChange={e => setFormFixo(f => ({ ...f, categoria: e.target.value }))} className={IN} placeholder="Ex: Infraestrutura" /></div>
             <div><label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Valor/mês (R$) *</label>
-              <input type="number" min="0" step="0.01" value={formFixo.valor_mensal} onChange={e => setFormFixo(f => ({ ...f, valor_mensal: e.target.value }))} className={IN} placeholder="0,00" /></div>
+              <MoneyInput value={formFixo.valor_mensal} onChange={v => setFormFixo(f => ({ ...f, valor_mensal: v }))} className={IN} placeholder="0,00" /></div>
           </div>
         </div>
       </Modal>
@@ -280,7 +281,7 @@ export function GestaoCustos() {
             <input autoFocus value={formDepr.nome} onChange={e => setFormDepr(f => ({ ...f, nome: e.target.value }))} className={IN} placeholder="Ex: Plotter Roland" /></div>
           <div className="grid grid-cols-2 gap-4">
             <div><label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Valor de compra (R$) *</label>
-              <input type="number" min="0" step="0.01" value={formDepr.valor} onChange={e => setFormDepr(f => ({ ...f, valor: e.target.value }))} className={IN} placeholder="0,00" /></div>
+              <MoneyInput value={formDepr.valor} onChange={v => setFormDepr(f => ({ ...f, valor: v }))} className={IN} placeholder="0,00" /></div>
             <div><label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Vida útil (anos) *</label>
               <input type="number" min="1" step="1" value={formDepr.vida_util_anos} onChange={e => setFormDepr(f => ({ ...f, vida_util_anos: e.target.value }))} className={IN} placeholder="5" /></div>
           </div>

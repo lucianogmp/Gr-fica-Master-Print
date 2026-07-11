@@ -4,13 +4,14 @@ import { useDepreciacao } from '../../hooks/useGestaoBase';
 import { useGestaoCustos } from '../../hooks/useGestaoCustos';
 import { useConfirm } from '../../components/ui/ConfirmModal';
 import { KpiCard } from '../../components/ui/KpiCard';
+import { MoneyInput } from '../../components/ui/MoneyInput';
 import { TrendingDown, Plus, X, Pencil, Timer } from 'lucide-react';
 
 const fmtBRL = (v: number) => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const IN = "w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors";
 const LABEL = "text-xs font-bold text-gray-400 uppercase block mb-1";
 
-const FORM_VAZIO = { nome: '', categoria: '', valor: '', vida_util_anos: '', data_aquisicao: '', observacoes: '' };
+const FORM_VAZIO = { nome: '', categoria: '', valor: 0 as number, vida_util_anos: '', data_aquisicao: '', observacoes: '' };
 
 export function Depreciacao() {
   const { data: deprs = [], criar, atualizar, deletar } = useDepreciacao();
@@ -38,7 +39,7 @@ export function Depreciacao() {
     setForm({
       nome:           d.nome,
       categoria:      d.categoria ?? '',
-      valor:          String(d.valor),
+      valor:          Number(d.valor) || 0,
       vida_util_anos: String(d.vida_util_anos),
       data_aquisicao: d.data_aquisicao ?? '',
       observacoes:    d.observacoes ?? '',
@@ -60,7 +61,7 @@ export function Depreciacao() {
       const payload = {
         nome:           form.nome.trim(),
         categoria:      form.categoria || null,
-        valor:          parseFloat(form.valor),
+        valor:          form.valor,
         vida_util_anos: parseFloat(form.vida_util_anos),
         data_aquisicao: form.data_aquisicao || null,
         observacoes:    form.observacoes || null,
@@ -75,8 +76,11 @@ export function Depreciacao() {
     } finally { setSalvando(false); }
   }
 
-  function setF(campo: keyof typeof FORM_VAZIO, valor: string) {
+  function setF(campo: Exclude<keyof typeof FORM_VAZIO, 'valor'>, valor: string) {
     setForm(f => ({ ...f, [campo]: valor }));
+  }
+  function setValor(valor: number) {
+    setForm(f => ({ ...f, valor }));
   }
 
   return (
@@ -112,8 +116,8 @@ export function Depreciacao() {
               </div>
               <div>
                 <label className={LABEL}>Valor de compra (R$) *</label>
-                <input required type="number" min="0" step="0.01" value={form.valor}
-                  onChange={e => setF('valor', e.target.value)} className={IN} placeholder="0,00" />
+                <MoneyInput required value={form.valor}
+                  onChange={setValor} className={IN} placeholder="0,00" />
               </div>
               <div>
                 <label className={LABEL}>Vida útil (anos) *</label>
@@ -135,7 +139,7 @@ export function Depreciacao() {
                   <div className="w-full bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
                     <p className="text-[10px] text-gray-500 uppercase font-bold mb-1">Depr./mês calculada</p>
                     <p className="text-lg font-black text-yellow-400">
-                      {fmtBRL(parseFloat(form.valor) / (parseFloat(form.vida_util_anos) * 12))}
+                      {fmtBRL(form.valor / (parseFloat(form.vida_util_anos) * 12))}
                     </p>
                   </div>
                 </div>

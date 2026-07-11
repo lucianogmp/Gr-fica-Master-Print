@@ -15,6 +15,7 @@ import { ItemOrcEditor } from '../components/orcamentos/ItemOrcEditor';
 import { ClienteSelector } from '../components/orcamentos/ClienteSelector';
 import { CalculadoraFolhas } from '../components/CalculadoraFolhas';
 import { KpiCard } from '../components/ui/KpiCard';
+import { MoneyInput } from '../components/ui/MoneyInput';
 import { useConfirm } from '../components/ui/ConfirmModal';
 
 type View = 'lista' | 'detalhe' | 'materiais' | 'acabamentos' | 'folhas';
@@ -52,18 +53,18 @@ export function Orcamentos() {
 
   // Forms de materiais
   const [matNome, setMatNome]     = useState('');
-  const [matPreco, setMatPreco]   = useState('');
+  const [matPreco, setMatPreco]   = useState(0);
   const [matEditId, setMatEditId] = useState<string | null>(null);
   const [matEditNome, setMatEditNome]   = useState('');
-  const [matEditPreco, setMatEditPreco] = useState('');
+  const [matEditPreco, setMatEditPreco] = useState(0);
   const [salvandoMat, setSalvandoMat]   = useState(false);
 
   // Forms de acabamentos
   const [acabNome, setAcabNome]   = useState('');
-  const [acabCusto, setAcabCusto] = useState('');
+  const [acabCusto, setAcabCusto] = useState(0);
   const [acabEditId, setAcabEditId] = useState<string | null>(null);
   const [acabEditNome, setAcabEditNome]   = useState('');
-  const [acabEditCusto, setAcabEditCusto] = useState('');
+  const [acabEditCusto, setAcabEditCusto] = useState(0);
   const [salvandoAcab, setSalvandoAcab]   = useState(false);
 
   const isNovo = orcId === '__novo__';
@@ -148,13 +149,13 @@ export function Orcamentos() {
     if (!matNome.trim()) return;
     setSalvandoMat(true);
     try {
-      await criarMat({ nome: matNome.trim(), preco_m2: parseFloat(matPreco) || 0, ativo: true });
-      setMatNome(''); setMatPreco('');
+      await criarMat({ nome: matNome.trim(), preco_m2: matPreco || 0, ativo: true });
+      setMatNome(''); setMatPreco(0);
     } finally { setSalvandoMat(false); }
   }
 
   async function salvarEditMat(id: string) {
-    await atualizarMat({ id, dados: { nome: matEditNome.trim(), preco_m2: parseFloat(matEditPreco) || 0 } });
+    await atualizarMat({ id, dados: { nome: matEditNome.trim(), preco_m2: matEditPreco || 0 } });
     setMatEditId(null);
   }
 
@@ -162,13 +163,13 @@ export function Orcamentos() {
     if (!acabNome.trim()) return;
     setSalvandoAcab(true);
     try {
-      await criarAcab({ nome: acabNome.trim(), custo: parseFloat(acabCusto) || 0, ativo: true });
-      setAcabNome(''); setAcabCusto('');
+      await criarAcab({ nome: acabNome.trim(), custo: acabCusto || 0, ativo: true });
+      setAcabNome(''); setAcabCusto(0);
     } finally { setSalvandoAcab(false); }
   }
 
   async function salvarEditAcab(id: string) {
-    await atualizarAcab({ id, dados: { nome: acabEditNome.trim(), custo: parseFloat(acabEditCusto) || 0 } });
+    await atualizarAcab({ id, dados: { nome: acabEditNome.trim(), custo: acabEditCusto || 0 } });
     setAcabEditId(null);
   }
 
@@ -241,8 +242,8 @@ export function Orcamentos() {
           </div>
           <div className="w-full sm:w-40">
             <label className="text-[10px] text-gray-500 uppercase block mb-1.5">Preço por m² (R$)</label>
-            <input type="number" min="0" step="0.01" value={matPreco}
-              onChange={e => setMatPreco(e.target.value)} className={IN} placeholder="0,00" />
+            <MoneyInput value={matPreco}
+              onChange={setMatPreco} className={IN} placeholder="0,00" />
           </div>
           <button onClick={salvarMaterial} disabled={salvandoMat || !matNome.trim()}
             className="bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all w-full sm:w-auto">
@@ -279,7 +280,7 @@ export function Orcamentos() {
                 </td>
                 <td className="px-5 py-3 text-right">
                   {matEditId === m.id ? (
-                    <input type="number" min="0" step="0.01" value={matEditPreco} onChange={e => setMatEditPreco(e.target.value)}
+                    <MoneyInput value={matEditPreco} onChange={setMatEditPreco}
                       className="bg-[#111827] border border-blue-500 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none w-28 text-right" />
                   ) : (
                     <span className="font-bold text-white">{fmtBRL(m.preco_m2)}</span>
@@ -304,7 +305,7 @@ export function Orcamentos() {
                       </>
                     ) : (
                       <>
-                        <button onClick={() => { setMatEditId(m.id); setMatEditNome(m.nome); setMatEditPreco(String(m.preco_m2)); }}
+                        <button onClick={() => { setMatEditId(m.id); setMatEditNome(m.nome); setMatEditPreco(Number(m.preco_m2) || 0); }}
                           className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 border border-blue-500/30">Editar</button>
                         <button onClick={async () => { if (await confirmar(`Remover o material "${m.nome}"?`, "Remover Material")) deletarMat(m.id); }}
                           className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-red-500/15 text-red-400 hover:bg-red-500/25 border border-red-500/30 flex items-center justify-center">
@@ -351,8 +352,8 @@ export function Orcamentos() {
           </div>
           <div className="w-full sm:w-40">
             <label className="text-[10px] text-gray-500 uppercase block mb-1.5">Custo por un (R$)</label>
-            <input type="number" min="0" step="0.01" value={acabCusto}
-              onChange={e => setAcabCusto(e.target.value)} className={IN} placeholder="0,00" />
+            <MoneyInput value={acabCusto}
+              onChange={setAcabCusto} className={IN} placeholder="0,00" />
           </div>
           <button onClick={salvarAcabamento} disabled={salvandoAcab || !acabNome.trim()}
             className="bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all w-full sm:w-auto">
@@ -388,7 +389,7 @@ export function Orcamentos() {
                 </td>
                 <td className="px-5 py-3 text-right">
                   {acabEditId === a.id ? (
-                    <input type="number" min="0" step="0.01" value={acabEditCusto} onChange={e => setAcabEditCusto(e.target.value)}
+                    <MoneyInput value={acabEditCusto} onChange={setAcabEditCusto}
                       className="bg-[#111827] border border-blue-500 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none w-28 text-right" />
                   ) : (
                     <span className="font-bold text-white">{fmtBRL(a.custo)}</span>
@@ -413,7 +414,7 @@ export function Orcamentos() {
                       </>
                     ) : (
                       <>
-                        <button onClick={() => { setAcabEditId(a.id); setAcabEditNome(a.nome); setAcabEditCusto(String(a.custo)); }}
+                        <button onClick={() => { setAcabEditId(a.id); setAcabEditNome(a.nome); setAcabEditCusto(Number(a.custo) || 0); }}
                           className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 border border-blue-500/30">Editar</button>
                         <button onClick={async () => { if (await confirmar(`Remover o acabamento "${a.nome}"?`, "Remover Acabamento")) deletarAcab(a.id); }}
                           className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-red-500/15 text-red-400 hover:bg-red-500/25 border border-red-500/30 flex items-center justify-center">

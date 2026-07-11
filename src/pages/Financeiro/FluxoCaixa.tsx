@@ -5,6 +5,7 @@ import { useContasBancarias } from '../../hooks/useContasBancarias';
 import { useConfirm } from '../../components/ui/ConfirmModal';
 import { useRole } from '../../hooks/useRole';
 import { KpiCard } from '../../components/ui/KpiCard';
+import { MoneyInput } from '../../components/ui/MoneyInput';
 import {
   TrendingUp, ArrowUp, ArrowDown, Wallet,
   Plus, X, Save,
@@ -17,7 +18,7 @@ const LABEL = "text-xs font-bold text-gray-400 uppercase block mb-1";
 
 const NOVO_MOV = {
   tipo:        'entrada' as 'entrada' | 'saida',
-  valor:       '',
+  valor:       0 as number,
   data:        new Date().toISOString().split('T')[0],
   descricao:   '',
   conta_id:    '',
@@ -69,7 +70,7 @@ export function FluxoCaixa() {
     e.preventDefault();
     await criar({
       tipo:        form.tipo,
-      valor:       Number(form.valor),
+      valor:       form.valor,
       data:        form.data,
       descricao:   form.descricao || null,
       conta_id:    form.conta_id || null,
@@ -126,10 +127,10 @@ export function FluxoCaixa() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className={LABEL}>Valor *</label>
-                  <input
-                    required type="number" min="0.01" step="0.01"
+                  <MoneyInput
+                    required
                     value={form.valor}
-                    onChange={e => setF('valor', e.target.value)}
+                    onChange={v => setF('valor', v)}
                     className={IN} placeholder="0,00"
                   />
                 </div>

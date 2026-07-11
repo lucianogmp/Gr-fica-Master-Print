@@ -14,6 +14,7 @@ import {
 import {
   Plus, Trash2, CreditCard, ShoppingCart, ChevronDown, ChevronUp, Info,
 } from 'lucide-react';
+import { MoneyInput } from '../ui/MoneyInput';
 
 const IN   = "w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors";
 const IN_N = IN + " [appearance:textfield]";
@@ -376,10 +377,9 @@ export function AbaVendas({ form, set }: Props) {
             <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">
               Frete padrão (R$)
             </label>
-            <input
-              type="number" min="0" step="0.01"
+            <MoneyInput
               value={num('venda_frete_padrao')}
-              onChange={e => set('venda_frete_padrao', parseFloat(e.target.value) || null)}
+              onChange={v => set('venda_frete_padrao', v || null)}
               className={IN_N}
               placeholder="0,00"
             />
@@ -388,10 +388,9 @@ export function AbaVendas({ form, set }: Props) {
             <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">
               Taxa adicional padrão (R$)
             </label>
-            <input
-              type="number" min="0" step="0.01"
+            <MoneyInput
               value={num('venda_taxa_adicional_padrao')}
-              onChange={e => set('venda_taxa_adicional_padrao', parseFloat(e.target.value) || null)}
+              onChange={v => set('venda_taxa_adicional_padrao', v || null)}
               className={IN_N}
               placeholder="0,00"
             />

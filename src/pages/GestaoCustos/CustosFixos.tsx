@@ -4,13 +4,14 @@ import { useCustosFixos } from '../../hooks/useGestaoBase';
 import { useGestaoCustos } from '../../hooks/useGestaoCustos';
 import { useConfirm } from '../../components/ui/ConfirmModal';
 import { KpiCard } from '../../components/ui/KpiCard';
+import { MoneyInput } from '../../components/ui/MoneyInput';
 import { Building2, Plus, DollarSign, Pencil, X } from 'lucide-react';
 
 const fmtBRL = (v: number) => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const IN = "w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors";
 const LABEL = "text-xs font-bold text-gray-400 uppercase block mb-1";
 
-const FORM_VAZIO = { nome: '', categoria: '', valor_mensal: '', ativo: true, observacoes: '' };
+const FORM_VAZIO = { nome: '', categoria: '', valor_mensal: 0 as number, ativo: true, observacoes: '' };
 
 export function CustosFixos() {
   const { data: fixos = [], criar, atualizar, deletar } = useCustosFixos();
@@ -35,7 +36,7 @@ export function CustosFixos() {
     setForm({
       nome:         f.nome,
       categoria:    f.categoria ?? '',
-      valor_mensal: String(f.valor_mensal),
+      valor_mensal: Number(f.valor_mensal) || 0,
       ativo:        f.ativo,
       observacoes:  f.observacoes ?? '',
     });
@@ -56,7 +57,7 @@ export function CustosFixos() {
       const payload = {
         nome:         form.nome.trim(),
         categoria:    form.categoria || null,
-        valor_mensal: parseFloat(form.valor_mensal),
+        valor_mensal: form.valor_mensal,
         ativo:        form.ativo,
         observacoes:  form.observacoes || null,
       } as any;
@@ -110,8 +111,8 @@ export function CustosFixos() {
               </div>
               <div>
                 <label className={LABEL}>Valor/mês (R$) *</label>
-                <input required type="number" min="0" step="0.01" value={form.valor_mensal}
-                  onChange={e => setF('valor_mensal', e.target.value)} className={IN} placeholder="0,00" />
+                <MoneyInput required value={form.valor_mensal}
+                  onChange={v => setF('valor_mensal', v)} className={IN} placeholder="0,00" />
               </div>
             </div>
             <div>

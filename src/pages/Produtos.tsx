@@ -11,6 +11,7 @@ import { BomEditor } from '../components/produtos/BomEditor';
 import { PrecPanel } from '../components/produtos/PrecPanel';
 import { KpiCard } from '../components/ui/KpiCard';
 import { Modal } from '../components/ui/Modal';
+import { MoneyInput } from '../components/ui/MoneyInput';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 import { useConfirm } from '../components/ui/ConfirmModal';
@@ -61,12 +62,13 @@ function ModalNovaMateriaPrima({ open, onClose, onCriada }: {
   open: boolean; onClose: () => void;
   onCriada: (id: string, nome: string) => void;
 }) {
-  const VAZIO = { nome: '', categoria: '', unidade: 'un', custo_unitario: '', estoque_minimo: '', saldo_inicial: '' };
+  const VAZIO = { nome: '', categoria: '', unidade: 'un', custo_unitario: 0 as number, estoque_minimo: '', saldo_inicial: '' };
   const [form, setForm]     = useState(VAZIO);
   const [salvando, setSalvando] = useState(false);
   const { data: categorias = [] } = useCategorias();
   const [modalCat, setModalCat] = useState(false);
-  function set(f: string, v: string) { setForm(p => ({ ...p, [f]: v })); }
+  function set(f: Exclude<keyof typeof VAZIO, 'custo_unitario'>, v: string) { setForm(p => ({ ...p, [f]: v })); }
+  function setCustoUnitario(v: number) { setForm(p => ({ ...p, custo_unitario: v })); }
   async function handleSalvar() {
     if (!form.nome.trim()) return;
     setSalvando(true);
@@ -77,7 +79,7 @@ function ModalNovaMateriaPrima({ open, onClose, onCriada }: {
           nome: form.nome.trim(),
           categoria: form.categoria.trim() || null,
           unidade: form.unidade,
-          custo_unitario: parseFloat(form.custo_unitario) || 0,
+          custo_unitario: form.custo_unitario || 0,
           estoque_minimo: parseFloat(form.estoque_minimo) || 0,
           saldo: parseFloat(form.saldo_inicial) || 0,
         })
@@ -131,8 +133,8 @@ function ModalNovaMateriaPrima({ open, onClose, onCriada }: {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Custo por Unidade (R$)</label>
-            <input type="number" min="0" step="0.01" value={form.custo_unitario}
-              onChange={e => set('custo_unitario', e.target.value)} className={IN} placeholder="0,00" />
+            <MoneyInput value={form.custo_unitario}
+              onChange={setCustoUnitario} className={IN} placeholder="0,00" />
           </div>
           <div>
             <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Estoque Mínimo</label>
@@ -294,7 +296,7 @@ export function Produtos() {
 
   // Acabamentos form
   const [acabNome, setAcabNome]   = useState('');
-  const [acabCusto, setAcabCusto] = useState('');
+  const [acabCusto, setAcabCusto] = useState(0);
   const [salvandoAcab, setSalvandoAcab] = useState(false);
 
   // Categorias form
@@ -380,8 +382,8 @@ export function Produtos() {
     if (!acabNome.trim()) return;
     setSalvandoAcab(true);
     try {
-      await criarAcab({ nome: acabNome.trim(), custo: parseFloat(acabCusto) || 0, ativo: true });
-      setAcabNome(''); setAcabCusto('');
+      await criarAcab({ nome: acabNome.trim(), custo: acabCusto || 0, ativo: true });
+      setAcabNome(''); setAcabCusto(0);
     } finally { setSalvandoAcab(false); }
   }
 
@@ -432,8 +434,8 @@ export function Produtos() {
           </div>
           <div className="w-36">
             <label className="text-[10px] text-gray-500 uppercase block mb-1.5">Custo por un (R$)</label>
-            <input type="number" min="0" step="0.01" value={acabCusto}
-              onChange={e => setAcabCusto(e.target.value)} className={IN} placeholder="0,00" />
+            <MoneyInput value={acabCusto}
+              onChange={setAcabCusto} className={IN} placeholder="0,00" />
           </div>
           <button onClick={handleSalvarAcab} disabled={salvandoAcab || !acabNome.trim()}
             className="bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all flex-shrink-0">
@@ -843,9 +845,9 @@ export function Produtos() {
                   ] as const).map(({ field, label }) => (
                     <div key={field}>
                       <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">{label}</label>
-                      <input type="number" min="0" step="0.01"
+                      <MoneyInput
                         value={(form as any)[field] ?? 0}
-                        onChange={e => setF(field, parseFloat(e.target.value) || 0)}
+                        onChange={v => setF(field, v)}
                         className={IN} />
                     </div>
                   ))}
@@ -887,9 +889,9 @@ export function Produtos() {
                   <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">
                     Custo de Aquisição {porM2 ? '(R$/m²)' : '(R$)'}
                   </label>
-                  <input type="number" min="0" step="0.01"
+                  <MoneyInput
                     value={(form as any).custo_operacional ?? 0}
-                    onChange={e => setF('custo_operacional', parseFloat(e.target.value) || 0)}
+                    onChange={v => setF('custo_operacional', v)}
                     className={IN} placeholder={porM2 ? 'Custo por m²' : 'Custo por unidade'} />
                 </div>
               </div>

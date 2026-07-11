@@ -3,6 +3,7 @@ import { useState, useMemo } from 'react';
 import { useCustosVariaveis } from '../../hooks/useGestaoBase';
 import { useConfirm } from '../../components/ui/ConfirmModal';
 import { KpiCard } from '../../components/ui/KpiCard';
+import { MoneyInput } from '../../components/ui/MoneyInput';
 import { GitCompare, Plus, X, Pencil, DollarSign, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const fmtBRL = (v: number) => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -10,7 +11,7 @@ const IN = "w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 te
 const LABEL = "text-xs font-bold text-gray-400 uppercase block mb-1";
 
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-const FORM_VAZIO = { nome: '', categoria: '', valor: '', observacoes: '' };
+const FORM_VAZIO = { nome: '', categoria: '', valor: 0 as number, observacoes: '' };
 
 export function CustosVariaveis() {
   const hoje = new Date();
@@ -46,7 +47,7 @@ export function CustosVariaveis() {
     setForm({
       nome:        c.nome,
       categoria:   c.categoria ?? '',
-      valor:       String(c.valor),
+      valor:       Number(c.valor) || 0,
       observacoes: c.observacoes ?? '',
     });
     setShowForm(true);
@@ -64,7 +65,7 @@ export function CustosVariaveis() {
     const payload = {
       nome:           form.nome.trim(),
       categoria:      form.categoria || null,
-      valor:          parseFloat(form.valor),
+      valor:          form.valor,
       mes_referencia: mes,
       observacoes:    form.observacoes || null,
     };
@@ -76,8 +77,11 @@ export function CustosVariaveis() {
     fecharForm();
   }
 
-  function setF(campo: keyof typeof FORM_VAZIO, valor: string) {
+  function setF(campo: Exclude<keyof typeof FORM_VAZIO, 'valor'>, valor: string) {
     setForm(f => ({ ...f, [campo]: valor }));
+  }
+  function setValor(valor: number) {
+    setForm(f => ({ ...f, valor }));
   }
 
   return (
@@ -118,8 +122,8 @@ export function CustosVariaveis() {
               </div>
               <div>
                 <label className={LABEL}>Valor (R$) *</label>
-                <input required type="number" min="0" step="0.01" value={form.valor}
-                  onChange={e => setF('valor', e.target.value)} className={IN} placeholder="0,00" />
+                <MoneyInput required value={form.valor}
+                  onChange={setValor} className={IN} placeholder="0,00" />
               </div>
             </div>
             <div>

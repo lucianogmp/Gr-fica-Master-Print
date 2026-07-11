@@ -5,6 +5,7 @@ import { VendaItem } from '../../types/venda';
 import { Produto } from '../../types/produto';
 import { useProdutos } from '../../hooks/useProdutos';
 import { X, Search, Package } from 'lucide-react';
+import { MoneyInput } from '../ui/MoneyInput';
 
 const fmtBRL = (v: number) => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -207,8 +208,8 @@ export function ItensEditor({ itens, onChange }: ItensEditorProps) {
                       onChange={e => atualizarItem(i, 'quantidade', parseFloat(e.target.value) || 0)} className={IN + ' text-center'} />
                   </td>
                   <td className="px-1.5 py-1.5">
-                    <input type="number" min="0" step="0.01" value={it.preco_unitario}
-                      onChange={e => atualizarItem(i, 'preco_unitario', parseFloat(e.target.value) || 0)} className={IN + ' text-right'} />
+                    <MoneyInput value={it.preco_unitario}
+                      onChange={v => atualizarItem(i, 'preco_unitario', v)} className={IN + ' text-right'} />
                   </td>
                   <td className="px-1.5 py-1.5">
                     <input type="number" min="0" max="100" step="0.1" value={it.desconto ?? 0}
@@ -256,8 +257,8 @@ export function ItensEditor({ itens, onChange }: ItensEditorProps) {
           </div>
           <div style={{ width: 140 }}>
             <label className="text-[9px] text-gray-600 uppercase block mb-1">Preço Unit. *</label>
-            <input type="number" min="0" step="0.01" value={novoItem.preco_unitario || ''}
-              onChange={e => setNovoItem(f => ({ ...f, preco_unitario: parseFloat(e.target.value) || 0 }))}
+            <MoneyInput value={novoItem.preco_unitario}
+              onChange={v => setNovoItem(f => ({ ...f, preco_unitario: v }))}
               placeholder="0,00" className={IN + ' text-right'} />
           </div>
           <div style={{ width: 88 }}>
