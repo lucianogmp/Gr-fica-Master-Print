@@ -298,12 +298,11 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
         <div className="space-y-3">
           {/* Busca */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
             <input
               value={buscaProd}
               onChange={e => setBuscaProd(e.target.value)}
               placeholder="Buscar produto por nome..."
-              className="w-full bg-[#111827] border border-gray-700 rounded-lg pl-9 pr-3 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-purple-500 transition-colors"
+              className="w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-purple-500 transition-colors"
             />
           </div>
 

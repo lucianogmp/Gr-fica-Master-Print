@@ -121,7 +121,7 @@ const ALL_MENU: MenuItem[] = [
     rota: '/estoque',
     children: [
       { path: '/estoque/atual',     label: 'Estoque Atual', icon: Boxes },
-      { path: '/estoque/gerenciar', label: 'Gerenciar',     icon: PackageSearch },
+      { path: '/estoque/gerenciar', label: 'Entradas e Saídas',     icon: PackageSearch },
       { path: '/estoque/historico', label: 'Histórico',     icon: History },
     ],
   },

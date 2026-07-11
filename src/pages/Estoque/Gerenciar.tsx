@@ -32,7 +32,7 @@ export function Gerenciar() {
         <div className="flex items-start justify-between flex-wrap gap-3">
           <div>
             <h1 className="text-2xl font-black text-white flex items-center gap-2">
-              <PackageSearch className="w-6 h-6 text-blue-400" /> Gerenciar Estoque
+              <PackageSearch className="w-6 h-6 text-blue-400" /> Entradas e Saídas
             </h1>
             <p className="text-gray-500 text-sm">{mps.length} matéria(s)-prima(s) cadastrada(s)</p>
           </div>
