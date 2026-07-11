@@ -23,10 +23,10 @@ export function Lancamentos() {
           </h1>
           <p className="text-gray-500 text-sm">{lancamentos.length} lançamento(s)</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <input type="month" value={mesKpi} onChange={e => setMesKpi(e.target.value)}
-            className="bg-[#1f2937] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500" />
-          <span className="text-gray-600 text-xs">KPIs do mês</span>
+            className="bg-[#1f2937] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500 min-w-[170px] flex-1 sm:flex-none" />
+          <span className="text-gray-600 text-xs whitespace-nowrap">KPIs do mês</span>
         </div>
       </div>
 

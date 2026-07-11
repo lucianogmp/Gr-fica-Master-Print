@@ -6,7 +6,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
-import { ArrowRight, UserPlus } from 'lucide-react';
+import { ArrowRight, UserPlus, Search, Loader2 } from 'lucide-react';
+import { buscarCNPJ, formatarCNPJ, apenasNumeros } from '../../utils/cnpjCep';
 
 interface ClienteSimples {
   id: string;
@@ -28,8 +29,9 @@ export function ClienteSelectorVenda({ value, clienteId, onChange, hideLabel }: 
   const [opcoes, setOpcoes]       = useState<ClienteSimples[]>([]);
   const [aberto, setAberto]       = useState(false);
   const [showNovo, setShowNovo]   = useState(false);
-  const [novoForm, setNovoForm]   = useState({ nome: '', telefone: '', email: '', cpf_cnpj: '' });
+  const [novoForm, setNovoForm]   = useState({ nome: '', telefone: '', email: '', cpf_cnpj: '', razao_social: '', nome_fantasia: '' });
   const [salvando, setSalvando]   = useState(false);
+  const [buscandoCnpj, setBuscandoCnpj] = useState(false);
   const [carregando, setCarregando] = useState(false);
   const wrapRef  = useRef<HTMLDivElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -78,6 +80,31 @@ export function ClienteSelectorVenda({ value, clienteId, onChange, hideLabel }: 
     setOpcoes([]);
   }
 
+  async function handleBuscarCnpj() {
+    if (apenasNumeros(novoForm.cpf_cnpj).length !== 14) {
+      toast.error('Digite um CNPJ com 14 números para buscar.');
+      return;
+    }
+    setBuscandoCnpj(true);
+    try {
+      const r = await buscarCNPJ(novoForm.cpf_cnpj);
+      setNovoForm(f => ({
+        ...f,
+        cpf_cnpj: r.cnpj,
+        nome: f.nome.trim() ? f.nome : (r.nomeFantasia || r.razaoSocial),
+        razao_social: r.razaoSocial,
+        nome_fantasia: r.nomeFantasia,
+        email: f.email.trim() ? f.email : r.email,
+        telefone: f.telefone.trim() ? f.telefone : r.telefone,
+      }));
+      toast.success(`Empresa encontrada: ${r.razaoSocial || r.nomeFantasia}`);
+    } catch (err: any) {
+      toast.error(err?.message || 'Erro ao consultar o CNPJ.');
+    } finally {
+      setBuscandoCnpj(false);
+    }
+  }
+
   async function criarCliente() {
     if (!novoForm.nome.trim()) return;
     setSalvando(true);
@@ -85,17 +112,19 @@ export function ClienteSelectorVenda({ value, clienteId, onChange, hideLabel }: 
       const { data, error } = await supabase
         .from('clientes')
         .insert({
-          nome:     novoForm.nome.trim(),
-          telefone: novoForm.telefone.trim() || null,
-          email:    novoForm.email.trim() || null,
-          cpf_cnpj: novoForm.cpf_cnpj.trim() || null,
+          nome:          novoForm.nome.trim(),
+          telefone:      novoForm.telefone.trim() || null,
+          email:         novoForm.email.trim() || null,
+          cpf_cnpj:      novoForm.cpf_cnpj.trim() || null,
+          razao_social:  novoForm.razao_social.trim() || null,
+          nome_fantasia: novoForm.nome_fantasia.trim() || null,
         })
         .select('id, nome, telefone, email, cpf_cnpj')
         .single();
       if (error) throw error;
       selecionar(data as ClienteSimples);
       setShowNovo(false);
-      setNovoForm({ nome: '', telefone: '', email: '', cpf_cnpj: '' });
+      setNovoForm({ nome: '', telefone: '', email: '', cpf_cnpj: '', razao_social: '', nome_fantasia: '' });
       toast.success('Cliente cadastrado!');
     } catch (e: any) {
       toast.error(e.message);
@@ -112,11 +141,13 @@ export function ClienteSelectorVenda({ value, clienteId, onChange, hideLabel }: 
 
       <div className="flex gap-2">
         <div className="relative flex-1">
+          {/* Ícone de busca */}
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500 pointer-events-none z-10" />
           <input
             value={busca}
             onChange={e => pesquisar(e.target.value)}
             onFocus={() => busca.length > 0 && opcoes.length > 0 && setAberto(true)}
-            className="w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors"
+            className="w-full bg-[#111827] border border-gray-700 rounded-lg pl-9 pr-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors"
             placeholder="Buscar por nome, telefone ou CPF/CNPJ..."
             autoComplete="off"
           />
@@ -232,14 +263,25 @@ export function ClienteSelectorVenda({ value, clienteId, onChange, hideLabel }: 
                 placeholder="email@exemplo.com"
               />
             </div>
-            <div>
+            <div className="col-span-2 sm:col-span-1">
               <label className="text-[10px] text-gray-500 uppercase block mb-1">CPF / CNPJ</label>
-              <input
-                value={novoForm.cpf_cnpj}
-                onChange={e => setNovoForm(f => ({ ...f, cpf_cnpj: e.target.value }))}
-                className={IN}
-                placeholder="000.000.000-00"
-              />
+              <div className="flex gap-2">
+                <input
+                  value={novoForm.cpf_cnpj}
+                  onChange={e => setNovoForm(f => ({ ...f, cpf_cnpj: apenasNumeros(e.target.value).length > 11 ? formatarCNPJ(e.target.value) : e.target.value }))}
+                  className={IN}
+                  placeholder="000.000.000-00"
+                />
+                <button
+                  type="button"
+                  onClick={handleBuscarCnpj}
+                  disabled={buscandoCnpj}
+                  title="Buscar dados pelo CNPJ"
+                  className="bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-gray-200 px-3 rounded-lg transition-all flex items-center justify-center flex-shrink-0"
+                >
+                  {buscandoCnpj ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
           </div>
           <div className="flex gap-2 justify-end">

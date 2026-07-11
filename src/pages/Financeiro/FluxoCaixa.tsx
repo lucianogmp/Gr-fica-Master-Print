@@ -190,7 +190,7 @@ export function FluxoCaixa() {
           </div>
           <div className="flex items-center gap-3">
             <input type="month" value={mesFx} onChange={e => setMesFx(e.target.value)}
-              className="bg-[#1f2937] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500" />
+              className="bg-[#1f2937] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500 min-w-[170px]" />
             <button
               onClick={() => setShowModal(true)}
               className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 shadow-lg shadow-blue-900/30"

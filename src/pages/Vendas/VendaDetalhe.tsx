@@ -271,7 +271,7 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
 
           {/* ── Linha 1: Dados da Venda + Status ── */}
           <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-4">
-            <div className="flex gap-4">
+            <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1 min-w-0 space-y-2.5">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -332,9 +332,10 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
                 </div>
               </div>
 
-              <div className="w-px bg-gray-700/60 flex-shrink-0" />
+              <div className="hidden sm:block w-px bg-gray-700/60 flex-shrink-0" />
+              <div className="sm:hidden h-px bg-gray-700/60" />
 
-              <div className="w-44 flex-shrink-0 flex flex-col">
+              <div className="w-full sm:w-44 flex-shrink-0 flex flex-col">
                 <p className="text-[10px] font-bold text-gray-500 uppercase mb-2 flex items-center gap-1">
                   <Settings className="w-3 h-3" /> Status
                 </p>
