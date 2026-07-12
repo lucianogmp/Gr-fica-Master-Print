@@ -1,6 +1,7 @@
 // src/pages/Financeiro/FluxoCaixa.tsx
 import { useState, useMemo } from 'react';
 import { useCaixaMovimentos } from '../../hooks/useCaixaMovimentos';
+import { useCaixaKpisDia } from '../../hooks/useCaixaKpisDia';
 import { useContasBancarias } from '../../hooks/useContasBancarias';
 import { useConfirm } from '../../components/ui/ConfirmModal';
 import { useRole } from '../../hooks/useRole';
@@ -27,6 +28,7 @@ const NOVO_MOV = {
 
 export function FluxoCaixa() {
   const { data: movimentos = [], isLoading, criar, deletar, isSaving } = useCaixaMovimentos();
+  const { data: kpisDia } = useCaixaKpisDia();
   const { data: contas = [] } = useContasBancarias();
   const { confirmar, ConfirmModal } = useConfirm();
   const { isVendedor } = useRole();
@@ -46,10 +48,8 @@ export function FluxoCaixa() {
   const saidas   = movDoMes.filter(m => m.tipo === 'saida').reduce((s, m) => s + Number(m.valor), 0);
   const saldo    = entradas - saidas;
 
-  const hoje         = new Date().toISOString().split('T')[0];
-  const movHoje       = movimentos.filter(m => (m.data ?? '') === hoje);
-  const entradasHoje  = movHoje.filter(m => m.tipo === 'entrada').reduce((s, m) => s + Number(m.valor), 0);
-  const saidasHoje    = movHoje.filter(m => m.tipo === 'saida').reduce((s, m) => s + Number(m.valor), 0);
+  const entradasHoje  = kpisDia?.entradas_hoje ?? 0;
+  const saidasHoje    = kpisDia?.saidas_hoje ?? 0;
 
   const porData = useMemo(() => {
     const map: Record<string, typeof movDoMes> = {};
@@ -209,16 +209,14 @@ export function FluxoCaixa() {
             color={entradasHoje - saidasHoje >= 0 ? 'text-blue-400' : 'text-red-400'} />
         </div>
 
-        {/* KPIs do mês — vendedor não vê essa seção, sem opção de revelar */}
+        {/* KPIs do mês + lista detalhada — vendedor não vê (só o agregado do dia acima) */}
         {!isVendedor && (
+          <>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <KpiCard label="Entradas no mês"  value={fmtBRL(entradas)} icon={ArrowUp}    color="text-green-400" />
             <KpiCard label="Saídas no mês"    value={fmtBRL(saidas)}   icon={ArrowDown}  color="text-red-400" />
             <KpiCard label="Saldo do mês"     value={fmtBRL(saldo)}    icon={Wallet}     color={saldo >= 0 ? 'text-blue-400' : 'text-red-400'} />
           </div>
-        )}
-
-        {/* Lista por data */}
         {datas.length === 0 ? (
           <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-12 text-center space-y-3">
             <Wallet className="w-10 h-10 text-gray-700 mx-auto" />
@@ -286,6 +284,8 @@ export function FluxoCaixa() {
               );
             })}
           </div>
+        )}
+          </>
         )}
       </div>
     </>

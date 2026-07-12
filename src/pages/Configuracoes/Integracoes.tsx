@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useConfiguracoes } from '../../hooks/useConfiguracoes';
 import { Configuracoes as ConfigType } from '../../types/configuracoes';
-import { Plug, Save, Check, ClipboardList, CreditCard } from 'lucide-react';
+import { Plug, Save, Check, CreditCard } from 'lucide-react';
 import { IN, Lbl, Section, Row, TokenField } from './utils';
 
 export function Integracoes() {
@@ -38,24 +38,6 @@ export function Integracoes() {
           {isSaving ? 'Salvando...' : dirty ? 'Salvar' : 'Salvo'}
         </button>
       </div>
-
-      <Section title="Trello" icon={ClipboardList}>
-        <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 text-xs text-blue-300">
-          O Trello é usado para sincronizar ordens de produção automaticamente quando uma venda entra em produção.
-        </div>
-        <TokenField label="API Key" nome="trello_api_key" />
-        <TokenField label="Token"   nome="trello_token" />
-        <div>
-          <Lbl>Board ID</Lbl>
-          <input value={txt('trello_board_id')} onChange={e => set('trello_board_id', e.target.value)} className={IN} />
-        </div>
-        <Row cols={2}>
-          <div><Lbl>Lista: Na Fila</Lbl><input value={txt('trello_list_fila')} onChange={e => set('trello_list_fila', e.target.value)} className={IN} /></div>
-          <div><Lbl>Lista: Imprimindo</Lbl><input value={txt('trello_list_imprimindo')} onChange={e => set('trello_list_imprimindo', e.target.value)} className={IN} /></div>
-          <div><Lbl>Lista: Acabamento</Lbl><input value={txt('trello_list_acabamento')} onChange={e => set('trello_list_acabamento', e.target.value)} className={IN} /></div>
-          <div><Lbl>Lista: Pronto</Lbl><input value={txt('trello_list_pronto')} onChange={e => set('trello_list_pronto', e.target.value)} className={IN} /></div>
-        </Row>
-      </Section>
 
       <Section title="Mercado Pago" icon={CreditCard}>
         <TokenField label="Access Token" nome="mp_access_token" />

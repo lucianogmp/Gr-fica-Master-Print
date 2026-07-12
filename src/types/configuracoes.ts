@@ -63,14 +63,6 @@ export interface Configuracoes {
   sistema_logo_url_dark?: string | null;
   tema_accent_color?: string | null;
   tema_modo?: string | null;
-  // Integrações — Trello
-  trello_api_key?: string | null;
-  trello_token?: string | null;
-  trello_board_id?: string | null;
-  trello_list_fila?: string | null;
-  trello_list_imprimindo?: string | null;
-  trello_list_acabamento?: string | null;
-  trello_list_pronto?: string | null;
   // Integrações — Mercado Pago
   mp_access_token?: string | null;
   mp_pix_chave?: string | null;

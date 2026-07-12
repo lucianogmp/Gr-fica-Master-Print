@@ -16,7 +16,7 @@ export interface OrdemProducao {
   prioridade: Prioridade | string;
   responsavel?: string | null;
   data_entrega?: string | null;
-  trello_card_id?: string | null;
+  entregue_em?: string | null;
   created_at?: string;
   updated_at?: string;
 }
