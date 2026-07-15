@@ -8,6 +8,7 @@ import {
   useRelatorioVendas, RelatorioVendasFiltros,
 } from '../../hooks/useRelatorios';
 import { STATUS_VENDA } from '../../types/venda';
+import { DateInput } from '../../components/ui/DateInput';
 import { TrendingUp, Download, Printer, AlertTriangle, Inbox } from 'lucide-react';
 
 const fmtBRL  = (v: number) => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -86,13 +87,13 @@ export function RelatorioVendas() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div>
               <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">De</label>
-              <input type="date" value={rascunho.data_inicio}
-                onChange={e => setRascunho(f => ({ ...f, data_inicio: e.target.value }))} className={IN + ' w-full'} />
+              <DateInput value={rascunho.data_inicio}
+                onChange={v => setRascunho(f => ({ ...f, data_inicio: v }))} className={IN + ' w-full'} />
             </div>
             <div>
               <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Até</label>
-              <input type="date" value={rascunho.data_fim}
-                onChange={e => setRascunho(f => ({ ...f, data_fim: e.target.value }))} className={IN + ' w-full'} />
+              <DateInput value={rascunho.data_fim}
+                onChange={v => setRascunho(f => ({ ...f, data_fim: v }))} className={IN + ' w-full'} />
             </div>
             <div>
               <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Status</label>

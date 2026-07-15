@@ -10,6 +10,7 @@ import {
   RelatorioVendasFiltros, RelatorioFinanceiroFiltros,
 } from '../hooks/useRelatorios';
 import { STATUS_VENDA } from '../types/venda';
+import { DateInput } from '../components/ui/DateInput';
 import { FileText, Download, Printer, TrendingUp, Landmark, AlertTriangle, Inbox } from 'lucide-react';
 
 const fmtBRL = (v: number) => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -227,11 +228,11 @@ export function Relatorios() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div>
                   <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">De</label>
-                  <input type="date" value={rascV.data_inicio} onChange={e => setRascV(f => ({ ...f, data_inicio: e.target.value }))} className={IN + ' w-full'} />
+                  <DateInput value={rascV.data_inicio} onChange={v => setRascV(f => ({ ...f, data_inicio: v }))} className={IN + ' w-full'} />
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Até</label>
-                  <input type="date" value={rascV.data_fim} onChange={e => setRascV(f => ({ ...f, data_fim: e.target.value }))} className={IN + ' w-full'} />
+                  <DateInput value={rascV.data_fim} onChange={v => setRascV(f => ({ ...f, data_fim: v }))} className={IN + ' w-full'} />
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Status</label>
@@ -382,11 +383,11 @@ export function Relatorios() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div>
                   <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">De</label>
-                  <input type="date" value={rascF.data_inicio} onChange={e => setRascF(f => ({ ...f, data_inicio: e.target.value }))} className={IN + ' w-full'} />
+                  <DateInput value={rascF.data_inicio} onChange={v => setRascF(f => ({ ...f, data_inicio: v }))} className={IN + ' w-full'} />
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Até</label>
-                  <input type="date" value={rascF.data_fim} onChange={e => setRascF(f => ({ ...f, data_fim: e.target.value }))} className={IN + ' w-full'} />
+                  <DateInput value={rascF.data_fim} onChange={v => setRascF(f => ({ ...f, data_fim: v }))} className={IN + ' w-full'} />
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Tipo</label>

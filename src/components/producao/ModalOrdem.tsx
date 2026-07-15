@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Modal } from '../ui/Modal';
+import { DateInput } from '../ui/DateInput';
 import { OrdemProducao, ETAPAS, PRIORIDADES } from '../../types/producao';
 import { Pencil, Plus } from 'lucide-react';
 
@@ -117,7 +118,7 @@ export function ModalOrdem({ open, editando, etapaInicial, onClose, onSalvar }: 
           </div>
           <div>
             <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Data de Entrega</label>
-            <input type="date" value={form.data_entrega} onChange={e => set('data_entrega', e.target.value)}
+            <DateInput value={form.data_entrega} onChange={v => set('data_entrega', v)}
               className={IN} />
           </div>
         </div>

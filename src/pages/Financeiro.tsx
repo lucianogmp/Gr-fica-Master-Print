@@ -31,6 +31,7 @@ import { VendedorSelector } from '../components/vendas/VendedorSelector';
 import { PainelFinanceiro } from '../components/vendas/PainelFinanceiro';
 import { KpiCard } from '../components/ui/KpiCard';
 import { useConfirm } from '../components/ui/ConfirmModal';
+import { DateInput } from '../components/ui/DateInput';
 import toast from 'react-hot-toast';
 import {
   Landmark, TrendingUp, TrendingDown, Clock, Banknote,
@@ -417,11 +418,11 @@ export function Financeiro() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Data da Venda</label>
-                      <input type="date" value={formVenda.data_venda ?? ''} onChange={e => setFV('data_venda', e.target.value)} className={IN} />
+                      <DateInput value={formVenda.data_venda} onChange={v => setFV('data_venda', v)} className={IN} />
                     </div>
                     <div>
                       <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Data de Entrega</label>
-                      <input type="date" value={formVenda.data_entrega ?? ''} onChange={e => setFV('data_entrega', e.target.value)} className={IN} />
+                      <DateInput value={formVenda.data_entrega} onChange={v => setFV('data_entrega', v)} className={IN} />
                     </div>
                   </div>
                   <VendedorSelector

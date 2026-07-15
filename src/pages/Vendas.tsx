@@ -11,6 +11,7 @@ import { ItensEditor } from '../components/vendas/ItensEditor';
 import { ClienteSelectorVenda } from '../components/vendas/ClienteSelectorVenda';
 import { VendedorSelector } from '../components/vendas/VendedorSelector';
 import { PainelFinanceiro } from '../components/vendas/PainelFinanceiro';
+import { DateInput } from '../components/ui/DateInput';
 import { KpiCard } from '../components/ui/KpiCard';
 import { useConfirm } from '../components/ui/ConfirmModal';
 import {
@@ -502,8 +503,8 @@ export function Vendas() {
                 <div className="grid grid-cols-4 gap-3">
                   <div>
                     <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Data da Venda</label>
-                    <input type="date" value={form.data_venda ?? ''}
-                      onChange={e => setF('data_venda', e.target.value)} className={IN} />
+                    <DateInput value={form.data_venda}
+                      onChange={v => setF('data_venda', v)} className={IN} />
                   </div>
                   <div>
                     <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1 flex items-center gap-1">
@@ -512,8 +513,8 @@ export function Vendas() {
                         <span className="text-[9px] text-blue-400 font-normal">({cfg.venda_prazo_entrega_dias}d)</span>
                       )}
                     </label>
-                    <input type="date" value={form.data_entrega ?? ''}
-                      onChange={e => setF('data_entrega', e.target.value)} className={IN} />
+                    <DateInput value={form.data_entrega}
+                      onChange={v => setF('data_entrega', v)} className={IN} />
                   </div>
                   <div>
                     <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Palavra-chave</label>

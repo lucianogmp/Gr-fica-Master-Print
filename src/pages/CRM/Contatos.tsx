@@ -6,6 +6,7 @@ import { Contato } from '../../types/contato';
 import { useConfirm } from '../../components/ui/ConfirmModal';
 import { PhoneCall, Plus, X, AlertCircle, Mail, MessageCircle, Building2, Pencil, Cake } from 'lucide-react';
 import { TableSkeleton } from '../../components/ui/Skeleton';
+import { DateInput } from '../../components/ui/DateInput';
 
 const NOVO = { cliente_id: '', nome: '', cargo: '', telefone: '', whatsapp: '', email: '', data_nascimento: '', observacoes: '' };
 const IN = "w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors";
@@ -152,7 +153,7 @@ export function Contatos() {
               </div>
               <div>
                 <label className={LABEL}>Data de Nascimento</label>
-                <input type="date" value={form.data_nascimento} onChange={e => setF('data_nascimento', e.target.value)} className={IN} />
+                <DateInput value={form.data_nascimento} onChange={v => setF('data_nascimento', v)} className={IN} />
               </div>
             </div>
             <div>

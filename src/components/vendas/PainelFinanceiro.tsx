@@ -1,8 +1,5 @@
 // src/components/vendas/PainelFinanceiro.tsx
-import { useState, useEffect, useRef } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '../../lib/supabase';
-import toast from 'react-hot-toast';
+import { useState } from 'react';
 import { PagamentoVenda } from '../../types/venda';
 import {
   Configuracoes,
@@ -13,6 +10,7 @@ import {
 } from '../../types/configuracoes';
 import { DollarSign, Plus, Trash2, CreditCard, Calendar, User, ChevronDown, ChevronUp } from 'lucide-react';
 import { MoneyInput } from '../ui/MoneyInput';
+import { DateInput } from '../ui/DateInput';
 
 const fmtBRL = (v: number | null | undefined) =>
   Number(v ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -47,7 +45,6 @@ interface Props {
   onFormaPagamentoChange: (v: string) => void;
   onRegistrarPagamento: (pag: Omit<PagamentoVenda, 'id' | 'created_at'>) => Promise<void>;
   onExcluirPagamento: (id: string, vendaId: string) => void;
-  onPrecisaSalvarPrimeiro?: () => void;
   isRegistrando?: boolean;
 }
 
@@ -58,55 +55,10 @@ export function PainelFinanceiro({
   subtotal, desconto, frete, taxaAdicional, parcelas, formaPagamento,
   valorPago, pagamentos, cfg, vendaId,
   onDescontoChange, onFreteChange, onTaxaChange, onParcelasChange,
-  onFormaPagamentoChange, onRegistrarPagamento, onExcluirPagamento, onPrecisaSalvarPrimeiro, isRegistrando,
+  onFormaPagamentoChange, onRegistrarPagamento, onExcluirPagamento, isRegistrando,
 }: Props) {
   const [showNovoPag, setShowNovoPag]     = useState(false);
   const [showHistorico, setShowHistorico] = useState(false);
-  const vendaIdAnterior = useRef(vendaId);
-  const qc = useQueryClient();
-
-  // Vencimento do saldo a receber — o pagamento nem sempre acontece no ato da
-  // venda, então o dono precisa poder escolher quando o cliente vai pagar
-  // (ex: na entrega), sem que o sistema marque como "atrasado" à toa.
-  const { data: lancamentoVinculado } = useQuery({
-    queryKey: ['lancamento-da-venda', vendaId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('lancamentos')
-        .select('id, data_vencimento, status')
-        .eq('venda_id', vendaId)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!vendaId && vendaId !== '__novo__',
-  });
-
-  const [vencimento, setVencimento] = useState('');
-  const [salvandoVencimento, setSalvandoVencimento] = useState(false);
-
-  useEffect(() => {
-    setVencimento(lancamentoVinculado?.data_vencimento ?? '');
-  }, [lancamentoVinculado?.data_vencimento]);
-
-  async function salvarVencimento() {
-    if (!lancamentoVinculado?.id || !vencimento) return;
-    setSalvandoVencimento(true);
-    try {
-      const { error } = await supabase
-        .from('lancamentos')
-        .update({ data_vencimento: vencimento })
-        .eq('id', lancamentoVinculado.id);
-      if (error) throw error;
-      toast.success('Data de pagamento atualizada.');
-      qc.invalidateQueries({ queryKey: ['lancamento-da-venda', vendaId] });
-      qc.invalidateQueries({ queryKey: ['lancamentos'] });
-    } catch (e: any) {
-      toast.error(e.message || 'Erro ao atualizar a data.');
-    } finally {
-      setSalvandoVencimento(false);
-    }
-  }
   const [novoPag, setNovoPag] = useState<{ valor: number; forma: string; data: string; obs: string; parcelas: number }>({
     valor: 0, forma: formaPagamento || 'PIX',
     data: new Date().toISOString().slice(0, 10), obs: '', parcelas: 1,
@@ -142,19 +94,6 @@ export function PainelFinanceiro({
   const valorRestante = Math.max(0, totalEfetivo - valorLiquidoPago);
   const quitado       = totalEfetivo > 0 && valorRestante <= 0.01;
   const pctPago       = totalEfetivo > 0 ? Math.min(100, (valorLiquidoPago / totalEfetivo) * 100) : 0;
-
-  // Se a venda acabou de ser salva (era nova, agora tem id real), abre o
-  // formulário de pagamento automaticamente — é o que o usuário já queria fazer.
-  useEffect(() => {
-    const eraNova = !vendaIdAnterior.current || vendaIdAnterior.current === '__novo__';
-    const agoraSalva = vendaId && vendaId !== '__novo__';
-    if (eraNova && agoraSalva) {
-      setShowNovoPag(true);
-      setNovoPag(prev => ({ ...prev, valor: valorRestante }));
-    }
-    vendaIdAnterior.current = vendaId;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [vendaId]);
 
   async function handleRegistrar() {
     if (!vendaId || !novoPag.valor) return;
@@ -242,24 +181,6 @@ export function PainelFinanceiro({
           )}
         </div>
 
-        {/* Data de pagamento do saldo — evita aviso de "atrasado" quando o cliente
-            combinou de pagar em outra data (ex: na entrega) */}
-        {lancamentoVinculado && lancamentoVinculado.status !== 'pago' && !quitado && (
-          <div className="flex items-center gap-1.5 flex-shrink-0">
-            <span className="text-[10px] text-gray-500 uppercase flex items-center gap-1">
-              <Calendar className="w-3 h-3" /> Cliente paga em
-            </span>
-            <input
-              type="date"
-              value={vencimento}
-              onChange={e => setVencimento(e.target.value)}
-              onBlur={() => vencimento !== (lancamentoVinculado.data_vencimento ?? '') && salvarVencimento()}
-              className="bg-[#111827] border border-gray-700 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500 [color-scheme:dark]"
-              disabled={salvandoVencimento}
-            />
-          </div>
-        )}
-
         {/* Histórico */}
         {pagamentos.length > 0 && (
           <button
@@ -283,20 +204,18 @@ export function PainelFinanceiro({
         </span>
 
         {/* Botão Registrar */}
-        <button
-          onClick={() => {
-            if (!vendaId || vendaId === '__novo__') {
-              onPrecisaSalvarPrimeiro?.();
-              return;
-            }
-            const abrindo = !showNovoPag;
-            setShowNovoPag(abrindo);
-            if (abrindo) setNovoPag(prev => ({ ...prev, valor: valorRestante }));
-          }}
-          className="flex items-center gap-1 text-[10px] font-bold px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white rounded-lg transition-all flex-shrink-0"
-        >
-          <Plus className="w-3 h-3" /> Registrar
-        </button>
+        {vendaId && vendaId !== '__novo__' && (
+          <button
+            onClick={() => {
+              const abrindo = !showNovoPag;
+              setShowNovoPag(abrindo);
+              if (abrindo) setNovoPag(prev => ({ ...prev, valor: valorRestante.toFixed(2) }));
+            }}
+            className="flex items-center gap-1 text-[10px] font-bold px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white rounded-lg transition-all flex-shrink-0"
+          >
+            <Plus className="w-3 h-3" /> Registrar
+          </button>
+        )}
       </div>
 
       {/* Barra de progresso */}
@@ -361,8 +280,8 @@ export function PainelFinanceiro({
             </div>
             <div>
               <label className="text-[10px] text-gray-500 uppercase block mb-1">Data</label>
-              <input type="date" value={novoPag.data}
-                onChange={e => setNovoPag(f => ({ ...f, data: e.target.value }))}
+              <DateInput value={novoPag.data}
+                onChange={v => setNovoPag(f => ({ ...f, data: v }))}
                 className={IN} />
             </div>
             <div>

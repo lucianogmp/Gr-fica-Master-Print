@@ -3,6 +3,7 @@ import { Modal } from '../ui/Modal';
 import { Lancamento, CATEGORIAS_RECEITA, CATEGORIAS_DESPESA, FORMAS_PAGAMENTO } from '../../types/financeiro';
 import { Pencil, Plus, ArrowUp, ArrowDown } from 'lucide-react';
 import { MoneyInput } from '../ui/MoneyInput';
+import { DateInput } from '../ui/DateInput';
 
 const IN = "w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors";
 
@@ -145,7 +146,7 @@ export function ModalLancamento({ open, editando, tipoInicial, onClose, onSalvar
           </div>
           <div>
             <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Vencimento</label>
-            <input type="date" value={form.data_vencimento} onChange={e => set('data_vencimento', e.target.value)} className={IN} />
+            <DateInput value={form.data_vencimento} onChange={v => set('data_vencimento', v)} className={IN} />
           </div>
         </div>
 

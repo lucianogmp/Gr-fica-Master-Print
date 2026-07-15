@@ -7,6 +7,7 @@ import { useConfirm } from '../../components/ui/ConfirmModal';
 import { useRole } from '../../hooks/useRole';
 import { KpiCard } from '../../components/ui/KpiCard';
 import { MoneyInput } from '../../components/ui/MoneyInput';
+import { DateInput } from '../../components/ui/DateInput';
 import {
   TrendingUp, ArrowUp, ArrowDown, Wallet,
   Plus, X, Save,
@@ -136,8 +137,8 @@ export function FluxoCaixa() {
                 </div>
                 <div>
                   <label className={LABEL}>Data</label>
-                  <input type="date" value={form.data}
-                    onChange={e => setF('data', e.target.value)} className={IN} />
+                  <DateInput value={form.data}
+                    onChange={v => setF('data', v)} className={IN} />
                 </div>
               </div>
 

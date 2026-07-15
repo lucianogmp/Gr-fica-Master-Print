@@ -5,6 +5,7 @@
 import { useState } from 'react';
 import { useAuditLog, AuditFiltros, AUDIT_TABELAS } from '../hooks/useAuditLog';
 import { ShieldCheck, ChevronDown, ChevronRight, Search } from 'lucide-react';
+import { DateInput } from '../components/ui/DateInput';
 
 const fmtDT = (d: string) =>
   new Date(d).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
@@ -178,11 +179,11 @@ export function AuditLog() {
           </div>
           <div>
             <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">De</label>
-            <input type="date" value={rascunho.data_inicio ?? ''} onChange={e => setF('data_inicio', e.target.value)} className={IN + ' w-full'} />
+            <DateInput value={rascunho.data_inicio} onChange={v => setF('data_inicio', v)} className={IN + ' w-full'} />
           </div>
           <div>
             <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Até</label>
-            <input type="date" value={rascunho.data_fim ?? ''} onChange={e => setF('data_fim', e.target.value)} className={IN + ' w-full'} />
+            <DateInput value={rascunho.data_fim} onChange={v => setF('data_fim', v)} className={IN + ' w-full'} />
           </div>
         </div>
         <div className="flex gap-2 mt-3 justify-end">

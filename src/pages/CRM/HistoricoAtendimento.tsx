@@ -8,6 +8,7 @@ import { TipoAtendimento, TIPO_ATENDIMENTO } from '../../types/atendimento';
 import { useConfirm } from '../../components/ui/ConfirmModal';
 import { MessageSquare, Plus, X, AlertCircle, Phone, Mail, MapPin, Users2, UserPlus } from 'lucide-react';
 import { TableSkeleton } from '../../components/ui/Skeleton';
+import { DateInput } from '../../components/ui/DateInput';
 
 const NOVO = {
   alvo: '',          // formato "cliente:<id>" ou "lead:<id>"
@@ -128,7 +129,7 @@ export function HistoricoAtendimento() {
               </div>
               <div>
                 <label className={LABEL}>Data</label>
-                <input type="date" value={form.data_atendimento} onChange={e => setF('data_atendimento', e.target.value)} className={IN} />
+                <DateInput value={form.data_atendimento} onChange={v => setF('data_atendimento', v)} className={IN} />
               </div>
             </div>
             <div>

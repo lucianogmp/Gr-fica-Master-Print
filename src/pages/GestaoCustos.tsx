@@ -4,6 +4,7 @@ import { useGestaoCustos } from '../hooks/useGestaoCustos';
 import { Modal } from '../components/ui/Modal';
 import { KpiCard } from '../components/ui/KpiCard';
 import { MoneyInput } from '../components/ui/MoneyInput';
+import { DateInput } from '../components/ui/DateInput';
 import {
   TrendingDown, Building2, DollarSign, Timer, BarChart3, Plus, type LucideIcon,
 } from 'lucide-react';
@@ -289,7 +290,7 @@ export function GestaoCustos() {
             <div><label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Categoria</label>
               <input value={formDepr.categoria} onChange={e => setFormDepr(f => ({ ...f, categoria: e.target.value }))} className={IN} placeholder="Ex: Equipamento" /></div>
             <div><label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Data de aquisição</label>
-              <input type="date" value={formDepr.data_aquisicao} onChange={e => setFormDepr(f => ({ ...f, data_aquisicao: e.target.value }))} className={IN} /></div>
+              <DateInput value={formDepr.data_aquisicao} onChange={v => setFormDepr(f => ({ ...f, data_aquisicao: v }))} className={IN} /></div>
           </div>
         </div>
       </Modal>

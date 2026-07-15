@@ -5,6 +5,7 @@ import { useGestaoCustos } from '../../hooks/useGestaoCustos';
 import { useConfirm } from '../../components/ui/ConfirmModal';
 import { KpiCard } from '../../components/ui/KpiCard';
 import { MoneyInput } from '../../components/ui/MoneyInput';
+import { DateInput } from '../../components/ui/DateInput';
 import { TrendingDown, Plus, X, Pencil, Timer } from 'lucide-react';
 
 const fmtBRL = (v: number) => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -131,7 +132,7 @@ export function Depreciacao() {
               </div>
               <div>
                 <label className={LABEL}>Data de aquisição</label>
-                <input type="date" value={form.data_aquisicao} onChange={e => setF('data_aquisicao', e.target.value)}
+                <DateInput value={form.data_aquisicao} onChange={v => setF('data_aquisicao', v)}
                   className={IN} />
               </div>
               {form.valor && form.vida_util_anos && (
