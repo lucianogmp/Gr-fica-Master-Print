@@ -105,15 +105,18 @@ export function useOrcamentos() {
 
   const converterEmVenda = useMutation({
     mutationFn: async ({ orc, itens }: { orc: Orcamento; itens: OrcamentoItem[] }) => {
-      // 1. Cria a venda
+      // 1. Cria a venda — já direto em "produção", pois "aprovado" agora é um
+      // status exclusivo do fluxo de Orçamentos, não de Vendas.
       const { data: venda, error: vErr } = await supabase
         .from('vendas')
         .insert({
           cliente_nome: orc.cliente_nome,
-          status:       'aprovado',
+          status:       'producao',
           desconto:     orc.desconto ?? 0,
           observacoes:  orc.observacoes,
           valor_total:  orc.total ?? 0,
+          orcamento_origem_id:     orc.id,
+          orcamento_origem_numero: orc.numero ?? null,
           data_venda:   new Date().toISOString().split('T')[0],
         })
         .select()
@@ -121,6 +124,21 @@ export function useOrcamentos() {
       if (vErr) throw vErr;
 
       const vendaId = (venda as any).id;
+
+      // 1b. Cria a ordem de produção automaticamente, já que a venda nasce em produção.
+      try {
+        await supabase.from('producao').insert({
+          titulo:       `Venda #${(venda as any).numero ?? ''} — ${orc.cliente_nome}`,
+          descricao:    orc.observacoes ?? null,
+          etapa:        'fila',
+          prioridade:   'normal',
+          responsavel:  null,
+          data_entrega: null,
+          venda_id:     vendaId,
+        });
+      } catch (e) {
+        console.warn('Aviso: falha ao criar OP automática na conversão', e);
+      }
 
       // 2. Salva itens da venda — propaga produto_id vindo do item do orçamento
       const itensMapeados = itens.map(i => ({

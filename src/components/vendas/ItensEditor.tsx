@@ -15,6 +15,10 @@ const IN = [
   'transition-colors', 'w-full', '[color-scheme:dark]',
 ].join(' ');
 
+// Remove as setinhas nativas de incremento do input number — elas comem espaço
+// dos dígitos e fazem números maiores (ex: 1000) ficarem escondidos.
+const IN_NUM = IN + ' [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none';
+
 interface ItensEditorProps {
   itens: VendaItem[];
   onChange: (itens: VendaItem[]) => void;
@@ -182,14 +186,14 @@ export function ItensEditor({ itens, onChange }: ItensEditorProps) {
       {/* ── Tabela de itens ── */}
       {itens.length > 0 && (
         <div className="overflow-x-auto rounded-xl border border-gray-700">
-          <table className="w-full" style={{ minWidth: 860 }}>
+          <table className="w-full" style={{ minWidth: 920 }}>
             <thead>
               <tr className="text-[10px] font-bold text-gray-400 uppercase bg-gray-800/50 border-b border-gray-700">
                 <th className="px-3 py-2 text-left">Descrição</th>
                 <th className="px-2 py-2 text-center" style={{ width: 80 }}>Un.</th>
-                <th className="px-2 py-2 text-center" style={{ width: 100 }}>Qtd.</th>
-                <th className="px-2 py-2 text-center" style={{ width: 150 }}>Preço Unit.</th>
-                <th className="px-2 py-2 text-center" style={{ width: 100 }}>Desc.%</th>
+                <th className="px-2 py-2 text-center" style={{ width: 130 }}>Qtd.</th>
+                <th className="px-2 py-2 text-center" style={{ width: 170 }}>Preço Unit.</th>
+                <th className="px-2 py-2 text-center" style={{ width: 120 }}>Desc.%</th>
                 <th className="px-3 py-2 text-right" style={{ width: 150 }}>Total</th>
                 <th className="px-2 py-2 text-center" style={{ width: 36 }}></th>
               </tr>
@@ -205,7 +209,7 @@ export function ItensEditor({ itens, onChange }: ItensEditorProps) {
                   </td>
                   <td className="px-1.5 py-1.5">
                     <input type="number" min="0.001" step="0.001" value={it.quantidade}
-                      onChange={e => atualizarItem(i, 'quantidade', parseFloat(e.target.value) || 0)} className={IN + ' text-center'} />
+                      onChange={e => atualizarItem(i, 'quantidade', parseFloat(e.target.value) || 0)} className={IN_NUM + ' text-center'} />
                   </td>
                   <td className="px-1.5 py-1.5">
                     <MoneyInput value={it.preco_unitario}
@@ -213,7 +217,7 @@ export function ItensEditor({ itens, onChange }: ItensEditorProps) {
                   </td>
                   <td className="px-1.5 py-1.5">
                     <input type="number" min="0" max="100" step="0.1" value={it.desconto ?? 0}
-                      onChange={e => atualizarItem(i, 'desconto', parseFloat(e.target.value) || 0)} className={IN + ' text-center'} />
+                      onChange={e => atualizarItem(i, 'desconto', parseFloat(e.target.value) || 0)} className={IN_NUM + ' text-center'} />
                   </td>
                   <td className="px-3 py-1.5 text-right font-bold text-white text-sm whitespace-nowrap">
                     {fmtBRL(it.total)}
@@ -249,11 +253,11 @@ export function ItensEditor({ itens, onChange }: ItensEditorProps) {
               onChange={e => setNovoItem(f => ({ ...f, unidade: e.target.value }))}
               className={IN + ' text-center'} />
           </div>
-          <div style={{ width: 96 }}>
+          <div style={{ width: 110 }}>
             <label className="text-[9px] text-gray-600 uppercase block mb-1">Qtd.</label>
             <input type="number" min="0.001" step="0.001" value={novoItem.quantidade}
               onChange={e => setNovoItem(f => ({ ...f, quantidade: parseFloat(e.target.value) || 1 }))}
-              className={IN + ' text-center'} />
+              className={IN_NUM + ' text-center'} />
           </div>
           <div style={{ width: 140 }}>
             <label className="text-[9px] text-gray-600 uppercase block mb-1">Preço Unit. *</label>
@@ -261,11 +265,11 @@ export function ItensEditor({ itens, onChange }: ItensEditorProps) {
               onChange={v => setNovoItem(f => ({ ...f, preco_unitario: v }))}
               placeholder="0,00" className={IN + ' text-right'} />
           </div>
-          <div style={{ width: 88 }}>
+          <div style={{ width: 100 }}>
             <label className="text-[9px] text-gray-600 uppercase block mb-1">Desc.%</label>
             <input type="number" min="0" max="100" step="0.1" value={novoItem.desconto || ''}
               onChange={e => setNovoItem(f => ({ ...f, desconto: parseFloat(e.target.value) || 0 }))}
-              placeholder="0" className={IN + ' text-center'} />
+              placeholder="0" className={IN_NUM + ' text-center'} />
           </div>
           <button onClick={adicionarItem}
             disabled={!novoItem.descricao.trim() || novoItem.preco_unitario <= 0}

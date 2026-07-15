@@ -31,22 +31,14 @@ export interface Configuracoes {
   empresa_logo_url?: string | null;
   empresa_rodape?: string | null;
   // Precificação
-  prec_horas_mes?: number | null;
-  prec_margem_minima?: number | null;
-  prec_margem_ideal?: number | null;
   prec_margem_premium?: number | null;
-  prec_desconto_max?: number | null;
-  prec_min_pedido?: number | null;
   prec_taxa_arte?: number | null;
   prec_taxa_urgencia?: number | null;
   prec_taxa_instalacao?: number | null;
   prec_depreciacao_mensal?: number | null;
   prec_energia_hora?: number | null;
   // Orçamentos
-  orc_prefixo?: string | null;
-  orc_numero_inicial?: number | null;
   orc_validade_dias?: number | null;
-  orc_prazo_producao?: number | null;
   orc_obs_padrao?: string | null;
   orc_garantia?: string | null;
   orc_rodape?: string | null;
@@ -58,10 +50,8 @@ export interface Configuracoes {
   venda_juros_parcela?: number | null;
   formas_pagamento?: FormasPagamentoConfig[] | null;
   // Sistema
-  sistema_nome?: string | null;
   sistema_logo_url?: string | null;
   sistema_logo_url_dark?: string | null;
-  tema_accent_color?: string | null;
   tema_modo?: string | null;
   // Integrações — Mercado Pago
   mp_access_token?: string | null;
@@ -69,8 +59,6 @@ export interface Configuracoes {
   mp_webhook_url?: string | null;
   layout_impressao_venda?: LayoutImpressaoConfig | null;
   layout_impressao_orcamento?: LayoutImpressaoConfig | null;
-  // Segurança
-  seg_tempo_sessao?: number | null;
   updated_at?: string;
 }
 

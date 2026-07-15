@@ -4,6 +4,7 @@
 // Busca por nome, telefone e CPF/CNPJ com debounce de 300ms.
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 import { ArrowRight, UserPlus, Search, Loader2 } from 'lucide-react';
@@ -33,7 +34,9 @@ export function ClienteSelectorVenda({ value, clienteId, onChange, hideLabel }: 
   const [salvando, setSalvando]   = useState(false);
   const [buscandoCnpj, setBuscandoCnpj] = useState(false);
   const [carregando, setCarregando] = useState(false);
+  const [dropRect, setDropRect]   = useState<DOMRect | null>(null);
   const wrapRef  = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -49,6 +52,10 @@ export function ClienteSelectorVenda({ value, clienteId, onChange, hideLabel }: 
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
+  function atualizarRect() {
+    if (inputRef.current) setDropRect(inputRef.current.getBoundingClientRect());
+  }
+
   const pesquisar = useCallback((q: string) => {
     setBusca(q);
     onChange(q, null); // limpa o id ao digitar
@@ -58,6 +65,7 @@ export function ClienteSelectorVenda({ value, clienteId, onChange, hideLabel }: 
 
     timerRef.current = setTimeout(async () => {
       setCarregando(true);
+      atualizarRect();
       try {
         // Busca por nome, telefone ou CPF/CNPJ
         const { data } = await supabase
@@ -135,19 +143,81 @@ export function ClienteSelectorVenda({ value, clienteId, onChange, hideLabel }: 
 
   const IN = "w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors";
 
+  // Portal: renderiza direto no document.body, com position:fixed baseado na
+  // posição real do input na tela. Assim o dropdown nunca fica "atrás" de
+  // outros campos do formulário, não importa onde este componente é usado.
+  const dropdownLista = aberto && opcoes.length > 0 && dropRect ? createPortal(
+    <div
+      style={{
+        position: 'fixed',
+        top: dropRect.bottom + 4,
+        left: dropRect.left,
+        width: dropRect.width,
+        zIndex: 99999,
+        backgroundColor: '#0f1824',
+        border: '1px solid #374151',
+        borderRadius: 12,
+        boxShadow: '0 20px 60px rgba(0,0,0,0.85)',
+        overflow: 'hidden',
+        maxHeight: 320,
+        overflowY: 'auto',
+      }}
+    >
+      {opcoes.map((c, idx) => (
+        <button
+          key={c.id}
+          onMouseDown={e => { e.preventDefault(); selecionar(c); }}
+          style={{
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '10px 16px',
+            backgroundColor: 'transparent',
+            borderBottom: idx < opcoes.length - 1 ? '1px solid #1f2937' : 'none',
+            cursor: 'pointer',
+            textAlign: 'left',
+          }}
+          className="hover:bg-blue-900/20 transition-colors"
+        >
+          <div>
+            <p style={{ color: '#fff', fontSize: 14, fontWeight: 600, margin: 0 }}>
+              {c.nome}
+            </p>
+            <p style={{ color: '#9ca3af', fontSize: 11, margin: '2px 0 0' }}>
+              {[c.telefone, c.email, c.cpf_cnpj].filter(Boolean).join(' · ') || 'Sem contato'}
+            </p>
+          </div>
+          <ArrowRight style={{ width: 14, height: 14, color: '#6b7280', flexShrink: 0 }} />
+        </button>
+      ))}
+    </div>,
+    document.body
+  ) : null;
+
+  const dropdownCarregando = aberto && carregando && dropRect ? createPortal(
+    <div style={{
+      position: 'fixed', top: dropRect.bottom + 4, left: dropRect.left, width: dropRect.width, zIndex: 99999,
+      backgroundColor: '#0f1824', border: '1px solid #374151', borderRadius: 12,
+      padding: '12px 16px', color: '#9ca3af', fontSize: 12,
+    }}>
+      Buscando...
+    </div>,
+    document.body
+  ) : null;
+
   return (
     <div ref={wrapRef} className="space-y-1.5">
       {!hideLabel && <label className="text-xs font-bold text-gray-400 uppercase block">Cliente *</label>}
 
       <div className="flex gap-2">
         <div className="relative flex-1">
-          {/* Ícone de busca */}
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500 pointer-events-none z-10" />
           <input
+            ref={inputRef}
             value={busca}
             onChange={e => pesquisar(e.target.value)}
-            onFocus={() => busca.length > 0 && opcoes.length > 0 && setAberto(true)}
-            className="w-full bg-[#111827] border border-gray-700 rounded-lg pl-9 pr-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors"
+            onFocus={() => { if (busca.length > 0 && opcoes.length > 0) { atualizarRect(); setAberto(true); } }}
+            className="w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors"
             placeholder="Buscar por nome, telefone ou CPF/CNPJ..."
             autoComplete="off"
           />
@@ -159,66 +229,11 @@ export function ClienteSelectorVenda({ value, clienteId, onChange, hideLabel }: 
             </span>
           )}
 
-          {/* Dropdown */}
-          {aberto && opcoes.length > 0 && (
-            <div
-              style={{
-                position: 'absolute',
-                top: '100%',
-                left: 0,
-                right: 0,
-                marginTop: 4,
-                zIndex: 9999,
-                backgroundColor: '#0f1824',
-                border: '1px solid #374151',
-                borderRadius: 12,
-                boxShadow: '0 20px 60px rgba(0,0,0,0.8)',
-                overflow: 'hidden',
-                backdropFilter: 'none',
-                WebkitBackdropFilter: 'none',
-              }}
-            >
-              {opcoes.map((c, idx) => (
-                <button
-                  key={c.id}
-                  onMouseDown={e => { e.preventDefault(); selecionar(c); }}
-                  style={{
-                    width: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '10px 16px',
-                    backgroundColor: 'transparent',
-                    borderBottom: idx < opcoes.length - 1 ? '1px solid #1f2937' : 'none',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                  }}
-                  className="hover:bg-blue-900/20 transition-colors"
-                >
-                  <div>
-                    <p style={{ color: '#fff', fontSize: 14, fontWeight: 600, margin: 0 }}>
-                      {c.nome}
-                    </p>
-                    <p style={{ color: '#9ca3af', fontSize: 11, margin: '2px 0 0' }}>
-                      {[c.telefone, c.email, c.cpf_cnpj].filter(Boolean).join(' · ') || 'Sem contato'}
-                    </p>
-                  </div>
-                  <ArrowRight style={{ width: 14, height: 14, color: '#6b7280', flexShrink: 0 }} />
-                </button>
-              ))}
-            </div>
-          )}
-
-          {aberto && carregando && (
-            <div style={{
-              position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, zIndex: 9999,
-              backgroundColor: '#0f1824', border: '1px solid #374151', borderRadius: 12,
-              padding: '12px 16px', color: '#9ca3af', fontSize: 12,
-            }}>
-              Buscando...
-            </div>
-          )}
+          {/* Dropdown e "Buscando..." agora renderizam via portal, logo abaixo do componente */}
         </div>
+
+        {dropdownLista}
+        {dropdownCarregando}
 
         <button
           onClick={() => { setShowNovo(!showNovo); setNovoForm(f => ({ ...f, nome: busca })); }}

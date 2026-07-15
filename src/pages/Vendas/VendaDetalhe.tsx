@@ -3,7 +3,9 @@
 // Usado por: Vendas/Nova.tsx (criar) e reaproveitado via navegação /vendas/nova/:id (editar)
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { useVendas, useVendaItens } from '../../hooks/useVendas';
+import { useClientes } from '../../hooks/useClientes';
 import { usePagamentosVenda } from '../../hooks/usePagamentosVenda';
 import { useConfiguracoes } from '../../hooks/useConfiguracoes';
 import { useProducao } from '../../hooks/useProducao';
@@ -14,7 +16,7 @@ import { VendedorSelector } from '../../components/vendas/VendedorSelector';
 import { PainelFinanceiro } from '../../components/vendas/PainelFinanceiro';
 import { useConfirm } from '../../components/ui/ConfirmModal';
 import {
-  ArrowLeft, Save, Package, Settings, Printer, Calendar, AlertTriangle,
+  ArrowLeft, Save, Package, Settings, Printer, Calendar, AlertTriangle, FileCheck2,
 } from 'lucide-react';
 import { DocumentoImpressaoData } from '../../components/impressao/DocumentoImpressao';
 import { imprimirDocumento } from '../../components/impressao/imprimirDocumento';
@@ -23,9 +25,10 @@ import { DEFAULT_LAYOUT_VENDA } from '../../types/layoutImpressao';
 const IN = "w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors";
 
 const NOVA_VENDA = {
+  numero:          null as number | null,
   cliente_nome:    '',
   cliente_id:      null as string | null,
-  status:          'orcamento' as StatusVenda,
+  status:          'producao' as StatusVenda,
   desconto:        0,
   frete:           0,
   taxa_adicional:  0,
@@ -55,6 +58,7 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
   const navigate = useNavigate();
 
   const { data: vendas = [], criar, atualizar, atualizarStatus, isSaving } = useVendas();
+  const { data: clientes = [] } = useClientes();
   const { data: cfg } = useConfiguracoes();
   const { criar: criarOP } = useProducao();
   const { confirmar, ConfirmModal } = useConfirm();
@@ -88,6 +92,7 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
     const v = vendas.find(x => x.id === vendaId);
     if (v) {
       setForm({
+        numero:          v.numero ?? null,
         cliente_nome:    v.cliente_nome,
         cliente_id:      (v as any).cliente_id ?? null,
         status:          v.status,
@@ -175,12 +180,25 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
 
   const layoutVenda = { ...DEFAULT_LAYOUT_VENDA, ...(cfg?.layout_impressao_venda ?? {}) };
 
+  const clienteSelecionado = form.cliente_id ? clientes.find(c => c.id === form.cliente_id) : null;
+  const clienteEnderecoFmt = clienteSelecionado
+    ? [
+        [clienteSelecionado.endereco, clienteSelecionado.numero].filter(Boolean).join(', '),
+        clienteSelecionado.bairro,
+        [clienteSelecionado.cidade, clienteSelecionado.estado].filter(Boolean).join('/'),
+      ].filter(Boolean).join(' - ')
+    : null;
+
   const docImpressaoVenda: DocumentoImpressaoData = {
     tipo: 'venda',
-    numero: (form as any).numero ?? null,
+    numero: form.numero ?? null,
     data: form.data_venda ?? null,
     dataEntrega: form.data_entrega ?? null,
     clienteNome: form.cliente_nome,
+    clienteTelefone: clienteSelecionado?.telefone ?? null,
+    clienteEmail: clienteSelecionado?.email ?? null,
+    clienteEndereco: clienteEnderecoFmt || null,
+    vendedorNome: form.vendedor || null,
     itens: itens.map(i => ({
       descricao: i.descricao,
       quantidade: Number(i.quantidade),
@@ -197,7 +215,7 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
     observacoes: form.observacoes,
   };
 
-  async function handleSalvar() {
+  async function salvar(opts?: { manterNaTela?: boolean }) {
     const payload = {
       cliente_nome:    form.cliente_nome,
       cliente_id:      form.cliente_id,
@@ -221,11 +239,42 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
     };
 
     if (isNovo) {
-      await criar({ venda: payload as any, itens });
+      const vendaSalva = await criar({ venda: payload as any, itens });
+      if (vendaSalva && payload.status === 'producao') {
+        try {
+          await criarOP({
+            titulo:       `Venda #${(vendaSalva as any).numero ?? ''} — ${payload.cliente_nome}`,
+            descricao:    payload.observacoes ?? null,
+            etapa:        'fila',
+            prioridade:   'normal',
+            responsavel:  null,
+            data_entrega: payload.data_entrega ?? null,
+            venda_id:     (vendaSalva as any).id,
+          } as any);
+        } catch (e) {
+          console.warn('Aviso: falha ao criar OP automática', e);
+        }
+      }
+      if (opts?.manterNaTela && vendaSalva) {
+        navigate(`/vendas/nova/${(vendaSalva as any).id}`, { replace: true });
+        return;
+      }
     } else if (vendaId) {
       await atualizar({ id: vendaId, payload: payload as any, itens });
     }
-    fechar();
+    if (!opts?.manterNaTela) fechar();
+  }
+
+  async function handleSalvar() {
+    await salvar();
+  }
+
+  async function handlePrecisaSalvarPrimeiro() {
+    if (!form.cliente_nome.trim()) {
+      toast.error('Preencha o cliente antes de registrar um pagamento.');
+      return;
+    }
+    await salvar({ manterNaTela: true });
   }
 
   return (
@@ -242,11 +291,17 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
             <h1 className="text-xl font-black text-white truncate">
               {isNovo
                 ? 'Nova Venda'
-                : `Venda ${(form as any).numero ? `#${(form as any).numero}` : ''} — ${form.cliente_nome || 'Editar'}`}
+                : `Venda ${form.numero ? `#${form.numero}` : ''} — ${form.cliente_nome || 'Editar'}`}
             </h1>
             <p className="text-gray-500 text-sm">
               {isNovo ? 'Preencha os dados e salve' : 'Edite e salve as alterações'}
             </p>
+            {!isNovo && (vendas.find(x => x.id === vendaId)?.orcamento_origem_numero) && (
+              <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/20">
+                <FileCheck2 className="w-3 h-3" />
+                Convertido do Orçamento #{vendas.find(x => x.id === vendaId)?.orcamento_origem_numero}
+              </span>
+            )}
           </div>
           <div className="flex gap-2 flex-wrap">
             {!isNovo && (
@@ -293,7 +348,7 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Data da Venda</label>
                     <input type="date" value={form.data_venda ?? ''}
@@ -308,18 +363,6 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
                     </label>
                     <input type="date" value={form.data_entrega ?? ''}
                       onChange={e => setF('data_entrega', e.target.value)} className={IN} />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Palavra-chave</label>
-                    <input value={form.palavra_chave ?? ''}
-                      onChange={e => setF('palavra_chave', e.target.value)}
-                      className={IN} placeholder="Tag busca rápida" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Tipo</label>
-                    <input value={form.tipo ?? ''}
-                      onChange={e => setF('tipo', e.target.value)}
-                      className={IN} placeholder="Categoria" />
                   </div>
                 </div>
 
@@ -340,7 +383,9 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
                   <Settings className="w-3 h-3" /> Status
                 </p>
                 <div className="space-y-1 flex-1">
-                  {Object.entries(STATUS_VENDA).map(([k, v]) => (
+                  {Object.entries(STATUS_VENDA)
+                    .filter(([k]) => ['producao', 'pronto', 'entregue', 'cancelado'].includes(k))
+                    .map(([k, v]) => (
                     <button
                       key={k}
                       onClick={() => handleMudarStatus(k as StatusVenda)}
@@ -396,6 +441,7 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
             onFormaPagamentoChange={v => setF('forma_pagamento', v)}
             onRegistrarPagamento={registrarPagamento}
             onExcluirPagamento={excluirPagamento}
+            onPrecisaSalvarPrimeiro={handlePrecisaSalvarPrimeiro}
             isRegistrando={isRegistrando}
           />
         </div>

@@ -1,0 +1,210 @@
+// src/components/ui/DateInput.tsx
+//
+// Campo de data com calendário próprio, no visual do sistema — substitui o
+// <input type="date"> nativo do navegador (que abre o seletor cinza do
+// Chrome/SO e não segue o tema escuro do app).
+//
+// Uso: igual a um <input type="date">. value/onChange trabalham com string
+// no formato "YYYY-MM-DD" (mesmo formato que o banco/Supabase já usa).
+//
+//   <DateInput value={form.data_venda} onChange={v => setF('data_venda', v)} className={IN} />
+
+import { useEffect, useRef, useState } from 'react';
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+
+const DIAS_SEMANA = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+const MESES = [
+  'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+  'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro',
+];
+
+/** Parseia "YYYY-MM-DD" como data LOCAL (evita o bug de fuso do `new Date(string)`). */
+function parseISO(iso?: string | null): Date | null {
+  if (!iso) return null;
+  const [y, m, d] = iso.split('-').map(Number);
+  if (!y || !m || !d) return null;
+  return new Date(y, m - 1, d);
+}
+
+function toISO(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function mesmoDia(a: Date | null, b: Date | null): boolean {
+  if (!a || !b) return false;
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+interface DateInputProps {
+  /** Valor no formato ISO "YYYY-MM-DD" (mesmo que type="date" nativo). */
+  value: string | null | undefined;
+  onChange: (valorISO: string) => void;
+  className?: string;
+  placeholder?: string;
+  disabled?: boolean;
+  required?: boolean;
+  id?: string;
+  name?: string;
+  /** Alinhamento do popover em relação ao campo. Padrão: 'left'. */
+  align?: 'left' | 'right';
+}
+
+export function DateInput({
+  value, onChange, className, placeholder = 'dd/mm/aaaa', disabled, required, id, name, align = 'left',
+}: DateInputProps) {
+  const [aberto, setAberto] = useState(false);
+  const selecionado = parseISO(value);
+  const [mesVisivel, setMesVisivel] = useState<Date>(selecionado ?? new Date());
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  // Fecha ao clicar fora ou apertar Esc
+  useEffect(() => {
+    if (!aberto) return;
+    function onClickFora(e: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) setAberto(false);
+    }
+    function onEsc(e: KeyboardEvent) {
+      if (e.key === 'Escape') setAberto(false);
+    }
+    document.addEventListener('mousedown', onClickFora);
+    document.addEventListener('keydown', onEsc);
+    return () => {
+      document.removeEventListener('mousedown', onClickFora);
+      document.removeEventListener('keydown', onEsc);
+    };
+  }, [aberto]);
+
+  // Sincroniza o mês visível quando o valor muda por fora
+  useEffect(() => {
+    if (selecionado) setMesVisivel(selecionado);
+  }, [value]);
+
+  function abrir() {
+    if (disabled) return;
+    setMesVisivel(selecionado ?? new Date());
+    setAberto(true);
+  }
+
+  function selecionar(d: Date) {
+    onChange(toISO(d));
+    setAberto(false);
+  }
+
+  const hoje = new Date();
+  const ano = mesVisivel.getFullYear();
+  const mes = mesVisivel.getMonth();
+  const primeiroDiaSemana = new Date(ano, mes, 1).getDay();
+  const totalDias = new Date(ano, mes + 1, 0).getDate();
+  const diasMesAnterior = new Date(ano, mes, 0).getDate();
+
+  const celulas: { dia: number; data: Date; foraDoMes: boolean }[] = [];
+  for (let i = primeiroDiaSemana - 1; i >= 0; i--) {
+    celulas.push({ dia: diasMesAnterior - i, data: new Date(ano, mes - 1, diasMesAnterior - i), foraDoMes: true });
+  }
+  for (let d = 1; d <= totalDias; d++) {
+    celulas.push({ dia: d, data: new Date(ano, mes, d), foraDoMes: false });
+  }
+  while (celulas.length % 7 !== 0 || celulas.length < 42) {
+    const ultima = celulas[celulas.length - 1].data;
+    const prox = new Date(ultima);
+    prox.setDate(prox.getDate() + 1);
+    celulas.push({ dia: prox.getDate(), data: prox, foraDoMes: true });
+    if (celulas.length >= 42) break;
+  }
+
+  const label = selecionado
+    ? selecionado.toLocaleDateString('pt-BR')
+    : '';
+
+  return (
+    <div className="relative" ref={wrapperRef}>
+      <button
+        type="button"
+        id={id}
+        onClick={abrir}
+        disabled={disabled}
+        className={`${className ?? ''} flex items-center justify-between gap-2 text-left disabled:opacity-50 disabled:cursor-not-allowed`}
+      >
+        <span className={label ? 'text-white' : 'text-gray-500'}>{label || placeholder}</span>
+        <CalendarIcon className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
+      </button>
+
+      {/* input escondido — garante integração com validação/required de formulários nativos */}
+      {required && (
+        <input tabIndex={-1} type="text" name={name} value={value ?? ''} required
+          onChange={() => {}} className="absolute inset-0 w-0 h-0 opacity-0 pointer-events-none" />
+      )}
+
+      {aberto && (
+        <div
+          className={`absolute z-50 mt-1.5 w-64 bg-[#1f2937] border border-gray-700 rounded-xl shadow-2xl shadow-black/40 p-3 ${
+            align === 'right' ? 'right-0' : 'left-0'
+          }`}
+        >
+          {/* Cabeçalho: mês/ano + navegação */}
+          <div className="flex items-center justify-between mb-2">
+            <button type="button"
+              onClick={() => setMesVisivel(new Date(ano, mes - 1, 1))}
+              className="p-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 transition-colors">
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <span className="text-xs font-bold text-white capitalize">
+              {MESES[mes]} de {ano}
+            </span>
+            <button type="button"
+              onClick={() => setMesVisivel(new Date(ano, mes + 1, 1))}
+              className="p-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 transition-colors">
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Dias da semana */}
+          <div className="grid grid-cols-7 mb-1">
+            {DIAS_SEMANA.map((d, i) => (
+              <span key={i} className="text-[10px] font-bold text-gray-500 text-center py-1">{d}</span>
+            ))}
+          </div>
+
+          {/* Grade de dias */}
+          <div className="grid grid-cols-7 gap-y-0.5">
+            {celulas.map(({ dia, data, foraDoMes }, i) => {
+              const isSelecionado = mesmoDia(data, selecionado);
+              const isHoje = mesmoDia(data, hoje);
+              return (
+                <button
+                  type="button"
+                  key={i}
+                  onClick={() => selecionar(data)}
+                  className={[
+                    'text-xs w-8 h-8 rounded-md transition-colors',
+                    foraDoMes ? 'text-gray-600' : 'text-gray-200',
+                    isSelecionado ? 'bg-blue-600 text-white font-bold hover:bg-blue-500'
+                      : isHoje ? 'bg-gray-700 text-white font-bold hover:bg-gray-600'
+                      : 'hover:bg-gray-700',
+                  ].join(' ')}
+                >
+                  {dia}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Rodapé: Limpar / Hoje */}
+          <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-700">
+            <button type="button" onClick={() => { onChange(''); setAberto(false); }}
+              className="text-[11px] font-bold text-gray-400 hover:text-white transition-colors">
+              Limpar
+            </button>
+            <button type="button" onClick={() => selecionar(hoje)}
+              className="text-[11px] font-bold text-blue-400 hover:text-blue-300 transition-colors">
+              Hoje
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

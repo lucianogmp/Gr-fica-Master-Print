@@ -4,7 +4,59 @@ import { useConfiguracoes } from '../../hooks/useConfiguracoes';
 import { Configuracoes as ConfigType } from '../../types/configuracoes';
 import { EditorLayoutImpressao } from '../../components/configuracoes/EditorLayoutImpressao';
 import { DEFAULT_LAYOUT_VENDA, DEFAULT_LAYOUT_ORCAMENTO } from '../../types/layoutImpressao';
-import { Printer, Save, Check } from 'lucide-react';
+import { Printer, Save, Check, Hash, Loader2 } from 'lucide-react';
+import { IN_N, Lbl } from './utils';
+import { supabase } from '../../lib/supabase';
+import { useConfirm } from '../../components/ui/ConfirmModal';
+import toast from 'react-hot-toast';
+
+function NumeracaoCard({ tabela, label }: { tabela: 'vendas' | 'orcamentos'; label: string }) {
+  const [valor, setValor] = useState('');
+  const [aplicando, setAplicando] = useState(false);
+  const { confirmar, ConfirmModal } = useConfirm();
+
+  async function aplicar() {
+    const n = parseInt(valor, 10);
+    if (!n || n < 1) { toast.error('Digite um número válido (1 ou maior).'); return; }
+    const ok = await confirmar(
+      `A próxima ${label.toLowerCase()} vai sair com o número ${n}. Isso não pode ser desfeito. Confirma?`,
+      'Alterar Numeração'
+    );
+    if (!ok) return;
+    setAplicando(true);
+    try {
+      const { error } = await supabase.rpc('definir_proxima_numeracao', { p_tabela: tabela, p_proximo_numero: n });
+      if (error) throw error;
+      toast.success(`A próxima ${label.toLowerCase()} sairá com o número ${n}.`);
+      setValor('');
+    } catch (e: any) {
+      toast.error(e.message || 'Erro ao alterar a numeração.');
+    } finally {
+      setAplicando(false);
+    }
+  }
+
+  return (
+    <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5 max-w-xs">
+      <ConfirmModal />
+      <p className="text-xs font-bold text-gray-400 uppercase mb-3 flex items-center gap-1.5">
+        <Hash className="w-3.5 h-3.5" /> Numeração de {label}
+      </p>
+      <Lbl>Próximo número a usar</Lbl>
+      <div className="flex gap-2">
+        <input type="number" min="1" step="1" value={valor} onChange={e => setValor(e.target.value)}
+          className={IN_N} placeholder="Ex: 1" />
+        <button onClick={aplicar} disabled={aplicando || !valor}
+          className="bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white px-4 rounded-lg font-bold text-sm transition-all flex items-center gap-1.5 flex-shrink-0">
+          {aplicando ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Aplicar'}
+        </button>
+      </div>
+      <p className="text-[11px] text-gray-500 mt-1.5">
+        Use pra resetar (ex: 1) ou pra continuar de onde seu sistema atual parou.
+      </p>
+    </div>
+  );
+}
 
 export function Impressao() {
   const { data: cfg, isLoading, salvar, isSaving } = useConfiguracoes();
@@ -52,14 +104,30 @@ export function Impressao() {
       </div>
 
       {subAba === 'venda' && (
-        <EditorLayoutImpressao tipo="venda"
-          value={form.layout_impressao_venda ?? DEFAULT_LAYOUT_VENDA}
-          onChange={v => set('layout_impressao_venda', v)} empresa={form} />
+        <>
+          <NumeracaoCard tabela="vendas" label="Vendas" />
+          <EditorLayoutImpressao tipo="venda"
+            value={form.layout_impressao_venda ?? DEFAULT_LAYOUT_VENDA}
+            onChange={v => set('layout_impressao_venda', v)} empresa={form} />
+        </>
       )}
       {subAba === 'orcamento' && (
-        <EditorLayoutImpressao tipo="orcamento"
-          value={form.layout_impressao_orcamento ?? DEFAULT_LAYOUT_ORCAMENTO}
-          onChange={v => set('layout_impressao_orcamento', v)} empresa={form} />
+        <>
+          <NumeracaoCard tabela="orcamentos" label="Orçamentos" />
+          <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5 max-w-xs">
+            <Lbl>Validade da proposta (dias)</Lbl>
+            <input type="number" min="1" step="1"
+              value={(form.orc_validade_dias as number | null | undefined) ?? ''}
+              onChange={e => set('orc_validade_dias', parseInt(e.target.value) || null)}
+              className={IN_N} placeholder="7" />
+            <p className="text-[11px] text-gray-500 mt-1.5">
+              Aparece no orçamento impresso quando "Validade da proposta" estiver marcada abaixo.
+            </p>
+          </div>
+          <EditorLayoutImpressao tipo="orcamento"
+            value={form.layout_impressao_orcamento ?? DEFAULT_LAYOUT_ORCAMENTO}
+            onChange={v => set('layout_impressao_orcamento', v)} empresa={form} />
+        </>
       )}
 
       {dirty && (

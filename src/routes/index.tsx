@@ -68,7 +68,6 @@ const ConfigFormasPagamento = lazy(() => import('../pages/Configuracoes/FormasPa
 const ConfigImpressao       = lazy(() => import('../pages/Configuracoes/Impressao').then(m => ({ default: m.Impressao })));
 const ConfigIntegracoes     = lazy(() => import('../pages/Configuracoes/Integracoes').then(m => ({ default: m.Integracoes })));
 const ConfigBackup          = lazy(() => import('../pages/Configuracoes/Backup').then(m => ({ default: m.Backup })));
-const ConfigSistema         = lazy(() => import('../pages/Configuracoes/Sistema').then(m => ({ default: m.Sistema })));
 
 // ─── Loading Fallback ────────────────────────────────────────────────────────
 function PageLoadingFallback() {
@@ -212,7 +211,6 @@ export function AppRoutes() {
           <Route path="configuracoes/impressao"        element={<PR rota="/configuracoes/impressao"><ConfigImpressao /></PR>} />
           <Route path="configuracoes/integracoes"      element={<PR rota="/configuracoes/integracoes"><ConfigIntegracoes /></PR>} />
           <Route path="configuracoes/backup"           element={<PR rota="/configuracoes/backup"><ConfigBackup /></PR>} />
-          <Route path="configuracoes/sistema"          element={<PR rota="/configuracoes/sistema"><ConfigSistema /></PR>} />
 
           {/* ── Redirects legados ── */}
           <Route path="clientes"    element={<Navigate to="/crm/clientes" replace />} />

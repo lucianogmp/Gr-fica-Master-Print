@@ -18,7 +18,7 @@ import {
   BookOpen, Tag, DollarSign, Layers, Wrench,
   BarChart2, Users2, PackageSearch,
   UserPlus, PhoneCall, Cake, MessageSquare,
-  Building2, UserCog, Printer, Plug, HardDrive, MonitorCog,
+  Building2, UserCog, Printer, Plug, HardDrive,
   Boxes, GitCompare, TrendingUp, FileBarChart2,
   DollarSign as DollarSignIcon,
 } from 'lucide-react';
@@ -121,7 +121,7 @@ const ALL_MENU: MenuItem[] = [
     rota: '/estoque',
     children: [
       { path: '/estoque/atual',     label: 'Estoque Atual', icon: Boxes },
-      { path: '/estoque/gerenciar', label: 'Entradas e Saídas',     icon: PackageSearch },
+      { path: '/estoque/gerenciar', label: 'Gerenciar',     icon: PackageSearch },
       { path: '/estoque/historico', label: 'Histórico',     icon: History },
     ],
   },
@@ -181,7 +181,6 @@ const ALL_MENU: MenuItem[] = [
       { path: '/configuracoes/impressao',        label: 'Impressão',         icon: Printer },
       { path: '/configuracoes/integracoes',      label: 'Integrações',       icon: Plug },
       { path: '/configuracoes/backup',           label: 'Backup',            icon: HardDrive },
-      { path: '/configuracoes/sistema',          label: 'Sistema',           icon: MonitorCog },
     ],
   },
 ];

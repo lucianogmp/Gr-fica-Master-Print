@@ -13,6 +13,8 @@ export interface Venda {
   cliente_nome: string;
   cliente_id?: string | null;
   status: StatusVenda;
+  orcamento_origem_id?: string | null;
+  orcamento_origem_numero?: number | null;
   desconto?: number | null;        // % global
   desconto_valor?: number | null;  // R$ calculado
   frete?: number | null;           // R$
