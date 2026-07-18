@@ -7,6 +7,8 @@ import { useConfiguracoes } from '../hooks/useConfiguracoes';
 import { useProducao } from '../hooks/useProducao';
 import { supabase } from '../lib/supabase';
 import { Venda, VendaItem, StatusVenda, STATUS_VENDA } from '../types/venda';
+import { formatarEnderecoCliente } from '../types/cliente';
+import { useClientes } from '../hooks/useClientes';
 import { ItensEditor } from '../components/vendas/ItensEditor';
 import { ClienteSelectorVenda } from '../components/vendas/ClienteSelectorVenda';
 import { VendedorSelector } from '../components/vendas/VendedorSelector';
@@ -57,6 +59,7 @@ export function Vendas() {
   const navigate = useNavigate();
 
   const { data: vendas = [], isLoading, criar, atualizar, atualizarStatus, deletar, isSaving } = useVendas();
+  const { data: clientes = [] } = useClientes();
   const { data: cfg } = useConfiguracoes();
   const { criar: criarOP } = useProducao();
   const { confirmar, ConfirmModal } = useConfirm();
@@ -196,12 +199,17 @@ export function Vendas() {
   const { data: cfg2 } = useConfiguracoes();
   const layoutVenda = { ...DEFAULT_LAYOUT_VENDA, ...(cfg2?.layout_impressao_venda ?? {}) };
 
+  const clienteSelecionado = clientes.find(c => c.id === form.cliente_id);
+
   const docImpressaoVenda: DocumentoImpressaoData = {
     tipo: 'venda',
     numero: (form as any).numero ?? null,
     data: form.data_venda ?? null,
     dataEntrega: form.data_entrega ?? null,
     clienteNome: form.cliente_nome,
+    clienteTelefone: clienteSelecionado?.telefone ?? null,
+    clienteEmail: clienteSelecionado?.email ?? null,
+    clienteEndereco: formatarEnderecoCliente(clienteSelecionado) || null,
     itens: itens.map(i => ({
       descricao: i.descricao,
       quantidade: Number(i.quantidade),
@@ -229,6 +237,9 @@ export function Vendas() {
       data: vendaImprimir.data_venda ?? null,
       dataEntrega: vendaImprimir.data_entrega ?? null,
       clienteNome: vendaImprimir.cliente_nome,
+      clienteTelefone: clientes.find(c => c.id === vendaImprimir.cliente_id)?.telefone ?? null,
+      clienteEmail: clientes.find(c => c.id === vendaImprimir.cliente_id)?.email ?? null,
+      clienteEndereco: formatarEnderecoCliente(clientes.find(c => c.id === vendaImprimir.cliente_id)) || null,
       itens: itensImprimir.map(i => ({
         descricao: i.descricao, quantidade: Number(i.quantidade),
         unidade: i.unidade ?? 'un', precoUnitario: Number(i.preco_unitario),

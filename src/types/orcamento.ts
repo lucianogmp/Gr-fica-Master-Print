@@ -31,6 +31,7 @@ export interface Orcamento {
   id: string;
   numero?: number | null;
   cliente_nome: string;
+  cliente_id?: string | null;
   status: StatusOrcamento;
   desconto?: number | null;
   observacoes?: string | null;

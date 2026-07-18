@@ -117,7 +117,7 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
   const { data: produtos = [] } = useProdutos();
 
   const [tab, setTab] = useState<TabMode>(
-    editando ? (editando.tipo_calculo as TabMode) : 'catalogo',
+    editando ? (editando.tipo_calculo as TabMode) : 'metro',
   );
   const [tipo, setTipo] = useState<TipoCalculo>(editando?.tipo_calculo ?? 'metro');
   const [descricao, setDescricao] = useState(editando?.descricao ?? '');
@@ -298,13 +298,13 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
       {tab === 'catalogo' && (
         <div className="space-y-3">
           {/* Busca */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+          <div className="flex items-center gap-2 bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 focus-within:border-purple-500 transition-colors">
+            <Search className="w-4 h-4 text-gray-500 flex-shrink-0" />
             <input
               value={buscaProd}
               onChange={e => setBuscaProd(e.target.value)}
               placeholder="Buscar produto por nome..."
-              className="w-full bg-[#111827] border border-gray-700 rounded-lg pl-9 pr-3 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-purple-500 transition-colors"
+              className="flex-1 bg-transparent text-white text-sm placeholder-gray-600 focus:outline-none [color-scheme:dark]"
             />
           </div>
 

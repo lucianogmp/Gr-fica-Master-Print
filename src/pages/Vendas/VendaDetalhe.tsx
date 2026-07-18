@@ -8,6 +8,8 @@ import { usePagamentosVenda } from '../../hooks/usePagamentosVenda';
 import { useConfiguracoes } from '../../hooks/useConfiguracoes';
 import { useProducao } from '../../hooks/useProducao';
 import { Venda, VendaItem, StatusVenda, STATUS_VENDA } from '../../types/venda';
+import { formatarEnderecoCliente } from '../../types/cliente';
+import { useClientes } from '../../hooks/useClientes';
 import { ItensEditor } from '../../components/vendas/ItensEditor';
 import { ClienteSelectorVenda } from '../../components/vendas/ClienteSelectorVenda';
 import { VendedorSelector } from '../../components/vendas/VendedorSelector';
@@ -56,6 +58,7 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
   const navigate = useNavigate();
 
   const { data: vendas = [], criar, atualizar, atualizarStatus, isSaving } = useVendas();
+  const { data: clientes = [] } = useClientes();
   const { data: cfg } = useConfiguracoes();
   const { criar: criarOP } = useProducao();
   const { confirmar, ConfirmModal } = useConfirm();
@@ -176,12 +179,17 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
 
   const layoutVenda = { ...DEFAULT_LAYOUT_VENDA, ...(cfg?.layout_impressao_venda ?? {}) };
 
+  const clienteSelecionado = clientes.find(c => c.id === form.cliente_id);
+
   const docImpressaoVenda: DocumentoImpressaoData = {
     tipo: 'venda',
     numero: (form as any).numero ?? null,
     data: form.data_venda ?? null,
     dataEntrega: form.data_entrega ?? null,
     clienteNome: form.cliente_nome,
+    clienteTelefone: clienteSelecionado?.telefone ?? null,
+    clienteEmail: clienteSelecionado?.email ?? null,
+    clienteEndereco: formatarEnderecoCliente(clienteSelecionado) || null,
     itens: itens.map(i => ({
       descricao: i.descricao,
       quantidade: Number(i.quantidade),

@@ -11,8 +11,10 @@ import { useAcabamentos } from '../hooks/useAcabamentos';
 import { useProdutos } from '../hooks/useProdutos';
 import { useCategorias } from '../hooks/useCategorias';
 import { Orcamento, OrcamentoItem, StatusOrcamento, STATUS_ORC } from '../types/orcamento';
+import { formatarEnderecoCliente } from '../types/cliente';
+import { useClientes } from '../hooks/useClientes';
 import { ItemOrcEditor } from '../components/orcamentos/ItemOrcEditor';
-import { ClienteSelector } from '../components/orcamentos/ClienteSelector';
+import { ClienteSelectorVenda } from '../components/vendas/ClienteSelectorVenda';
 import { CalculadoraFolhas } from '../components/CalculadoraFolhas';
 import { KpiCard } from '../components/ui/KpiCard';
 import { MoneyInput } from '../components/ui/MoneyInput';
@@ -30,7 +32,7 @@ const TIPO_LABEL: Record<string, string> = {
 };
 
 const NOVO_ORC: Omit<Orcamento, 'id' | 'created_at' | 'updated_at'> = {
-  cliente_nome: '', status: 'rascunho', desconto: 0, observacoes: '', total: 0,
+  cliente_nome: '', cliente_id: null, status: 'rascunho', desconto: 0, observacoes: '', total: 0,
 };
 
 export function Orcamentos() {
@@ -39,6 +41,7 @@ export function Orcamentos() {
   const { data: acabamentos = [], criar: criarAcab, atualizar: atualizarAcab, deletar: deletarAcab } = useAcabamentos();
   const { data: produtos = [] } = useProdutos();
   const { data: categorias = [] } = useCategorias();
+  const { data: clientes = [] } = useClientes();
   const navigate = useNavigate();
 
   const { confirmar, ConfirmModal } = useConfirm();
@@ -81,12 +84,17 @@ export function Orcamentos() {
   const { data: cfg } = useConfiguracoes();
   const layoutOrcamento = { ...DEFAULT_LAYOUT_ORCAMENTO, ...(cfg?.layout_impressao_orcamento ?? {}) };
 
+  const clienteSelecionado = clientes.find(c => c.id === form.cliente_id);
+
   const docImpressaoOrcamento: DocumentoImpressaoData = {
     tipo: 'orcamento',
     numero: form.numero ?? null,
     data: form.created_at ?? null,
     dataEntrega: null,
     clienteNome: form.cliente_nome ?? '',
+    clienteTelefone: clienteSelecionado?.telefone ?? null,
+    clienteEmail: clienteSelecionado?.email ?? null,
+    clienteEndereco: formatarEnderecoCliente(clienteSelecionado) || null,
     itens: itens.map(i => ({
       descricao: i.descricao,
       quantidade: Number(i.quantidade),
@@ -602,7 +610,11 @@ export function Orcamentos() {
           <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5">
             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Dados do Orçamento</h3>
             <div className="space-y-4">
-              <ClienteSelector value={form.cliente_nome} onChange={v => setF('cliente_nome', v)} />
+              <ClienteSelectorVenda
+                value={form.cliente_nome ?? ''}
+                clienteId={form.cliente_id}
+                onChange={(nome, id) => { setF('cliente_nome', nome); setF('cliente_id', id ?? null); }}
+              />
               <div>
                 <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Observações</label>
                 <textarea rows={2} value={form.observacoes ?? ''} onChange={e => setF('observacoes', e.target.value)}

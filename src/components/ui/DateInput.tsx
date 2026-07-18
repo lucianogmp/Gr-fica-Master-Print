@@ -9,7 +9,8 @@
 //
 //   <DateInput value={form.data_venda} onChange={v => setF('data_venda', v)} className={IN} />
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const DIAS_SEMANA = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
@@ -59,12 +60,48 @@ export function DateInput({
   const selecionado = parseISO(value);
   const [mesVisivel, setMesVisivel] = useState<Date>(selecionado ?? new Date());
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const botaoRef = useRef<HTMLButtonElement>(null);
+  const painelRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null);
 
-  // Fecha ao clicar fora ou apertar Esc
+  // Recalcula a posição do painel (encostado no campo, mas fora do fluxo normal —
+  // por isso vai por portal, sem depender de overflow/stacking-context dos pais)
+  useLayoutEffect(() => {
+    if (!aberto || !botaoRef.current) return;
+    function calcular() {
+      const r = botaoRef.current!.getBoundingClientRect();
+      const larguraPainel = 256; // w-64
+      const alturaPainelEstimada = 340;
+      const espacoAbaixo = window.innerHeight - r.bottom;
+      const abrirParaCima = espacoAbaixo < alturaPainelEstimada && r.top > alturaPainelEstimada;
+
+      let left = align === 'right' ? r.right - larguraPainel : r.left;
+      // mantém dentro da viewport horizontalmente
+      left = Math.min(Math.max(left, 8), window.innerWidth - larguraPainel - 8);
+
+      setPos({
+        top: abrirParaCima ? r.top - alturaPainelEstimada - 6 : r.bottom + 6,
+        left,
+        width: larguraPainel,
+      });
+    }
+    calcular();
+    window.addEventListener('scroll', calcular, true);
+    window.addEventListener('resize', calcular);
+    return () => {
+      window.removeEventListener('scroll', calcular, true);
+      window.removeEventListener('resize', calcular);
+    };
+  }, [aberto, align]);
+
+  // Fecha ao clicar fora (considerando o botão E o painel, que agora vive em outro lugar do DOM) ou apertar Esc
   useEffect(() => {
     if (!aberto) return;
     function onClickFora(e: MouseEvent) {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) setAberto(false);
+      const alvo = e.target as Node;
+      if (botaoRef.current?.contains(alvo)) return;
+      if (painelRef.current?.contains(alvo)) return;
+      setAberto(false);
     }
     function onEsc(e: KeyboardEvent) {
       if (e.key === 'Escape') setAberto(false);
@@ -122,6 +159,7 @@ export function DateInput({
   return (
     <div className="relative" ref={wrapperRef}>
       <button
+        ref={botaoRef}
         type="button"
         id={id}
         onClick={abrir}
@@ -138,11 +176,11 @@ export function DateInput({
           onChange={() => {}} className="absolute inset-0 w-0 h-0 opacity-0 pointer-events-none" />
       )}
 
-      {aberto && (
+      {aberto && pos && createPortal(
         <div
-          className={`absolute z-50 mt-1.5 w-64 bg-[#1f2937] border border-gray-700 rounded-xl shadow-2xl shadow-black/40 p-3 ${
-            align === 'right' ? 'right-0' : 'left-0'
-          }`}
+          ref={painelRef}
+          style={{ top: pos.top, left: pos.left, width: pos.width }}
+          className="fixed z-[9999] bg-[#1f2937] border border-gray-700 rounded-xl shadow-2xl shadow-black/50 p-3"
         >
           {/* Cabeçalho: mês/ano + navegação */}
           <div className="flex items-center justify-between mb-2">
@@ -203,7 +241,8 @@ export function DateInput({
               Hoje
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
