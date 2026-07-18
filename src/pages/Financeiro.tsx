@@ -13,6 +13,7 @@ import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLancamentos } from '../hooks/useLancamentos';
 import { useVendas, useVendaItens } from '../hooks/useVendas';
+import { useClientes } from '../hooks/useClientes';
 import { usePagamentosVenda } from '../hooks/usePagamentosVenda';
 import { useCaixaMovimentos } from '../hooks/useCaixaMovimentos';
 import { useConfiguracoes } from '../hooks/useConfiguracoes';
@@ -20,6 +21,7 @@ import { useProducao } from '../hooks/useProducao';
 import { supabase } from '../lib/supabase';
 import { Lancamento } from '../types/financeiro';
 import { Venda, VendaItem, StatusVenda, STATUS_VENDA } from '../types/venda';
+import { formatarEnderecoCliente } from '../types/cliente';
 import {
   FORMAS_PAGAMENTO_DEFAULT,
   parseFormas,
@@ -116,6 +118,7 @@ export function Financeiro() {
   const navigate = useNavigate();
   const { data: lancamentos = [], isLoading: loadLanc, criar, atualizar, pagar, deletar, isSaving } = useLancamentos();
   const { data: vendas = [], isLoading: loadVendas, atualizar: atualizarVenda, isSaving: isSavingVenda } = useVendas();
+  const { data: clientes = [] } = useClientes();
   const { data: movimentos = [], isLoading: loadMov } = useCaixaMovimentos();
   const { data: cfg } = useConfiguracoes();
   const { criar: criarOP } = useProducao();
@@ -333,6 +336,9 @@ export function Financeiro() {
     data: formVenda.data_venda ?? null,
     dataEntrega: formVenda.data_entrega ?? null,
     clienteNome: formVenda.cliente_nome,
+    clienteTelefone: clientes.find(c => c.id === formVenda.cliente_id)?.telefone ?? null,
+    clienteEmail: clientes.find(c => c.id === formVenda.cliente_id)?.email ?? null,
+    clienteEndereco: formatarEnderecoCliente(clientes.find(c => c.id === formVenda.cliente_id)) || null,
     itens: itensVenda.map(i => ({
       descricao: i.descricao, quantidade: Number(i.quantidade),
       unidade: i.unidade ?? 'un', precoUnitario: Number(i.preco_unitario),

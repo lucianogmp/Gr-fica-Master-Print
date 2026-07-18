@@ -4,6 +4,8 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useVendas, useVendaItens } from '../../hooks/useVendas';
+import { useClientes } from '../../hooks/useClientes';
+import { formatarEnderecoCliente } from '../../types/cliente';
 import { useConfiguracoes } from '../../hooks/useConfiguracoes';
 import { useRole } from '../../hooks/useRole';
 import { Venda, StatusVenda, STATUS_VENDA } from '../../types/venda';
@@ -56,6 +58,7 @@ export function ListaVendas({
 }: ListaVendasProps) {
   const navigate = useNavigate();
   const { data: vendasTodas = [], isLoading, deletar } = useVendas();
+  const { data: clientes = [] } = useClientes();
   const { data: cfg } = useConfiguracoes();
   const { confirmar, ConfirmModal } = useConfirm();
   const { isVendedor } = useRole();
@@ -91,6 +94,9 @@ export function ListaVendas({
       data: vendaImprimir.data_venda ?? null,
       dataEntrega: vendaImprimir.data_entrega ?? null,
       clienteNome: vendaImprimir.cliente_nome,
+      clienteTelefone: clientes.find(c => c.id === vendaImprimir.cliente_id)?.telefone ?? null,
+      clienteEmail: clientes.find(c => c.id === vendaImprimir.cliente_id)?.email ?? null,
+      clienteEndereco: formatarEnderecoCliente(clientes.find(c => c.id === vendaImprimir.cliente_id)) || null,
       itens: itensImprimir.map(i => ({
         descricao: i.descricao, quantidade: Number(i.quantidade),
         unidade: i.unidade ?? 'un', precoUnitario: Number(i.preco_unitario),
@@ -211,15 +217,7 @@ export function ListaVendas({
                   <tr key={v.id} onClick={() => abrirDetalhe(v)}
                     className="border-b border-gray-800 hover:bg-gray-800/30 transition-colors cursor-pointer">
                     <td className="px-5 py-3 text-gray-500 font-mono text-xs">{v.numero ? `#${v.numero}` : '—'}</td>
-                    <td className="px-5 py-3 font-medium text-white">
-                      {v.cliente_nome || '—'}
-                      {v.orcamento_origem_numero && (
-                        <span title={`Convertido do Orçamento #${v.orcamento_origem_numero}`}
-                          className="ml-1.5 inline-block text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/20 align-middle">
-                          Orç. #{v.orcamento_origem_numero}
-                        </span>
-                      )}
-                    </td>
+                    <td className="px-5 py-3 font-medium text-white">{v.cliente_nome || '—'}</td>
                     <td className="px-5 py-3 text-gray-400 text-xs">{fmtData(v.data_venda)}</td>
                     <td className="px-5 py-3 text-gray-400 text-xs">{fmtData(v.data_entrega)}</td>
                     <td className="px-5 py-3 text-right">
