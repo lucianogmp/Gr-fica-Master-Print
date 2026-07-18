@@ -751,66 +751,59 @@ export function Produtos() {
                 </div>
               </div>
 
-              {/* ── Unidade de medida + Tipo ── */}
-              <div className="mt-5 pt-4 border-t border-gray-700 space-y-4">
+              {/* ── Unidade de medida + Tipo — lado a lado, numa única linha ── */}
+              <div className="mt-5 pt-4 border-t border-gray-700 grid grid-cols-2 gap-4">
                 {/* Unidade de medida: Unidade vs m² */}
                 <div>
-                  <label className="text-xs font-bold text-gray-400 uppercase block mb-3">Unidade de Medida</label>
-                  <div className="flex gap-3">
+                  <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Unidade de Medida</label>
+                  <div className="flex gap-2">
                     <button onClick={() => setF('unidade_medida', 'unidade')}
-                      className={`flex-1 py-3 rounded-xl text-sm font-bold border transition-all ${
+                      className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs font-bold border transition-all ${
                         !porM2
                           ? 'bg-blue-600 border-blue-500 text-white'
                           : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-white'
                       }`}>
-                      <div className="flex justify-center mb-1"><Package className="w-5 h-5" /></div>
-                      <div>Por Unidade</div>
-                      <div className="text-[10px] opacity-70 mt-0.5">Preço e custo por peça</div>
+                      <Package className="w-3.5 h-3.5 flex-shrink-0" /> Por Unidade
                     </button>
                     <button onClick={() => setF('unidade_medida', 'm2')}
-                      className={`flex-1 py-3 rounded-xl text-sm font-bold border transition-all ${
+                      className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs font-bold border transition-all ${
                         porM2
                           ? 'bg-blue-600 border-blue-500 text-white'
                           : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-white'
                       }`}>
-                      <div className="flex justify-center mb-1"><Ruler className="w-5 h-5" /></div>
-                      <div>Por m²</div>
-                      <div className="text-[10px] opacity-70 mt-0.5">Preço e custo por metro quadrado</div>
+                      <Ruler className="w-3.5 h-3.5 flex-shrink-0" /> Por m²
                     </button>
                   </div>
-                  {porM2 && (
-                    <div className="mt-2 bg-blue-500/10 border border-blue-500/20 rounded-lg px-3 py-2 text-xs text-blue-300">
-                      No orçamento, o sistema pedirá a área (m²) para calcular o total automaticamente.
-                    </div>
-                  )}
                 </div>
 
                 {/* Tipo: Próprio vs Terceirizado */}
                 <div>
-                  <label className="text-xs font-bold text-gray-400 uppercase block mb-3">Tipo de Produto</label>
-                  <div className="flex gap-3">
+                  <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Tipo de Produto</label>
+                  <div className="flex gap-2">
                     <button onClick={() => setF('terceirizado', false)}
-                      className={`flex-1 py-3 rounded-xl text-sm font-bold border transition-all ${
+                      className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs font-bold border transition-all ${
                         !terceirizado
                           ? 'bg-green-600 border-green-500 text-white'
                           : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-white'
                       }`}>
-                      <div className="flex justify-center mb-1"><Factory className="w-5 h-5" /></div>
-                      <div>Próprio</div>
-                      <div className="text-[10px] opacity-70 mt-0.5">Controla estoque e custo</div>
+                      <Factory className="w-3.5 h-3.5 flex-shrink-0" /> Próprio
                     </button>
                     <button onClick={() => setF('terceirizado', true)}
-                      className={`flex-1 py-3 rounded-xl text-sm font-bold border transition-all ${
+                      className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs font-bold border transition-all ${
                         terceirizado
                           ? 'bg-yellow-600 border-yellow-500 text-white'
                           : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-white'
                       }`}>
-                      <div className="flex justify-center mb-1"><Handshake className="w-5 h-5" /></div>
-                      <div>Terceirizado</div>
-                      <div className="text-[10px] opacity-70 mt-0.5">Só registra custo</div>
+                      <Handshake className="w-3.5 h-3.5 flex-shrink-0" /> Terceirizado
                     </button>
                   </div>
                 </div>
+
+                {porM2 && (
+                  <div className="col-span-2 bg-blue-500/10 border border-blue-500/20 rounded-lg px-3 py-2 text-xs text-blue-300">
+                    No orçamento, o sistema pedirá a área (m²) para calcular o total automaticamente.
+                  </div>
+                )}
               </div>
             </div>
 

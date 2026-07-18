@@ -93,11 +93,13 @@ export function DocumentoImpressao({ layout, empresa, documento: doc, style }: D
         background: '#ffffff',
         color: '#111827',
         padding: 32,
+        paddingBottom: 88,
         width: '210mm',
         minHeight: '297mm',
         margin: '0 auto',
         fontFamily: 'Arial, Helvetica, sans-serif',
         boxSizing: 'border-box',
+        position: 'relative',
         ...style,
       }}
     >
@@ -261,27 +263,32 @@ export function DocumentoImpressao({ layout, empresa, documento: doc, style }: D
         </div>
       )}
 
-      {/* Rodapé — barra escura com corte diagonal azul na ponta */}
-      <div style={{ position: 'relative', marginTop: 40, height: 32, display: 'flex', alignItems: 'center' }}>
-        <div
-          style={{
-            position: 'absolute', inset: 0,
-            backgroundColor: '#374151',
-            display: 'flex', alignItems: 'center',
-            paddingLeft: 16,
-          }}
-        >
-          <span style={{ fontSize: 11, color: '#e5e7eb' }}>
-            {layout.textoRodape || (isOrcamento ? empresa.orc_rodape : empresa.empresa_rodape) || ''}
-          </span>
+      {/* Rodapé — barra escura com corte diagonal azul na ponta.
+          position:'fixed' gruda na base física da página impressa (funciona
+          de verdade na paginação do Chrome, diferente de margin-top:auto,
+          que só se aplica ao fluxo normal em tela e não durante a impressão). */}
+      <div style={{ position: 'fixed', left: 32, right: 32, bottom: 24 }}>
+        <div style={{ position: 'relative', height: 32, display: 'flex', alignItems: 'center' }}>
+          <div
+            style={{
+              position: 'absolute', inset: 0,
+              backgroundColor: '#374151',
+              display: 'flex', alignItems: 'center',
+              paddingLeft: 16,
+            }}
+          >
+            <span style={{ fontSize: 11, color: '#e5e7eb' }}>
+              {layout.textoRodape || (isOrcamento ? empresa.orc_rodape : empresa.empresa_rodape) || ''}
+            </span>
+          </div>
+          <svg
+            viewBox="0 0 120 32"
+            preserveAspectRatio="none"
+            style={{ position: 'absolute', right: 0, top: 0, height: '100%', width: 120 }}
+          >
+            <polygon points="40,0 120,0 120,32 0,32" fill={cor} />
+          </svg>
         </div>
-        <svg
-          viewBox="0 0 120 32"
-          preserveAspectRatio="none"
-          style={{ position: 'absolute', right: 0, top: 0, height: '100%', width: 120 }}
-        >
-          <polygon points="40,0 120,0 120,32 0,32" fill={cor} />
-        </svg>
       </div>
     </div>
   );
