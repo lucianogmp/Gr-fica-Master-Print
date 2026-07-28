@@ -131,9 +131,39 @@ export function Orcamentos() {
   }
 
   function arredondarTotal() {
-    const arredondado = Math.ceil(totalFinal);
-    const novoDesc = subtotal > 0 ? Math.max(0, (1 - arredondado / subtotal) * 100) : 0;
-    setF('desconto', parseFloat(novoDesc.toFixed(4)));
+    if (itens.length === 0 || subtotal <= 0) return;
+
+    // Arredonda pra BAIXO. Diferente de pra cima, isso é sempre alcançável
+    // (o alvo nunca passa do subtotal), então o botão nunca mais fica "sem
+    // fazer nada" — antes usava Math.ceil, que às vezes pedia um total MAIOR
+    // que o subtotal, e como desconto só reduz preço (nunca aumenta), o
+    // cálculo dava um percentual negativo que ficava travado em 0%.
+    const alvo = Math.floor(totalFinal);
+    if (alvo <= 0) return;
+
+    const fator = alvo / subtotal;
+
+    // Em vez de só ajustar um "desconto global" invisível, distribui o ajuste
+    // no preço unitário (e total) de cada item — assim o recibo impresso bate
+    // certinho: Qtd. × Preço Unit. = Total de cada linha, e a soma das linhas
+    // é exatamente igual ao Total impresso, sem cálculo estranho.
+    const novosItens = itens.map(it => {
+      const novoUnit = Number((it.preco_unitario * fator).toFixed(2));
+      return { ...it, preco_unitario: novoUnit, total: Number((novoUnit * it.quantidade).toFixed(2)) };
+    });
+
+    // Corrige a diferença de poucos centavos que pode sobrar do arredondamento
+    // por item, jogando a sobra/falta no último item pra bater exatamente com o alvo.
+    const somaAtual = novosItens.reduce((s, it) => s + it.total, 0);
+    const diferenca = Number((alvo - somaAtual).toFixed(2));
+    if (Math.abs(diferenca) >= 0.01) {
+      const ultimo = novosItens[novosItens.length - 1];
+      ultimo.total = Number((ultimo.total + diferenca).toFixed(2));
+      ultimo.preco_unitario = Number((ultimo.total / (ultimo.quantidade || 1)).toFixed(4));
+    }
+
+    setItens(novosItens);
+    setF('desconto', 0); // o ajuste já foi embutido no preço unitário — não precisa mais do desconto global
   }
 
   async function handleSalvar() {
@@ -751,10 +781,10 @@ export function Orcamentos() {
                   <span className="font-bold text-white">Total</span>
                   <div className="text-right">
                     <p className="text-3xl font-black text-blue-400">{fmtBRL(totalFinal)}</p>
-                    {totalFinal > 0 && totalFinal !== Math.ceil(totalFinal) && (
+                    {totalFinal > 0 && totalFinal !== Math.floor(totalFinal) && (
                       <button onClick={arredondarTotal}
                         className="text-[10px] text-yellow-400 hover:text-yellow-300 underline mt-0.5">
-                        ↑ Arredondar para {fmtBRL(Math.ceil(totalFinal))}
+                        ↓ Arredondar para {fmtBRL(Math.floor(totalFinal))}
                       </button>
                     )}
                   </div>

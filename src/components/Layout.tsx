@@ -21,6 +21,7 @@ import {
   Building2, UserCog, Printer, Plug, HardDrive,
   Boxes, GitCompare, TrendingUp, FileBarChart2,
   DollarSign as DollarSignIcon,
+  FileUp,
 } from 'lucide-react';
 
 // ─── Tipos ──────────────────────────────────────────────────────────────────
@@ -181,6 +182,7 @@ const ALL_MENU: MenuItem[] = [
       { path: '/configuracoes/impressao',        label: 'Impressão',         icon: Printer },
       { path: '/configuracoes/integracoes',      label: 'Integrações',       icon: Plug },
       { path: '/configuracoes/backup',           label: 'Backup',            icon: HardDrive },
+      { path: '/configuracoes/importar-dados',   label: 'Importar Dados',    icon: FileUp },
     ],
   },
 ];
@@ -226,6 +228,20 @@ export function Layout() {
 
   // Fecha menu mobile ao navegar
   useEffect(() => { setMenuOpen(false); }, [location.pathname]);
+
+  // Sempre que a página é carregada "do zero" (reiniciar o PC, fechar/abrir
+  // de novo pelo celular, ou dar F5) — manda direto pra tela inicial do papel
+  // do usuário, em vez de ficar onde o navegador restaurou por conta própria.
+  // Isso NÃO interfere na navegação normal dentro do app: o Layout só monta
+  // uma vez por carregamento real da página, então esse efeito roda uma
+  // única vez (deps vazias) e nunca mais durante os cliques no menu.
+  useEffect(() => {
+    const telaInicial = role === 'vendedor' ? '/vendas/pedidos' : '/';
+    if (location.pathname !== telaInicial) {
+      navigate(telaInicial, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Abre o grupo correto ao navegar (ex: deep link)
   useEffect(() => {

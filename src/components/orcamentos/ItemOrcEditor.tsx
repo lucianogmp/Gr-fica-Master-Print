@@ -9,6 +9,7 @@ import { useAcabamentos } from '../../hooks/useAcabamentos';
 import { useProdutos } from '../../hooks/useProdutos';
 import { Produto } from '../../types/produto';
 import { MoneyInput } from '../ui/MoneyInput';
+import { MedidaInput } from '../ui/MedidaInput';
 
 const fmtBRL = (v: number) =>
   Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -75,12 +76,22 @@ function DimQtd({
   return (
     <div className="grid grid-cols-3 gap-3">
       <div>
-        <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1.5">Largura (cm)</label>
-        <NumInput value={l} onChange={setL} step="0.1" min="0" placeholder="0" />
+        <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1.5">Largura (m)</label>
+        <MedidaInput
+          value={l ? Number(l) / 100 : 0}
+          onChange={vMetros => setL(vMetros > 0 ? String(Math.round(vMetros * 100 * 100) / 100) : '')}
+          className={IN_BASE}
+          placeholder="0,00"
+        />
       </div>
       <div>
-        <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1.5">Altura (cm)</label>
-        <NumInput value={a} onChange={setA} step="0.1" min="0" placeholder="0" />
+        <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1.5">Altura (m)</label>
+        <MedidaInput
+          value={a ? Number(a) / 100 : 0}
+          onChange={vMetros => setA(vMetros > 0 ? String(Math.round(vMetros * 100 * 100) / 100) : '')}
+          className={IN_BASE}
+          placeholder="0,00"
+        />
       </div>
       <div>
         <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1.5">Quantidade</label>

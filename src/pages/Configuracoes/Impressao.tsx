@@ -37,9 +37,9 @@ function NumeracaoCard({ tabela, label }: { tabela: 'vendas' | 'orcamentos'; lab
   }
 
   return (
-    <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5 max-w-xs">
+    <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-4 w-full max-w-[280px]">
       <ConfirmModal />
-      <p className="text-xs font-bold text-gray-400 uppercase mb-3 flex items-center gap-1.5">
+      <p className="text-xs font-bold text-gray-400 uppercase mb-2.5 flex items-center gap-1.5">
         <Hash className="w-3.5 h-3.5" /> Numeração de {label}
       </p>
       <Lbl>Próximo número a usar</Lbl>
@@ -77,7 +77,7 @@ export function Impressao() {
   if (isLoading) return <div className="p-8 text-blue-500 animate-pulse font-bold">Carregando...</div>;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-5">
       <div className="flex justify-between items-start flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-black text-white flex items-center gap-2">
@@ -105,28 +105,32 @@ export function Impressao() {
 
       {subAba === 'venda' && (
         <>
-          <NumeracaoCard tabela="vendas" label="Vendas" />
           <EditorLayoutImpressao tipo="venda"
             value={form.layout_impressao_venda ?? DEFAULT_LAYOUT_VENDA}
             onChange={v => set('layout_impressao_venda', v)} empresa={form} />
+          <div className="flex flex-wrap gap-4">
+            <NumeracaoCard tabela="vendas" label="Vendas" />
+          </div>
         </>
       )}
       {subAba === 'orcamento' && (
         <>
-          <NumeracaoCard tabela="orcamentos" label="Orçamentos" />
-          <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5 max-w-xs">
-            <Lbl>Validade da proposta (dias)</Lbl>
-            <input type="number" min="1" step="1"
-              value={(form.orc_validade_dias as number | null | undefined) ?? ''}
-              onChange={e => set('orc_validade_dias', parseInt(e.target.value) || null)}
-              className={IN_N} placeholder="7" />
-            <p className="text-[11px] text-gray-500 mt-1.5">
-              Aparece no orçamento impresso quando "Validade da proposta" estiver marcada abaixo.
-            </p>
-          </div>
           <EditorLayoutImpressao tipo="orcamento"
             value={form.layout_impressao_orcamento ?? DEFAULT_LAYOUT_ORCAMENTO}
             onChange={v => set('layout_impressao_orcamento', v)} empresa={form} />
+          <div className="flex flex-wrap gap-4">
+            <NumeracaoCard tabela="orcamentos" label="Orçamentos" />
+            <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-4 w-full max-w-[280px]">
+              <Lbl>Validade da proposta (dias)</Lbl>
+              <input type="number" min="1" step="1"
+                value={(form.orc_validade_dias as number | null | undefined) ?? ''}
+                onChange={e => set('orc_validade_dias', parseInt(e.target.value) || null)}
+                className={IN_N} placeholder="7" />
+              <p className="text-[11px] text-gray-500 mt-1.5">
+                Aparece no orçamento impresso quando "Validade da proposta" estiver marcada abaixo.
+              </p>
+            </div>
+          </div>
         </>
       )}
 

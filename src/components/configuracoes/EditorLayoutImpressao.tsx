@@ -48,9 +48,9 @@ export function EditorLayoutImpressao({ tipo, value, onChange, empresa }: Editor
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       {/* Formulário */}
-      <div className="space-y-4">
+      <div className="space-y-3">
         <div>
           <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Título do documento</label>
           <input value={value.tituloDocumento} onChange={e => set('tituloDocumento', e.target.value)} className={IN} />
@@ -70,73 +70,77 @@ export function EditorLayoutImpressao({ tipo, value, onChange, empresa }: Editor
           </div>
         </div>
 
-        <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-4">
+        <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-3">
           <p className="text-[10px] font-bold text-gray-500 uppercase mb-2">Exibir no documento</p>
 
-          <label className={CHECK}>
-            <input type="checkbox" checked={value.mostrarLogo} onChange={e => set('mostrarLogo', e.target.checked)} className={CHECKBOX} />
-            Logo da empresa
-          </label>
-          <label className={CHECK}>
-            <input type="checkbox" checked={value.mostrarNumeroDocumento} onChange={e => set('mostrarNumeroDocumento', e.target.checked)} className={CHECKBOX} />
-            Número do documento
-          </label>
-          <label className={CHECK}>
-            <input type="checkbox" checked={value.mostrarDadosEmpresa} onChange={e => set('mostrarDadosEmpresa', e.target.checked)} className={CHECKBOX} />
-            Dados da empresa
-          </label>
-          <label className={CHECK}>
-            <input type="checkbox" checked={value.mostrarCnpj} onChange={e => set('mostrarCnpj', e.target.checked)} className={CHECKBOX} />
-            CNPJ
-          </label>
-          <label className={CHECK}>
-            <input type="checkbox" checked={value.mostrarEndereco} onChange={e => set('mostrarEndereco', e.target.checked)} className={CHECKBOX} />
-            Endereço
-          </label>
-          <label className={CHECK}>
-            <input type="checkbox" checked={value.mostrarContato} onChange={e => set('mostrarContato', e.target.checked)} className={CHECKBOX} />
-            Telefone / e-mail
-          </label>
-          <label className={CHECK}>
-            <input type="checkbox" checked={value.mostrarObservacoes} onChange={e => set('mostrarObservacoes', e.target.checked)} className={CHECKBOX} />
-            Observações
-          </label>
-          {tipo === 'orcamento' && (
-            <>
-              <label className={CHECK}>
-                <input type="checkbox" checked={value.mostrarValidade} onChange={e => set('mostrarValidade', e.target.checked)} className={CHECKBOX} />
-                Validade da proposta
-              </label>
-              <label className={CHECK}>
-                <input type="checkbox" checked={value.mostrarGarantia} onChange={e => set('mostrarGarantia', e.target.checked)} className={CHECKBOX} />
-                Texto de garantia
-              </label>
-            </>
-          )}
-          <label className={CHECK}>
-            <input type="checkbox" checked={value.mostrarAssinatura} onChange={e => set('mostrarAssinatura', e.target.checked)} className={CHECKBOX} />
-            Linha de assinatura
-          </label>
+          <div className="grid grid-cols-2 gap-x-3">
+            <label className={CHECK}>
+              <input type="checkbox" checked={value.mostrarLogo} onChange={e => set('mostrarLogo', e.target.checked)} className={CHECKBOX} />
+              Logo da empresa
+            </label>
+            <label className={CHECK}>
+              <input type="checkbox" checked={value.mostrarNumeroDocumento} onChange={e => set('mostrarNumeroDocumento', e.target.checked)} className={CHECKBOX} />
+              Número do documento
+            </label>
+            <label className={CHECK}>
+              <input type="checkbox" checked={value.mostrarDadosEmpresa} onChange={e => set('mostrarDadosEmpresa', e.target.checked)} className={CHECKBOX} />
+              Dados da empresa
+            </label>
+            <label className={CHECK}>
+              <input type="checkbox" checked={value.mostrarCnpj} onChange={e => set('mostrarCnpj', e.target.checked)} className={CHECKBOX} />
+              CNPJ
+            </label>
+            <label className={CHECK}>
+              <input type="checkbox" checked={value.mostrarEndereco} onChange={e => set('mostrarEndereco', e.target.checked)} className={CHECKBOX} />
+              Endereço
+            </label>
+            <label className={CHECK}>
+              <input type="checkbox" checked={value.mostrarContato} onChange={e => set('mostrarContato', e.target.checked)} className={CHECKBOX} />
+              Telefone / e-mail
+            </label>
+            <label className={CHECK}>
+              <input type="checkbox" checked={value.mostrarObservacoes} onChange={e => set('mostrarObservacoes', e.target.checked)} className={CHECKBOX} />
+              Observações
+            </label>
+            {tipo === 'orcamento' && (
+              <>
+                <label className={CHECK}>
+                  <input type="checkbox" checked={value.mostrarValidade} onChange={e => set('mostrarValidade', e.target.checked)} className={CHECKBOX} />
+                  Validade da proposta
+                </label>
+                <label className={CHECK}>
+                  <input type="checkbox" checked={value.mostrarGarantia} onChange={e => set('mostrarGarantia', e.target.checked)} className={CHECKBOX} />
+                  Texto de garantia
+                </label>
+              </>
+            )}
+            <label className={CHECK}>
+              <input type="checkbox" checked={value.mostrarAssinatura} onChange={e => set('mostrarAssinatura', e.target.checked)} className={CHECKBOX} />
+              Linha de assinatura
+            </label>
+          </div>
         </div>
 
-        <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-4">
+        <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-3">
           <p className="text-[10px] font-bold text-gray-500 uppercase mb-2">Colunas da tabela de itens</p>
-          <label className={CHECK}>
-            <input type="checkbox" checked={value.colunasItens.quantidade} onChange={e => setColuna('quantidade', e.target.checked)} className={CHECKBOX} />
-            Quantidade
-          </label>
-          <label className={CHECK}>
-            <input type="checkbox" checked={value.colunasItens.unidade} onChange={e => setColuna('unidade', e.target.checked)} className={CHECKBOX} />
-            Unidade
-          </label>
-          <label className={CHECK}>
-            <input type="checkbox" checked={value.colunasItens.precoUnitario} onChange={e => setColuna('precoUnitario', e.target.checked)} className={CHECKBOX} />
-            Preço unitário
-          </label>
-          <label className={CHECK}>
-            <input type="checkbox" checked={value.colunasItens.desconto} onChange={e => setColuna('desconto', e.target.checked)} className={CHECKBOX} />
-            Desconto
-          </label>
+          <div className="grid grid-cols-2 gap-x-3">
+            <label className={CHECK}>
+              <input type="checkbox" checked={value.colunasItens.quantidade} onChange={e => setColuna('quantidade', e.target.checked)} className={CHECKBOX} />
+              Quantidade
+            </label>
+            <label className={CHECK}>
+              <input type="checkbox" checked={value.colunasItens.unidade} onChange={e => setColuna('unidade', e.target.checked)} className={CHECKBOX} />
+              Unidade
+            </label>
+            <label className={CHECK}>
+              <input type="checkbox" checked={value.colunasItens.precoUnitario} onChange={e => setColuna('precoUnitario', e.target.checked)} className={CHECKBOX} />
+              Preço unitário
+            </label>
+            <label className={CHECK}>
+              <input type="checkbox" checked={value.colunasItens.desconto} onChange={e => setColuna('desconto', e.target.checked)} className={CHECKBOX} />
+              Desconto
+            </label>
+          </div>
         </div>
 
         <div>
@@ -154,8 +158,14 @@ export function EditorLayoutImpressao({ tipo, value, onChange, empresa }: Editor
       {/* Pré-visualização */}
       <div>
         <p className="text-[10px] font-bold text-gray-500 uppercase mb-2">Pré-visualização (dados de exemplo)</p>
-        <div className="bg-gray-700 rounded-xl overflow-hidden border border-gray-600" style={{ height: 600 }}>
-          <div className="overflow-auto h-full p-4">
+        {/* Largura calculada a partir do tamanho real após o scale(0.45) — como
+            transform não encolhe o espaço de layout, "fit-content" não funciona
+            aqui, por isso o valor fixo (210mm × 0.45 ≈ 357px + padding). */}
+        <div
+          className="bg-gray-700 rounded-xl overflow-hidden border border-gray-600"
+          style={{ width: 390 }}
+        >
+          <div className="overflow-auto p-3" style={{ maxHeight: 540 }}>
             <div style={{ transform: 'scale(0.45)', transformOrigin: 'top left', width: '210mm' }}>
               <DocumentoImpressao layout={value} empresa={empresa} documento={mockDocumento(tipo)} />
             </div>
