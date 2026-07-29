@@ -18,7 +18,7 @@ import { useConfirm } from '../components/ui/ConfirmModal';
 import {
   ArrowLeft, Plus, Scissors, Package, CheckCircle2, Tag, Tags,
   ClipboardList, Factory, Handshake, Briefcase, Save, X,
-  Ruler,
+  Ruler, Copy,
 } from 'lucide-react';
 
 type View = 'lista' | 'detalhe' | 'acabamentos' | 'categorias';
@@ -293,6 +293,7 @@ export function Produtos() {
   const [busca, setBusca]       = useState('');
   const [modalCat, setModalCat] = useState(false);
   const [modalMP, setModalMP]   = useState(false);
+  const [clonando, setClonando] = useState<string | null>(null);
 
   // Acabamentos form
   const [acabNome, setAcabNome]   = useState('');
@@ -356,6 +357,44 @@ export function Produtos() {
   }
 
   function setF(field: string, val: any) { setForm(f => ({ ...f, [field]: val })); }
+
+  // Duplica um produto (dados + BOM/composição de materiais) e já abre a
+  // cópia na tela de edição — útil pra cadastrar rápido uma variação de um
+  // produto que já existe (ex: mesma lona em outro tamanho/acabamento padrão).
+  async function clonarProduto(p: Produto) {
+    setClonando(p.id);
+    try {
+      const bomOriginal = await loadBom(p.id);
+
+      const { id: _id, created_at: _c, updated_at: _u, empresa_id: _e, ...dadosBase } = p as any;
+      const dadosClone = { ...dadosBase, nome: `${p.nome} (cópia)` };
+
+      const novo = await criar(dadosClone as any);
+      const novoId = (novo as any)?.id;
+      if (!novoId) {
+        toast.error('Produto clonado, mas não recebi o ID da cópia — atualize a lista pra encontrá-la.');
+        return;
+      }
+
+      if (bomOriginal.length > 0) {
+        try { await saveBom(novoId, bomOriginal); }
+        catch (e: any) { toast.error('Produto clonado, mas falhou ao copiar a composição de materiais: ' + e.message); }
+      }
+
+      toast.success('Produto clonado! Editando a cópia...');
+
+      // abre a cópia recém-criada direto na tela de edição
+      setProdutoId(novoId);
+      setForm({ ...NOVO, ...dadosClone, id: novoId });
+      setMaquinas(parseMaquinas(dadosClone.maquina));
+      setBom(bomOriginal);
+      setView('detalhe');
+    } catch (e: any) {
+      toast.error('Erro ao clonar produto: ' + e.message);
+    } finally {
+      setClonando(null);
+    }
+  }
 
   async function handleSalvar() {
     const payload = { ...form, maquina: stringifyMaquinas(maquinas) };
@@ -652,6 +691,11 @@ export function Produtos() {
                     <div className="flex gap-2 justify-center">
                       <button onClick={() => abrirDetalhe(p)}
                         className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 border border-blue-500/30">Editar</button>
+                      <button onClick={() => clonarProduto(p)} disabled={clonando === p.id}
+                        title="Duplicar produto (com a composição de materiais) e editar a cópia"
+                        className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-purple-500/15 text-purple-400 hover:bg-purple-500/25 border border-purple-500/30 disabled:opacity-40 flex items-center gap-1">
+                        <Copy className="w-3 h-3" /> {clonando === p.id ? 'Clonando...' : 'Clonar'}
+                      </button>
                       <button onClick={async () => { if (await confirmar(`Remover "${p.nome}"?`)) deletar(p.id); }}
                         className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-red-500/15 text-red-400 hover:bg-red-500/25 border border-red-500/30">Excluir</button>
                     </div>

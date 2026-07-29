@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { FileText, Zap, Banknote, Layers, Scissors, Plus, Edit2, Check, ArrowLeft, X, CornerDownRight, Ruler, Printer } from 'lucide-react';
+import { FileText, Zap, Banknote, Layers, Scissors, Plus, Edit2, Check, ArrowLeft, X, CornerDownRight, Ruler, Printer, MessageCircle } from 'lucide-react';
 import { useConfiguracoes } from '../hooks/useConfiguracoes';
 import { DocumentoImpressaoData } from '../components/impressao/DocumentoImpressao';
 import { imprimirDocumento } from '../components/impressao/imprimirDocumento';
@@ -111,10 +111,71 @@ export function Orcamentos() {
 
   function setF(k: keyof typeof NOVO_ORC, v: any) { setForm(p => ({ ...p, [k]: v })); }
 
+  // Monta o texto resumido do orçamento pra mandar por WhatsApp — sem PDF,
+  // sem página de impressão. Mostra material/produto, medidas, quantidade
+  // e preço unitário de cada item. O desconto NÃO aparece: o total final já
+  // vem com ele embutido, só não é rotulado como "desconto" na mensagem.
+  function montarMensagemWhatsApp(): string {
+    const fmtNum = (v: number) => v.toFixed(2).replace('.', ',');
+    const linhas: string[] = [];
+
+    linhas.push(`*ORÇAMENTO${form.numero ? ` Nº ${form.numero}` : ''}*`);
+    linhas.push('');
+    linhas.push(`Cliente: ${form.cliente_nome || '-'}`);
+    linhas.push('');
+    linhas.push('ITENS');
+    linhas.push('');
+
+    itens.forEach((it, i) => {
+      const qtd = Number(it.quantidade) || 1;
+      const unit = Number(it.total) / qtd;
+
+      linhas.push(`• ${it.descricao}`);
+      if (it.largura_cm && it.altura_cm) {
+        linhas.push(`  Medidas: ${fmtNum(Number(it.largura_cm) / 100)} × ${fmtNum(Number(it.altura_cm) / 100)} m`);
+      } else if (it.area_m2) {
+        linhas.push(`  Área: ${fmtNum(Number(it.area_m2))} m²`);
+      }
+      linhas.push(`  Quantidade: ${qtd} ${qtd === 1 ? 'unidade' : 'unidades'}`);
+      linhas.push(`  Valor unitário: ${fmtBRL(unit)}`);
+      linhas.push(`  Total: ${fmtBRL(it.total)}`);
+      if (i < itens.length - 1) linhas.push('');
+    });
+
+    linhas.push('');
+    linhas.push('───────────────');
+    linhas.push(`Total do Orçamento: ${fmtBRL(totalFinal)}`);
+
+    if (form.observacoes?.trim()) {
+      linhas.push('');
+      linhas.push(`Obs: ${form.observacoes.trim()}`);
+    }
+
+    return linhas.join('\n');
+  }
+
+  function enviarWhatsAppTexto() {
+    const texto = montarMensagemWhatsApp();
+    const foneDigits = (clienteSelecionado?.telefone ?? '').replace(/\D/g, '');
+    const url = foneDigits
+      ? `https://wa.me/55${foneDigits}?text=${encodeURIComponent(texto)}`
+      : `https://api.whatsapp.com/send?text=${encodeURIComponent(texto)}`;
+    window.open(url, '_blank');
+  }
+
   async function abrirDetalhe(o: Orcamento | null) {
-    if (o) { setOrcId(o.id); setForm({ ...NOVO_ORC, ...o }); }
-    else   { setOrcId('__novo__'); setForm({ ...NOVO_ORC }); setItens([]); }
-    setShowEditor(false);
+    if (o) {
+      setOrcId(o.id);
+      setForm({ ...NOVO_ORC, ...o });
+      setShowEditor(false);
+    } else {
+      // Novo orçamento: pula a telinha de "Adicionar Item" e cai direto no
+      // editor de item (m² / catálogo / etc), já pronto pra usar.
+      setOrcId('__novo__');
+      setForm({ ...NOVO_ORC });
+      setItens([]);
+      setShowEditor(true);
+    }
     setView('detalhe');
   }
 
@@ -621,7 +682,14 @@ export function Orcamentos() {
           {!isNovo && (
             <button onClick={() => imprimirDocumento(layoutOrcamento, cfg ?? {}, docImpressaoOrcamento)}
               className="bg-gray-700 hover:bg-gray-600 text-gray-300 px-4 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-2">
-              <Printer className="w-4 h-4" /> Imprimir
+              <Printer className="w-4 h-4" /> Enviar PDF
+            </button>
+          )}
+          {!isNovo && itens.length > 0 && (
+            <button onClick={enviarWhatsAppTexto}
+              title="Envia um resumo em texto pelo WhatsApp, sem PDF e sem mostrar o desconto"
+              className="bg-green-700 hover:bg-green-600 text-white px-4 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-2">
+              <MessageCircle className="w-4 h-4" /> Enviar Texto
             </button>
           )}
           {jaConvertido && (

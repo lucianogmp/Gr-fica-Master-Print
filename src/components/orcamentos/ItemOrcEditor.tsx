@@ -142,6 +142,18 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
   const [acabQtd, setAcabQtd] = useState(String(editando?.acabamentos_por_folha ?? ''));
   const [arteInclusa, setArteInclusa] = useState(editando?.arte_inclusa ?? false);
 
+  // Detalhe adicional opcional pro tipo "m² Material" — a descrição principal
+  // vem automaticamente do material selecionado (ex: "Adesivo de Papel"), e
+  // esse campo é só um complemento livre, não obrigatório (ex: "2 faces").
+  // Ao editar um item existente, tenta separar de volta "Material — detalhe".
+  const materialEditando = materiais.find(m => m.id === editando?.material_id);
+  const prefixoEditando = materialEditando ? `${materialEditando.nome} — ` : null;
+  const [subdescricao, setSubdescricao] = useState(
+    editando && prefixoEditando && editando.descricao.startsWith(prefixoEditando)
+      ? editando.descricao.slice(prefixoEditando.length)
+      : ''
+  );
+
   // Catálogo
   const [buscaProd, setBuscaProd] = useState('');
   const [prodSel, setProdSel] = useState<Produto | null>(null);
@@ -169,9 +181,20 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
     if (!editando || editando.produto_id !== p.id) setAreaM2('');
   }
 
+  function selecionarMaterial(m: { id: string; nome: string; preco_m2: number }) {
+    setMaterialId(m.id);
+    // descrição principal passa a ser o nome do material automaticamente —
+    // o usuário só precisa diferenciar no campo de detalhe, se quiser.
+    setDescricao(m.nome);
+  }
+
   const matSel = materiais.find(m => m.id === materialId);
   const acabSel = acabamentos.find(a => a.id === acabId);
   const prodPorM2 = !!prodSel && (prodSel as any).unidade_medida === 'm2';
+
+  // descrição que efetivamente conta pra validação/gravação: no modo "m²
+  // Material" ela é sempre o nome do material (não depende de digitação).
+  const descricaoEfetiva = tab === 'metro' ? (matSel?.nome ?? '') : descricao;
 
   // ── cálculo do preview ─────────────────────────────────────────────────────
 
@@ -218,20 +241,28 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
       ? prodSel !== null && parseFloat(quantidade) > 0 && areaOk
       : true;
   const valido =
-    descricao.trim().length > 0 && prev.total > 0 && acabQtdOk && catalogoValido;
+    descricaoEfetiva.trim().length > 0 && prev.total > 0 && acabQtdOk && catalogoValido;
 
   // ── adicionar item ─────────────────────────────────────────────────────────
 
   function handleAdicionar() {
     if (!valido) return;
     const qtd = parseFloat(quantidade) || 1;
+
+    // No modo "m² Material" a descrição gravada é "Nome do Material" e, se
+    // houver detalhe adicional, "Nome do Material — detalhe".
+    const descricaoFinal =
+      tab === 'metro' && matSel
+        ? (subdescricao.trim() ? `${matSel.nome} — ${subdescricao.trim()}` : matSel.nome)
+        : descricao.trim();
+
     // preco_unitario deve incluir o acréscimo da arte para que
     // preco_unitario × quantidade == total (sem o acabamento, que é custo separado)
     // total = (unitario * qtd + custAcab) * (1 + pctArte/100)
     // => precoUnitarioComArte = total / qtd  — forma mais simples e sempre consistente
     const precoUnitarioFinal = qtd > 0 ? prev.total / qtd : prev.total;
     const item: OrcamentoItem = {
-      descricao: descricao.trim(),
+      descricao: descricaoFinal,
       tipo_calculo: tipo,
       produto_id: produtoId ?? null,
       material_id: tipo === 'metro' ? (materialId || null) : null,
@@ -460,8 +491,8 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
         </div>
       )}
 
-      {/* Descrição — abas não-catálogo */}
-      {tab !== 'catalogo' && (
+      {/* Descrição — abas não-catálogo, exceto "m² Material" que é automática */}
+      {tab !== 'catalogo' && tab !== 'metro' && (
         <div>
           <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1.5">Descrição *</label>
           <input
@@ -490,7 +521,7 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
                 {materiais.filter(m => m.ativo).map(m => (
                   <button
                     key={m.id}
-                    onClick={() => setMaterialId(m.id)}
+                    onClick={() => selecionarMaterial(m)}
                     className={[
                       'px-3 py-2 rounded-lg text-xs font-medium border transition-all text-left',
                       materialId === m.id
@@ -505,6 +536,27 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
               </div>
             )}
           </div>
+
+          {matSel && (
+            <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg px-3 py-2.5 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-blue-400 uppercase font-bold">Descrição</span>
+                <span className="text-sm font-bold text-white">{matSel.nome}</span>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1.5">
+                  Detalhe adicional (opcional)
+                </label>
+                <input
+                  value={subdescricao}
+                  onChange={e => setSubdescricao(e.target.value)}
+                  className={IN_BASE}
+                  placeholder="Ex: 2 faces, corte especial, cliente tal..."
+                />
+              </div>
+            </div>
+          )}
+
           <DimQtd l={largura} a={altura} q={quantidade} setL={setLargura} setA={setAltura} setQ={setQuantidade} />
           {matSel && prev.area && prev.area > 0 && (
             <InfoRow items={[
@@ -644,7 +696,7 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
           ) : (
             <div>
               <p className="text-xs text-gray-600">Preencha os campos para ver o total</p>
-              {!descricao.trim() && (
+              {!descricaoEfetiva.trim() && tab !== 'metro' && (
                 <p className="text-[10px] text-red-500 mt-0.5">• Descrição obrigatória</p>
               )}
               {tipo === 'metro' && !materialId && (
