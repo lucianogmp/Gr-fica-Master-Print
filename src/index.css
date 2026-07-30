@@ -187,7 +187,9 @@ main.bg-\[\#111827\] {
 .grid > div:nth-child(5) { animation-delay: 250ms; }
 .grid > div:nth-child(6) { animation-delay: 300ms; }
 
-/* ─── Efeito Hover Premium (Escala e Glow) ─── */
+/* ─── Efeito Hover Premium (Glow, sem deslocamento/escala) ─── */
+/* Removido o "salto" (translateY + scale) que ficava incômodo com o uso —
+   mantém só o realce de borda e o glow suave da sombra ao passar o mouse. */
 div.bg-\[\#1f2937\],
 div.bg-\[\#1a2332\],
 div.bg-\[\#1a222f\],
@@ -199,9 +201,8 @@ div.bg-\[\#1f2937\]:hover,
 div.bg-\[\#1a2332\]:hover,
 div.bg-\[\#1a222f\]:hover,
 .ds-card:hover {
-  transform: translateY(-4px) scale(1.015) !important;
   border-color: var(--glass-border-hover) !important;
-  box-shadow: 0 20px 40px 0 var(--shadow-strong), 
+  box-shadow: 0 8px 32px 0 var(--shadow-card),
               0 0 20px rgba(59, 130, 246, 0.05),
               inset 0 0 12px rgba(255, 255, 255, 0.04) !important;
 }

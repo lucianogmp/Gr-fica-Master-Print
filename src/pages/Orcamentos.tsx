@@ -1,5 +1,8 @@
 import { useState, useMemo } from 'react';
-import { FileText, Zap, Banknote, Layers, Scissors, Plus, Edit2, Check, ArrowLeft, X, CornerDownRight, Ruler, Printer, MessageCircle } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { supabase } from '../lib/supabase';
+import { FileText, Zap, Banknote, Layers, Scissors, Plus, Edit2, Check, ArrowLeft, X, CornerDownRight, Ruler, Printer, MessageCircle, Eye } from 'lucide-react';
+import { Modal } from '../components/ui/Modal';
 import { useConfiguracoes } from '../hooks/useConfiguracoes';
 import { DocumentoImpressaoData } from '../components/impressao/DocumentoImpressao';
 import { imprimirDocumento } from '../components/impressao/imprimirDocumento';
@@ -22,6 +25,17 @@ import { useConfirm } from '../components/ui/ConfirmModal';
 
 type View = 'lista' | 'detalhe' | 'materiais' | 'acabamentos' | 'folhas';
 type Filtro = 'todos' | StatusOrcamento;
+
+// Guarda os dados exatos do orçamento recém-salvo, pro popup de "o que fazer
+// agora" (Salvar PDF / Imprimir / Enviar Orçamento / Ver Orçamento) continuar
+// funcionando mesmo depois que a tela volta pra lista e o formulário é limpo.
+interface SnapshotOrcamento {
+  orcamento: Orcamento;
+  itens: OrcamentoItem[];
+  clienteTelefone: string | null;
+  clienteEmail: string | null;
+  clienteEndereco: string | null;
+}
 
 const fmtBRL  = (v: number | null | undefined) => Number(v ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const fmtData = (d?: string | null) => d ? new Date(d).toLocaleDateString('pt-BR') : '—';
@@ -53,6 +67,7 @@ export function Orcamentos() {
   const [editandoIdx, setEditandoIdx] = useState<number | null>(null);
   const [filtro, setFiltro]           = useState<Filtro>('todos');
   const [busca, setBusca]             = useState('');
+  const [posSalvar, setPosSalvar]     = useState<SnapshotOrcamento | null>(null);
 
   // Forms de materiais
   const [matNome, setMatNome]     = useState('');
@@ -86,28 +101,41 @@ export function Orcamentos() {
 
   const clienteSelecionado = clientes.find(c => c.id === form.cliente_id);
 
-  const docImpressaoOrcamento: DocumentoImpressaoData = {
-    tipo: 'orcamento',
-    numero: form.numero ?? null,
-    data: form.created_at ?? null,
-    dataEntrega: null,
-    clienteNome: form.cliente_nome ?? '',
-    clienteTelefone: clienteSelecionado?.telefone ?? null,
-    clienteEmail: clienteSelecionado?.email ?? null,
-    clienteEndereco: formatarEnderecoCliente(clienteSelecionado) || null,
-    itens: itens.map(i => ({
-      descricao: i.descricao,
-      quantidade: Number(i.quantidade),
-      unidade: undefined,
-      precoUnitario: Number(i.total) / (Number(i.quantidade) || 1),
-      desconto: 0,
-      total: Number(i.total),
-    })),
-    subtotal,
-    descontoGlobalPct: descGlobal,
-    total: totalFinal,
-    observacoes: form.observacoes,
-  };
+  // Monta os dados de impressão e abre o popup de impressão/PDF. Sem `dados`,
+  // usa o estado atual da tela (form/itens); com `dados`, usa o snapshot do
+  // que acabou de ser salvo — assim funciona também a partir do popup pós-salvar.
+  function imprimir(dados?: SnapshotOrcamento) {
+    const orc = dados ? dados.orcamento : (form as Orcamento);
+    const itensRef = dados ? dados.itens : itens;
+    const clienteTelefone = dados ? dados.clienteTelefone : (clienteSelecionado?.telefone ?? null);
+    const clienteEmail = dados ? dados.clienteEmail : (clienteSelecionado?.email ?? null);
+    const clienteEndereco = dados ? dados.clienteEndereco : (formatarEnderecoCliente(clienteSelecionado) || null);
+    const subtotalRef = itensRef.reduce((s, i) => s + Number(i.total), 0);
+
+    const doc: DocumentoImpressaoData = {
+      tipo: 'orcamento',
+      numero: orc.numero ?? null,
+      data: orc.created_at ?? null,
+      dataEntrega: null,
+      clienteNome: orc.cliente_nome ?? '',
+      clienteTelefone,
+      clienteEmail,
+      clienteEndereco,
+      itens: itensRef.map(i => ({
+        descricao: i.descricao,
+        quantidade: Number(i.quantidade),
+        unidade: undefined,
+        precoUnitario: Number(i.total) / (Number(i.quantidade) || 1),
+        desconto: 0,
+        total: Number(i.total),
+      })),
+      subtotal: subtotalRef,
+      descontoGlobalPct: Number(orc.desconto ?? 0),
+      total: Number(orc.total ?? totalFinal),
+      observacoes: orc.observacoes,
+    };
+    imprimirDocumento(layoutOrcamento, cfg ?? {}, doc);
+  }
 
   function setF(k: keyof typeof NOVO_ORC, v: any) { setForm(p => ({ ...p, [k]: v })); }
 
@@ -115,18 +143,21 @@ export function Orcamentos() {
   // sem página de impressão. Mostra material/produto, medidas, quantidade
   // e preço unitário de cada item. O desconto NÃO aparece: o total final já
   // vem com ele embutido, só não é rotulado como "desconto" na mensagem.
-  function montarMensagemWhatsApp(): string {
+  function montarMensagemWhatsApp(dados?: SnapshotOrcamento): string {
+    const orc = dados ? dados.orcamento : (form as Orcamento);
+    const itensRef = dados ? dados.itens : itens;
+    const totalRef = dados ? Number(orc.total) : totalFinal;
     const fmtNum = (v: number) => v.toFixed(2).replace('.', ',');
     const linhas: string[] = [];
 
-    linhas.push(`*ORÇAMENTO${form.numero ? ` Nº ${form.numero}` : ''}*`);
+    linhas.push(`*ORÇAMENTO${orc.numero ? ` Nº ${orc.numero}` : ''}*`);
     linhas.push('');
-    linhas.push(`Cliente: ${form.cliente_nome || '-'}`);
+    linhas.push(`Cliente: ${orc.cliente_nome || '-'}`);
     linhas.push('');
     linhas.push('ITENS');
     linhas.push('');
 
-    itens.forEach((it, i) => {
+    itensRef.forEach((it, i) => {
       const qtd = Number(it.quantidade) || 1;
       const unit = Number(it.total) / qtd;
 
@@ -139,28 +170,42 @@ export function Orcamentos() {
       linhas.push(`  Quantidade: ${qtd} ${qtd === 1 ? 'unidade' : 'unidades'}`);
       linhas.push(`  Valor unitário: ${fmtBRL(unit)}`);
       linhas.push(`  Total: ${fmtBRL(it.total)}`);
-      if (i < itens.length - 1) linhas.push('');
+      if (i < itensRef.length - 1) linhas.push('');
     });
 
     linhas.push('');
     linhas.push('───────────────');
-    linhas.push(`Total do Orçamento: ${fmtBRL(totalFinal)}`);
+    linhas.push(`Total do Orçamento: ${fmtBRL(totalRef)}`);
 
-    if (form.observacoes?.trim()) {
+    if (orc.observacoes?.trim()) {
       linhas.push('');
-      linhas.push(`Obs: ${form.observacoes.trim()}`);
+      linhas.push(`Obs: ${orc.observacoes.trim()}`);
     }
 
     return linhas.join('\n');
   }
 
-  function enviarWhatsAppTexto() {
-    const texto = montarMensagemWhatsApp();
-    const foneDigits = (clienteSelecionado?.telefone ?? '').replace(/\D/g, '');
-    const url = foneDigits
-      ? `https://wa.me/55${foneDigits}?text=${encodeURIComponent(texto)}`
-      : `https://api.whatsapp.com/send?text=${encodeURIComponent(texto)}`;
-    window.open(url, '_blank');
+  async function enviarWhatsAppTexto(dados?: SnapshotOrcamento) {
+    let telefone = dados ? dados.clienteTelefone : (clienteSelecionado?.telefone ?? null);
+
+    // Sem snapshot (ainda dentro da tela de edição): confere o telefone direto
+    // no banco em vez de confiar só no cache local, que pode estar desatualizado
+    // logo depois de editar o cliente pelo popup de "Editar Cliente".
+    if (!dados && form.cliente_id) {
+      const { data } = await supabase.from('clientes').select('telefone').eq('id', form.cliente_id).single();
+      if (data?.telefone) telefone = data.telefone;
+    }
+
+    const foneDigits = (telefone ?? '').replace(/\D/g, '');
+    if (!foneDigits) {
+      toast.error('Este cliente não tem telefone cadastrado — adicione um telefone pra poder enviar direto pelo WhatsApp.');
+      return;
+    }
+    // Garante o código do país (55). Números já digitados com 55 na frente
+    // (12-13 dígitos) são respeitados; DDD + número (10-11 dígitos) ganham o 55.
+    const comCodigoPais = foneDigits.length <= 11 ? `55${foneDigits}` : foneDigits;
+    const texto = montarMensagemWhatsApp(dados);
+    window.open(`https://wa.me/${comCodigoPais}?text=${encodeURIComponent(texto)}`, '_blank');
   }
 
   async function abrirDetalhe(o: Orcamento | null) {
@@ -230,8 +275,25 @@ export function Orcamentos() {
   async function handleSalvar() {
     const payload = { ...form, total: totalFinal, desconto: descGlobal };
     const { id: _id, created_at: _c, updated_at: _u, ...clean } = { id: '', created_at: '', updated_at: '', ...payload };
-    if (isNovo) { await criar({ orc: clean as any, itens }); }
-    else if (orcId) { await atualizar({ id: orcId, orc: clean as any, itens }); }
+    let salvo: any = null;
+    if (isNovo) { salvo = await criar({ orc: clean as any, itens }); }
+    else if (orcId) { salvo = await atualizar({ id: orcId, orc: clean as any, itens }); }
+
+    const orcamentoSalvo: Orcamento = {
+      ...(clean as any),
+      id: salvo?.id ?? orcId ?? '',
+      numero: salvo?.numero ?? (form as any).numero ?? null,
+      created_at: salvo?.created_at ?? (form as any).created_at ?? null,
+      updated_at: salvo?.updated_at ?? null,
+    };
+
+    setPosSalvar({
+      orcamento: orcamentoSalvo,
+      itens: [...itens],
+      clienteTelefone: clienteSelecionado?.telefone ?? null,
+      clienteEmail: clienteSelecionado?.email ?? null,
+      clienteEndereco: formatarEnderecoCliente(clienteSelecionado) || null,
+    });
     fechar();
   }
 
@@ -644,6 +706,40 @@ export function Orcamentos() {
         </div>
       </div>
     </div>
+
+    {posSalvar && (
+      <Modal
+        open={true}
+        onClose={() => setPosSalvar(null)}
+        title={<span className="flex items-center gap-1.5"><Check className="w-4 h-4 text-green-400" /> Orçamento salvo!</span>}
+        maxWidth="420px"
+        actions={<>
+          <button onClick={() => setPosSalvar(null)}
+            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-sm font-medium transition-all">
+            Fechar
+          </button>
+        </>}
+      >
+        <div className="space-y-2">
+          <button onClick={() => imprimir(posSalvar)}
+            className="w-full flex items-center gap-2 justify-center bg-gray-700 hover:bg-gray-600 text-gray-200 px-4 py-3 rounded-xl font-bold text-sm transition-all">
+            <Printer className="w-4 h-4" /> Salvar em PDF
+          </button>
+          <button onClick={() => imprimir(posSalvar)}
+            className="w-full flex items-center gap-2 justify-center bg-gray-700 hover:bg-gray-600 text-gray-200 px-4 py-3 rounded-xl font-bold text-sm transition-all">
+            <Printer className="w-4 h-4" /> Imprimir
+          </button>
+          <button onClick={() => enviarWhatsAppTexto(posSalvar)}
+            className="w-full flex items-center gap-2 justify-center bg-green-700 hover:bg-green-600 text-white px-4 py-3 rounded-xl font-bold text-sm transition-all">
+            <MessageCircle className="w-4 h-4" /> Enviar Orçamento
+          </button>
+          <button onClick={() => { const o = posSalvar.orcamento; setPosSalvar(null); abrirDetalhe(o); }}
+            className="w-full flex items-center gap-2 justify-center bg-blue-600 hover:bg-blue-500 text-white px-4 py-3 rounded-xl font-bold text-sm transition-all">
+            <Eye className="w-4 h-4" /> Ver Orçamento
+          </button>
+        </div>
+      </Modal>
+    )}
     </>
   );
 
@@ -680,16 +776,16 @@ export function Orcamentos() {
             </button>
           )}
           {!isNovo && (
-            <button onClick={() => imprimirDocumento(layoutOrcamento, cfg ?? {}, docImpressaoOrcamento)}
+            <button onClick={() => imprimir()}
               className="bg-gray-700 hover:bg-gray-600 text-gray-300 px-4 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-2">
               <Printer className="w-4 h-4" /> Enviar PDF
             </button>
           )}
           {!isNovo && itens.length > 0 && (
-            <button onClick={enviarWhatsAppTexto}
-              title="Envia um resumo em texto pelo WhatsApp, sem PDF e sem mostrar o desconto"
+            <button onClick={() => enviarWhatsAppTexto()}
+              title="Abre direto a conversa do cliente no WhatsApp com o resumo do orçamento em texto (sem PDF, sem desconto visível)"
               className="bg-green-700 hover:bg-green-600 text-white px-4 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-2">
-              <MessageCircle className="w-4 h-4" /> Enviar Texto
+              <MessageCircle className="w-4 h-4" /> Enviar Orçamento
             </button>
           )}
           {jaConvertido && (
