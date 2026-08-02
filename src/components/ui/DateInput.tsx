@@ -8,6 +8,10 @@
 // no formato "YYYY-MM-DD" (mesmo formato que o banco/Supabase já usa).
 //
 //   <DateInput value={form.data_venda} onChange={v => setF('data_venda', v)} className={IN} />
+//
+// Clicando no "mês de ano" do cabeçalho, abre uma grade de anos (12 por vez,
+// com setas pra voltar/avançar 12 anos de uma vez) — assim dá pra pular
+// direto pro ano certo em vez de clicar mês a mês até chegar lá.
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -59,6 +63,8 @@ export function DateInput({
   const [aberto, setAberto] = useState(false);
   const selecionado = parseISO(value);
   const [mesVisivel, setMesVisivel] = useState<Date>(selecionado ?? new Date());
+  const [modoAno, setModoAno] = useState(false);
+  const [anoGradeCentro, setAnoGradeCentro] = useState<number>((selecionado ?? new Date()).getFullYear());
   const wrapperRef = useRef<HTMLDivElement>(null);
   const botaoRef = useRef<HTMLButtonElement>(null);
   const painelRef = useRef<HTMLDivElement>(null);
@@ -122,12 +128,23 @@ export function DateInput({
   function abrir() {
     if (disabled) return;
     setMesVisivel(selecionado ?? new Date());
+    setModoAno(false);
     setAberto(true);
   }
 
   function selecionar(d: Date) {
     onChange(toISO(d));
     setAberto(false);
+  }
+
+  function abrirSeletorDeAno() {
+    setAnoGradeCentro(ano);
+    setModoAno(true);
+  }
+
+  function selecionarAno(anoEscolhido: number) {
+    setMesVisivel(new Date(anoEscolhido, mes, 1));
+    setModoAno(false);
   }
 
   const hoje = new Date();
@@ -151,6 +168,10 @@ export function DateInput({
     celulas.push({ dia: prox.getDate(), data: prox, foraDoMes: true });
     if (celulas.length >= 42) break;
   }
+
+  // Grade de anos: 12 por vez (4 colunas x 3 linhas), centrada no ano atual do mês visível.
+  const anoInicioGrade = anoGradeCentro - 5;
+  const anosGrade = Array.from({ length: 12 }, (_, i) => anoInicioGrade + i);
 
   const label = selecionado
     ? selecionado.toLocaleDateString('pt-BR')
@@ -182,65 +203,99 @@ export function DateInput({
           style={{ top: pos.top, left: pos.left, width: pos.width }}
           className="fixed z-[9999] bg-[#1f2937] border border-gray-700 rounded-xl shadow-2xl shadow-black/50 p-3"
         >
-          {/* Cabeçalho: mês/ano + navegação */}
+          {/* Cabeçalho: mês/ano (clicável pra abrir a grade de anos) + navegação */}
           <div className="flex items-center justify-between mb-2">
             <button type="button"
-              onClick={() => setMesVisivel(new Date(ano, mes - 1, 1))}
+              onClick={() => modoAno ? setAnoGradeCentro(a => a - 12) : setMesVisivel(new Date(ano, mes - 1, 1))}
               className="p-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 transition-colors">
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <span className="text-xs font-bold text-white capitalize">
-              {MESES[mes]} de {ano}
-            </span>
+            <button
+              type="button"
+              onClick={() => (modoAno ? setModoAno(false) : abrirSeletorDeAno())}
+              title={modoAno ? 'Voltar para o calendário' : 'Escolher outro ano'}
+              className="text-xs font-bold text-white capitalize hover:text-blue-400 transition-colors px-2 py-0.5 rounded-md hover:bg-gray-700/60"
+            >
+              {modoAno ? `${anoInicioGrade} – ${anoInicioGrade + 11}` : `${MESES[mes]} de ${ano}`}
+            </button>
             <button type="button"
-              onClick={() => setMesVisivel(new Date(ano, mes + 1, 1))}
+              onClick={() => modoAno ? setAnoGradeCentro(a => a + 12) : setMesVisivel(new Date(ano, mes + 1, 1))}
               className="p-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 transition-colors">
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
 
-          {/* Dias da semana */}
-          <div className="grid grid-cols-7 mb-1">
-            {DIAS_SEMANA.map((d, i) => (
-              <span key={i} className="text-[10px] font-bold text-gray-500 text-center py-1">{d}</span>
-            ))}
-          </div>
+          {modoAno ? (
+            /* Grade de anos — clique escolhe o ano e volta pro calendário de dias */
+            <div className="grid grid-cols-4 gap-1.5 py-1">
+              {anosGrade.map(a => {
+                const isAnoAtual = a === ano;
+                const isAnoDeHoje = a === hoje.getFullYear();
+                return (
+                  <button
+                    type="button"
+                    key={a}
+                    onClick={() => selecionarAno(a)}
+                    className={[
+                      'text-xs py-2 rounded-md transition-colors font-medium',
+                      isAnoAtual ? 'bg-blue-600 text-white font-bold hover:bg-blue-500'
+                        : isAnoDeHoje ? 'bg-gray-700 text-white font-bold hover:bg-gray-600'
+                        : 'text-gray-200 hover:bg-gray-700',
+                    ].join(' ')}
+                  >
+                    {a}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <>
+              {/* Dias da semana */}
+              <div className="grid grid-cols-7 mb-1">
+                {DIAS_SEMANA.map((d, i) => (
+                  <span key={i} className="text-[10px] font-bold text-gray-500 text-center py-1">{d}</span>
+                ))}
+              </div>
 
-          {/* Grade de dias */}
-          <div className="grid grid-cols-7 gap-y-0.5">
-            {celulas.map(({ dia, data, foraDoMes }, i) => {
-              const isSelecionado = mesmoDia(data, selecionado);
-              const isHoje = mesmoDia(data, hoje);
-              return (
-                <button
-                  type="button"
-                  key={i}
-                  onClick={() => selecionar(data)}
-                  className={[
-                    'text-xs w-8 h-8 rounded-md transition-colors',
-                    foraDoMes ? 'text-gray-600' : 'text-gray-200',
-                    isSelecionado ? 'bg-blue-600 text-white font-bold hover:bg-blue-500'
-                      : isHoje ? 'bg-gray-700 text-white font-bold hover:bg-gray-600'
-                      : 'hover:bg-gray-700',
-                  ].join(' ')}
-                >
-                  {dia}
-                </button>
-              );
-            })}
-          </div>
+              {/* Grade de dias */}
+              <div className="grid grid-cols-7 gap-y-0.5">
+                {celulas.map(({ dia, data, foraDoMes }, i) => {
+                  const isSelecionado = mesmoDia(data, selecionado);
+                  const isHoje = mesmoDia(data, hoje);
+                  return (
+                    <button
+                      type="button"
+                      key={i}
+                      onClick={() => selecionar(data)}
+                      className={[
+                        'text-xs w-8 h-8 rounded-md transition-colors',
+                        foraDoMes ? 'text-gray-600' : 'text-gray-200',
+                        isSelecionado ? 'bg-blue-600 text-white font-bold hover:bg-blue-500'
+                          : isHoje ? 'bg-gray-700 text-white font-bold hover:bg-gray-600'
+                          : 'hover:bg-gray-700',
+                      ].join(' ')}
+                    >
+                      {dia}
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
 
-          {/* Rodapé: Limpar / Hoje */}
-          <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-700">
-            <button type="button" onClick={() => { onChange(''); setAberto(false); }}
-              className="text-[11px] font-bold text-gray-400 hover:text-white transition-colors">
-              Limpar
-            </button>
-            <button type="button" onClick={() => selecionar(hoje)}
-              className="text-[11px] font-bold text-blue-400 hover:text-blue-300 transition-colors">
-              Hoje
-            </button>
-          </div>
+          {/* Rodapé: Limpar / Hoje — só faz sentido na visão de dias */}
+          {!modoAno && (
+            <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-700">
+              <button type="button" onClick={() => { onChange(''); setAberto(false); }}
+                className="text-[11px] font-bold text-gray-400 hover:text-white transition-colors">
+                Limpar
+              </button>
+              <button type="button" onClick={() => selecionar(hoje)}
+                className="text-[11px] font-bold text-blue-400 hover:text-blue-300 transition-colors">
+                Hoje
+              </button>
+            </div>
+          )}
         </div>,
         document.body
       )}

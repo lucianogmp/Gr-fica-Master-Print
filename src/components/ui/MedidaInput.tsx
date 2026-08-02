@@ -5,6 +5,10 @@
 // entrando da direita pra esquerda, empurrando as casas decimais. Não
 // precisa apagar o "0,00" antes de digitar — é só começar a digitar por cima.
 //
+// Também respeita seleção de texto: se tudo estiver selecionado (Ctrl+A ou
+// duplo-clique), o próximo dígito digitado substitui o valor inteiro em vez
+// de ser empurrado pro final por cima do que já estava lá.
+//
 // Exemplos: digitar 1 → 0,01 m | digitar 150 → 1,50 m | digitar 200 → 2,00 m
 
 import { useEffect, useRef, useState } from 'react';
@@ -66,14 +70,19 @@ export function MedidaInput({
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (disabled) return;
 
+    const el = e.currentTarget;
+    // Tudo selecionado (Ctrl+A, duplo-clique, etc): o próximo dígito começa
+    // um valor novo do zero, em vez de ser empurrado por cima do que já tinha.
+    const tudoSelecionado = el.selectionStart === 0 && el.selectionEnd === el.value.length && el.value.length > 0;
+
     if (e.key >= '0' && e.key <= '9') {
       e.preventDefault();
-      emitir(centesimos * 10 + Number(e.key));
+      emitir(tudoSelecionado ? Number(e.key) : centesimos * 10 + Number(e.key));
       return;
     }
     if (e.key === 'Backspace' || e.key === 'Delete') {
       e.preventDefault();
-      emitir(Math.floor(centesimos / 10));
+      emitir(tudoSelecionado ? 0 : Math.floor(centesimos / 10));
       return;
     }
     // Navegação e atalhos continuam funcionando; qualquer outra tecla (letras, vírgula, ponto, símbolos)
@@ -96,14 +105,14 @@ export function MedidaInput({
     emitir(parseInt(digitos, 10));
   }
 
-  // O cursor sempre fica no fim — quem "edita" é o dígito que entra pela direita, não uma posição no meio do texto.
-  useEffect(() => {
-    const el = inputRef.current;
-    if (el && document.activeElement === el) {
-      const len = el.value.length;
-      el.setSelectionRange(len, len);
-    }
-  }, [centesimos]);
+  // Só força o cursor pro final quando NÃO existe uma seleção em andamento —
+  // assim um duplo-clique (que seleciona o conteúdo inteiro) não é desfeito
+  // por este mesmo handler logo em seguida.
+  function irParaOFinalSeNaoHouverSelecao(el: HTMLInputElement) {
+    if (el.selectionStart !== el.selectionEnd) return;
+    const len = el.value.length;
+    el.setSelectionRange(len, len);
+  }
 
   return (
     <input
@@ -115,8 +124,8 @@ export function MedidaInput({
       value={centesimosParaTexto(centesimos)}
       onKeyDown={handleKeyDown}
       onPaste={handlePaste}
-      onFocus={e => { const len = e.target.value.length; e.target.setSelectionRange(len, len); }}
-      onClick={e => { const len = e.currentTarget.value.length; e.currentTarget.setSelectionRange(len, len); }}
+      onFocus={e => irParaOFinalSeNaoHouverSelecao(e.target)}
+      onClick={e => irParaOFinalSeNaoHouverSelecao(e.currentTarget)}
       onChange={() => {/* controlado inteiramente via onKeyDown/onPaste */}}
       onBlur={onBlur}
       className={className}

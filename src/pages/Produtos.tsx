@@ -66,6 +66,7 @@ function ModalNovaMateriaPrima({ open, onClose, onCriada }: {
   const [form, setForm]     = useState(VAZIO);
   const [salvando, setSalvando] = useState(false);
   const { data: categorias = [] } = useCategorias();
+  const { criar: criarMateriaPrima } = useMateriasPrimas();
   const [modalCat, setModalCat] = useState(false);
   function set(f: Exclude<keyof typeof VAZIO, 'custo_unitario'>, v: string) { setForm(p => ({ ...p, [f]: v })); }
   function setCustoUnitario(v: number) { setForm(p => ({ ...p, custo_unitario: v })); }
@@ -73,19 +74,18 @@ function ModalNovaMateriaPrima({ open, onClose, onCriada }: {
     if (!form.nome.trim()) return;
     setSalvando(true);
     try {
-      const { data, error } = await supabase
-        .from('materias_primas')
-        .insert({
-          nome: form.nome.trim(),
-          categoria: form.categoria.trim() || null,
-          unidade: form.unidade,
-          custo_unitario: form.custo_unitario || 0,
-          estoque_minimo: parseFloat(form.estoque_minimo) || 0,
-          saldo: parseFloat(form.saldo_inicial) || 0,
-        })
-        .select('id, nome').single();
-      if (error) throw error;
-      toast.success('Matéria-prima criada!');
+      // Usa o hook useMateriasPrimas() (em vez de inserir direto no Supabase)
+      // pra garantir que o cache do React Query seja invalidado — assim a
+      // matéria-prima aparece na hora em Estoque e em qualquer outra tela,
+      // sem precisar de F5.
+      const data = await criarMateriaPrima({
+        nome: form.nome.trim(),
+        categoria: form.categoria.trim() || null,
+        unidade: form.unidade,
+        custo_unitario: form.custo_unitario || 0,
+        estoque_minimo: parseFloat(form.estoque_minimo) || 0,
+        saldo_inicial: parseFloat(form.saldo_inicial) || 0,
+      } as any);
       onCriada(data.id, data.nome);
       setForm(VAZIO);
       onClose();

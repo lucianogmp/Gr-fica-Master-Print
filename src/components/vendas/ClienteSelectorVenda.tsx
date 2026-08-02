@@ -146,6 +146,9 @@ export function ClienteSelectorVenda({ value, clienteId, onChange, hideLabel }: 
       selecionar(data as ClienteSimples);
       setShowNovo(false);
       setNovoForm({ nome: '', telefone: '', email: '', cpf_cnpj: '', razao_social: '', nome_fantasia: '' });
+      // insert feito direto no Supabase, por fora do useClientes() — invalida
+      // o cache pra esse cliente aparecer na hora em qualquer lista/tela.
+      queryClient.invalidateQueries();
       toast.success('Cliente cadastrado!');
     } catch (e: any) {
       toast.error(e.message);
