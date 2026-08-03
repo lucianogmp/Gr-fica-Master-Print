@@ -90,7 +90,7 @@ export class ErrorHandler {
     const appError = this.parse(error);
     const logMessage = `[${context || 'ERROR'}] ${appError.message}`;
     
-    if (process.env.NODE_ENV === 'development') {
+    if (import.meta.env.DEV) {
       console.error(logMessage, appError.originalError);
     }
     
