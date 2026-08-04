@@ -6,6 +6,7 @@ import { useRole } from '../hooks/useRole';
 import { ROLES, ROUTE_PERMISSIONS, Role } from '../types/roles';
 import { supabase } from '../lib/supabase';
 import { EstoqueAlertBanner } from './EstoqueAlertBanner';
+import { BackupAlertBanner } from './BackupAlertBanner';
 import { useTheme } from '../hooks/useTheme';
 import { useConfiguracoes } from '../hooks/useConfiguracoes';
 import toast from 'react-hot-toast';
@@ -501,6 +502,9 @@ export function Layout() {
 
         {/* Banner de alertas de estoque */}
         <EstoqueAlertBanner />
+
+        {/* Banner de backup manual atrasado (plano Free não tem backup automático) */}
+        <BackupAlertBanner />
 
         {/* Conteúdo */}
         <main className="flex-1 overflow-y-auto bg-[#111827]">

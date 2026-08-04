@@ -1,7 +1,10 @@
 // src/pages/Configuracoes/Backup.tsx
-import { HardDrive, Download, RefreshCw, ShieldCheck } from 'lucide-react';
+import { HardDrive, Download, Terminal, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { useBackupStatus } from '../../hooks/useBackupStatus';
 
 export function Backup() {
+  const { ultimoBackupEm, diasDesdeUltimoBackup, atrasado, carregando, marcarBackupFeito } = useBackupStatus();
+
   return (
     <div className="p-6 space-y-6">
       <div>
@@ -11,50 +14,84 @@ export function Backup() {
         <p className="text-gray-500 text-sm">Exportação e restauração de dados</p>
       </div>
 
-      {/* Info sobre backup automático do Supabase */}
-      <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-5 flex items-start gap-4">
-        <ShieldCheck className="w-6 h-6 text-green-400 flex-shrink-0 mt-0.5" />
+      {/* Status real do plano — sem backup automático no Free */}
+      <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-5 flex items-start gap-4">
+        <AlertTriangle className="w-6 h-6 text-orange-400 flex-shrink-0 mt-0.5" />
         <div>
-          <p className="font-bold text-green-400 text-sm">Backup automático ativo</p>
+          <p className="font-bold text-orange-400 text-sm">Backup manual — plano Free não inclui backup automático</p>
           <p className="text-gray-400 text-xs mt-1">
-            O Supabase realiza backups automáticos diários do banco de dados.
-            Seus dados estão protegidos na infraestrutura da AWS.
+            O Supabase só faz backups automáticos diários a partir do plano Pro.
+            No plano Free (o que este projeto usa hoje), a responsabilidade de
+            fazer backup é manual. Faça isso pelo menos uma vez por mês — o
+            sistema avisa quando estiver atrasado.
           </p>
         </div>
+      </div>
+
+      {/* Status do último backup */}
+      <div className={`rounded-xl p-5 flex items-start gap-4 border ${
+        atrasado ? 'bg-red-500/10 border-red-500/20' : 'bg-green-500/10 border-green-500/20'
+      }`}>
+        {atrasado
+          ? <AlertTriangle className="w-6 h-6 text-red-400 flex-shrink-0 mt-0.5" />
+          : <CheckCircle2 className="w-6 h-6 text-green-400 flex-shrink-0 mt-0.5" />
+        }
+        <div className="flex-1">
+          <p className={`font-bold text-sm ${atrasado ? 'text-red-400' : 'text-green-400'}`}>
+            {carregando
+              ? 'Carregando status...'
+              : ultimoBackupEm
+                ? `Último backup: há ${diasDesdeUltimoBackup} dia(s)`
+                : 'Nenhum backup registrado ainda'}
+          </p>
+          <p className="text-gray-400 text-xs mt-1">
+            {atrasado
+              ? 'Está na hora de fazer um backup novo.'
+              : 'Dentro do prazo recomendado (30 dias).'}
+          </p>
+        </div>
+        <button
+          onClick={marcarBackupFeito}
+          className="text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 px-3 py-2 rounded-lg transition-colors flex-shrink-0"
+        >
+          Marcar backup como feito hoje
+        </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5 space-y-3">
           <div className="flex items-center gap-2">
-            <Download className="w-5 h-5 text-blue-400" />
-            <h3 className="font-bold text-white">Exportar Dados</h3>
+            <Terminal className="w-5 h-5 text-blue-400" />
+            <h3 className="font-bold text-white">Opção 1 — Supabase CLI (recomendado)</h3>
           </div>
           <p className="text-gray-500 text-xs">
-            Exporte todos os dados do sistema em formato JSON ou CSV para backup local ou migração.
+            Gera um dump completo do banco (estrutura + dados) no seu computador.
           </p>
-          <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 text-xs text-yellow-300">
-            Funcionalidade disponível via Supabase CLI ou painel do projeto em supabase.com.
-          </div>
-          <a href="https://supabase.com/dashboard" target="_blank" rel="noopener noreferrer"
-            className="flex items-center gap-2 text-sm font-bold text-blue-400 hover:text-blue-300 transition-colors">
-            Acessar painel Supabase →
-          </a>
+          <pre className="bg-black/40 rounded-lg p-3 text-[11px] text-green-300 overflow-x-auto">
+{`npx supabase db dump \\
+  --db-url "postgresql://postgres:[SENHA]@db.qrgdcyceqsrtmerqazgp.supabase.co:5432/postgres" \\
+  -f backup-$(date +%Y-%m-%d).sql`}
+          </pre>
+          <p className="text-gray-500 text-xs">
+            A senha do banco fica em Project Settings → Database, no dashboard do Supabase.
+            Guarde o arquivo gerado num lugar seguro (Google Drive, HD externo, etc — fora do computador que roda o sistema).
+          </p>
         </div>
 
         <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5 space-y-3">
           <div className="flex items-center gap-2">
-            <RefreshCw className="w-5 h-5 text-purple-400" />
-            <h3 className="font-bold text-white">Restaurar Backup</h3>
+            <Download className="w-5 h-5 text-purple-400" />
+            <h3 className="font-bold text-white">Opção 2 — Painel do Supabase</h3>
           </div>
           <p className="text-gray-500 text-xs">
-            Restaure um backup anterior diretamente pelo painel do Supabase.
-            O histórico de backups fica disponível por até 7 dias no plano gratuito.
+            Sem usar terminal: Database → Backups no dashboard permite exportar
+            manualmente, mesmo no plano Free.
           </p>
-          <div className="space-y-1 text-xs text-gray-500">
-            <p>• Backups diários automáticos</p>
-            <p>• Point-in-time recovery (planos pagos)</p>
-            <p>• Exportação via pg_dump (CLI)</p>
-          </div>
+          <a href="https://supabase.com/dashboard/project/qrgdcyceqsrtmerqazgp/database/backups/scheduled"
+            target="_blank" rel="noopener noreferrer"
+            className="flex items-center gap-2 text-sm font-bold text-blue-400 hover:text-blue-300 transition-colors">
+            Acessar painel Supabase →
+          </a>
         </div>
       </div>
     </div>
