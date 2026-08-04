@@ -2,14 +2,37 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.35.0'
 
-const CORS = {
-  'Access-Control-Allow-Origin':  '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+// Só estas origens podem chamar esta função — antes era '*' (qualquer site)
+const ORIGENS_PERMITIDAS = [
+  'https://erp-master-print.vercel.app',
+  'https://erp-master-print-lucianogmps-projects.vercel.app',
+  'https://erp-master-print-git-main-lucianogmps-projects.vercel.app',
+  'http://localhost:5173', // dev local (Vite)
+]
+
+function getCorsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get('Origin') ?? ''
+  const allowOrigin = ORIGENS_PERMITIDAS.includes(origin) ? origin : ORIGENS_PERMITIDAS[0]
+  return {
+    'Access-Control-Allow-Origin':  allowOrigin,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Vary': 'Origin',
+  }
 }
 
 const ROLES_PERMITIDOS = ['dono', 'admin', 'vendedor', 'financeiro', 'producao']
 
 serve(async (req: Request) => {
+  const CORS = getCorsHeaders(req)
+
+  // Helper para respostas JSON com o CORS certo pra esta requisição
+  function json(body: unknown, status: number): Response {
+    return new Response(JSON.stringify(body), {
+      status,
+      headers: { ...CORS, 'Content-Type': 'application/json' },
+    })
+  }
+
   // Preflight CORS
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: CORS })
@@ -111,11 +134,3 @@ serve(async (req: Request) => {
     return json({ error: message }, 500)
   }
 })
-
-// Helper para respostas JSON com CORS
-function json(body: unknown, status: number): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...CORS, 'Content-Type': 'application/json' },
-  })
-}
