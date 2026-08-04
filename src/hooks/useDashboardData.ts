@@ -87,7 +87,7 @@ export function useDashboardData(mes: string) {
 
         // Itens de venda para top produtos
         supabase.from('venda_itens')
-          .select('produto_nome,valor_total')
+          .select('descricao,total')
           .limit(200),
 
         // ✅ Pagamentos de vendas dos últimos 6 meses — fonte de verdade para receita
@@ -213,8 +213,8 @@ export function useDashboardData(mes: string) {
 
       const prodMap: Record<string, number> = {};
       (vendaItensRes.data ?? []).forEach((vi: any) => {
-        const nome = vi.produto_nome || '—';
-        prodMap[nome] = (prodMap[nome] || 0) + Number(vi.valor_total ?? 0);
+        const nome = vi.descricao || '—';
+        prodMap[nome] = (prodMap[nome] || 0) + Number(vi.total ?? 0);
       });
       const top5Produtos = Object.entries(prodMap)
         .sort((a, b) => b[1] - a[1]).slice(0, 5)
