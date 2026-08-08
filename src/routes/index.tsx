@@ -21,6 +21,9 @@ const VendasHistorico = lazy(() => import('../pages/Vendas/Historico').then(m =>
 const VendasProducao  = lazy(() => import('../pages/Vendas/EmProducao').then(m => ({ default: m.EmProducao })));
 const VendasEntregues = lazy(() => import('../pages/Vendas/Entregues').then(m => ({ default: m.Entregues })));
 
+const Fornecedores = lazy(() => import('../pages/Fornecedores').then(m => ({ default: m.Fornecedores })));
+
+
 // ─── CRM (sub-rotas) ─────────────────────────────────────────────────────────
 const CrmClientes             = lazy(() => import('../pages/CRM/Clientes').then(m => ({ default: m.Clientes })));
 const CrmLeads                = lazy(() => import('../pages/CRM/Leads').then(m => ({ default: m.Leads })));
@@ -154,6 +157,7 @@ export function AppRoutes() {
 
           {/* ── CRM ── */}
           <Route path="crm" element={<Navigate to="/crm/clientes" replace />} />
+          <Route path="fornecedores" element={<PR rota="/fornecedores"><Fornecedores /></PR>} />
           <Route path="crm/clientes"              element={<PR rota="/crm/clientes"><CrmClientes /></PR>} />
           <Route path="crm/leads"                 element={<PR rota="/crm/leads"><CrmLeads /></PR>} />
           <Route path="crm/contatos"              element={<PR rota="/crm/contatos"><CrmContatos /></PR>} />

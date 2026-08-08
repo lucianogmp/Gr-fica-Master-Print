@@ -25,6 +25,7 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   // ── CRM ──
   '/crm':                        ['dono', 'admin', 'vendedor'],
   '/crm/clientes':               ['dono', 'admin', 'vendedor'],
+  '/fornecedores':               ['dono', 'admin', 'producao'],
   '/crm/leads':                  ['dono', 'admin', 'vendedor'],
   '/crm/contatos':               ['dono', 'admin', 'vendedor'],
   '/crm/aniversariantes':        ['dono', 'admin', 'vendedor'],
