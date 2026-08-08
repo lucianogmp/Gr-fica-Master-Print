@@ -14,6 +14,7 @@ import { Modal } from '../components/ui/Modal';
 import { MoneyInput } from '../components/ui/MoneyInput';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
+import { createErrorMessage } from '../utils/errorHandler';
 import { useConfirm } from '../components/ui/ConfirmModal';
 import {
   ArrowLeft, Plus, Scissors, Package, CheckCircle2, Tag, Tags,
@@ -413,7 +414,11 @@ export function Produtos() {
         try { await saveBom(produtoId, bom); }
         catch (e: any) { toast.error('Produto atualizado, mas falhou ao salvar BOM: ' + e.message); }
       }
-    } catch (err: any) { console.error(err); return; }
+    } catch (err: any) {
+      console.error(createErrorMessage(err));
+      toast.error('Erro ao salvar produto: ' + createErrorMessage(err));
+      return;
+    }
     fecharDetalhe();
   }
 

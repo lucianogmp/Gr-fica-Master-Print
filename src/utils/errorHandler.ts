@@ -91,7 +91,7 @@ export class ErrorHandler {
     const logMessage = `[${context || 'ERROR'}] ${appError.message}`;
     
     if (import.meta.env.DEV) {
-      console.error(logMessage, appError.originalError);
+      console.error(logMessage);
     }
     
     // Aqui você pode adicionar um serviço de logging remoto

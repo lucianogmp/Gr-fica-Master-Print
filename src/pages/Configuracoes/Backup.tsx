@@ -58,6 +58,17 @@ export function Backup() {
         </button>
       </div>
 
+      <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-5">
+        <p className="font-bold text-blue-400 text-sm">⚠️ O arquivo gerado fica só no seu computador</p>
+        <p className="text-gray-400 text-xs mt-1">
+          Um backup só protege de verdade se ficar num lugar <strong>diferente</strong> de
+          onde está o sistema original. Depois de gerar o arquivo (passo 1 abaixo),
+          mova-o pra fora do seu computador — Google Drive, OneDrive, pendrive
+          guardado em outro lugar, etc. Se o backup ficar só no mesmo PC, e o PC
+          quebrar ou for roubado, o backup se perde junto.
+        </p>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5 space-y-3">
           <div className="flex items-center gap-2">
@@ -65,7 +76,7 @@ export function Backup() {
             <h3 className="font-bold text-white">Opção 1 — Supabase CLI (recomendado)</h3>
           </div>
           <p className="text-gray-500 text-xs">
-            Gera um dump completo do banco (estrutura + dados) no seu computador.
+            <strong>Passo 1</strong> — gera um dump completo do banco (estrutura + dados) no seu computador:
           </p>
           <pre className="bg-black/40 rounded-lg p-3 text-[11px] text-green-300 overflow-x-auto">
 {`npx supabase db dump \\
@@ -74,7 +85,11 @@ export function Backup() {
           </pre>
           <p className="text-gray-500 text-xs">
             A senha do banco fica em Project Settings → Database, no dashboard do Supabase.
-            Guarde o arquivo gerado num lugar seguro (Google Drive, HD externo, etc — fora do computador que roda o sistema).
+          </p>
+          <p className="text-gray-500 text-xs">
+            <strong>Passo 2</strong> — move o arquivo <code>backup-AAAA-MM-DD.sql</code> gerado
+            pra uma pasta no Google Drive (ex: "Backups Gráfica Master Print") ou outro
+            local fora deste computador.
           </p>
         </div>
 
@@ -85,7 +100,9 @@ export function Backup() {
           </div>
           <p className="text-gray-500 text-xs">
             Sem usar terminal: Database → Backups no dashboard permite exportar
-            manualmente, mesmo no plano Free.
+            manualmente, mesmo no plano Free. O arquivo baixa direto pela pasta
+            de Downloads do navegador — depois é só mover ele pro Google Drive
+            (ou outro local fora do computador) do mesmo jeito.
           </p>
           <a href="https://supabase.com/dashboard/project/qrgdcyceqsrtmerqazgp/database/backups/scheduled"
             target="_blank" rel="noopener noreferrer"
