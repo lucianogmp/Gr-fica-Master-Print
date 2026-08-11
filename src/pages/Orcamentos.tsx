@@ -248,15 +248,18 @@ export function Orcamentos() {
     setShowEditor(false);
   }
 
-  function arredondarTotal() {
+  // Leva um valor pro múltiplo de 5 mais próximo NA DIREÇÃO pedida — sempre se
+  // move de fato (mesmo se já for múltiplo de 5, avança mais um degrau), então
+  // o botão nunca fica "sem fazer nada" quando clicado de novo.
+  function proximoMultiploCinco(valor: number, direcao: 'cima' | 'baixo'): number {
+    if (direcao === 'cima') return Math.floor(valor / 5) * 5 + 5;
+    return Math.max(0, Math.ceil(valor / 5) * 5 - 5);
+  }
+
+  function arredondarTotal(direcao: 'cima' | 'baixo') {
     if (itens.length === 0 || subtotal <= 0) return;
 
-    // Arredonda pra BAIXO. Diferente de pra cima, isso é sempre alcançável
-    // (o alvo nunca passa do subtotal), então o botão nunca mais fica "sem
-    // fazer nada" — antes usava Math.ceil, que às vezes pedia um total MAIOR
-    // que o subtotal, e como desconto só reduz preço (nunca aumenta), o
-    // cálculo dava um percentual negativo que ficava travado em 0%.
-    const alvo = Math.floor(totalFinal);
+    const alvo = proximoMultiploCinco(totalFinal, direcao);
     if (alvo <= 0) return;
 
     const fator = alvo / subtotal;
@@ -264,7 +267,8 @@ export function Orcamentos() {
     // Em vez de só ajustar um "desconto global" invisível, distribui o ajuste
     // no preço unitário (e total) de cada item — assim o recibo impresso bate
     // certinho: Qtd. × Preço Unit. = Total de cada linha, e a soma das linhas
-    // é exatamente igual ao Total impresso, sem cálculo estranho.
+    // é exatamente igual ao Total impresso, sem cálculo estranho. Funciona
+    // tanto pra baixo (fator < 1) quanto pra cima (fator > 1).
     const novosItens = itens.map(it => {
       const novoUnit = Number((it.preco_unitario * fator).toFixed(2));
       return { ...it, preco_unitario: novoUnit, total: Number((novoUnit * it.quantidade).toFixed(2)) };
@@ -958,11 +962,17 @@ export function Orcamentos() {
                   <span className="font-bold text-white">Total</span>
                   <div className="text-right">
                     <p className="text-3xl font-black text-blue-400">{fmtBRL(totalFinal)}</p>
-                    {totalFinal > 0 && totalFinal !== Math.floor(totalFinal) && (
-                      <button onClick={arredondarTotal}
-                        className="text-[10px] text-yellow-400 hover:text-yellow-300 underline mt-0.5">
-                        ↓ Arredondar para {fmtBRL(Math.floor(totalFinal))}
-                      </button>
+                    {totalFinal > 0 && (
+                      <div className="flex items-center justify-end gap-2 mt-0.5">
+                        <button onClick={() => arredondarTotal('baixo')} title={`Arredondar para ${fmtBRL(proximoMultiploCinco(totalFinal, 'baixo'))}`}
+                          className="text-[10px] text-yellow-400 hover:text-yellow-300 underline">
+                          ↓ {fmtBRL(proximoMultiploCinco(totalFinal, 'baixo'))}
+                        </button>
+                        <button onClick={() => arredondarTotal('cima')} title={`Arredondar para ${fmtBRL(proximoMultiploCinco(totalFinal, 'cima'))}`}
+                          className="text-[10px] text-yellow-400 hover:text-yellow-300 underline">
+                          ↑ {fmtBRL(proximoMultiploCinco(totalFinal, 'cima'))}
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>

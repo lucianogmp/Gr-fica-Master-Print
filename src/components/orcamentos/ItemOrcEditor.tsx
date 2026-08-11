@@ -161,6 +161,15 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
   const [acabQtd, setAcabQtd] = useState(String(editando?.acabamentos_por_folha ?? ''));
   const [arteInclusa, setArteInclusa] = useState(editando?.arte_inclusa ?? false);
 
+  // Override manual do total, usado pelas setas de arredondar (múltiplo de 5,
+  // pra mais ou pra menos). Fica ativo até qualquer input que afete o cálculo
+  // mudar de novo — aí o preview volta a ser automático.
+  const [totalManual, setTotalManual] = useState<number | null>(null);
+  useEffect(() => {
+    setTotalManual(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, tipo, materialId, precoM2, largura, altura, quantidade, precoLivre, areaM2, acabId, acabQtd, arteInclusa]);
+
   // Detalhe adicional opcional pro tipo "m² Material" — a descrição principal
   // vem automaticamente do material selecionado (ex: "Adesivo de Papel"), e
   // esse campo é só um complemento livre, não obrigatório (ex: "2 faces").
@@ -254,6 +263,21 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
   }
 
   const prev = buildPreview();
+  // Total que efetivamente conta pra validação/gravação: o valor calculado,
+  // a não ser que o usuário tenha arredondado manualmente com as setas.
+  const totalEfetivo = totalManual ?? prev.total;
+
+  // Leva um valor pro múltiplo de 5 mais próximo NA DIREÇÃO pedida — sempre se
+  // move de fato, mesmo se já for múltiplo de 5 (avança mais um degrau).
+  function proximoMultiploCinco(valor: number, direcao: 'cima' | 'baixo'): number {
+    if (direcao === 'cima') return Math.floor(valor / 5) * 5 + 5;
+    return Math.max(0, Math.ceil(valor / 5) * 5 - 5);
+  }
+
+  function arredondarItem(direcao: 'cima' | 'baixo') {
+    if (totalEfetivo <= 0) return;
+    setTotalManual(proximoMultiploCinco(totalEfetivo, direcao));
+  }
 
   const acabQtdOk = !acabId || parseInt(acabQtd) > 0;
   const areaOk = !prodPorM2 || parseFloat(areaM2) > 0;
@@ -262,7 +286,7 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
       ? prodSel !== null && parseFloat(quantidade) > 0 && areaOk
       : true;
   const valido =
-    descricaoEfetiva.trim().length > 0 && prev.total > 0 && acabQtdOk && catalogoValido;
+    descricaoEfetiva.trim().length > 0 && totalEfetivo > 0 && acabQtdOk && catalogoValido;
 
   // ── adicionar item ─────────────────────────────────────────────────────────
 
@@ -281,7 +305,8 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
     // preco_unitario × quantidade == total (sem o acabamento, que é custo separado)
     // total = (unitario * qtd + custAcab) * (1 + pctArte/100)
     // => precoUnitarioComArte = total / qtd  — forma mais simples e sempre consistente
-    const precoUnitarioFinal = qtd > 0 ? prev.total / qtd : prev.total;
+    // Usa o total efetivo (com arredondamento manual aplicado, se houver).
+    const precoUnitarioFinal = qtd > 0 ? totalEfetivo / qtd : totalEfetivo;
     const item: OrcamentoItem = {
       descricao: descricaoFinal,
       tipo_calculo: tipo,
@@ -300,7 +325,7 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
       preco_por_folha: null,
       quantidade: qtd,
       preco_unitario: precoUnitarioFinal,
-      total: prev.total,
+      total: totalEfetivo,
       acabamento_id: acabId || null,
       acabamento_nome: acabSel?.nome ?? null,
       acabamento_custo: acabSel?.custo ?? null,
@@ -695,13 +720,32 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
       {/* ── PREVIEW + BOTÃO ── */}
       <div className="flex items-end justify-between pt-3 border-t border-gray-700">
         <div>
-          {prev.total > 0 ? (
+          {totalEfetivo > 0 ? (
             <>
               <p className="text-[10px] text-gray-500">Total do item</p>
-              <p className="text-3xl font-black text-green-400">{fmtBRL(prev.total)}</p>
-              {parseFloat(quantidade) > 1 && prev.total > 0 && (
+              <div className="flex items-center gap-2">
+                <p className="text-3xl font-black text-green-400">{fmtBRL(totalEfetivo)}</p>
+                <div className="flex items-center gap-1.5">
+                  <button type="button" onClick={() => arredondarItem('baixo')}
+                    title={`Arredondar para ${fmtBRL(proximoMultiploCinco(totalEfetivo, 'baixo'))}`}
+                    className="text-[10px] text-yellow-400 hover:text-yellow-300 underline">
+                    ↓ {fmtBRL(proximoMultiploCinco(totalEfetivo, 'baixo'))}
+                  </button>
+                  <button type="button" onClick={() => arredondarItem('cima')}
+                    title={`Arredondar para ${fmtBRL(proximoMultiploCinco(totalEfetivo, 'cima'))}`}
+                    className="text-[10px] text-yellow-400 hover:text-yellow-300 underline">
+                    ↑ {fmtBRL(proximoMultiploCinco(totalEfetivo, 'cima'))}
+                  </button>
+                </div>
+              </div>
+              {totalManual != null && (
+                <p className="text-[10px] text-yellow-500">
+                  Arredondado manualmente (calculado: {fmtBRL(prev.total)})
+                </p>
+              )}
+              {parseFloat(quantidade) > 1 && totalEfetivo > 0 && (
                 <p className="text-[10px] text-gray-600">
-                  {fmtBRL(prev.total / (parseFloat(quantidade) || 1))} × {quantidade}
+                  {fmtBRL(totalEfetivo / (parseFloat(quantidade) || 1))} × {quantidade}
                 </p>
               )}
               {prodPorM2 && prev.area != null && (
