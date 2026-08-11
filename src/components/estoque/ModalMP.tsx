@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Modal } from '../ui/Modal';
 import { MateriaPrima } from '../../types/estoque';
 import { Pencil, Plus } from 'lucide-react';
+import { DarkSelect } from '../ui/DarkSelect';
 import { MoneyInput } from '../ui/MoneyInput';
 import { useCategorias } from '../../hooks/useCategorias';
 import toast from 'react-hot-toast';
@@ -104,10 +105,13 @@ export function ModalMP({ open, editando, onClose, onSalvar }: ModalMPProps) {
         <div className="grid grid-cols-2 gap-4">
           <Field label="Categoria">
             <div className="flex gap-2">
-              <select value={form.categoria} onChange={e => set('categoria', e.target.value)} className={INPUT + ' flex-1'}>
-                <option value="">Sem categoria</option>
-                {categorias.map(c => <option key={c.id} value={c.nome}>{c.nome}</option>)}
-              </select>
+              <DarkSelect
+                value={form.categoria}
+                onChange={v => set('categoria', v)}
+                placeholder="Sem categoria"
+                className="flex-1"
+                options={categorias.map(c => c.nome)}
+              />
               <button onClick={() => setModalCat(true)} title="Criar nova categoria"
                 className="flex-shrink-0 w-10 h-10 bg-green-600/20 hover:bg-green-600/40 border border-green-500/30 text-green-400 rounded-lg flex items-center justify-center transition-all">
                 <Plus className="w-4 h-4" />
@@ -115,9 +119,12 @@ export function ModalMP({ open, editando, onClose, onSalvar }: ModalMPProps) {
             </div>
           </Field>
           <Field label="Unidade">
-            <select value={form.unidade} onChange={e => set('unidade', e.target.value)} className={INPUT}>
-              {UNIDADES.map(u => <option key={u} value={u}>{u}</option>)}
-            </select>
+            <DarkSelect
+              value={form.unidade}
+              onChange={v => set('unidade', v)}
+              allowEmpty={false}
+              options={UNIDADES}
+            />
           </Field>
         </div>
 

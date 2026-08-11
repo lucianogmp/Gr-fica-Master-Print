@@ -12,6 +12,7 @@ import {
   TrendingUp, ArrowUp, ArrowDown, Wallet,
   Plus, X, Save,
 } from 'lucide-react';
+import { DarkSelect } from '../../components/ui/DarkSelect';
 
 const fmtBRL  = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const fmtData = (d: string) => new Date(d + 'T00:00:00').toLocaleDateString('pt-BR');
@@ -144,12 +145,15 @@ export function FluxoCaixa() {
 
               <div>
                 <label className={LABEL}>Conta</label>
-                <select value={form.conta_id} onChange={e => setF('conta_id', e.target.value)} className={IN}>
-                  <option value="">Selecione uma conta...</option>
-                  {contasAtivas.map(c => (
-                    <option key={c.id} value={c.id}>{c.nome}{c.banco ? ` — ${c.banco}` : ''}</option>
-                  ))}
-                </select>
+                <DarkSelect
+                  value={form.conta_id}
+                  onChange={v => setF('conta_id', v)}
+                  placeholder="Selecione uma conta..."
+                  options={contasAtivas.map(c => ({
+                    value: c.id,
+                    label: `${c.nome}${c.banco ? ` — ${c.banco}` : ''}`,
+                  }))}
+                />
               </div>
 
               <div>

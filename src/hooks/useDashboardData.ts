@@ -169,11 +169,20 @@ export function useDashboardData(mes: string) {
 
       // ─── Gráfico 6 meses ────────────────────────────────────────────────────
 
+      // Vendas concluídas por mês: soma valor_total pela data_venda, não pelo
+      // recebimento. Conta tudo que já virou venda de verdade (saiu de orçamento),
+      // independente de já ter sido pago ou não — só exclui as canceladas.
+      const somaVendas = (s: string, e: string) =>
+        vendas
+          .filter(v => v.status !== 'cancelado' && (v.data_venda ?? '') >= s && (v.data_venda ?? '') <= e)
+          .reduce((acc, v) => acc + Number(v.valor_total ?? 0), 0);
+
       const chart6 = meses6.map(mm => {
         const { start: ms, end: me } = mesRange(mm);
         const ml = hist.filter(l => (l.data_vencimento ?? '') >= ms && (l.data_vencimento ?? '') <= me);
         return {
           name: NOMES_MES[mm.slice(5, 7)] ?? mm.slice(5, 7),
+          vendas: somaVendas(ms, me),
           receita: somaPagementos(ms, me) + somaLancManual(ml, ms, me),
           despesa: ml.filter(l => l.tipo === 'despesa').reduce((s, l) => s + Number(l.valor), 0),
         };

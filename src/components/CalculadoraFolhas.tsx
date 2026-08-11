@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useCalculoFolhas } from '../hooks/useCalculoFolhas';
 import { PAPEIS, TipoMaterial } from '../types/calculadora';
 import { Ruler, Tag, Ticket, RotateCw } from 'lucide-react';
+import { DarkSelect } from './ui/DarkSelect';
 
 export function CalculadoraFolhas() {
   const [papelKey, setPapelKey] = useState<string>('A4');
@@ -29,15 +30,12 @@ export function CalculadoraFolhas() {
         {/* Tipo de papel */}
         <div>
           <label className="text-xs font-bold text-gray-400 uppercase block mb-2">Papel</label>
-          <select
+          <DarkSelect
             value={papelKey}
-            onChange={e => setPapelKey(e.target.value)}
-            className="w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500"
-          >
-            {Object.entries(PAPEIS).map(([key, p]) => (
-              <option key={key} value={key}>{p.label}</option>
-            ))}
-          </select>
+            onChange={setPapelKey}
+            allowEmpty={false}
+            options={Object.entries(PAPEIS).map(([key, p]) => ({ value: key, label: p.label }))}
+          />
         </div>
 
         {/* Largura do item */}

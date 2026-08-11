@@ -9,6 +9,7 @@ import { useConfirm } from '../../components/ui/ConfirmModal';
 import { MessageSquare, Plus, X, AlertCircle, Phone, Mail, MapPin, Users2, UserPlus } from 'lucide-react';
 import { TableSkeleton } from '../../components/ui/Skeleton';
 import { DateInput } from '../../components/ui/DateInput';
+import { DarkSelect } from '../../components/ui/DarkSelect';
 
 const NOVO = {
   alvo: '',          // formato "cliente:<id>" ou "lead:<id>"
@@ -107,25 +108,36 @@ export function HistoricoAtendimento() {
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <div className="col-span-2 md:col-span-1">
                 <label className={LABEL}>Cliente ou Lead *</label>
-                <select required value={form.alvo} onChange={e => setF('alvo', e.target.value)} className={IN}>
-                  <option value="">Selecione...</option>
-                  {clientes && clientes.length > 0 && (
-                    <optgroup label="Clientes">
-                      {clientes.map(c => <option key={c.id} value={`cliente:${c.id}`}>{c.nome}</option>)}
-                    </optgroup>
-                  )}
-                  {leadsAtivos.length > 0 && (
-                    <optgroup label="Leads">
-                      {leadsAtivos.map(l => <option key={l.id} value={`lead:${l.id}`}>{l.nome}{l.empresa ? ` (${l.empresa})` : ''}</option>)}
-                    </optgroup>
-                  )}
-                </select>
+                <DarkSelect
+                  value={form.alvo}
+                  onChange={v => setF('alvo', v)}
+                  groups={[
+                    ...(clientes && clientes.length > 0
+                      ? [{
+                          label: 'Clientes',
+                          options: clientes.map(c => ({ value: `cliente:${c.id}`, label: c.nome })),
+                        }]
+                      : []),
+                    ...(leadsAtivos.length > 0
+                      ? [{
+                          label: 'Leads',
+                          options: leadsAtivos.map(l => ({
+                            value: `lead:${l.id}`,
+                            label: `${l.nome}${l.empresa ? ` (${l.empresa})` : ''}`,
+                          })),
+                        }]
+                      : []),
+                  ]}
+                />
               </div>
               <div>
                 <label className={LABEL}>Tipo de Contato</label>
-                <select value={form.tipo} onChange={e => setF('tipo', e.target.value as TipoAtendimento)} className={IN}>
-                  {Object.entries(TIPO_ATENDIMENTO).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-                </select>
+                <DarkSelect
+                  value={form.tipo}
+                  onChange={v => setF('tipo', v as TipoAtendimento)}
+                  allowEmpty={false}
+                  options={Object.entries(TIPO_ATENDIMENTO).map(([k, v]) => ({ value: k, label: v.label }))}
+                />
               </div>
               <div>
                 <label className={LABEL}>Data</label>

@@ -4,6 +4,7 @@ import { Lancamento, CATEGORIAS_RECEITA, CATEGORIAS_DESPESA, FORMAS_PAGAMENTO } 
 import { Pencil, Plus, ArrowUp, ArrowDown } from 'lucide-react';
 import { MoneyInput } from '../ui/MoneyInput';
 import { DateInput } from '../ui/DateInput';
+import { DarkSelect } from '../ui/DarkSelect';
 
 const IN = "w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors";
 
@@ -127,22 +128,29 @@ export function ModalLancamento({ open, editando, tipoInicial, onClose, onSalvar
           </div>
           <div>
             <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Status</label>
-            <select value={form.status} onChange={e => set('status', e.target.value)} className={IN}>
-              <option value="pendente">Pendente</option>
-              <option value="pago">Pago</option>
-              <option value="atrasado">Atrasado</option>
-              <option value="cancelado">Cancelado</option>
-            </select>
+            <DarkSelect
+              value={form.status}
+              onChange={v => set('status', v)}
+              allowEmpty={false}
+              options={[
+                { value: 'pendente', label: 'Pendente' },
+                { value: 'pago', label: 'Pago' },
+                { value: 'atrasado', label: 'Atrasado' },
+                { value: 'cancelado', label: 'Cancelado' },
+              ]}
+            />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Categoria</label>
-            <select value={form.categoria} onChange={e => set('categoria', e.target.value)} className={IN}>
-              <option value="">Sem categoria</option>
-              {cats.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
+            <DarkSelect
+              value={form.categoria}
+              onChange={v => set('categoria', v)}
+              placeholder="Sem categoria"
+              options={cats}
+            />
           </div>
           <div>
             <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Vencimento</label>
@@ -153,10 +161,12 @@ export function ModalLancamento({ open, editando, tipoInicial, onClose, onSalvar
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Forma de Pagamento</label>
-            <select value={form.forma_pagamento} onChange={e => set('forma_pagamento', e.target.value)} className={IN}>
-              <option value="">—</option>
-              {FORMAS_PAGAMENTO.map(f => <option key={f} value={f}>{f}</option>)}
-            </select>
+            <DarkSelect
+              value={form.forma_pagamento}
+              onChange={v => set('forma_pagamento', v)}
+              placeholder="—"
+              options={FORMAS_PAGAMENTO}
+            />
           </div>
           <div>
             <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Cliente / Fornecedor</label>

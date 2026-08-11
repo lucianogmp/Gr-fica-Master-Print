@@ -7,6 +7,7 @@ import { useConfirm } from '../../components/ui/ConfirmModal';
 import { buscarCNPJ, buscarCEP, formatarCNPJ, formatarCEP, apenasNumeros } from '../../utils/cnpjCep';
 import toast from 'react-hot-toast';
 import { Users2, Plus, X, AlertCircle, Phone, Mail, MapPin, Search, Loader2, CheckCircle2, Pencil } from 'lucide-react';
+import { DarkSelect } from '../../components/ui/DarkSelect';
 
 const NOVO: Omit<Cliente, 'id' | 'created_at' | 'updated_at'> = {
   nome: '', telefone: '', email: '', cpf_cnpj: '',
@@ -228,10 +229,11 @@ export function Clientes() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={LABEL}>Como conheceu</label>
-                <select value={form.como_conheceu} onChange={e => setF('como_conheceu', e.target.value)} className={IN}>
-                  <option value="">Selecione...</option>
-                  {COMO_CONHECEU_OPCOES.map(o => <option key={o} value={o}>{o}</option>)}
-                </select>
+                <DarkSelect
+                  value={form.como_conheceu}
+                  onChange={v => setF('como_conheceu', v)}
+                  options={COMO_CONHECEU_OPCOES}
+                />
               </div>
               <div>
                 <label className={LABEL}>Produto de Interesse</label>

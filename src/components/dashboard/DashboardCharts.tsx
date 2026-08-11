@@ -26,7 +26,7 @@ export function DashboardCharts({ data }: { data: ChartData | undefined }) {
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Vendas x Despesas — Últimos 6 Meses</h3>
           <div className="flex gap-3 text-[10px] text-gray-500">
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500 inline-block" />Receita</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500 inline-block" />Vendas</span>
             <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500 inline-block" />Despesa</span>
           </div>
         </div>
@@ -39,7 +39,7 @@ export function DashboardCharts({ data }: { data: ChartData | undefined }) {
                 tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(0)}k` : String(v)} />
               <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: 8, fontSize: 11 }}
                 formatter={(v: any) => fmtBRL(v)} />
-              <Bar dataKey="receita" fill="#10b981" radius={[3,3,0,0]} maxBarSize={28} />
+              <Bar dataKey="vendas" fill="#10b981" radius={[3,3,0,0]} maxBarSize={28} />
               <Bar dataKey="despesa" fill="#ef4444" radius={[3,3,0,0]} maxBarSize={28} />
             </BarChart>
           </ResponsiveContainer>

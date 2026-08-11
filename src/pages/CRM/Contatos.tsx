@@ -7,6 +7,7 @@ import { useConfirm } from '../../components/ui/ConfirmModal';
 import { PhoneCall, Plus, X, AlertCircle, Mail, MessageCircle, Building2, Pencil, Cake } from 'lucide-react';
 import { TableSkeleton } from '../../components/ui/Skeleton';
 import { DateInput } from '../../components/ui/DateInput';
+import { DarkSelect } from '../../components/ui/DarkSelect';
 
 const NOVO = { cliente_id: '', nome: '', cargo: '', telefone: '', whatsapp: '', email: '', data_nascimento: '', observacoes: '' };
 const IN = "w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors";
@@ -126,10 +127,12 @@ export function Contatos() {
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <div className="col-span-2 md:col-span-1">
                 <label className={LABEL}>Cliente / Empresa *</label>
-                <select required value={form.cliente_id} onChange={e => setF('cliente_id', e.target.value)} className={IN}>
-                  <option value="">Selecione o cliente...</option>
-                  {clientes?.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-                </select>
+                <DarkSelect
+                  value={form.cliente_id}
+                  onChange={v => setF('cliente_id', v)}
+                  placeholder="Selecione o cliente..."
+                  options={clientes?.map(c => ({ value: c.id, label: c.nome })) ?? []}
+                />
               </div>
               <div>
                 <label className={LABEL}>Nome *</label>

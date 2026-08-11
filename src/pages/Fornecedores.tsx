@@ -7,6 +7,7 @@ import { useConfirm } from '../components/ui/ConfirmModal';
 import { buscarCNPJ, buscarCEP, formatarCEP, apenasNumeros } from '../utils/cnpjCep';
 import toast from 'react-hot-toast';
 import { Truck, Plus, X, AlertCircle, Phone, Mail, MapPin, Search, Loader2, Pencil, PackageSearch } from 'lucide-react';
+import { DarkSelect } from '../components/ui/DarkSelect';
 
 const NOVO: Omit<Fornecedor, 'id' | 'created_at' | 'updated_at' | 'ativo'> = {
   nome: '', telefone: '', email: '', cpf_cnpj: '',
@@ -171,10 +172,11 @@ export function Fornecedores() {
 
             <div>
               <label className={LABEL}>Categoria</label>
-              <select value={form.categoria} onChange={e => setF('categoria', e.target.value)} className={IN}>
-                <option value="">Selecione...</option>
-                {CATEGORIA_FORNECEDOR_OPCOES.map(o => <option key={o} value={o}>{o}</option>)}
-              </select>
+              <DarkSelect
+                value={form.categoria}
+                onChange={v => setF('categoria', v)}
+                options={CATEGORIA_FORNECEDOR_OPCOES}
+              />
             </div>
 
             {/* ── CNPJ com busca automática ── */}

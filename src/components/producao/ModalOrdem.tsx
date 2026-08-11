@@ -3,6 +3,7 @@ import { Modal } from '../ui/Modal';
 import { DateInput } from '../ui/DateInput';
 import { OrdemProducao, ETAPAS, PRIORIDADES } from '../../types/producao';
 import { Pencil, Plus } from 'lucide-react';
+import { DarkSelect } from '../ui/DarkSelect';
 
 type FormData = {
   titulo: string;
@@ -98,15 +99,21 @@ export function ModalOrdem({ open, editando, etapaInicial, onClose, onSalvar }: 
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Etapa</label>
-            <select value={form.etapa} onChange={e => set('etapa', e.target.value)} className={IN}>
-              {ETAPAS.map(e => <option key={e.key} value={e.key}>{e.label}</option>)}
-            </select>
+            <DarkSelect
+              value={form.etapa}
+              onChange={v => set('etapa', v)}
+              allowEmpty={false}
+              options={ETAPAS.map(e => ({ value: e.key, label: e.label }))}
+            />
           </div>
           <div>
             <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Prioridade</label>
-            <select value={form.prioridade} onChange={e => set('prioridade', e.target.value)} className={IN}>
-              {PRIORIDADES.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}
-            </select>
+            <DarkSelect
+              value={form.prioridade}
+              onChange={v => set('prioridade', v)}
+              allowEmpty={false}
+              options={PRIORIDADES.map(p => ({ value: p.key, label: p.label }))}
+            />
           </div>
         </div>
 

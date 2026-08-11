@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import { supabase } from '../lib/supabase';
-import { FileText, Zap, Banknote, Layers, Scissors, Plus, Edit2, Check, ArrowLeft, X, CornerDownRight, Ruler, Printer, MessageCircle, Eye } from 'lucide-react';
+import { FileText, Zap, Banknote, Layers, Scissors, Plus, Edit2, Check, ArrowLeft, X, CornerDownRight, Ruler, Printer, Copy, MessageCircle, Eye } from 'lucide-react';
 import { Modal } from '../components/ui/Modal';
 import { useConfiguracoes } from '../hooks/useConfiguracoes';
 import { DocumentoImpressaoData } from '../components/impressao/DocumentoImpressao';
@@ -206,6 +206,18 @@ export function Orcamentos() {
     const comCodigoPais = foneDigits.length <= 11 ? `55${foneDigits}` : foneDigits;
     const texto = montarMensagemWhatsApp(dados);
     window.open(`https://wa.me/${comCodigoPais}?text=${encodeURIComponent(texto)}`, '_blank');
+  }
+
+  // Copia o mesmo texto do WhatsApp pro clipboard, sem abrir conversa nenhuma —
+  // pra quando o envio da mensagem vai ser feito manualmente (outro app, e-mail, etc).
+  async function copiarTextoOrcamento(dados?: SnapshotOrcamento) {
+    const texto = montarMensagemWhatsApp(dados);
+    try {
+      await navigator.clipboard.writeText(texto);
+      toast.success('Texto do orçamento copiado!');
+    } catch {
+      toast.error('Não foi possível copiar o texto — copia manualmente pelo navegador.');
+    }
   }
 
   async function abrirDetalhe(o: Orcamento | null) {
@@ -776,9 +788,10 @@ export function Orcamentos() {
             </button>
           )}
           {!isNovo && (
-            <button onClick={() => imprimir()}
+            <button onClick={() => copiarTextoOrcamento()}
+              title="Copia o texto do orçamento pra área de transferência, pra enviar manualmente onde quiser"
               className="bg-gray-700 hover:bg-gray-600 text-gray-300 px-4 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-2">
-              <Printer className="w-4 h-4" /> Enviar PDF
+              <Copy className="w-4 h-4" /> Copiar Texto
             </button>
           )}
           {!isNovo && itens.length > 0 && (

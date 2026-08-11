@@ -9,6 +9,7 @@ import { Configuracoes as ConfigType } from '../../types/configuracoes';
 import { AbaVendas } from '../../components/configuracoes/AbaVendas';
 import { CreditCard, Building2, Plus, X, Pencil, Save, Check } from 'lucide-react';
 import { MoneyInput } from '../../components/ui/MoneyInput';
+import { DarkSelect } from '../../components/ui/DarkSelect';
 import { IN, IN_N, Lbl, Section, Row } from './utils';
 
 const FORM_CONTA_VAZIO = { nome: '', tipo: 'caixa' as TipoConta, banco: '', agencia: '', conta: '', saldo_inicial: 0 as number, observacoes: '' };
@@ -127,9 +128,12 @@ export function FormasPagamento() {
                 </div>
                 <div>
                   <Lbl>Tipo *</Lbl>
-                  <select value={formConta.tipo} onChange={e => setFormConta(f => ({ ...f, tipo: e.target.value as TipoConta }))} className={IN}>
-                    {Object.entries(TIPO_CONTA).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-                  </select>
+                  <DarkSelect
+                    value={formConta.tipo}
+                    onChange={v => setFormConta(f => ({ ...f, tipo: v as TipoConta }))}
+                    allowEmpty={false}
+                    options={Object.entries(TIPO_CONTA).map(([k, v]) => ({ value: k, label: v.label }))}
+                  />
                 </div>
                 <div>
                   <Lbl>Saldo Inicial (R$)</Lbl>

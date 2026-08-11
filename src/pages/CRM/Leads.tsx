@@ -6,6 +6,7 @@ import { COMO_CONHECEU_OPCOES } from '../../types/cliente';
 import { useConfirm } from '../../components/ui/ConfirmModal';
 import { UserPlus, Plus, X, AlertCircle, ArrowRightCircle, Phone, Building2 } from 'lucide-react';
 import { TableSkeleton } from '../../components/ui/Skeleton';
+import { DarkSelect } from '../../components/ui/DarkSelect';
 
 const NOVO = {
   nome: '', telefone: '', empresa: '', como_conheceu: '', produto_interesse: '',
@@ -110,10 +111,11 @@ export function Leads() {
               </div>
               <div>
                 <label className={LABEL}>Como conheceu a gráfica</label>
-                <select value={form.como_conheceu} onChange={e => setF('como_conheceu', e.target.value)} className={IN}>
-                  <option value="">Selecione...</option>
-                  {COMO_CONHECEU_OPCOES.map(o => <option key={o} value={o}>{o}</option>)}
-                </select>
+                <DarkSelect
+                  value={form.como_conheceu}
+                  onChange={v => setF('como_conheceu', v)}
+                  options={COMO_CONHECEU_OPCOES}
+                />
               </div>
               <div>
                 <label className={LABEL}>Produto de Interesse</label>
@@ -121,9 +123,12 @@ export function Leads() {
               </div>
               <div>
                 <label className={LABEL}>Status</label>
-                <select value={form.status} onChange={e => setF('status', e.target.value)} className={IN}>
-                  {Object.entries(STATUS_LEAD).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-                </select>
+                <DarkSelect
+                  value={form.status}
+                  onChange={v => setF('status', v)}
+                  allowEmpty={false}
+                  options={Object.entries(STATUS_LEAD).map(([k, v]) => ({ value: k, label: v.label }))}
+                />
               </div>
             </div>
             <div>
@@ -191,15 +196,14 @@ export function Leads() {
                     <td className="px-5 py-3 text-gray-400 text-xs">{l.produto_interesse || '—'}</td>
                     <td className="px-5 py-3 text-gray-400 text-xs">{l.como_conheceu || '—'}</td>
                     <td className="px-5 py-3 text-center">
-                      <select
+                      <DarkSelect
                         value={l.status}
-                        onChange={e => atualizarStatus({ id: l.id, status: e.target.value as StatusLead })}
-                        className={`px-2 py-1 rounded-full text-[10px] font-bold border bg-transparent cursor-pointer ${st.cor}`}
-                      >
-                        {Object.entries(STATUS_LEAD).map(([k, v]) => (
-                          <option key={k} value={k} className="bg-[#1f2937] text-white">{v.label}</option>
-                        ))}
-                      </select>
+                        onChange={v => atualizarStatus({ id: l.id, status: v as StatusLead })}
+                        allowEmpty={false}
+                        showChevron={false}
+                        triggerClassName={`w-full flex items-center justify-center px-2 py-1 rounded-full text-[10px] font-bold border bg-transparent cursor-pointer ${st.cor}`}
+                        options={Object.entries(STATUS_LEAD).map(([k, v]) => ({ value: k, label: v.label }))}
+                      />
                     </td>
                     <td className="px-5 py-3 text-center">
                       <div className="flex gap-1.5 justify-center">

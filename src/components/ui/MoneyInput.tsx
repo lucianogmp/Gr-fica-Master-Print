@@ -87,6 +87,11 @@ export function MoneyInput({
     }
     // Navegação e atalhos continuam funcionando; qualquer outra tecla (letras, símbolos) é ignorada
     // porque quem controla o formato é o próprio componente.
+    // Atalhos com Ctrl/Cmd (Ctrl+A selecionar tudo, Ctrl+C copiar, etc.) não são
+    // "digitação" — precisam passar direto, senão o navegador nunca recebe a tecla.
+    if (e.ctrlKey || e.metaKey) {
+      return;
+    }
     const permitido = ['Tab', 'Shift', 'Control', 'Alt', 'Meta', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'Enter', 'Escape'];
     if (!permitido.includes(e.key)) {
       e.preventDefault();

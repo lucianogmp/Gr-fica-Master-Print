@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   Ruler, Pencil, Plus, X, AlertTriangle,
   Check, Package, Search, type LucideIcon,
@@ -127,6 +127,25 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
   const { data: acabamentos = [] } = useAcabamentos();
   const { data: produtos = [] } = useProdutos();
 
+  // Refs pro auto-scroll/foco progressivo: ao abrir o editor, rola até ele;
+  // ao escolher material/produto, rola até a próxima seção obrigatória.
+  const raizRef = useRef<HTMLDivElement>(null);
+  const medidasRef = useRef<HTMLDivElement>(null);
+  const painelProdutoRef = useRef<HTMLDivElement>(null);
+
+  function scrollAte(ref: React.RefObject<HTMLDivElement>) {
+    // Espera o próximo paint pra garantir que a seção já está no DOM
+    // (ex: o painel do produto só aparece depois que prodSel deixa de ser null).
+    requestAnimationFrame(() => {
+      ref.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  }
+
+  useEffect(() => {
+    raizRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [tab, setTab] = useState<TabMode>(
     editando ? (editando.tipo_calculo as TabMode) : 'metro',
   );
@@ -179,6 +198,7 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
     setPrecoLivre(String(p.preco_venda ?? 0));
     setTipo('livre');
     if (!editando || editando.produto_id !== p.id) setAreaM2('');
+    scrollAte(painelProdutoRef);
   }
 
   function selecionarMaterial(m: { id: string; nome: string; preco_m2: number }) {
@@ -186,6 +206,7 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
     // descrição principal passa a ser o nome do material automaticamente —
     // o usuário só precisa diferenciar no campo de detalhe, se quiser.
     setDescricao(m.nome);
+    scrollAte(medidasRef);
   }
 
   const matSel = materiais.find(m => m.id === materialId);
@@ -298,7 +319,7 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
   // ── render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="bg-[#0d1117] border border-blue-500/40 rounded-2xl p-5 space-y-4">
+    <div ref={raizRef} className="bg-[#0d1117] border border-blue-500/40 rounded-2xl p-5 space-y-4">
 
       {/* Cabeçalho */}
       <div className="flex items-center justify-between">
@@ -398,7 +419,7 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
 
           {/* Painel produto selecionado */}
           {prodSel && (
-            <div className="bg-purple-900/20 border border-purple-500/30 rounded-xl p-3 space-y-3">
+            <div ref={painelProdutoRef} className="bg-purple-900/20 border border-purple-500/30 rounded-xl p-3 space-y-3">
               {/* Header */}
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
@@ -557,7 +578,9 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
             </div>
           )}
 
-          <DimQtd l={largura} a={altura} q={quantidade} setL={setLargura} setA={setAltura} setQ={setQuantidade} />
+          <div ref={medidasRef}>
+            <DimQtd l={largura} a={altura} q={quantidade} setL={setLargura} setA={setAltura} setQ={setQuantidade} />
+          </div>
           {matSel && prev.area && prev.area > 0 && (
             <InfoRow items={[
               { label: 'Preço/m²', value: fmtBRL(matSel.preco_m2) },

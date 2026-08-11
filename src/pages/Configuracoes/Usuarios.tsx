@@ -5,6 +5,7 @@ import { useRole } from '../../hooks/useRole';
 import { ROLES, Role } from '../../types/roles';
 import { Modal } from '../../components/ui/Modal';
 import { Users, User, Trash2 } from 'lucide-react';
+import { DarkSelect } from '../../components/ui/DarkSelect';
 import { IN, Lbl } from './utils';
 
 export function Usuarios() {
@@ -89,14 +90,14 @@ export function Usuarios() {
                   </td>
                   {isDono && (
                     <td className="px-5 py-3 text-center">
-                      <select value={u.role ?? ''}
-                        onChange={e => definirRole({ userId: u.id, role: e.target.value as Role })}
-                        className="bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500 transition-colors">
-                        <option value="">Sem perfil</option>
-                        {Object.entries(ROLES).map(([key, r]) => (
-                          <option key={key} value={key}>{r.label}</option>
-                        ))}
-                      </select>
+                      <DarkSelect
+                        value={u.role ?? ''}
+                        onChange={v => definirRole({ userId: u.id, role: v as Role })}
+                        placeholder="Sem perfil"
+                        size="sm"
+                        triggerClassName="bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500 transition-colors w-full flex items-center justify-between gap-1 cursor-pointer"
+                        options={Object.entries(ROLES).map(([key, r]) => ({ value: key, label: r.label }))}
+                      />
                     </td>
                   )}
                   {isDono && (

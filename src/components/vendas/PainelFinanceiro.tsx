@@ -11,6 +11,7 @@ import {
 import { DollarSign, Plus, Trash2, CreditCard, Calendar, User, ChevronDown, ChevronUp } from 'lucide-react';
 import { MoneyInput } from '../ui/MoneyInput';
 import { DateInput } from '../ui/DateInput';
+import { DarkSelect } from '../ui/DarkSelect';
 
 const fmtBRL = (v: number | null | undefined) =>
   Number(v ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -286,22 +287,25 @@ export function PainelFinanceiro({
             </div>
             <div>
               <label className="text-[10px] text-gray-500 uppercase block mb-1">Forma</label>
-              <select value={novoPag.forma}
-                onChange={e => setNovoPag(f => ({ ...f, forma: e.target.value, parcelas: 1 }))}
-                className={IN}>
-                {formas.map(f => <option key={f.nome} value={f.nome}>{f.nome}</option>)}
-              </select>
+              <DarkSelect
+                value={novoPag.forma}
+                onChange={v => setNovoPag(f => ({ ...f, forma: v, parcelas: 1 }))}
+                allowEmpty={false}
+                options={formas.map(f => f.nome)}
+              />
             </div>
             {permiteParc && maxParcelas > 1 ? (
               <div>
                 <label className="text-[10px] text-gray-500 uppercase block mb-1">Parcelas</label>
-                <select value={novoPag.parcelas}
-                  onChange={e => setNovoPag(f => ({ ...f, parcelas: parseInt(e.target.value) }))}
-                  className={IN}>
-                  {Array.from({ length: maxParcelas }, (_, i) => i + 1).map(n => (
-                    <option key={n} value={n}>{n}x</option>
-                  ))}
-                </select>
+                <DarkSelect
+                  value={String(novoPag.parcelas)}
+                  onChange={v => setNovoPag(f => ({ ...f, parcelas: parseInt(v) }))}
+                  allowEmpty={false}
+                  options={Array.from({ length: maxParcelas }, (_, i) => ({
+                    value: String(i + 1),
+                    label: `${i + 1}x`,
+                  }))}
+                />
               </div>
             ) : (
               <div>
