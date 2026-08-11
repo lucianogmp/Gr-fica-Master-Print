@@ -22,8 +22,10 @@ import {
   Building2, UserCog, Printer, Plug, HardDrive,
   Boxes, GitCompare, TrendingUp, FileBarChart2,
   DollarSign as DollarSignIcon,
-  FileUp,
+  FileUp, PanelLeftClose, PanelLeftOpen,
 } from 'lucide-react';
+
+const SIDEBAR_COLLAPSED_KEY = 'sidebarCollapsed';
 
 // ─── Tipos ──────────────────────────────────────────────────────────────────
 
@@ -213,6 +215,37 @@ export function Layout() {
   const { data: cfg } = useConfiguracoes();
   const [menuOpen, setMenuOpen] = useState(false);
 
+  // Barra lateral recolhida (só ícones) — padrão é recolhida, pra ganhar
+  // espaço vertical em telas como orçamento/venda; a escolha do usuário fica
+  // salva e volta a mesma na próxima visita.
+  const [collapsed, setCollapsed] = useState<boolean>(() => {
+    const salvo = localStorage.getItem(SIDEBAR_COLLAPSED_KEY);
+    return salvo !== null ? salvo === '1' : true;
+  });
+
+  function toggleCollapsed() {
+    setCollapsed(prev => {
+      const next = !prev;
+      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? '1' : '0');
+      return next;
+    });
+  }
+
+  // "Recolhida" só existe visualmente no desktop (md+) — no mobile a barra
+  // sempre abre cheia por cima do conteúdo, então nada disso deve interferir lá.
+  function isDesktopWidth() {
+    return typeof window !== 'undefined' && window.innerWidth >= 768;
+  }
+
+  // Expande a barra ao clicar num grupo com sub-itens estando recolhida —
+  // senão não daria pra ver/acessar os sub-itens de jeito nenhum.
+  function expandirSeRecolhido() {
+    if (collapsed && isDesktopWidth()) {
+      setCollapsed(false);
+      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, '0');
+    }
+  }
+
   // Quais accordions estão abertos (por label)
   const [openGroups, setOpenGroups] = useState<Set<string>>(() => {
     // Abre automaticamente o grupo que contém a rota atual
@@ -324,13 +357,13 @@ export function Layout() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 w-64 bg-[#1f2937] border-r border-gray-700 flex flex-col
-          transition-transform duration-300 ease-out
+        className={`fixed inset-y-0 left-0 z-40 ${collapsed ? 'md:w-[72px]' : 'md:w-64'} w-64 bg-[#1f2937] border-r border-gray-700 flex flex-col
+          transition-all duration-300 ease-out
           md:static md:translate-x-0
           ${menuOpen ? 'translate-x-0' : '-translate-x-full'}`}
       >
         {/* Logo */}
-        <div className="p-6 border-b border-gray-700 flex-shrink-0 relative">
+        <div className="p-4 border-b border-gray-700 flex-shrink-0 relative">
           <button
             onClick={() => setMenuOpen(false)}
             className="md:hidden absolute top-4 right-4 text-gray-400 hover:text-white"
@@ -339,28 +372,31 @@ export function Layout() {
             <X className="w-5 h-5" />
           </button>
 
-          <div className="flex flex-col items-center text-center gap-1.5">
+          {/* Botão de recolher/expandir foi pro rodapé, perto do usuário */}
+
+          <div className={`flex flex-col items-center text-center gap-1.5 ${collapsed ? 'md:pt-1' : ''}`}>
             {(isDark ? cfg?.sistema_logo_url : cfg?.sistema_logo_url_dark) ? (
               <img
                 src={isDark ? cfg!.sistema_logo_url! : cfg!.sistema_logo_url_dark!}
                 alt="Master Print"
-                className="h-14 w-auto object-contain"
+                className={`${collapsed ? 'md:h-8' : 'h-14'} w-auto object-contain transition-all`}
               />
             ) : (
-              <h1 className="text-xl font-black tracking-tighter text-blue-500">
-                MASTER <span className="text-white">PRINT</span>
+              <h1 className={`font-black tracking-tighter text-blue-500 ${collapsed ? 'md:text-sm' : 'text-xl'}`}>
+                {collapsed ? <span className="md:inline hidden">MP</span> : null}
+                <span className={collapsed ? 'md:hidden' : ''}>MASTER <span className="text-white">PRINT</span></span>
               </h1>
             )}
-            <p className="text-xs text-gray-400">Sistema de Gestão</p>
+            <p className={`text-xs text-gray-400 ${collapsed ? 'md:hidden' : ''}`}>Sistema de Gestão</p>
           </div>
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-0.5">
+        <nav className={`flex-1 overflow-y-auto py-3 ${collapsed ? 'md:px-2' : 'px-3'} px-3 space-y-0.5`}>
           {menuItems.map((item, idx) => {
             const Icon = item.icon;
             const hasChildren = !!item.children;
-            const isOpen = openGroups.has(item.label);
+            const isOpen = openGroups.has(item.label) && (!collapsed || !isDesktopWidth());
             const anyChildActive = hasChildren && hasActiveChild(location.pathname, item.children!);
 
             // Separadores visuais antes de Relatórios e Audit Log
@@ -376,14 +412,15 @@ export function Layout() {
                   {showSeparator && <div className="border-t border-gray-700/50 my-2" />}
                   <Link
                     to={item.path!}
-                    className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                    title={collapsed ? item.label : undefined}
+                    className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${collapsed ? 'md:justify-center md:px-2' : ''} ${
                       isActive
                         ? 'bg-blue-600 text-white shadow-lg'
                         : 'text-gray-300 hover:bg-gray-700/60 hover:text-white'
                     }`}
                   >
                     <Icon className="w-[18px] h-[18px] flex-shrink-0" />
-                    <span className="flex-1">{item.label}</span>
+                    <span className={`flex-1 ${collapsed ? 'md:hidden' : ''}`}>{item.label}</span>
                   </Link>
                 </div>
               );
@@ -396,19 +433,22 @@ export function Layout() {
 
                 {/* Header do grupo */}
                 <button
-                  onClick={() => toggleGroup(item.label)}
-                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                  onClick={() => { expandirSeRecolhido(); toggleGroup(item.label); }}
+                  title={collapsed ? item.label : undefined}
+                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${collapsed ? 'md:justify-center md:px-2' : ''} ${
                     anyChildActive && !isOpen
                       ? 'text-blue-400 bg-blue-500/10'
                       : 'text-gray-300 hover:bg-gray-700/60 hover:text-white'
                   }`}
                 >
                   <Icon className="w-[18px] h-[18px] flex-shrink-0" />
-                  <span className="flex-1 text-left">{item.label}</span>
-                  {isOpen
-                    ? <ChevronDown className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                    : <ChevronRight className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                  }
+                  <span className={`flex-1 text-left ${collapsed ? 'md:hidden' : ''}`}>{item.label}</span>
+                  <span className={collapsed ? 'md:hidden' : ''}>
+                    {isOpen
+                      ? <ChevronDown className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                      : <ChevronRight className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                    }
+                  </span>
                 </button>
 
                 {/* Sub-itens */}
@@ -440,18 +480,28 @@ export function Layout() {
         </nav>
 
         {/* Rodapé: usuário */}
-        <div className="p-4 border-t border-gray-700 bg-[#1a222f] flex-shrink-0">
-          <div className="flex items-center gap-3 px-2 mb-2">
-            <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center font-bold text-sm flex-shrink-0">
+        <div className={`${collapsed ? 'md:p-2' : 'p-4'} p-4 border-t border-gray-700 bg-[#1a222f] flex-shrink-0`}>
+          {/* Recolher/expandir — só desktop; fica junto do usuário, mais discreto que lá em cima na logo */}
+          <button
+            onClick={toggleCollapsed}
+            title={collapsed ? 'Expandir menu' : 'Recolher menu'}
+            className={`hidden md:flex items-center gap-2 w-full text-[11px] font-medium text-gray-500 hover:text-white hover:bg-gray-700/60 px-2 py-1.5 rounded-lg transition-all mb-2 ${collapsed ? 'md:justify-center' : ''}`}
+          >
+            {collapsed ? <PanelLeftOpen className="w-4 h-4 flex-shrink-0" /> : <PanelLeftClose className="w-4 h-4 flex-shrink-0" />}
+            <span className={collapsed ? 'md:hidden' : ''}>Recolher menu</span>
+          </button>
+
+          <div className={`flex items-center gap-3 px-2 mb-2 ${collapsed ? 'md:justify-center md:px-0' : ''}`}>
+            <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center font-bold text-sm flex-shrink-0" title={collapsed ? (user?.name ?? 'Usuário') : undefined}>
               {initials}
             </div>
-            <div className="overflow-hidden flex-1 min-w-0">
+            <div className={`overflow-hidden flex-1 min-w-0 ${collapsed ? 'md:hidden' : ''}`}>
               <p className="text-xs font-bold truncate text-white">{user?.name ?? 'Usuário'}</p>
               <p className="text-[10px] text-gray-400 truncate">{user?.email}</p>
             </div>
           </div>
           {roleInfo && (
-            <div className="px-2 mb-2">
+            <div className={`px-2 mb-2 ${collapsed ? 'md:hidden' : ''}`}>
               <span className={`text-[10px] font-bold ${roleInfo.cor}`}>
                 ● {roleInfo.label}
               </span>
@@ -459,9 +509,11 @@ export function Layout() {
           )}
           <button
             onClick={handleLogout}
+            title={collapsed ? 'Sair da conta' : undefined}
             className="w-full text-xs text-gray-400 hover:text-red-400 hover:bg-red-500/10 py-2 rounded-lg transition-all font-medium"
           >
-            Sair da conta
+            <span className={collapsed ? 'md:hidden' : ''}>Sair da conta</span>
+            <span className={collapsed ? 'md:inline hidden' : 'hidden'}>⏻</span>
           </button>
         </div>
       </aside>

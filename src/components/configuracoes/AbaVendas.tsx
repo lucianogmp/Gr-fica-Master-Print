@@ -44,13 +44,15 @@ function parseFormas(raw: any): FormasPagamentoConfig[] {
   return FORMAS_PAGAMENTO_DEFAULT;
 }
 
-// ── Garante que tabela_taxas existe e é array ────────────────────────────────
+// ── Garante que tabela_taxas existe e é array (e dias_uteis_liquidacao existe,
+// pra formas salvas antes desse campo existir) ──────────────────────────────
 function normalizarForma(f: FormasPagamentoConfig): FormasPagamentoConfig {
   return {
     ...f,
     tabela_taxas: Array.isArray(f.tabela_taxas)
       ? f.tabela_taxas
       : gerarTabelaTaxas(f.max_parcelas || 1),
+    dias_uteis_liquidacao: f.dias_uteis_liquidacao ?? 0,
   };
 }
 
@@ -253,6 +255,19 @@ function FormaCard({
           </div>
         </div>
 
+        {/* Dias úteis pra compensar */}
+        <div className="flex items-center gap-1.5 flex-shrink-0" title="Depois de quantos dias úteis o valor realmente cai/compensa (dinheiro e PIX geralmente é 0 — na hora)">
+          <span className="text-[10px] text-gray-500 whitespace-nowrap">Compensa em</span>
+          <input
+            type="number" min="0" step="1"
+            value={formaNorm.dias_uteis_liquidacao ?? 0}
+            onChange={e => onChange({ ...formaNorm, dias_uteis_liquidacao: Math.max(0, parseInt(e.target.value) || 0) })}
+            className="bg-[#0d1117] border border-gray-700 rounded-lg px-2 py-1 text-white text-xs text-center focus:outline-none focus:border-blue-500 [appearance:textfield]"
+            style={{ width: 44 }}
+          />
+          <span className="text-[10px] text-gray-500 whitespace-nowrap">dia(s) útil(eis)</span>
+        </div>
+
         {/* Toggle ativo */}
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <span className="text-[10px] text-gray-500">Ativo</span>
@@ -343,6 +358,7 @@ export function AbaVendas({ form, set }: Props) {
       permite_parcelamento: false,
       max_parcelas: 1,
       tabela_taxas: [{ parcelas: 1, taxa_pct: 0 }],
+      dias_uteis_liquidacao: 0,
     };
     set('formas_pagamento', [...formas, nova]);
     setNovaForma('');

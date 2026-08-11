@@ -14,6 +14,11 @@ export interface FormasPagamentoConfig {
   permite_parcelamento: boolean;
   max_parcelas: number;
   tabela_taxas: TaxaParcela[];
+  /** Em quantos dias ÚTEIS o valor efetivamente compensa/fica disponível
+   * depois do pagamento (ex: dinheiro/PIX = 0, cartão de débito = 1,
+   * boleto = 1...). Usado pra calcular a data real de "caiu na conta",
+   * não a data em que o pagamento foi registrado. */
+  dias_uteis_liquidacao: number;
 }
 
 export interface Configuracoes {
@@ -88,6 +93,36 @@ export function calcTotalComTaxa(totalBase: number, taxaPct: number): number {
 }
 
 /**
+ * Soma N dias ÚTEIS (pula sábado e domingo) a partir de uma data.
+ * Ex: sexta-feira + 1 dia útil = segunda-feira, não sábado.
+ * `dataBase` no formato 'YYYY-MM-DD'; retorna no mesmo formato.
+ */
+export function somarDiasUteis(dataBase: string, diasUteis: number): string {
+  const d = new Date(dataBase + 'T00:00:00');
+  let restantes = Math.max(0, Math.floor(diasUteis));
+  while (restantes > 0) {
+    d.setDate(d.getDate() + 1);
+    const diaSemana = d.getDay(); // 0 = domingo, 6 = sábado
+    if (diaSemana !== 0 && diaSemana !== 6) restantes--;
+  }
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Data real de liquidação de um pagamento — pega a data em que o pagamento
+ * foi feito e soma os dias úteis configurados pra forma de pagamento usada
+ * (0 pra dinheiro/PIX, que caem na hora; N pra cartão/boleto, que demoram
+ * pra compensar).
+ */
+export function calcularDataLiquidacao(
+  dataPagamento: string,
+  forma: FormasPagamentoConfig | undefined,
+): string {
+  const dias = forma?.dias_uteis_liquidacao ?? 0;
+  return dias > 0 ? somarDiasUteis(dataPagamento, dias) : dataPagamento;
+}
+
+/**
  * Parse seguro de formas_pagamento — aceita array, string JSON ou null.
  * Exportado para reuso em Financeiro, PainelFinanceiro, AbaVendas, etc.
  */
@@ -111,6 +146,7 @@ export const FORMAS_PAGAMENTO_DEFAULT: FormasPagamentoConfig[] = [
     permite_parcelamento: false,
     max_parcelas: 1,
     tabela_taxas: [{ parcelas: 1, taxa_pct: 0 }],
+    dias_uteis_liquidacao: 0,
   },
   {
     nome: 'PIX',
@@ -118,6 +154,7 @@ export const FORMAS_PAGAMENTO_DEFAULT: FormasPagamentoConfig[] = [
     permite_parcelamento: false,
     max_parcelas: 1,
     tabela_taxas: [{ parcelas: 1, taxa_pct: 0 }],
+    dias_uteis_liquidacao: 0,
   },
   {
     nome: 'Cartão de Débito',
@@ -125,6 +162,7 @@ export const FORMAS_PAGAMENTO_DEFAULT: FormasPagamentoConfig[] = [
     permite_parcelamento: false,
     max_parcelas: 1,
     tabela_taxas: [{ parcelas: 1, taxa_pct: 0 }],
+    dias_uteis_liquidacao: 1,
   },
   {
     nome: 'Cartão de Crédito',
@@ -132,6 +170,7 @@ export const FORMAS_PAGAMENTO_DEFAULT: FormasPagamentoConfig[] = [
     permite_parcelamento: true,
     max_parcelas: 12,
     tabela_taxas: gerarTabelaTaxas(12),
+    dias_uteis_liquidacao: 1,
   },
   {
     nome: 'Boleto',
@@ -139,6 +178,7 @@ export const FORMAS_PAGAMENTO_DEFAULT: FormasPagamentoConfig[] = [
     permite_parcelamento: false,
     max_parcelas: 1,
     tabela_taxas: [{ parcelas: 1, taxa_pct: 0 }],
+    dias_uteis_liquidacao: 1,
   },
   {
     nome: 'Transferência',
@@ -146,6 +186,7 @@ export const FORMAS_PAGAMENTO_DEFAULT: FormasPagamentoConfig[] = [
     permite_parcelamento: false,
     max_parcelas: 1,
     tabela_taxas: [{ parcelas: 1, taxa_pct: 0 }],
+    dias_uteis_liquidacao: 0,
   },
   {
     nome: 'Cheque',
@@ -153,6 +194,7 @@ export const FORMAS_PAGAMENTO_DEFAULT: FormasPagamentoConfig[] = [
     permite_parcelamento: true,
     max_parcelas: 6,
     tabela_taxas: gerarTabelaTaxas(6),
+    dias_uteis_liquidacao: 1,
   },
   {
     nome: 'Crediário',
@@ -160,5 +202,6 @@ export const FORMAS_PAGAMENTO_DEFAULT: FormasPagamentoConfig[] = [
     permite_parcelamento: true,
     max_parcelas: 24,
     tabela_taxas: gerarTabelaTaxas(24),
+    dias_uteis_liquidacao: 0,
   },
 ];

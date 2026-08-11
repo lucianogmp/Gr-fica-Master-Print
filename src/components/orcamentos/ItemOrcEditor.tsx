@@ -165,10 +165,6 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
   // pra mais ou pra menos). Fica ativo até qualquer input que afete o cálculo
   // mudar de novo — aí o preview volta a ser automático.
   const [totalManual, setTotalManual] = useState<number | null>(null);
-  useEffect(() => {
-    setTotalManual(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, tipo, materialId, precoM2, largura, altura, quantidade, precoLivre, areaM2, acabId, acabQtd, arteInclusa]);
 
   // Detalhe adicional opcional pro tipo "m² Material" — a descrição principal
   // vem automaticamente do material selecionado (ex: "Adesivo de Papel"), e
@@ -189,6 +185,14 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
   const [areaM2, setAreaM2] = useState(
     editando?.area_m2 != null ? String(editando.area_m2) : '',
   );
+
+  // Precisa vir DEPOIS de todos os estados que usa nas dependências (tab,
+  // materialId, areaM2, etc.) — senão dá erro de "acessar antes de inicializar",
+  // já que o array de dependências é avaliado na hora que o efeito é declarado.
+  useEffect(() => {
+    setTotalManual(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, tipo, materialId, precoM2, largura, altura, quantidade, precoLivre, areaM2, acabId, acabQtd, arteInclusa]);
 
   // ── handlers ───────────────────────────────────────────────────────────────
 

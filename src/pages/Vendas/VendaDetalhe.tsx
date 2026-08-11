@@ -14,6 +14,7 @@ import { ItensEditor } from '../../components/vendas/ItensEditor';
 import { ClienteSelectorVenda } from '../../components/vendas/ClienteSelectorVenda';
 import { VendedorSelector } from '../../components/vendas/VendedorSelector';
 import { PainelFinanceiro } from '../../components/vendas/PainelFinanceiro';
+import { GastosVenda } from '../../components/vendas/GastosVenda';
 import { DateInput } from '../../components/ui/DateInput';
 import { useConfirm } from '../../components/ui/ConfirmModal';
 import {
@@ -383,6 +384,15 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
             </h3>
             <ItensEditor itens={itens} onChange={setItens} />
           </div>
+
+          {/* ── Linha 2.5: Gastos vinculados a essa venda (fornecedor, terceirização) ── */}
+          {isNovo ? (
+            <div className="bg-[#1f2937]/50 border border-dashed border-gray-700 rounded-xl p-4 text-center">
+              <p className="text-xs text-gray-500">Salve a venda primeiro pra poder lançar gastos vinculados a ela.</p>
+            </div>
+          ) : (
+            <GastosVenda vendaId={vendaId} clienteNome={form.cliente_nome} itens={itens} />
+          )}
 
           {/* ── Linha 3: Resumo Financeiro ── */}
           <PainelFinanceiro
