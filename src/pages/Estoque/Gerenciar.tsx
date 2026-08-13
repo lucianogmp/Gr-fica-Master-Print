@@ -69,17 +69,26 @@ export function Gerenciar() {
               )}
               {filtradas.map(mp => (
                 <tr key={mp.id} className="border-b border-gray-800 hover:bg-gray-800/30 transition-colors">
-                  <td className="px-5 py-3 font-medium text-white">{mp.nome}</td>
+                  <td className="px-5 py-3 font-medium text-white">
+                    {mp.nome}
+                    {mp.controla_estoque === false && (
+                      <span className="ml-2 text-[9px] font-bold bg-gray-700 text-gray-400 px-1.5 py-0.5 rounded-full align-middle">
+                        sob medida
+                      </span>
+                    )}
+                  </td>
                   <td className="px-5 py-3 text-gray-500 text-xs">{mp.categoria || '—'}</td>
                   <td className="px-5 py-3 text-center">
                     <span className="text-[10px] font-bold bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full">{mp.unidade}</span>
                   </td>
                   <td className="px-5 py-3 text-right text-gray-300">{fmtBRL(mp.custo_unitario)}</td>
                   <td className="px-5 py-3 text-right font-bold text-white">
-                    {Number(mp.saldo).toLocaleString('pt-BR', { maximumFractionDigits: 3 })} {mp.unidade}
+                    {mp.controla_estoque === false
+                      ? <span className="text-gray-600 font-normal text-xs">—</span>
+                      : <>{Number(mp.saldo).toLocaleString('pt-BR', { maximumFractionDigits: 3 })} {mp.unidade}</>}
                   </td>
                   <td className="px-5 py-3 text-right text-gray-500 text-xs">
-                    {mp.estoque_minimo ? `${mp.estoque_minimo} ${mp.unidade}` : '—'}
+                    {mp.controla_estoque === false ? '—' : (mp.estoque_minimo ? `${mp.estoque_minimo} ${mp.unidade}` : '—')}
                   </td>
                   <td className="px-5 py-3 text-center">
                     <div className="flex gap-2 justify-center">

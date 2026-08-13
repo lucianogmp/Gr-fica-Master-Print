@@ -1,4 +1,4 @@
-export type StatusEstoque = 'ok' | 'baixo' | 'zerado';
+export type StatusEstoque = 'ok' | 'baixo' | 'zerado' | 'sem_controle';
 
 export interface MateriaPrima {
   id: string;
@@ -8,6 +8,10 @@ export interface MateriaPrima {
   saldo: number;
   estoque_minimo: number;
   custo_unitario: number;
+  /** false = item comprado sob medida/encomenda, sem saldo rastreado — não
+   * entra em alertas de estoque baixo/zerado nem exige quantidade. Padrão
+   * true pra manter o comportamento de sempre em itens já cadastrados. */
+  controla_estoque: boolean;
   empresa_id?: string;
   created_at?: string;
 }
@@ -28,6 +32,9 @@ export interface MovimentoEstoque {
 }
 
 export function statusEstoque(mp: MateriaPrima): { key: StatusEstoque; label: string; cor: string } {
+  if (mp.controla_estoque === false) {
+    return { key: 'sem_controle', label: 'Sem controle', cor: '#6b7280' };
+  }
   const saldo = Number(mp.saldo);
   const min   = Number(mp.estoque_minimo || 0);
   if (saldo <= 0)              return { key: 'zerado', label: 'Zerado', cor: '#ef4444' };

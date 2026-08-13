@@ -25,8 +25,8 @@ export function EstoqueAtual() {
       (m.categoria ?? '').toLowerCase().includes(busca.toLowerCase())
     ), [mps, busca]);
 
-  const zerados    = mps.filter(m => Number(m.saldo) <= 0).length;
-  const baixos     = mps.filter(m => statusEstoque(m).key === 'baixo').length;
+  const zerados    = mps.filter(m => m.controla_estoque !== false && Number(m.saldo) <= 0).length;
+  const baixos     = mps.filter(m => m.controla_estoque !== false && statusEstoque(m).key === 'baixo').length;
   const valorTotal = mps.reduce((s, m) => s + Number(m.custo_unitario) * Number(m.saldo), 0);
 
   function abrirMov(mp: MateriaPrima, tipo: 'entrada' | 'saida') {
@@ -91,10 +91,12 @@ export function EstoqueAtual() {
                   <td className="px-5 py-3 font-medium text-white">{mp.nome}</td>
                   <td className="px-5 py-3 text-gray-500 text-xs">{mp.categoria || '—'}</td>
                   <td className="px-5 py-3 text-right font-bold text-white">
-                    {Number(mp.saldo).toLocaleString('pt-BR', { maximumFractionDigits: 3 })} {mp.unidade}
+                    {mp.controla_estoque === false
+                      ? <span className="text-gray-600 font-normal text-xs">— sob medida —</span>
+                      : <>{Number(mp.saldo).toLocaleString('pt-BR', { maximumFractionDigits: 3 })} {mp.unidade}</>}
                   </td>
                   <td className="px-5 py-3 text-right text-gray-500 text-xs">
-                    {mp.estoque_minimo ? `${mp.estoque_minimo} ${mp.unidade}` : '—'}
+                    {mp.controla_estoque === false ? '—' : (mp.estoque_minimo ? `${mp.estoque_minimo} ${mp.unidade}` : '—')}
                   </td>
                   <td className="px-5 py-3 text-right text-gray-400 text-xs">{fmtBRL(mp.custo_unitario)}</td>
                   <td className="px-5 py-3 text-center">
@@ -104,16 +106,20 @@ export function EstoqueAtual() {
                     </span>
                   </td>
                   <td className="px-5 py-3 text-center">
-                    <div className="flex gap-1.5 justify-center">
-                      <button onClick={() => abrirMov(mp, 'entrada')}
-                        className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-green-500/15 text-green-400 hover:bg-green-500/25 border border-green-500/30 transition-all">
-                        +Entrada
-                      </button>
-                      <button onClick={() => abrirMov(mp, 'saida')}
-                        className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-red-500/15 text-red-400 hover:bg-red-500/25 border border-red-500/30 transition-all">
-                        −Saída
-                      </button>
-                    </div>
+                    {mp.controla_estoque === false ? (
+                      <span className="text-[10px] text-gray-600">—</span>
+                    ) : (
+                      <div className="flex gap-1.5 justify-center">
+                        <button onClick={() => abrirMov(mp, 'entrada')}
+                          className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-green-500/15 text-green-400 hover:bg-green-500/25 border border-green-500/30 transition-all">
+                          +Entrada
+                        </button>
+                        <button onClick={() => abrirMov(mp, 'saida')}
+                          className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-red-500/15 text-red-400 hover:bg-red-500/25 border border-red-500/30 transition-all">
+                          −Saída
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               );

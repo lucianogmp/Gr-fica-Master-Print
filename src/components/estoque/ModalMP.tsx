@@ -16,9 +16,10 @@ type FormData = {
   custo_unitario: number;
   estoque_minimo: string;
   saldo_inicial: string;
+  controla_estoque: boolean;
 };
 
-const EMPTY: FormData = { nome: '', categoria: '', unidade: 'un', custo_unitario: 0, estoque_minimo: '', saldo_inicial: '' };
+const EMPTY: FormData = { nome: '', categoria: '', unidade: 'un', custo_unitario: 0, estoque_minimo: '', saldo_inicial: '', controla_estoque: true };
 
 interface ModalMPProps {
   open: boolean;
@@ -44,17 +45,21 @@ export function ModalMP({ open, editando, onClose, onSalvar }: ModalMPProps) {
         custo_unitario: Number(editando.custo_unitario) || 0,
         estoque_minimo: String(editando.estoque_minimo ?? ''),
         saldo_inicial:  '',
+        controla_estoque: editando.controla_estoque !== false, // itens antigos sem esse campo continuam controlando
       });
     } else {
       setForm(EMPTY);
     }
   }, [editando, open]);
 
-  function set(field: Exclude<keyof FormData, 'custo_unitario'>, val: string) {
+  function set(field: Exclude<keyof FormData, 'custo_unitario' | 'controla_estoque'>, val: string) {
     setForm(f => ({ ...f, [field]: val }));
   }
   function setCustoUnitario(val: number) {
     setForm(f => ({ ...f, custo_unitario: val }));
+  }
+  function setControlaEstoque(val: boolean) {
+    setForm(f => ({ ...f, controla_estoque: val }));
   }
 
   async function handleSalvar() {
@@ -66,8 +71,11 @@ export function ModalMP({ open, editando, onClose, onSalvar }: ModalMPProps) {
         categoria:      form.categoria.trim() || null,
         unidade:        form.unidade,
         custo_unitario: form.custo_unitario || 0,
-        estoque_minimo: parseFloat(form.estoque_minimo) || 0,
-        ...(!editando ? { saldo_inicial: parseFloat(form.saldo_inicial) || 0 } : {}),
+        controla_estoque: form.controla_estoque,
+        // Sem controle: item comprado sob medida, não faz sentido rastrear
+        // mínimo nem saldo — zera pra não sobrar lixo de um estado anterior.
+        estoque_minimo: form.controla_estoque ? (parseFloat(form.estoque_minimo) || 0) : 0,
+        ...(!editando ? { saldo_inicial: form.controla_estoque ? (parseFloat(form.saldo_inicial) || 0) : 0 } : {}),
       });
       onClose();
     } finally {
@@ -102,6 +110,20 @@ export function ModalMP({ open, editando, onClose, onSalvar }: ModalMPProps) {
             className={INPUT} placeholder="Ex: Papel Couchê 150g" />
         </Field>
 
+        {/* Controlar estoque: desliga pra itens comprados sob medida/encomenda
+            (ex: metalon cortado sob medida) — não faz sentido rastrear saldo. */}
+        <div className="flex items-center justify-between bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5">
+          <div>
+            <p className="text-sm font-bold text-white">Controlar estoque?</p>
+            <p className="text-[10px] text-gray-500">Desligue para itens comprados sob medida — não calcula saldo nem avisa falta.</p>
+          </div>
+          <button type="button" onClick={() => setControlaEstoque(!form.controla_estoque)}
+            className={`w-11 h-6 rounded-full relative transition-all flex-shrink-0 ${form.controla_estoque ? 'bg-green-600' : 'bg-gray-700'}`}>
+            <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${form.controla_estoque ? 'left-5.5' : 'left-0.5'}`}
+              style={{ left: form.controla_estoque ? 22 : 2 }} />
+          </button>
+        </div>
+
         <div className="grid grid-cols-2 gap-4">
           <Field label="Categoria">
             <div className="flex gap-2">
@@ -128,20 +150,28 @@ export function ModalMP({ open, editando, onClose, onSalvar }: ModalMPProps) {
           </Field>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        {form.controla_estoque ? (
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Custo por Unidade (R$)">
+              <MoneyInput value={form.custo_unitario}
+                onChange={setCustoUnitario}
+                className={INPUT} placeholder="0,00" />
+            </Field>
+            <Field label="Estoque Mínimo">
+              <input type="number" min="0" step="0.001" value={form.estoque_minimo}
+                onChange={e => set('estoque_minimo', e.target.value)}
+                className={INPUT} placeholder="0" />
+            </Field>
+          </div>
+        ) : (
           <Field label="Custo por Unidade (R$)">
             <MoneyInput value={form.custo_unitario}
               onChange={setCustoUnitario}
               className={INPUT} placeholder="0,00" />
           </Field>
-          <Field label="Estoque Mínimo">
-            <input type="number" min="0" step="0.001" value={form.estoque_minimo}
-              onChange={e => set('estoque_minimo', e.target.value)}
-              className={INPUT} placeholder="0" />
-          </Field>
-        </div>
+        )}
 
-        {!editando && (
+        {!editando && form.controla_estoque && (
           <Field label="Saldo Inicial">
             <input type="number" min="0" step="0.001" value={form.saldo_inicial}
               onChange={e => set('saldo_inicial', e.target.value)}
