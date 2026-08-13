@@ -54,6 +54,7 @@ function NumInput({
       step={step}
       value={value}
       onChange={e => onChange(e.target.value)}
+      onFocus={e => e.target.select()}
       placeholder={placeholder}
       className={[
         className ?? IN_BASE,
