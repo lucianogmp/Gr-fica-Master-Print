@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { supabase } from '../lib/supabase';
 import { FileText, Zap, Banknote, Layers, Scissors, Plus, Edit2, Check, ArrowLeft, X, CornerDownRight, Ruler, Printer, Copy, MessageCircle, Eye } from 'lucide-react';
@@ -68,6 +68,14 @@ export function Orcamentos() {
   const [filtro, setFiltro]           = useState<Filtro>('todos');
   const [busca, setBusca]             = useState('');
   const [posSalvar, setPosSalvar]     = useState<SnapshotOrcamento | null>(null);
+
+  // Fecha sozinho o popup de "Orçamento salvo!" depois de 1 minuto parado na
+  // tela, voltando pra lista — antes ficava aberto até alguém fechar na mão.
+  useEffect(() => {
+    if (!posSalvar) return;
+    const timer = setTimeout(() => setPosSalvar(null), 60_000);
+    return () => clearTimeout(timer);
+  }, [posSalvar]);
 
   // Forms de materiais
   const [matNome, setMatNome]     = useState('');
@@ -737,9 +745,9 @@ export function Orcamentos() {
         </>}
       >
         <div className="space-y-2">
-          <button onClick={() => imprimir(posSalvar)}
+          <button onClick={() => copiarTextoOrcamento(posSalvar)}
             className="w-full flex items-center gap-2 justify-center bg-gray-700 hover:bg-gray-600 text-gray-200 px-4 py-3 rounded-xl font-bold text-sm transition-all">
-            <Printer className="w-4 h-4" /> Salvar em PDF
+            <Copy className="w-4 h-4" /> Copiar Texto
           </button>
           <button onClick={() => imprimir(posSalvar)}
             className="w-full flex items-center gap-2 justify-center bg-gray-700 hover:bg-gray-600 text-gray-200 px-4 py-3 rounded-xl font-bold text-sm transition-all">
