@@ -190,7 +190,7 @@ export function ModalMP({ open, editando, onClose, onSalvar }: ModalMPProps) {
             if (!novaCatNome.trim()) return;
             setSalvandoCat(true);
             try {
-              const cat = await criarCategoria.mutateAsync(novaCatNome.trim());
+              const cat = await criarCategoria(novaCatNome.trim());
               set('categoria', cat.nome);
               setNovaCatNome(''); setModalCat(false);
             } catch (e: any) { toast.error(e.message); }

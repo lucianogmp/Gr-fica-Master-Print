@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronDown } from 'lucide-react';
 
 export interface DarkSelectOption {
@@ -31,12 +32,8 @@ const TRIGGER_MD =
 const TRIGGER_SM =
   'w-full bg-[#111827] border border-gray-700 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500 transition-colors text-left flex items-center justify-between gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed';
 
-const DROPDOWN: React.CSSProperties = {
-  position: 'absolute',
-  top: '100%',
-  left: 0,
-  right: 0,
-  marginTop: 4,
+const DROPDOWN_BASE: React.CSSProperties = {
+  position: 'fixed',
   zIndex: 9999,
   backgroundColor: '#0f1824',
   border: '1px solid #374151',
@@ -126,6 +123,15 @@ export function DarkSelect({
 }: Props) {
   const [aberto, setAberto] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [coords, setCoords] = useState<{ top: number; left: number; width: number } | null>(null);
+
+  function recalcularPosicao() {
+    const rect = triggerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    setCoords({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+  }
 
   const flatOptions = useMemo(() => {
     if (groups?.length) return groups.flatMap(g => g.options);
@@ -137,13 +143,30 @@ export function DarkSelect({
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
-        setAberto(false);
-      }
+      const alvo = e.target as Node;
+      const dentroDoTrigger  = wrapRef.current?.contains(alvo);
+      const dentroDoDropdown = dropdownRef.current?.contains(alvo);
+      if (!dentroDoTrigger && !dentroDoDropdown) setAberto(false);
     }
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
+
+  // Recalcula a posição toda vez que abre (o campo pode ter se movido desde a
+  // última vez, ex: modal rolou) e mantém atualizada durante scroll/resize —
+  // o menu vive num portal fora do container com scroll, então precisa
+  // recalcular manualmente em vez de simplesmente flutuar "logo abaixo".
+  useEffect(() => {
+    if (!aberto) return;
+    recalcularPosicao();
+    window.addEventListener('scroll', recalcularPosicao, true);
+    window.addEventListener('resize', recalcularPosicao);
+    return () => {
+      window.removeEventListener('scroll', recalcularPosicao, true);
+      window.removeEventListener('resize', recalcularPosicao);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aberto]);
 
   function selecionar(next: string) {
     onChange(next);
@@ -182,6 +205,7 @@ export function DarkSelect({
   return (
     <div ref={wrapRef} className={className ? `relative ${className}` : 'relative'}>
       <button
+        ref={triggerRef}
         type="button"
         disabled={disabled}
         onClick={() => !disabled && setAberto(a => !a)}
@@ -195,8 +219,8 @@ export function DarkSelect({
         )}
       </button>
 
-      {aberto && !disabled && (
-        <div style={DROPDOWN}>
+      {aberto && !disabled && coords && createPortal(
+        <div ref={dropdownRef} style={{ ...DROPDOWN_BASE, top: coords.top, left: coords.left, width: coords.width }}>
           {allowEmpty && (
             <button
               type="button"
@@ -211,7 +235,8 @@ export function DarkSelect({
             </button>
           )}
           {renderOptions()}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

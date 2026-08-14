@@ -12,6 +12,12 @@ interface ModalProps {
 
 export function Modal({ open, onClose, title, children, actions, maxWidth = '480px' }: ModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
+  // Só fecha se o clique COMEÇOU e TERMINOU no fundo escuro (overlay), não só
+  // onde ele terminou. Sem isso, selecionar texto num campo (Ctrl+A, duplo
+  // clique, ou arrastar pra selecionar) às vezes "solta" o clique fora do
+  // campo — o navegador então dispara um click que teria o overlay como alvo,
+  // fechando o popup sem querer no meio da edição.
+  const mouseDownNoOverlay = useRef(false);
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -24,7 +30,11 @@ export function Modal({ open, onClose, title, children, actions, maxWidth = '480
   return (
     <div
       ref={overlayRef}
-      onClick={e => { if (e.target === overlayRef.current) onClose(); }}
+      onMouseDown={e => { mouseDownNoOverlay.current = e.target === overlayRef.current; }}
+      onMouseUp={e => {
+        if (mouseDownNoOverlay.current && e.target === overlayRef.current) onClose();
+        mouseDownNoOverlay.current = false;
+      }}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
     >
       <div
