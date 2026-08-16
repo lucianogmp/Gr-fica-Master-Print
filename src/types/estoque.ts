@@ -12,6 +12,10 @@ export interface MateriaPrima {
    * entra em alertas de estoque baixo/zerado nem exige quantidade. Padrão
    * true pra manter o comportamento de sempre em itens já cadastrados. */
   controla_estoque: boolean;
+  /** Largura fixa do rolo/bobina em cm (ex: 61, 70, 100, 127) — só relevante
+   * pra unidade 'rolo' ou 'm2'. Evita redigitar a largura toda vez que
+   * registra um movimento; a calculadora de m² já vem preenchida com isso. */
+  largura_padrao_cm?: number | null;
   empresa_id?: string;
   created_at?: string;
 }

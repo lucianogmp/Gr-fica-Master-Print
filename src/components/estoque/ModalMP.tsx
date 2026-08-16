@@ -7,7 +7,9 @@ import { MoneyInput } from '../ui/MoneyInput';
 import { useCategorias } from '../../hooks/useCategorias';
 import toast from 'react-hot-toast';
 
-const UNIDADES = ['un', 'kg', 'g', 'l', 'ml', 'm', 'cm', 'folha', 'rolo', 'caixa', 'resma', 'par'];
+const UNIDADES = ['un', 'kg', 'g', 'l', 'ml', 'm', 'm2', 'cm', 'folha', 'caixa', 'resma', 'par'];
+const UNIDADES_LABEL: Record<string, string> = { m2: 'm²' };
+const UNIDADES_OPCOES = UNIDADES.map(u => ({ value: u, label: UNIDADES_LABEL[u] ?? u }));
 
 type FormData = {
   nome: string;
@@ -17,9 +19,10 @@ type FormData = {
   estoque_minimo: string;
   saldo_inicial: string;
   controla_estoque: boolean;
+  largura_padrao_cm: string;
 };
 
-const EMPTY: FormData = { nome: '', categoria: '', unidade: 'un', custo_unitario: 0, estoque_minimo: '', saldo_inicial: '', controla_estoque: true };
+const EMPTY: FormData = { nome: '', categoria: '', unidade: 'un', custo_unitario: 0, estoque_minimo: '', saldo_inicial: '', controla_estoque: true, largura_padrao_cm: '' };
 
 interface ModalMPProps {
   open: boolean;
@@ -46,6 +49,7 @@ export function ModalMP({ open, editando, onClose, onSalvar }: ModalMPProps) {
         estoque_minimo: String(editando.estoque_minimo ?? ''),
         saldo_inicial:  '',
         controla_estoque: editando.controla_estoque !== false, // itens antigos sem esse campo continuam controlando
+        largura_padrao_cm: editando.largura_padrao_cm != null ? String(editando.largura_padrao_cm) : '',
       });
     } else {
       setForm(EMPTY);
@@ -72,6 +76,9 @@ export function ModalMP({ open, editando, onClose, onSalvar }: ModalMPProps) {
         unidade:        form.unidade,
         custo_unitario: form.custo_unitario || 0,
         controla_estoque: form.controla_estoque,
+        largura_padrao_cm: form.unidade === 'm2' && form.largura_padrao_cm
+          ? parseFloat(form.largura_padrao_cm) || null
+          : null,
         // Sem controle: item comprado sob medida, não faz sentido rastrear
         // mínimo nem saldo — zera pra não sobrar lixo de um estado anterior.
         estoque_minimo: form.controla_estoque ? (parseFloat(form.estoque_minimo) || 0) : 0,
@@ -145,10 +152,23 @@ export function ModalMP({ open, editando, onClose, onSalvar }: ModalMPProps) {
               value={form.unidade}
               onChange={v => set('unidade', v)}
               allowEmpty={false}
-              options={UNIDADES}
+              options={UNIDADES_OPCOES}
             />
           </Field>
         </div>
+
+        {form.unidade === 'm2' && (
+          <Field label="Largura do Rolo (cm)">
+            <input type="number" min="0" step="0.1" value={form.largura_padrao_cm}
+              onFocus={e => e.target.select()}
+              onChange={e => set('largura_padrao_cm', e.target.value)}
+              className={INPUT + " [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"}
+              placeholder="Ex: 61" />
+            <p className="text-[10px] text-gray-600 mt-1">
+              Largura fixa desse rolo/bobina — usada pra pré-preencher a calculadora de m² ao registrar entrada/saída, sem precisar redigitar toda vez.
+            </p>
+          </Field>
+        )}
 
         {form.controla_estoque ? (
           <div className="grid grid-cols-2 gap-4">

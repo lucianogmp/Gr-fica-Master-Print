@@ -159,6 +159,47 @@ function ModalNovaMateriaPrima({ open, onClose, onCriada }: {
   );
 }
 
+// ── Tempo de Produção: Horas : Minutos ──────────────────────────────────────
+// Guarda internamente como decimal (ex: 1h30 = "1.5"), igual sempre foi —
+// só a forma de DIGITAR muda, pra não precisar fazer conta de cabeça
+// (3 minutos = 0,05h era ruim de digitar; agora é só "0" horas "3" minutos).
+function TempoProducaoInput({ valor, onChange }: { valor: string; onChange: (v: string) => void }) {
+  const decimal      = parseFloat(valor) || 0;
+  const horasAtuais   = Math.floor(decimal);
+  const minutosAtuais = Math.round((decimal - horasAtuais) * 60);
+
+  function atualizar(h: number, m: number) {
+    const totalMinutos = Math.max(0, h) * 60 + Math.max(0, Math.min(59, m));
+    if (totalMinutos === 0) { onChange(''); return; }
+    // Corta zeros à direita sem virar notação científica nem perder precisão.
+    onChange((totalMinutos / 60).toFixed(4).replace(/\.?0+$/, ''));
+  }
+
+  const NUM = IN + " text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
+
+  return (
+    <div className="flex items-end gap-2">
+      <div className="flex-1">
+        <input type="number" min="0" step="1" inputMode="numeric"
+          value={horasAtuais || ''} placeholder="0"
+          onFocus={e => e.target.select()}
+          onChange={e => atualizar(parseInt(e.target.value) || 0, minutosAtuais)}
+          className={NUM} />
+        <span className="text-[9px] text-gray-500 block mt-0.5 text-center">horas</span>
+      </div>
+      <span className="text-gray-600 font-black pb-4">:</span>
+      <div className="flex-1">
+        <input type="number" min="0" max="59" step="1" inputMode="numeric"
+          value={minutosAtuais || ''} placeholder="0"
+          onFocus={e => e.target.select()}
+          onChange={e => atualizar(horasAtuais, parseInt(e.target.value) || 0)}
+          className={NUM} />
+        <span className="text-[9px] text-gray-500 block mt-0.5 text-center">minutos</span>
+      </div>
+    </div>
+  );
+}
+
 // ── Modal nova categoria ───────────────────────────────────────────────────
 function ModalNovaCategoria({ open, onClose, onCriada }: {
   open: boolean; onClose: () => void;
@@ -172,7 +213,7 @@ function ModalNovaCategoria({ open, onClose, onCriada }: {
     if (!nome.trim()) return;
     setSalvando(true);
     try {
-      const cat = await criar.mutateAsync(nome.trim());
+      const cat = await criar(nome.trim());
       onCriada(cat.id, cat.nome);
       setNome(''); onClose();
     } catch (e: any) { toast.error(e.message); }
@@ -785,9 +826,8 @@ export function Produtos() {
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Tempo de Produção (h)</label>
-                  <input value={(form as any).tempo_producao ?? ''} onChange={e => setF('tempo_producao', e.target.value)}
-                    className={IN} placeholder="Ex: 2.5" />
+                  <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Tempo de Produção</label>
+                  <TempoProducaoInput valor={(form as any).tempo_producao ?? ''} onChange={v => setF('tempo_producao', v)} />
                 </div>
                 <div>
                   <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Setor</label>
