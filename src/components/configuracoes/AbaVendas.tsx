@@ -150,7 +150,7 @@ function TabelaTaxasEditor({
                 {/* Taxa % */}
                 <div className="flex items-center gap-1 justify-end">
                   <input
-                    type="number"
+                    type="number" onWheel={e => e.currentTarget.blur()}
                     min="0"
                     max="100"
                     step="0.01"
@@ -259,7 +259,7 @@ function FormaCard({
         <div className="flex items-center gap-1.5 flex-shrink-0" title="Depois de quantos dias úteis o valor realmente cai/compensa (dinheiro e PIX geralmente é 0 — na hora)">
           <span className="text-[10px] text-gray-500 whitespace-nowrap">Compensa em</span>
           <input
-            type="number" min="0" step="1" maxLength={2}
+            type="number" onWheel={e => e.currentTarget.blur()} min="0" step="1" maxLength={2}
             value={formaNorm.dias_uteis_liquidacao ?? 0}
             onChange={e => onChange({ ...formaNorm, dias_uteis_liquidacao: Math.max(0, parseInt(e.target.value) || 0) })}
             className="bg-[#0d1117] border border-gray-700 rounded-lg px-2 py-1 text-white text-xs text-center focus:outline-none focus:border-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
@@ -381,7 +381,7 @@ export function AbaVendas({ form, set }: Props) {
               Prazo padrão de entrega (dias)
             </label>
             <input
-              type="number" min="0" step="1"
+              type="number" onWheel={e => e.currentTarget.blur()} min="0" step="1"
               value={num('venda_prazo_entrega_dias')}
               onChange={e => set('venda_prazo_entrega_dias', parseInt(e.target.value) || null)}
               className={IN_N}

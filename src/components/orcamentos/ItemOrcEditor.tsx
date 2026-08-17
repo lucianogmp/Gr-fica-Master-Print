@@ -55,11 +55,13 @@ function NumInput({
       value={value}
       onChange={e => onChange(e.target.value)}
       onFocus={e => e.target.select()}
+      onWheel={e => e.currentTarget.blur()}
       placeholder={placeholder}
       className={[
         className ?? IN_BASE,
         center ? 'text-center' : '',
         big ? 'text-xl font-black py-3' : '',
+        '[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none',
       ].join(' ')}
     />
   );

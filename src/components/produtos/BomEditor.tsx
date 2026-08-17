@@ -6,6 +6,7 @@ import { calcCustoBOM } from '../../hooks/useBom';
 import { Boxes, X, ArrowRight } from 'lucide-react';
 
 const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const unidadeLabel = (u: string) => u === 'm2' ? 'm²' : u;
 
 interface BomEditorProps {
   bom: BomItem[];
@@ -100,11 +101,11 @@ export function BomEditor({ bom, materias, onChange }: BomEditorProps) {
                     <tr key={i} className="border-b border-gray-800 hover:bg-gray-800/30">
                       <td className="px-3 py-2 font-medium text-white">{mp.nome}</td>
                       <td className="px-3 py-2 text-center">
-                        <span className="text-[10px] font-bold bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full">{mp.unidade}</span>
+                        <span className="text-[10px] font-bold bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full">{unidadeLabel(mp.unidade)}</span>
                       </td>
                       <td className="px-3 py-2 text-right">
                         <input
-                          type="number" min="0.001" step="0.001"
+                          type="number" onWheel={e => e.currentTarget.blur()} min="0.001" step="0.001"
                           value={b.quantidade}
                           onChange={e => handleQtdChange(i, e.target.value)}
                           className="w-24 bg-gray-900 border border-gray-700 rounded px-2 py-1 text-right text-white text-xs focus:outline-none focus:border-blue-500"
@@ -182,7 +183,7 @@ export function BomEditor({ bom, materias, onChange }: BomEditorProps) {
                   >
                     <div>
                       <p className="text-sm font-medium text-white">{m.nome}</p>
-                      <p className="text-xs text-gray-500">{m.unidade} · {fmtBRL(m.custo_unitario)}/un</p>
+                      <p className="text-xs text-gray-500">{unidadeLabel(m.unidade)} · {fmtBRL(m.custo_unitario)}/un</p>
                     </div>
                     <ArrowRight className="w-3.5 h-3.5 text-gray-600" />
                   </button>
@@ -194,7 +195,7 @@ export function BomEditor({ bom, materias, onChange }: BomEditorProps) {
           {selecionada && (
             <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg px-4 py-3 text-sm">
               <span className="font-bold text-blue-300">{selecionada.nome}</span>
-              <span className="text-gray-400"> · {selecionada.unidade} · {fmtBRL(selecionada.custo_unitario)}/un</span>
+              <span className="text-gray-400"> · {unidadeLabel(selecionada.unidade)} · {fmtBRL(selecionada.custo_unitario)}/un</span>
               <button onClick={() => { setSelecionada(null); setBusca(''); }} className="ml-2 inline-flex text-gray-600 hover:text-red-400"><X className="w-3 h-3" /></button>
             </div>
           )}
@@ -202,11 +203,11 @@ export function BomEditor({ bom, materias, onChange }: BomEditorProps) {
           {selecionada && (
             <div>
               <label className="text-xs font-bold text-gray-400 uppercase block mb-1">
-                Quantidade ({selecionada.unidade})
+                Quantidade ({unidadeLabel(selecionada.unidade)})
               </label>
               <input
                 autoFocus
-                type="number" min="0.001" step="0.001"
+                type="number" onWheel={e => e.currentTarget.blur()} min="0.001" step="0.001"
                 value={qtd}
                 onChange={e => setQtd(e.target.value)}
                 placeholder="0.000"

@@ -15,11 +15,10 @@ const Producao      = lazy(() => import('../pages/Producao').then(m => ({ defaul
 const AuditLog      = lazy(() => import('../pages/AuditLog').then(m => ({ default: m.AuditLog })));
 
 // ─── Vendas (sub-rotas) ──────────────────────────────────────────────────────
+// Histórico, EmProducao e Entregues foram descontinuadas — consolidadas
+// dentro de Pedidos.tsx (mesma base, ListaVendas, sem restringir status).
 const VendasNova      = lazy(() => import('../pages/Vendas/Nova').then(m => ({ default: m.Vendas })));
 const VendasPedidos   = lazy(() => import('../pages/Vendas/Pedidos').then(m => ({ default: m.Pedidos })));
-const VendasHistorico = lazy(() => import('../pages/Vendas/Historico').then(m => ({ default: m.Historico })));
-const VendasProducao  = lazy(() => import('../pages/Vendas/EmProducao').then(m => ({ default: m.EmProducao })));
-const VendasEntregues = lazy(() => import('../pages/Vendas/Entregues').then(m => ({ default: m.Entregues })));
 
 const Fornecedores = lazy(() => import('../pages/Fornecedores').then(m => ({ default: m.Fornecedores })));
 
@@ -151,9 +150,11 @@ export function AppRoutes() {
           <Route path="vendas/nova"      element={<PR rota="/vendas/nova"><VendasNova /></PR>} />
           <Route path="vendas/nova/:id"  element={<PR rota="/vendas/nova"><VendasNova /></PR>} />
           <Route path="vendas/pedidos"   element={<PR rota="/vendas/pedidos"><VendasPedidos /></PR>} />
-          <Route path="vendas/historico" element={<PR rota="/vendas/historico"><VendasHistorico /></PR>} />
-          <Route path="vendas/producao"  element={<PR rota="/vendas/producao"><VendasProducao /></PR>} />
-          <Route path="vendas/entregues" element={<PR rota="/vendas/entregues"><VendasEntregues /></PR>} />
+          {/* Histórico, Em Produção e Entregues foram consolidadas em Pedidos
+              (mesma tela, sem restringir status) — links antigos redirecionam. */}
+          <Route path="vendas/historico" element={<Navigate to="/vendas/pedidos" replace />} />
+          <Route path="vendas/producao"  element={<Navigate to="/vendas/pedidos" replace />} />
+          <Route path="vendas/entregues" element={<Navigate to="/vendas/pedidos" replace />} />
 
           {/* ── CRM ── */}
           <Route path="crm" element={<Navigate to="/crm/clientes" replace />} />

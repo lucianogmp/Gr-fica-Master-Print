@@ -159,7 +159,7 @@ export function ModalMP({ open, editando, onClose, onSalvar }: ModalMPProps) {
 
         {form.unidade === 'm2' && (
           <Field label="Largura do Rolo (cm)">
-            <input type="number" min="0" step="0.1" value={form.largura_padrao_cm}
+            <input type="number" onWheel={e => e.currentTarget.blur()} min="0" step="0.1" value={form.largura_padrao_cm}
               onFocus={e => e.target.select()}
               onChange={e => set('largura_padrao_cm', e.target.value)}
               className={INPUT + " [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"}
@@ -178,7 +178,7 @@ export function ModalMP({ open, editando, onClose, onSalvar }: ModalMPProps) {
                 className={INPUT} placeholder="0,00" />
             </Field>
             <Field label="Estoque Mínimo">
-              <input type="number" min="0" step="0.001" value={form.estoque_minimo}
+              <input type="number" onWheel={e => e.currentTarget.blur()} min="0" step="0.001" value={form.estoque_minimo}
                 onChange={e => set('estoque_minimo', e.target.value)}
                 className={INPUT} placeholder="0" />
             </Field>
@@ -193,7 +193,7 @@ export function ModalMP({ open, editando, onClose, onSalvar }: ModalMPProps) {
 
         {!editando && form.controla_estoque && (
           <Field label="Saldo Inicial">
-            <input type="number" min="0" step="0.001" value={form.saldo_inicial}
+            <input type="number" onWheel={e => e.currentTarget.blur()} min="0" step="0.001" value={form.saldo_inicial}
               onChange={e => set('saldo_inicial', e.target.value)}
               className={INPUT} placeholder="0" />
           </Field>

@@ -14,7 +14,7 @@ import {
   LayoutDashboard, ShoppingCart, Users, Landmark, FileText,
   Package, Warehouse, Factory, TrendingDown, Settings, Bell, Menu, X,
   ShieldCheck, BarChart3, Moon, Sun, ChevronDown, ChevronRight,
-  PlusCircle, ClipboardList, History, Truck, CheckCircle2,
+  PlusCircle, ClipboardList, History, Truck,
   Receipt, CreditCard, ArrowUpCircle, ArrowDownCircle, GitMerge, PieChart,
   BookOpen, Tag, DollarSign, Layers, Wrench,
   BarChart2, Users2, PackageSearch,
@@ -53,6 +53,14 @@ const ALL_MENU: MenuItem[] = [
     rota: '/',
   },
 
+  // ── Produção ──
+  {
+    path: '/producao',
+    label: 'Produção',
+    icon: Factory,
+    rota: '/producao',
+  },
+
   // ── Orçamentos ──
   {
     path: '/orcamentos',
@@ -62,16 +70,16 @@ const ALL_MENU: MenuItem[] = [
   },
 
   // ── Vendas ──
+  // Histórico, Em Produção e Entregues foram consolidadas dentro de
+  // "Pedidos" (mesma lista, com filtro de status cobrindo tudo, incluindo
+  // Entregue) — evita telas redundantes fazendo praticamente a mesma coisa.
   {
     label: 'Vendas',
     icon: ShoppingCart,
     rota: '/vendas',
     children: [
-      { path: '/vendas/nova',      label: 'Nova Venda',          icon: PlusCircle },
-      { path: '/vendas/pedidos',   label: 'Pedidos',             icon: ClipboardList },
-      { path: '/vendas/historico', label: 'Histórico',           icon: History },
-      { path: '/vendas/producao',  label: 'Pedidos em Produção', icon: Factory },
-      { path: '/vendas/entregues', label: 'Pedidos Entregues',   icon: CheckCircle2 },
+      { path: '/vendas/nova',    label: 'Nova Venda', icon: PlusCircle },
+      { path: '/vendas/pedidos', label: 'Pedidos',     icon: ClipboardList },
     ],
   },
 
@@ -129,14 +137,6 @@ const ALL_MENU: MenuItem[] = [
       { path: '/estoque/historico', label: 'Histórico',     icon: History },
       { path: '/fornecedores',      label: 'Fornecedores',  icon: Truck },
     ],
-  },
-
-  // ── Produção ──
-  {
-    path: '/producao',
-    label: 'Produção',
-    icon: Factory,
-    rota: '/producao',
   },
 
   // ── Gestão de Custos ──

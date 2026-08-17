@@ -142,6 +142,9 @@ export function useOrcamentos() {
       if (iErr) throw iErr;
 
       // 3. Marca orçamento como convertido
+      // (a ordem de produção na fila é criada automaticamente por um
+      // gatilho no banco assim que a venda é inserida — funciona pra
+      // qualquer caminho de criação de venda, não só esse aqui)
       const { error: uErr } = await supabase
         .from('orcamentos')
         .update({ status: 'convertido', venda_id: vendaId })
@@ -154,7 +157,8 @@ export function useOrcamentos() {
       qc.invalidateQueries({ queryKey: ['orcamentos'] });
       qc.invalidateQueries({ queryKey: ['vendas'] });
       qc.invalidateQueries({ queryKey: ['venda-itens', vendaId] });
-      toast.success('Orçamento convertido em venda!');
+      qc.invalidateQueries({ queryKey: ['producao'] });
+      toast.success('Orçamento convertido em venda e enviado pra fila de produção!');
     },
     onError: (e: any) => toast.error(e.message),
   });

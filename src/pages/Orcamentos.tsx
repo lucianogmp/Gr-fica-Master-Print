@@ -955,7 +955,7 @@ export function Orcamentos() {
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-400">Desconto (%)</span>
-                <input type="number" min="0" max="100" step="0.5"
+                <input type="number" onWheel={e => e.currentTarget.blur()} min="0" max="100" step="0.5"
                   value={form.desconto ?? 0} onChange={e => setF('desconto', parseFloat(e.target.value) || 0)}
                   className="w-20 bg-[#111827] border border-gray-700 rounded-lg px-2 py-1 text-white text-sm text-right focus:outline-none focus:border-blue-500" />
               </div>

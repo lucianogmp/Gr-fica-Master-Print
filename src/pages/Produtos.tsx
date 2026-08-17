@@ -139,13 +139,13 @@ function ModalNovaMateriaPrima({ open, onClose, onCriada }: {
           </div>
           <div>
             <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Estoque Mínimo</label>
-            <input type="number" min="0" step="0.001" value={form.estoque_minimo}
+            <input type="number" onWheel={e => e.currentTarget.blur()} min="0" step="0.001" value={form.estoque_minimo}
               onChange={e => set('estoque_minimo', e.target.value)} className={IN} placeholder="0" />
           </div>
         </div>
         <div>
           <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Saldo Inicial</label>
-          <input type="number" min="0" step="0.001" value={form.saldo_inicial}
+          <input type="number" onWheel={e => e.currentTarget.blur()} min="0" step="0.001" value={form.saldo_inicial}
             onChange={e => set('saldo_inicial', e.target.value)} className={IN} placeholder="0" />
         </div>
         <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg px-3 py-2 text-xs text-blue-300">
@@ -180,7 +180,7 @@ function TempoProducaoInput({ valor, onChange }: { valor: string; onChange: (v: 
   return (
     <div className="flex items-end gap-2">
       <div className="flex-1">
-        <input type="number" min="0" step="1" inputMode="numeric"
+        <input type="number" onWheel={e => e.currentTarget.blur()} min="0" step="1" inputMode="numeric"
           value={horasAtuais || ''} placeholder="0"
           onFocus={e => e.target.select()}
           onChange={e => atualizar(parseInt(e.target.value) || 0, minutosAtuais)}
@@ -189,7 +189,7 @@ function TempoProducaoInput({ valor, onChange }: { valor: string; onChange: (v: 
       </div>
       <span className="text-gray-600 font-black pb-4">:</span>
       <div className="flex-1">
-        <input type="number" min="0" max="59" step="1" inputMode="numeric"
+        <input type="number" onWheel={e => e.currentTarget.blur()} min="0" max="59" step="1" inputMode="numeric"
           value={minutosAtuais || ''} placeholder="0"
           onFocus={e => e.target.select()}
           onChange={e => atualizar(horasAtuais, parseInt(e.target.value) || 0)}
