@@ -10,9 +10,10 @@ import { MoneyInput } from '../../components/ui/MoneyInput';
 import { DateInput } from '../../components/ui/DateInput';
 import {
   TrendingUp, ArrowUp, ArrowDown, Wallet,
-  Plus, X, Save,
+  Plus, X, Save, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { DarkSelect } from '../../components/ui/DarkSelect';
+import { MonthInput } from '../../components/ui/MonthInput';
 
 const fmtBRL  = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const fmtData = (d: string) => new Date(d + 'T00:00:00').toLocaleDateString('pt-BR');
@@ -38,6 +39,12 @@ export function FluxoCaixa() {
   const [mesFx, setMesFx]       = useState(() => new Date().toISOString().slice(0, 7));
   const [showModal, setShowModal] = useState(false);
   const [form, setForm]          = useState({ ...NOVO_MOV });
+
+  function deslocarMesFx(delta: number) {
+    const [y, m] = mesFx.split('-').map(Number);
+    const d = new Date(y, m - 1 + delta, 1);
+    setMesFx(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  }
 
   const contasAtivas = contas.filter(c => c.ativo);
 
@@ -195,8 +202,21 @@ export function FluxoCaixa() {
             <p className="text-gray-500 text-sm">Movimentos de dinheiro físico e avulsos</p>
           </div>
           <div className="flex items-center gap-3">
-            <input type="month" value={mesFx} onChange={e => setMesFx(e.target.value)}
-              className="bg-[#1f2937] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500 min-w-[170px]" />
+            <div className="flex items-center gap-1 bg-[#1f2937] border border-gray-700 rounded-xl px-1.5 py-1.5">
+              <button onClick={() => deslocarMesFx(-1)} title="Mês anterior"
+                className="p-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 transition-colors">
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <MonthInput
+                value={mesFx}
+                onChange={v => v && setMesFx(v)}
+                className="bg-[#111827] border border-gray-700 rounded-lg px-3 py-1.5 text-white text-sm font-bold capitalize min-w-[150px]"
+              />
+              <button onClick={() => deslocarMesFx(1)} title="Próximo mês"
+                className="p-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 transition-colors">
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
             <button
               onClick={() => setShowModal(true)}
               className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 shadow-lg shadow-blue-900/30"
@@ -225,7 +245,7 @@ export function FluxoCaixa() {
         {datas.length === 0 ? (
           <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-12 text-center space-y-3">
             <Wallet className="w-10 h-10 text-gray-700 mx-auto" />
-            <p className="text-gray-600">Nenhum movimento em {mesFx}.</p>
+            <p className="text-gray-600">Nenhum movimento em {new Date(mesFx + '-01T00:00:00').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}.</p>
             <button onClick={() => setShowModal(true)}
               className="text-blue-400 text-sm font-bold hover:text-blue-300 transition-colors">
               + Registrar primeira movimentação

@@ -9,7 +9,7 @@ import { ModalLancamento } from '../../components/financeiro/ModalLancamento';
 import { KpiCard } from '../../components/ui/KpiCard';
 import { useConfirm } from '../../components/ui/ConfirmModal';
 import {
-  ArrowUp, ArrowDown, Clock, AlertCircle, Check, X, ExternalLink, LucideIcon,
+  ArrowUp, ArrowDown, Clock, AlertCircle, Check, X, ExternalLink, LucideIcon, CheckSquare, Square,
 } from 'lucide-react';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -79,6 +79,47 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
       (l.cliente_nome ?? '').toLowerCase().includes(busca.toLowerCase())
     ), [base, filtroStatus, busca]);
 
+  // Seleção múltipla: lançamentos vindos de venda (isDeVenda) não entram —
+  // eles são gerenciados automaticamente pela venda, apagar direto quebraria
+  // a sincronização (a mesma razão pela qual o botão Excluir individual já
+  // fica escondido pra eles).
+  const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
+  const selecionaveis = useMemo(() => filtrados.filter(l => !l.venda_id), [filtrados]);
+
+  function toggleSelecionado(id: string) {
+    setSelecionados(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+  function toggleTodosVisiveis() {
+    setSelecionados(prev => {
+      const todosMarcados = selecionaveis.length > 0 && selecionaveis.every(l => prev.has(l.id));
+      const next = new Set(prev);
+      if (todosMarcados) {
+        selecionaveis.forEach(l => next.delete(l.id));
+      } else {
+        selecionaveis.forEach(l => next.add(l.id));
+      }
+      return next;
+    });
+  }
+  const totalSelecionado = filtrados
+    .filter(l => selecionados.has(l.id))
+    .reduce((s, l) => s + (l.tipo === 'despesa' ? -1 : 1) * Number(l.valor), 0);
+
+  async function excluirSelecionados() {
+    if (selecionados.size === 0) return;
+    const ok = await confirmar(
+      `Remover ${selecionados.size} lançamento(s) selecionado(s)? Essa ação não pode ser desfeita.`,
+      'Excluir lançamentos selecionados'
+    );
+    if (!ok) return;
+    selecionados.forEach(id => deletar(id));
+    setSelecionados(new Set());
+  }
+
   if (isLoading) return <div className="p-8 text-blue-500 animate-pulse font-bold">Carregando...</div>;
 
   return (
@@ -135,11 +176,18 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
       </div>
 
       {/* Tabela */}
-      <div className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">
+      <div className={`bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden ${selecionados.size > 0 ? 'mb-16' : ''}`}>
         <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="text-gray-400 text-[10px] font-bold uppercase border-b border-gray-700 bg-gray-800/40">
+              <th className="px-3 py-3 text-center w-8">
+                <button onClick={toggleTodosVisiveis} title="Selecionar/desmarcar todos visíveis" className="text-gray-500 hover:text-blue-400 transition-colors">
+                  {selecionaveis.length > 0 && selecionaveis.every(l => selecionados.has(l.id))
+                    ? <CheckSquare className="w-4 h-4 text-blue-400" />
+                    : <Square className="w-4 h-4" />}
+                </button>
+              </th>
               {!fixarTipo && <th className="px-5 py-3 text-left">Tipo</th>}
               <th className="px-5 py-3 text-left">Descrição</th>
               <th className="px-5 py-3 text-left">Categoria</th>
@@ -152,15 +200,25 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
           </thead>
           <tbody>
             {filtrados.length === 0 && (
-              <tr><td colSpan={!fixarTipo ? 8 : 7} className="px-5 py-12 text-center text-gray-600">
+              <tr><td colSpan={!fixarTipo ? 9 : 8} className="px-5 py-12 text-center text-gray-600">
                 {mensagemVazio ?? 'Nenhum lançamento encontrado.'}
               </td></tr>
             )}
             {filtrados.map(l => {
               const st = l.statusCalc;
               const isDeVenda = !!l.venda_id;
+              const marcado = selecionados.has(l.id);
               return (
-                <tr key={l.id} className="border-b border-gray-800 hover:bg-gray-800/30 transition-colors">
+                <tr key={l.id} className={`border-b border-gray-800 hover:bg-gray-800/30 transition-colors ${marcado ? 'bg-blue-500/5' : ''}`}>
+                  <td className="px-3 py-3 text-center">
+                    {isDeVenda ? (
+                      <span className="inline-block w-4 h-4" title="Lançamento de venda — gerenciado automaticamente, não pode ser selecionado" />
+                    ) : (
+                      <button onClick={() => toggleSelecionado(l.id)} className="text-gray-500 hover:text-blue-400 transition-colors">
+                        {marcado ? <CheckSquare className="w-4 h-4 text-blue-400" /> : <Square className="w-4 h-4" />}
+                      </button>
+                    )}
+                  </td>
                   {!fixarTipo && (
                     <td className="px-5 py-3">
                       <span className={l.tipo === 'receita' ? 'text-green-400' : 'text-red-400'}>
@@ -237,6 +295,29 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
             : criar(dados)
         }
       />
+
+      {/* Barra de seleção — fixa embaixo, só aparece com algo marcado */}
+      {selecionados.size > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-40 bg-[#1f2937] border-t border-blue-500/40 shadow-2xl shadow-black/50">
+          <div className="px-6 py-3 flex items-center gap-4 flex-wrap">
+            <span className="text-sm text-gray-300">
+              <span className="font-black text-white">{selecionados.size}</span> selecionado{selecionados.size > 1 ? 's' : ''}
+            </span>
+            <span className={`text-sm font-black ${totalSelecionado >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+              {totalSelecionado >= 0 ? '+' : ''}{fmtBRL(totalSelecionado)}
+            </span>
+            <div className="flex-1" />
+            <button onClick={() => setSelecionados(new Set())}
+              className="text-xs font-bold text-gray-400 hover:text-white transition-colors">
+              Limpar seleção
+            </button>
+            <button onClick={excluirSelecionados}
+              className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white transition-all">
+              <X className="w-3.5 h-3.5" /> Excluir selecionados
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 }

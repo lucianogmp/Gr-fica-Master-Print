@@ -2,11 +2,18 @@
 import { useState } from 'react';
 import { useLancamentos } from '../../hooks/useLancamentos';
 import { TabelaLancamentos, fmtBRL } from './TabelaLancamentos';
-import { Landmark, TrendingUp, TrendingDown, Clock, Banknote } from 'lucide-react';
+import { Landmark, TrendingUp, TrendingDown, Clock, Banknote, ChevronLeft, ChevronRight } from 'lucide-react';
+import { MonthInput } from '../../components/ui/MonthInput';
 
 export function Lancamentos() {
   const { data: lancamentos = [] } = useLancamentos();
   const [mesKpi, setMesKpi] = useState(() => new Date().toISOString().slice(0, 7));
+
+  function deslocarMesKpi(delta: number) {
+    const [y, m] = mesKpi.split('-').map(Number);
+    const d = new Date(y, m - 1 + delta, 1);
+    setMesKpi(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  }
 
   const doMes        = lancamentos.filter(l => (l.data_vencimento ?? l.created_at ?? '').startsWith(mesKpi));
   const totalReceitas = doMes.filter(l => l.tipo === 'receita').reduce((s, l) => s + Number(l.valor), 0);
@@ -24,8 +31,21 @@ export function Lancamentos() {
           <p className="text-gray-500 text-sm">{lancamentos.length} lançamento(s)</p>
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto">
-          <input type="month" value={mesKpi} onChange={e => setMesKpi(e.target.value)}
-            className="bg-[#1f2937] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500 min-w-[170px] flex-1 sm:flex-none" />
+          <div className="flex items-center gap-1 bg-[#1f2937] border border-gray-700 rounded-xl px-1.5 py-1.5">
+            <button onClick={() => deslocarMesKpi(-1)} title="Mês anterior"
+              className="p-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 transition-colors">
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <MonthInput
+              value={mesKpi}
+              onChange={v => v && setMesKpi(v)}
+              className="bg-[#111827] border border-gray-700 rounded-lg px-3 py-1.5 text-white text-sm font-bold capitalize min-w-[150px]"
+            />
+            <button onClick={() => deslocarMesKpi(1)} title="Próximo mês"
+              className="p-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 transition-colors">
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
           <span className="text-gray-600 text-xs whitespace-nowrap">KPIs do mês</span>
         </div>
       </div>
