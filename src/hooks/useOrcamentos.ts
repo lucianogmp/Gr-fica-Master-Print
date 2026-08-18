@@ -25,6 +25,12 @@ function serializarItens(itens: OrcamentoItem[]) {
     acabamento_custo:      i.acabamento_custo      ?? null,
     acabamentos_por_folha: i.acabamentos_por_folha ?? null,
     arte_inclusa:          i.arte_inclusa          ?? false,
+    // Colunas que já existiam no banco mas nunca eram preenchidas — agora
+    // o custo do item (matéria-prima/produto por m², visível só pra
+    // admin/dono na tela) fica salvo de verdade, não só calculado na hora.
+    produto_id:            (i as any).produto_id   ?? null,
+    custo_unitario:        (i as any).custo_unitario ?? null,
+    area_m2:               (i as any).area_m2      ?? null,
   }));
 }
 

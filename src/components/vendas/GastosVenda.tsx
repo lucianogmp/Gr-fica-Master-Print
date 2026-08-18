@@ -175,12 +175,13 @@ export function GastosVenda({ vendaId, clienteNome, itens }: Props) {
           {itens.length > 0 && (
             <div>
               <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Relacionado a qual item? (opcional)</label>
-              <select value={itemRelacionadoIdx} onChange={e => selecionarItem(e.target.value)} className={IN}>
-                <option value="">— Selecione um item da venda —</option>
-                {itens.map((it, idx) => (
-                  <option key={idx} value={idx}>{it.descricao}</option>
-                ))}
-              </select>
+              <DarkSelect
+                value={itemRelacionadoIdx}
+                onChange={selecionarItem}
+                placeholder="— Selecione um item da venda —"
+                triggerClassName={IN + ' text-left flex items-center justify-between gap-2 cursor-pointer'}
+                options={itens.map((it, idx) => ({ value: String(idx), label: it.descricao }))}
+              />
             </div>
           )}
 

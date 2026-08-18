@@ -5,6 +5,7 @@ import { Pencil, Plus } from 'lucide-react';
 import { DarkSelect } from '../ui/DarkSelect';
 import { MoneyInput } from '../ui/MoneyInput';
 import { useCategorias } from '../../hooks/useCategorias';
+import { useMovimentos } from '../../hooks/useEstoque';
 import toast from 'react-hot-toast';
 
 const UNIDADES = ['un', 'kg', 'g', 'l', 'ml', 'm', 'm2', 'cm', 'folha', 'caixa', 'resma', 'par'];
@@ -18,11 +19,12 @@ type FormData = {
   custo_unitario: number;
   estoque_minimo: string;
   saldo_inicial: string;
+  saldo_atual: string;
   controla_estoque: boolean;
   largura_padrao_cm: string;
 };
 
-const EMPTY: FormData = { nome: '', categoria: '', unidade: 'un', custo_unitario: 0, estoque_minimo: '', saldo_inicial: '', controla_estoque: true, largura_padrao_cm: '' };
+const EMPTY: FormData = { nome: '', categoria: '', unidade: 'un', custo_unitario: 0, estoque_minimo: '', saldo_inicial: '', saldo_atual: '', controla_estoque: true, largura_padrao_cm: '' };
 
 interface ModalMPProps {
   open: boolean;
@@ -35,6 +37,7 @@ export function ModalMP({ open, editando, onClose, onSalvar }: ModalMPProps) {
   const [form, setForm] = useState<FormData>(EMPTY);
   const [salvando, setSalvando] = useState(false);
   const { data: categorias = [], criar: criarCategoria } = useCategorias();
+  const { registrar: registrarMovimento } = useMovimentos();
   const [modalCat, setModalCat] = useState(false);
   const [novaCatNome, setNovaCatNome] = useState('');
   const [salvandoCat, setSalvandoCat] = useState(false);
@@ -48,6 +51,7 @@ export function ModalMP({ open, editando, onClose, onSalvar }: ModalMPProps) {
         custo_unitario: Number(editando.custo_unitario) || 0,
         estoque_minimo: String(editando.estoque_minimo ?? ''),
         saldo_inicial:  '',
+        saldo_atual:    String(editando.saldo ?? 0),
         controla_estoque: editando.controla_estoque !== false, // itens antigos sem esse campo continuam controlando
         largura_padrao_cm: editando.largura_padrao_cm != null ? String(editando.largura_padrao_cm) : '',
       });
@@ -84,6 +88,25 @@ export function ModalMP({ open, editando, onClose, onSalvar }: ModalMPProps) {
         estoque_minimo: form.controla_estoque ? (parseFloat(form.estoque_minimo) || 0) : 0,
         ...(!editando ? { saldo_inicial: form.controla_estoque ? (parseFloat(form.saldo_inicial) || 0) : 0 } : {}),
       });
+
+      // Se editou o "Saldo Atual" pra um valor diferente do que já tinha,
+      // registra a diferença como uma movimentação de verdade (entrada ou
+      // saída) — não sobrescreve o saldo direto, senão perde o rastro no
+      // Histórico de por que o número mudou.
+      if (editando && form.controla_estoque) {
+        const saldoAntigo = Number(editando.saldo ?? 0);
+        const saldoNovo   = parseFloat(form.saldo_atual) || 0;
+        const diferenca   = Number((saldoNovo - saldoAntigo).toFixed(4));
+        if (Math.abs(diferenca) >= 0.001) {
+          await registrarMovimento({
+            materiaId: editando.id,
+            tipo:      diferenca > 0 ? 'entrada' : 'saida',
+            quantidade: Math.abs(diferenca),
+            motivo:    'Ajuste manual de saldo (editado no cadastro)',
+          });
+        }
+      }
+
       onClose();
     } finally {
       setSalvando(false);
@@ -196,6 +219,21 @@ export function ModalMP({ open, editando, onClose, onSalvar }: ModalMPProps) {
             <input type="number" onWheel={e => e.currentTarget.blur()} min="0" step="0.001" value={form.saldo_inicial}
               onChange={e => set('saldo_inicial', e.target.value)}
               className={INPUT} placeholder="0" />
+          </Field>
+        )}
+
+        {editando && form.controla_estoque && (
+          <Field label={`Saldo Atual (${form.unidade === 'm2' ? 'm²' : form.unidade})`}>
+            <input type="number" onWheel={e => e.currentTarget.blur()} min="0" step="0.001" value={form.saldo_atual}
+              onChange={e => set('saldo_atual', e.target.value)}
+              className={INPUT} placeholder="0" />
+            {parseFloat(form.saldo_atual) !== Number(editando.saldo ?? 0) && !isNaN(parseFloat(form.saldo_atual)) && (
+              <p className="text-[10px] text-yellow-500 mt-1">
+                Vai registrar {parseFloat(form.saldo_atual) > Number(editando.saldo ?? 0) ? 'uma entrada' : 'uma saída'} de{' '}
+                {Math.abs(parseFloat(form.saldo_atual) - Number(editando.saldo ?? 0)).toLocaleString('pt-BR', { maximumFractionDigits: 3 })}{' '}
+                no Histórico, como "Ajuste manual".
+              </p>
+            )}
           </Field>
         )}
       </div>

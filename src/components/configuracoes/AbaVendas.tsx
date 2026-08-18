@@ -15,6 +15,7 @@ import {
   Plus, Trash2, CreditCard, ShoppingCart, ChevronDown, ChevronUp, Info,
 } from 'lucide-react';
 import { MoneyInput } from '../ui/MoneyInput';
+import { DarkSelect } from '../ui/DarkSelect';
 
 const IN   = "w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors";
 const IN_N = IN + " [appearance:textfield]";
@@ -99,15 +100,14 @@ function TabelaTaxasEditor({
         <label className="text-[10px] font-bold text-gray-500 uppercase flex-shrink-0">
           Máx. parcelas
         </label>
-        <select
-          value={forma.max_parcelas}
-          onChange={e => setMaxParcelas(parseInt(e.target.value))}
-          className="bg-[#0d1117] border border-gray-700 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500"
-        >
-          {maxOpcoes.map(n => (
-            <option key={n} value={n}>{n}x</option>
-          ))}
-        </select>
+        <DarkSelect
+          value={String(forma.max_parcelas)}
+          onChange={v => setMaxParcelas(parseInt(v))}
+          allowEmpty={false}
+          size="sm"
+          triggerClassName="bg-[#0d1117] border border-gray-700 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500 text-left flex items-center justify-between gap-2 cursor-pointer"
+          options={maxOpcoes.map(n => ({ value: String(n), label: `${n}x` }))}
+        />
         <span className="text-[10px] text-gray-600">
           Ajuste para exibir as linhas abaixo.
         </span>

@@ -12,6 +12,7 @@ import { PrecPanel } from '../components/produtos/PrecPanel';
 import { KpiCard } from '../components/ui/KpiCard';
 import { Modal } from '../components/ui/Modal';
 import { MoneyInput } from '../components/ui/MoneyInput';
+import { DarkSelect } from '../components/ui/DarkSelect';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 import { createErrorMessage } from '../utils/errorHandler';
@@ -114,10 +115,13 @@ function ModalNovaMateriaPrima({ open, onClose, onCriada }: {
           <div>
             <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Categoria</label>
             <div className="flex gap-2">
-              <select value={form.categoria} onChange={e => set('categoria', e.target.value)} className={IN + ' flex-1'}>
-                <option value="">Sem categoria</option>
-                {categorias.map(c => <option key={c.id} value={c.nome}>{c.nome}</option>)}
-              </select>
+              <DarkSelect
+                value={form.categoria}
+                onChange={v => set('categoria', v)}
+                placeholder="Sem categoria"
+                className="flex-1"
+                options={categorias.map(c => c.nome)}
+              />
               <button onClick={() => setModalCat(true)} title="Criar nova categoria"
                 className="flex-shrink-0 w-10 h-10 bg-green-600/20 hover:bg-green-600/40 border border-green-500/30 text-green-400 rounded-lg flex items-center justify-center transition-all">
                 <Plus className="w-4 h-4" />
@@ -126,9 +130,12 @@ function ModalNovaMateriaPrima({ open, onClose, onCriada }: {
           </div>
           <div>
             <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Unidade</label>
-            <select value={form.unidade} onChange={e => set('unidade', e.target.value)} className={IN}>
-              {UNIDADES_MP.map(u => <option key={u} value={u}>{u}</option>)}
-            </select>
+            <DarkSelect
+              value={form.unidade}
+              onChange={v => set('unidade', v)}
+              allowEmpty={false}
+              options={UNIDADES_MP}
+            />
           </div>
         </div>
         <div className="grid grid-cols-2 gap-4">
@@ -264,13 +271,16 @@ function MaquinasEditor({ maquinas, disponiveis, tempoHoras, onChange }: {
   return (
     <div className="space-y-3">
       <div className="flex gap-2">
-        <select value={selecionando} onChange={e => setSelecionando(e.target.value)} className={IN + ' flex-1'}>
-          <option value="">{opcoes.length === 0 ? 'Todas as máquinas já adicionadas' : 'Selecionar máquina...'}</option>
-          {opcoes.map(d => {
+        <DarkSelect
+          value={selecionando}
+          onChange={setSelecionando}
+          placeholder={opcoes.length === 0 ? 'Todas as máquinas já adicionadas' : 'Selecionar máquina...'}
+          className="flex-1"
+          options={opcoes.map(d => {
             const deprMes = Number(d.valor) / (Number(d.vida_util_anos) * 12);
-            return <option key={d.id} value={d.nome}>{d.nome} — depr. {fmtBRL(deprMes)}/mês</option>;
+            return { value: d.nome, label: `${d.nome} — depr. ${fmtBRL(deprMes)}/mês` };
           })}
-        </select>
+        />
         <button onClick={adicionar} disabled={!selecionando}
           className="flex-shrink-0 px-4 py-2.5 bg-yellow-600/30 hover:bg-yellow-600/50 disabled:opacity-30 border border-yellow-500/40 text-yellow-300 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5">
           <Plus className="w-3.5 h-3.5" /> Adicionar
@@ -807,10 +817,13 @@ export function Produtos() {
                 <div>
                   <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Categoria</label>
                   <div className="flex gap-2">
-                    <select value={(form as any).categoria_id ?? ''} onChange={e => setF('categoria_id', e.target.value || null)} className={IN + ' flex-1'}>
-                      <option value="">Sem categoria</option>
-                      {categorias.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-                    </select>
+                    <DarkSelect
+                      value={(form as any).categoria_id ?? ''}
+                      onChange={v => setF('categoria_id', v || null)}
+                      placeholder="Sem categoria"
+                      className="flex-1"
+                      options={categorias.map(c => ({ value: c.id, label: c.nome }))}
+                    />
                     <button onClick={() => setModalCat(true)} title="Criar nova categoria"
                       className="flex-shrink-0 w-10 h-10 bg-green-600/20 hover:bg-green-600/40 border border-green-500/30 text-green-400 rounded-lg flex items-center justify-center transition-all">
                       <Plus className="w-4 h-4" />
@@ -819,11 +832,16 @@ export function Produtos() {
                 </div>
                 <div>
                   <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Status</label>
-                  <select value={(form as any).status} onChange={e => setF('status', e.target.value)} className={IN}>
-                    <option value="rascunho">Rascunho</option>
-                    <option value="ativo">Ativo</option>
-                    <option value="inativo">Inativo</option>
-                  </select>
+                  <DarkSelect
+                    value={(form as any).status}
+                    onChange={v => setF('status', v)}
+                    allowEmpty={false}
+                    options={[
+                      { value: 'rascunho', label: 'Rascunho' },
+                      { value: 'ativo', label: 'Ativo' },
+                      { value: 'inativo', label: 'Inativo' },
+                    ]}
+                  />
                 </div>
                 <div>
                   <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Tempo de Produção</label>
@@ -889,8 +907,26 @@ export function Produtos() {
                 </div>
 
                 {porM2 && (
-                  <div className="col-span-2 bg-blue-500/10 border border-blue-500/20 rounded-lg px-3 py-2 text-xs text-blue-300">
-                    No orçamento, o sistema pedirá a área (m²) para calcular o total automaticamente.
+                  <div className="col-span-2 bg-blue-500/10 border border-blue-500/20 rounded-lg px-3 py-3 space-y-2.5">
+                    <p className="text-xs text-blue-300">
+                      No orçamento, o sistema pedirá a área (m²) para calcular o total automaticamente.
+                    </p>
+                    <div className="flex items-center justify-between pt-2 border-t border-blue-500/20">
+                      <div>
+                        <p className="text-xs font-bold text-white">Aparece na aba "m² Material" do Orçamento?</p>
+                        <p className="text-[10px] text-gray-400">
+                          Ligado: some direto na aba de material (tipo "Adesivo de Papel"), com largura/altura livres.
+                          Desligado: só aparece na aba "Catálogo" normal.
+                        </p>
+                      </div>
+                      <button type="button" onClick={() => setF('por_metro_quadrado', !(form as any).por_metro_quadrado)}
+                        className={`flex-shrink-0 w-11 h-6 rounded-full relative transition-all ${
+                          (form as any).por_metro_quadrado ? 'bg-green-600' : 'bg-gray-700'
+                        }`}>
+                        <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all`}
+                          style={{ left: (form as any).por_metro_quadrado ? 22 : 2 }} />
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

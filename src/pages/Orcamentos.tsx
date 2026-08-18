@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { supabase } from '../lib/supabase';
-import { FileText, Zap, Banknote, Layers, Scissors, Plus, Edit2, Check, ArrowLeft, X, CornerDownRight, Ruler, Printer, Copy, MessageCircle, Eye } from 'lucide-react';
+import { FileText, Zap, Banknote, Layers, Scissors, Plus, Edit2, Check, ArrowLeft, X, CornerDownRight, Ruler, Printer, Copy, MessageCircle, Eye, CheckSquare, Square } from 'lucide-react';
 import { Modal } from '../components/ui/Modal';
 import { useConfiguracoes } from '../hooks/useConfiguracoes';
 import { DocumentoImpressaoData } from '../components/impressao/DocumentoImpressao';
@@ -21,6 +21,7 @@ import { ClienteSelectorVenda } from '../components/vendas/ClienteSelectorVenda'
 import { CalculadoraFolhas } from '../components/CalculadoraFolhas';
 import { KpiCard } from '../components/ui/KpiCard';
 import { MoneyInput } from '../components/ui/MoneyInput';
+import { DarkSelect } from '../components/ui/DarkSelect';
 import { useConfirm } from '../components/ui/ConfirmModal';
 
 type View = 'lista' | 'detalhe' | 'materiais' | 'acabamentos' | 'folhas';
@@ -143,6 +144,69 @@ export function Orcamentos() {
       observacoes: orc.observacoes,
     };
     imprimirDocumento(layoutOrcamento, cfg ?? {}, doc);
+  }
+
+  // Seleção múltipla na lista — pra imprimir vários de uma vez, excluir em
+  // lote, ou só somar quanto um cliente pediu de orçamento no período.
+  const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
+  const [imprimindoLote, setImprimindoLote] = useState(false);
+
+  function toggleSelecionado(id: string) {
+    setSelecionados(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+  function toggleTodosVisiveis() {
+    setSelecionados(prev => {
+      const todosMarcados = filtrados.length > 0 && filtrados.every(o => prev.has(o.id));
+      const next = new Set(prev);
+      if (todosMarcados) filtrados.forEach(o => next.delete(o.id));
+      else filtrados.forEach(o => next.add(o.id));
+      return next;
+    });
+  }
+  const totalSelecionado = orcamentos
+    .filter(o => selecionados.has(o.id))
+    .reduce((s, o) => s + Number(o.total ?? 0), 0);
+
+  // Busca itens/cliente de cada orçamento selecionado e imprime um de cada
+  // vez — um pequeno intervalo entre cada chamada evita que o navegador
+  // bloqueie as janelas de impressão por abrirem todas juntas de uma vez.
+  async function imprimirSelecionados() {
+    if (selecionados.size === 0 || imprimindoLote) return;
+    setImprimindoLote(true);
+    const { supabase } = await import('../lib/supabase');
+    try {
+      for (const id of selecionados) {
+        const orc = orcamentos.find(o => o.id === id);
+        if (!orc) continue;
+        const { data: its } = await supabase.from('orcamento_itens').select('*').eq('orcamento_id', id);
+        const cliente = orc.cliente_id ? clientes.find(c => c.id === orc.cliente_id) : undefined;
+        imprimir({
+          orcamento: orc,
+          itens: its ?? [],
+          clienteTelefone: cliente?.telefone ?? null,
+          clienteEmail: cliente?.email ?? null,
+          clienteEndereco: formatarEnderecoCliente(cliente) || null,
+        });
+        await new Promise(r => setTimeout(r, 500));
+      }
+    } finally {
+      setImprimindoLote(false);
+    }
+  }
+
+  async function excluirSelecionados() {
+    if (selecionados.size === 0) return;
+    const ok = await confirmar(
+      `Remover ${selecionados.size} orçamento(s) selecionado(s)? Essa ação não pode ser desfeita.`,
+      'Excluir orçamentos selecionados'
+    );
+    if (!ok) return;
+    selecionados.forEach(id => deletar(id));
+    setSelecionados(new Set());
   }
 
   function setF(k: keyof typeof NOVO_ORC, v: any) { setForm(p => ({ ...p, [k]: v })); }
@@ -676,6 +740,13 @@ export function Orcamentos() {
         <table className="w-full text-sm">
           <thead>
             <tr className="text-gray-400 text-[10px] font-bold uppercase border-b border-gray-700 bg-gray-800/40">
+              <th className="px-3 py-3 text-center w-8">
+                <button onClick={toggleTodosVisiveis} title="Selecionar/desmarcar todos visíveis" className="text-gray-500 hover:text-blue-400 transition-colors">
+                  {filtrados.length > 0 && filtrados.every(o => selecionados.has(o.id))
+                    ? <CheckSquare className="w-4 h-4 text-blue-400" />
+                    : <Square className="w-4 h-4" />}
+                </button>
+              </th>
               <th className="px-5 py-3 text-left">Nº</th>
               <th className="px-5 py-3 text-left">Cliente</th>
               <th className="px-5 py-3 text-left">Data</th>
@@ -686,13 +757,19 @@ export function Orcamentos() {
           </thead>
           <tbody>
             {filtrados.length === 0 && (
-              <tr><td colSpan={6} className="px-5 py-12 text-center text-gray-600">Nenhum orçamento encontrado.</td></tr>
+              <tr><td colSpan={7} className="px-5 py-12 text-center text-gray-600">Nenhum orçamento encontrado.</td></tr>
             )}
             {filtrados.map(o => {
               const st = STATUS_ORC[o.status] ?? STATUS_ORC.rascunho;
+              const marcado = selecionados.has(o.id);
               return (
                 <tr key={o.id} onClick={() => abrirDetalhe(o)}
-                  className="border-b border-gray-800 hover:bg-gray-800/30 transition-colors cursor-pointer">
+                  className={`border-b border-gray-800 hover:bg-gray-800/30 transition-colors cursor-pointer ${marcado ? 'bg-blue-500/5' : ''}`}>
+                  <td className="px-3 py-3 text-center" onClick={e => e.stopPropagation()}>
+                    <button onClick={() => toggleSelecionado(o.id)} className="text-gray-500 hover:text-blue-400 transition-colors">
+                      {marcado ? <CheckSquare className="w-4 h-4 text-blue-400" /> : <Square className="w-4 h-4" />}
+                    </button>
+                  </td>
                   <td className="px-5 py-3 text-gray-500 font-mono text-xs">{o.numero ? `#${o.numero}` : '—'}</td>
                   <td className="px-5 py-3 font-medium text-white">{o.cliente_nome || '—'}</td>
                   <td className="px-5 py-3 text-gray-400 text-xs">{fmtData(o.created_at)}</td>
@@ -730,6 +807,32 @@ export function Orcamentos() {
         </div>
       </div>
     </div>
+
+    {/* Barra de seleção — fixa embaixo, só aparece com algo marcado */}
+    {selecionados.size > 0 && (
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-[#1f2937] border-t border-blue-500/40 shadow-2xl shadow-black/50">
+        <div className="px-6 py-3 flex items-center gap-4 flex-wrap">
+          <span className="text-sm text-gray-300">
+            <span className="font-black text-white">{selecionados.size}</span> selecionado{selecionados.size > 1 ? 's' : ''}
+          </span>
+          <span className="text-sm font-black text-blue-400">{fmtBRL(totalSelecionado)}</span>
+          <div className="flex-1" />
+          <button onClick={() => setSelecionados(new Set())}
+            className="text-xs font-bold text-gray-400 hover:text-white transition-colors">
+            Limpar seleção
+          </button>
+          <button onClick={imprimirSelecionados} disabled={imprimindoLote}
+            className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-gray-600 hover:bg-gray-500 disabled:opacity-40 text-white transition-all">
+            <Printer className="w-3.5 h-3.5" />
+            {imprimindoLote ? 'Imprimindo...' : 'Imprimir selecionados'}
+          </button>
+          <button onClick={excluirSelecionados}
+            className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white transition-all">
+            <X className="w-3.5 h-3.5" /> Excluir selecionados
+          </button>
+        </div>
+      </div>
+    )}
 
     {posSalvar && (
       <Modal
@@ -787,11 +890,13 @@ export function Orcamentos() {
         </div>
         <div className="flex gap-2 flex-wrap">
           {!isNovo && !jaConvertido && (
-            <select value={form.status}
-              onChange={e => { setF('status', e.target.value as any); atualizarStatus({ id: orcId!, status: e.target.value as StatusOrcamento }); }}
-              className="bg-[#1f2937] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500">
-              {Object.entries(STATUS_ORC).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-            </select>
+            <DarkSelect
+              value={form.status}
+              onChange={v => { setF('status', v as any); atualizarStatus({ id: orcId!, status: v as StatusOrcamento }); }}
+              allowEmpty={false}
+              triggerClassName="bg-[#1f2937] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500 text-left flex items-center justify-between gap-2 cursor-pointer min-w-[140px]"
+              options={Object.entries(STATUS_ORC).map(([k, v]) => ({ value: k, label: v.label }))}
+            />
           )}
           {!isNovo && form.status === 'aprovado' && !jaConvertido && (
             <button onClick={handleConverter} disabled={isConvertendo}

@@ -1,12 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Ruler, Pencil, Plus, X, AlertTriangle,
   Check, Package, Search, type LucideIcon,
 } from 'lucide-react';
 import { OrcamentoItem, TipoCalculo, calcTaxaArte } from '../../types/orcamento';
-import { useMateriaisImpressao } from '../../hooks/useMateriaisImpressao';
 import { useAcabamentos } from '../../hooks/useAcabamentos';
 import { useProdutos } from '../../hooks/useProdutos';
+import { loadBom, calcCustoBOM } from '../../hooks/useBom';
+import { useRole } from '../../hooks/useRole';
 import { Produto } from '../../types/produto';
 import { MoneyInput } from '../ui/MoneyInput';
 import { MedidaInput } from '../ui/MedidaInput';
@@ -26,6 +28,106 @@ const TIPOS: { key: TabMode; label: string; icon: LucideIcon }[] = [
 ];
 
 // ── Sub-componentes declarados ANTES do componente principal ─────────────────
+
+// Campo de quantidade no mesmo estilo "calculadora de caixa registradora" do
+// MoneyInput/MedidaInput — dígitos entram da direita pra esquerda empurrando
+// a vírgula, Ctrl+A/duplo-clique selecionam tudo pra sobrescrever. Mesma
+// mecânica em todo o sistema, só sem o "R$" na frente.
+function QtdInput({
+  value, onChange, className, placeholder, center, big,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  className?: string;
+  placeholder?: string;
+  center?: boolean;
+  big?: boolean;
+}) {
+  const LIMITE_CENTESIMOS = 99_999_999;
+
+  function paraTexto(centesimos: number): string {
+    const v = (Math.max(0, centesimos) / 100).toFixed(2);
+    const [intPart, decPart] = v.split('.');
+    const intFormatado = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    return `${intFormatado},${decPart}`;
+  }
+  function paraCentesimos(valor: string): number {
+    const n = parseFloat((valor || '0').replace(',', '.'));
+    if (!isFinite(n) || isNaN(n)) return 0;
+    return Math.round(n * 100);
+  }
+
+  const [centesimos, setCentesimos] = useState<number>(() => paraCentesimos(value));
+  const ultimoValorEmitido = useRef<number>(paraCentesimos(value));
+
+  useEffect(() => {
+    const novo = paraCentesimos(value);
+    if (novo !== ultimoValorEmitido.current) {
+      setCentesimos(novo);
+      ultimoValorEmitido.current = novo;
+    }
+  }, [value]);
+
+  function emitir(novoCentesimos: number) {
+    const limitado = Math.min(novoCentesimos, LIMITE_CENTESIMOS);
+    setCentesimos(limitado);
+    ultimoValorEmitido.current = limitado;
+    onChange(limitado > 0 ? String(limitado / 100) : '');
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    const el = e.currentTarget;
+    const tudoSelecionado = el.selectionStart === 0 && el.selectionEnd === el.value.length && el.value.length > 0;
+
+    // Ctrl/Cmd (Ctrl+A, etc.) passa direto — não é digitação.
+    if (e.ctrlKey || e.metaKey) return;
+
+    if (e.key >= '0' && e.key <= '9') {
+      e.preventDefault();
+      emitir(tudoSelecionado ? Number(e.key) : centesimos * 10 + Number(e.key));
+      return;
+    }
+    if (e.key === 'Backspace' || e.key === 'Delete') {
+      e.preventDefault();
+      emitir(tudoSelecionado ? 0 : Math.floor(centesimos / 10));
+      return;
+    }
+    const permitido = ['Tab', 'Shift', 'Control', 'Alt', 'Meta', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'Enter', 'Escape'];
+    if (!permitido.includes(e.key)) e.preventDefault();
+  }
+
+  function handlePaste(e: React.ClipboardEvent<HTMLInputElement>) {
+    e.preventDefault();
+    const digitos = e.clipboardData.getData('text').replace(/\D/g, '');
+    if (digitos) emitir(parseInt(digitos, 10));
+  }
+
+  function irParaOFinalSeNaoHouverSelecao(el: HTMLInputElement) {
+    if (el.selectionStart !== el.selectionEnd) return;
+    const len = el.value.length;
+    el.setSelectionRange(len, len);
+  }
+
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      value={paraTexto(centesimos)}
+      onKeyDown={handleKeyDown}
+      onPaste={handlePaste}
+      onFocus={e => irParaOFinalSeNaoHouverSelecao(e.target)}
+      onClick={e => irParaOFinalSeNaoHouverSelecao(e.currentTarget)}
+      onChange={() => {/* controlado via onKeyDown/onPaste */}}
+      placeholder={placeholder}
+      className={[
+        className ?? IN_BASE,
+        center ? 'text-center' : '',
+        big ? 'text-xl font-black py-3' : '',
+      ].join(' ')}
+      autoComplete="off"
+    />
+  );
+}
 
 function NumInput({
   value,
@@ -98,7 +200,7 @@ function DimQtd({
       </div>
       <div>
         <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1.5">Quantidade</label>
-        <NumInput value={q} onChange={setQ} step="1" min="1" />
+        <QtdInput value={q} onChange={setQ} />
       </div>
     </div>
   );
@@ -126,9 +228,14 @@ interface Props {
 }
 
 export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
-  const { data: materiais = [] } = useMateriaisImpressao();
   const { data: acabamentos = [] } = useAcabamentos();
   const { data: produtos = [] } = useProdutos();
+  const { isAdmin } = useRole();
+
+  // Aba "m² Material": produtos marcados como por_metro_quadrado (antes
+  // vinha de uma tabela solta sem custo nenhum — agora são Produtos de
+  // verdade, com BOM/receita, então dá pra calcular o custo real do item).
+  const materiais = produtos.filter(p => p.por_metro_quadrado && p.status === 'ativo');
 
   // Refs pro auto-scroll/foco progressivo: ao abrir o editor, rola até ele;
   // ao escolher material/produto, rola até a próxima seção obrigatória.
@@ -154,7 +261,9 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
   );
   const [tipo, setTipo] = useState<TipoCalculo>(editando?.tipo_calculo ?? 'metro');
   const [descricao, setDescricao] = useState(editando?.descricao ?? '');
-  const [materialId, setMaterialId] = useState(editando?.material_id ?? '');
+  const [materialId, setMaterialId] = useState(
+    (editando?.tipo_calculo === 'metro' ? (editando as any)?.produto_id : null) ?? editando?.material_id ?? ''
+  );
   const [precoM2, setPrecoM2] = useState(String(editando?.preco_por_m2 ?? ''));
   const [largura, setLargura] = useState(String(editando?.largura_cm ?? ''));
   const [altura, setAltura] = useState(String(editando?.altura_cm ?? ''));
@@ -173,7 +282,7 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
   // vem automaticamente do material selecionado (ex: "Adesivo de Papel"), e
   // esse campo é só um complemento livre, não obrigatório (ex: "2 faces").
   // Ao editar um item existente, tenta separar de volta "Material — detalhe".
-  const materialEditando = materiais.find(m => m.id === editando?.material_id);
+  const materialEditando = materiais.find(m => m.id === ((editando as any)?.produto_id ?? editando?.material_id));
   const prefixoEditando = materialEditando ? `${materialEditando.nome} — ` : null;
   const [subdescricao, setSubdescricao] = useState(
     editando && prefixoEditando && editando.descricao.startsWith(prefixoEditando)
@@ -217,7 +326,7 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
     scrollAte(painelProdutoRef);
   }
 
-  function selecionarMaterial(m: { id: string; nome: string; preco_m2: number }) {
+  function selecionarMaterial(m: Produto) {
     setMaterialId(m.id);
     // descrição principal passa a ser o nome do material automaticamente —
     // o usuário só precisa diferenciar no campo de detalhe, se quiser.
@@ -228,6 +337,22 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
   const matSel = materiais.find(m => m.id === materialId);
   const acabSel = acabamentos.find(a => a.id === acabId);
   const prodPorM2 = !!prodSel && (prodSel as any).unidade_medida === 'm2';
+
+  // Custo do material selecionado (aba "m² Material") — soma o BOM (receita
+  // de matérias-primas) do produto com os custos fixos dele (mão de obra,
+  // acabamento, operacional). Só é usado pra EXIBIR o custo pra admin/dono;
+  // não afeta preço nem aparece em nada que vai pro cliente.
+  const { data: bomMatSel = [] } = useQuery({
+    queryKey: ['bom-item-orc', matSel?.id],
+    queryFn: () => loadBom(matSel!.id),
+    enabled: !!matSel?.id && isAdmin,
+  });
+  const custoPorM2MatSel = matSel
+    ? calcCustoBOM(bomMatSel)
+      + Number((matSel as any).custo_mao_obra ?? 0)
+      + Number((matSel as any).custo_acabamento ?? 0)
+      + Number((matSel as any).custo_operacional ?? 0)
+    : 0;
 
   // descrição que efetivamente conta pra validação/gravação: no modo "m²
   // Material" ela é sempre o nome do material (não depende de digitação).
@@ -246,7 +371,7 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
       const w = parseFloat(largura) / 100;
       const h = parseFloat(altura) / 100;
       area = w * h;
-      unitario = area * Number(matSel?.preco_m2 ?? 0);
+      unitario = area * Number(matSel?.preco_venda ?? 0);
     } else if (tipo === 'metro_manual') {
       const w = parseFloat(largura) / 100;
       const h = parseFloat(altura) / 100;
@@ -273,6 +398,16 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
   // Total que efetivamente conta pra validação/gravação: o valor calculado,
   // a não ser que o usuário tenha arredondado manualmente com as setas.
   const totalEfetivo = totalManual ?? prev.total;
+
+  // Custo total do item (só existe informação pra aba "m² Material" por
+  // enquanto — Catálogo/manual não têm BOM linkado ainda). Visível só
+  // pra admin/dono, nunca entra no preço nem em nada impresso/copiado.
+  // IMPORTANTE: prev.area é a área de UMA peça só — precisa multiplicar
+  // pela quantidade também, senão o custo fica igual pra 1 ou 200 unidades.
+  const qtdParaCusto = parseFloat(quantidade) || 1;
+  const custoItemTotal = tab === 'metro' && prev.area
+    ? custoPorM2MatSel * prev.area * qtdParaCusto
+    : null;
 
   // Leva um valor pro múltiplo de 5 mais próximo NA DIREÇÃO pedida — sempre se
   // move de fato, mesmo se já for múltiplo de 5 (avança mais um degrau).
@@ -317,16 +452,21 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
     const item: OrcamentoItem = {
       descricao: descricaoFinal,
       tipo_calculo: tipo,
-      produto_id: produtoId ?? null,
-      material_id: tipo === 'metro' ? (materialId || null) : null,
+      // produto_id cobre as duas abas agora: "m² Material" salva o produto
+      // escolhido em materialId, "Catálogo" salva em produtoId.
+      produto_id: tipo === 'metro' ? (materialId || null) : (produtoId ?? null),
+      material_id: null, // legado — não gravamos mais, produto_id substitui
       preco_por_m2:
-        tipo === 'metro' ? (matSel?.preco_m2 ?? 0)
+        tipo === 'metro' ? (matSel?.preco_venda ?? 0)
           : tipo === 'metro_manual' ? (parseFloat(precoM2) || 0)
             : prodPorM2 ? (parseFloat(precoLivre) || 0)
               : null,
       largura_cm: ['metro', 'metro_manual'].includes(tipo) ? (parseFloat(largura) || null) : null,
       altura_cm: ['metro', 'metro_manual'].includes(tipo) ? (parseFloat(altura) || null) : null,
-      area_m2: prodPorM2 ? (parseFloat(areaM2) || null) : null,
+      area_m2: prodPorM2 ? (parseFloat(areaM2) || null) : (tipo === 'metro' ? (prev.area ?? null) : null),
+      // Custo por m² do material (não é preço de venda) — só pra referência
+      // interna de admin/dono, calculado a partir do BOM do produto.
+      custo_unitario: tipo === 'metro' ? custoPorM2MatSel : null,
       folha_tipo: null,
       itens_por_folha: null,
       preco_por_folha: null,
@@ -343,7 +483,7 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
   }
 
   const produtosFiltrados = produtos
-    .filter(p => p.status === 'ativo')
+    .filter(p => p.status === 'ativo' && !p.por_metro_quadrado)
     .filter(p =>
       !buscaProd || p.nome.toLowerCase().includes(buscaProd.toLowerCase()),
     );
@@ -499,10 +639,9 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1.5">Quantidade</label>
-                  <NumInput
+                  <QtdInput
                     value={quantidade}
                     onChange={setQuantidade}
-                    step="1" min="1"
                     center big
                     className="bg-[#111827] border border-gray-700 rounded-lg px-2.5 py-2 text-white text-xs focus:outline-none focus:border-purple-500 transition-colors w-full"
                   />
@@ -562,16 +701,16 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
         <div className="space-y-3">
           <div>
             <label className="text-[10px] font-bold text-gray-500 uppercase block mb-2">
-              Material de Impressão ({materiais.filter(m => m.ativo).length} disponíveis)
+              Material de Impressão ({materiais.length} disponíveis)
             </label>
-            {materiais.filter(m => m.ativo).length === 0 ? (
+            {materiais.length === 0 ? (
               <p className="text-xs text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 rounded-lg px-3 py-2 flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 flex-shrink-0" />
                 Nenhum material cadastrado.
               </p>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5 max-h-44 overflow-y-auto pr-1">
-                {materiais.filter(m => m.ativo).map(m => (
+                {materiais.map(m => (
                   <button
                     key={m.id}
                     onClick={() => selecionarMaterial(m)}
@@ -583,7 +722,7 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
                     ].join(' ')}
                   >
                     <div className="font-bold truncate">{m.nome}</div>
-                    <div className="text-gray-500 mt-0.5">{fmtBRL(m.preco_m2)}/m²</div>
+                    <div className="text-gray-500 mt-0.5">{fmtBRL(Number(m.preco_venda))}/m²</div>
                   </button>
                 ))}
               </div>
@@ -615,10 +754,23 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
           </div>
           {matSel && prev.area && prev.area > 0 && (
             <InfoRow items={[
-              { label: 'Preço/m²', value: fmtBRL(matSel.preco_m2) },
+              { label: 'Preço/m²', value: fmtBRL(Number(matSel.preco_venda)) },
               { label: 'Área', value: `${prev.area.toFixed(4)} m²` },
               { label: 'Unitário', value: fmtBRL(prev.unitario) },
             ]} />
+          )}
+          {isAdmin && matSel && prev.area && prev.area > 0 && (
+            <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 flex items-center justify-between">
+              <span className="text-[10px] font-bold text-red-400 uppercase flex items-center gap-1">
+                🔒 Custo (só você vê — não sai na impressão)
+              </span>
+              <span className="text-sm font-black text-red-300">
+                {fmtBRL(custoItemTotal ?? 0)}
+                {custoPorM2MatSel === 0 && (
+                  <span className="ml-1.5 text-[9px] font-normal text-gray-500">(sem receita cadastrada)</span>
+                )}
+              </span>
+            </div>
           )}
         </div>
       )}
@@ -682,10 +834,9 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
             {acabId && (
               <div>
                 <label className="text-[9px] text-gray-500 uppercase block mb-0.5">Qtd. acabamento</label>
-                <NumInput
+                <QtdInput
                   value={acabQtd}
                   onChange={setAcabQtd}
-                  step="1" min="1"
                   placeholder="Ex: 4"
                   className={IN_BASE + ' py-1.5 w-24'}
                 />
