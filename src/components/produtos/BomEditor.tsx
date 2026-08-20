@@ -12,11 +12,17 @@ interface BomEditorProps {
   bom: BomItem[];
   materias: MateriaPrima[];
   onChange: (bom: BomItem[]) => void;
+  /** Quando o produto pai é vendido por m², a quantidade de cada matéria-prima
+   * é uma TAXA por 1 m² (não um total fixo) — o sistema multiplica pela área
+   * de cada venda automaticamente. Precisa deixar isso bem claro na tela,
+   * senão a pessoa tenta colocar uma quantidade fixa sem saber a área ainda. */
+  porMetroQuadrado?: boolean;
 }
 
-export function BomEditor({ bom, materias, onChange }: BomEditorProps) {
+export function BomEditor({ bom, materias, onChange, porMetroQuadrado }: BomEditorProps) {
   const [showModal, setShowModal] = useState(false);
   const [busca, setBusca] = useState('');
+  const [indiceAtivo, setIndiceAtivo] = useState(0);
   const [selecionada, setSelecionada] = useState<MateriaPrima | null>(null);
   const [qtd, setQtd] = useState('');
 
@@ -87,7 +93,7 @@ export function BomEditor({ bom, materias, onChange }: BomEditorProps) {
                 <tr className="text-[10px] font-bold text-gray-500 uppercase border-b border-gray-700 bg-gray-800/50">
                   <th className="px-3 py-2 text-left">Matéria-Prima</th>
                   <th className="px-3 py-2 text-center">Un.</th>
-                  <th className="px-3 py-2 text-right w-28">Qtd.</th>
+                  <th className="px-3 py-2 text-right w-28">Qtd.{porMetroQuadrado && <span className="block text-[8px] text-blue-400 normal-case font-normal">por m²</span>}</th>
                   <th className="px-3 py-2 text-right">Custo/un</th>
                   <th className="px-3 py-2 text-right">Subtotal</th>
                   <th className="px-3 py-2 w-8"></th>
@@ -108,6 +114,7 @@ export function BomEditor({ bom, materias, onChange }: BomEditorProps) {
                           type="number" onWheel={e => e.currentTarget.blur()} min="0.001" step="0.001"
                           value={b.quantidade}
                           onChange={e => handleQtdChange(i, e.target.value)}
+                          title={porMetroQuadrado ? `Quantidade por 1 m² de produto` : undefined}
                           className="w-24 bg-gray-900 border border-gray-700 rounded px-2 py-1 text-right text-white text-xs focus:outline-none focus:border-blue-500"
                         />
                       </td>
@@ -123,9 +130,11 @@ export function BomEditor({ bom, materias, onChange }: BomEditorProps) {
               <tfoot>
                 <tr className="bg-blue-900/20 border-t border-blue-500/20">
                   <td colSpan={4} className="px-3 py-2 text-right text-[10px] font-bold text-gray-500 uppercase">
-                    Custo Total BOM
+                    {porMetroQuadrado ? 'Custo BOM por m²' : 'Custo Total BOM'}
                   </td>
-                  <td className="px-3 py-2 text-right text-lg font-black text-blue-400">{fmtBRL(custoBOM)}</td>
+                  <td className="px-3 py-2 text-right text-lg font-black text-blue-400">
+                    {fmtBRL(custoBOM)}{porMetroQuadrado && <span className="text-[10px] font-normal text-gray-500">/m²</span>}
+                  </td>
                   <td></td>
                 </tr>
               </tfoot>
@@ -164,8 +173,22 @@ export function BomEditor({ bom, materias, onChange }: BomEditorProps) {
             <input
               autoFocus
               value={busca}
-              onChange={e => { setBusca(e.target.value); setSelecionada(null); }}
-              placeholder="Digite para filtrar..."
+              onChange={e => { setBusca(e.target.value); setSelecionada(null); setIndiceAtivo(0); }}
+              onKeyDown={e => {
+                if (disponiveis.length === 0) return;
+                if (e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  setIndiceAtivo(i => (i + 1) % disponiveis.length);
+                } else if (e.key === 'ArrowUp') {
+                  e.preventDefault();
+                  setIndiceAtivo(i => (i - 1 + disponiveis.length) % disponiveis.length);
+                } else if (e.key === 'Enter') {
+                  e.preventDefault();
+                  const m = disponiveis[indiceAtivo];
+                  if (m) { setSelecionada(m); setBusca(m.nome); }
+                }
+              }}
+              placeholder="Digite para filtrar... (setas + Enter pra selecionar)"
               className="w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500"
             />
           </div>
@@ -175,11 +198,14 @@ export function BomEditor({ bom, materias, onChange }: BomEditorProps) {
               {disponiveis.length === 0 ? (
                 <p className="p-4 text-center text-gray-600 text-sm">Nenhuma encontrada.</p>
               ) : (
-                disponiveis.map(m => (
+                disponiveis.map((m, idx) => (
                   <button
                     key={m.id}
                     onClick={() => { setSelecionada(m); setBusca(m.nome); }}
-                    className="w-full flex items-center justify-between px-4 py-3 hover:bg-blue-900/20 border-b border-gray-800 last:border-b-0 text-left transition-all"
+                    onMouseEnter={() => setIndiceAtivo(idx)}
+                    className={`w-full flex items-center justify-between px-4 py-3 border-b border-gray-800 last:border-b-0 text-left transition-colors duration-150 ${
+                      idx === indiceAtivo ? 'bg-blue-900/30' : 'hover:bg-blue-900/20'
+                    }`}
                   >
                     <div>
                       <p className="text-sm font-medium text-white">{m.nome}</p>
@@ -203,7 +229,9 @@ export function BomEditor({ bom, materias, onChange }: BomEditorProps) {
           {selecionada && (
             <div>
               <label className="text-xs font-bold text-gray-400 uppercase block mb-1">
-                Quantidade ({unidadeLabel(selecionada.unidade)})
+                {porMetroQuadrado
+                  ? `Quantidade por 1 m² (${unidadeLabel(selecionada.unidade)})`
+                  : `Quantidade (${unidadeLabel(selecionada.unidade)})`}
               </label>
               <input
                 autoFocus
@@ -213,6 +241,13 @@ export function BomEditor({ bom, materias, onChange }: BomEditorProps) {
                 placeholder="0.000"
                 className="w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 text-center text-lg font-bold"
               />
+              {porMetroQuadrado && (
+                <p className="text-[10px] text-blue-400 mt-1.5 leading-relaxed">
+                  Não precisa saber o tamanho da venda agora — coloca quanto gasta por <strong>1 m²</strong>.
+                  O sistema multiplica pela área de cada orçamento/venda sozinho. Ex: se 1 m² gasta
+                  0,05 {unidadeLabel(selecionada.unidade)}, uma venda de 3 m² vai consumir 0,15 automaticamente.
+                </p>
+              )}
             </div>
           )}
         </div>

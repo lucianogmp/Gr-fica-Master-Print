@@ -53,8 +53,11 @@ const ITEM: React.CSSProperties = {
   padding: '12px 16px',
   cursor: 'pointer',
   textAlign: 'left',
-  backgroundColor: 'transparent',
   border: 'none',
+  // backgroundColor de propósito NÃO fica aqui — precisa ficar livre pra
+  // classe hover:bg-[...] funcionar (estilo inline sempre vence classe CSS
+  // normal, então backgroundColor fixo aqui travava o hover em qualquer
+  // botão que usasse ...ITEM, mesmo os sem seleção).
 };
 
 const GROUP_LABEL: React.CSSProperties = {
@@ -91,9 +94,12 @@ function OptionButton({
       style={{
         ...ITEM,
         borderBottom: isLast ? 'none' : '1px solid #1f2937',
-        backgroundColor: selected ? '#1a2535' : 'transparent',
+        // Só fixa a cor via inline quando SELECIONADO — senão o estilo
+        // inline (sempre presente) vence a classe hover:bg-[...] do
+        // Tailwind, e o hover nunca aparece visualmente ao passar o mouse.
+        ...(selected ? { backgroundColor: '#1a2535' } : {}),
       }}
-      className="hover:bg-[#1a2535] transition-colors"
+      className={`transition-colors duration-150 ${selected ? '' : 'bg-transparent hover:bg-[#1a2535]'}`}
     >
       <span
         style={{
@@ -229,7 +235,7 @@ export function DarkSelect({
                 selecionar('');
               }}
               style={{ ...ITEM, borderBottom: '1px solid #1f2937' }}
-              className="hover:bg-[#1a2535] transition-colors"
+              className="bg-transparent hover:bg-[#1a2535] transition-colors duration-150"
             >
               <span style={{ color: '#9ca3af', fontSize: 14 }}>{placeholder}</span>
             </button>

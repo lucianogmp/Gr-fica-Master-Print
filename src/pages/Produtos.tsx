@@ -987,7 +987,7 @@ export function Produtos() {
                 </div>
                 {bomLoading
                   ? <div className="text-gray-500 animate-pulse p-4">Carregando BOM...</div>
-                  : <BomEditor bom={bom} materias={materias} onChange={setBom} />
+                  : <BomEditor bom={bom} materias={materias} onChange={setBom} porMetroQuadrado={porM2} />
                 }
               </div>
             )}

@@ -292,6 +292,9 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
 
   // Catálogo
   const [buscaProd, setBuscaProd] = useState('');
+  // Navegação por teclado na lista de produtos (seta cima/baixo + Enter),
+  // sem precisar tirar a mão do teclado pra clicar com o mouse.
+  const [indiceAtivoProd, setIndiceAtivoProd] = useState(0);
   const [prodSel, setProdSel] = useState<Produto | null>(null);
   const [produtoId, setProdutoId] = useState<string | null>(editando?.produto_id ?? null);
   const [areaM2, setAreaM2] = useState(
@@ -537,8 +540,22 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
             <Search className="w-4 h-4 text-gray-500 flex-shrink-0" />
             <input
               value={buscaProd}
-              onChange={e => setBuscaProd(e.target.value)}
-              placeholder="Buscar produto por nome..."
+              onChange={e => { setBuscaProd(e.target.value); setIndiceAtivoProd(0); }}
+              onKeyDown={e => {
+                if (produtosFiltrados.length === 0) return;
+                if (e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  setIndiceAtivoProd(i => (i + 1) % produtosFiltrados.length);
+                } else if (e.key === 'ArrowUp') {
+                  e.preventDefault();
+                  setIndiceAtivoProd(i => (i - 1 + produtosFiltrados.length) % produtosFiltrados.length);
+                } else if (e.key === 'Enter') {
+                  e.preventDefault();
+                  const p = produtosFiltrados[indiceAtivoProd];
+                  if (p) selecionarProduto(p);
+                }
+              }}
+              placeholder="Buscar produto por nome... (setas + Enter pra selecionar)"
               className="flex-1 bg-transparent text-white text-sm placeholder-gray-600 focus:outline-none [color-scheme:dark]"
             />
           </div>
@@ -553,17 +570,21 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
             <div className="grid grid-cols-2 gap-2 max-h-52 overflow-y-auto pr-1">
               {produtosFiltrados.length === 0 ? (
                 <p className="col-span-2 text-center text-xs text-gray-600 py-4">Nenhum produto encontrado.</p>
-              ) : produtosFiltrados.map(p => {
+              ) : produtosFiltrados.map((p, idx) => {
                 const eM2 = (p as any).unidade_medida === 'm2';
+                const ativoPorTeclado = idx === indiceAtivoProd;
                 return (
                   <button
                     key={p.id}
                     onClick={() => selecionarProduto(p)}
+                    onMouseEnter={() => setIndiceAtivoProd(idx)}
                     className={[
                       'text-left px-3 py-2.5 rounded-xl border transition-all',
                       prodSel?.id === p.id
                         ? 'bg-purple-600/30 border-purple-500 text-purple-200'
-                        : 'bg-gray-800 border-gray-700 text-gray-300 hover:border-purple-500/50 hover:bg-gray-700/60',
+                        : ativoPorTeclado
+                          ? 'bg-gray-700/60 border-purple-500/50 text-gray-200'
+                          : 'bg-gray-800 border-gray-700 text-gray-300 hover:border-purple-500/50 hover:bg-gray-700/60',
                     ].join(' ')}
                   >
                     <div className="font-bold text-xs truncate flex items-center gap-1">
