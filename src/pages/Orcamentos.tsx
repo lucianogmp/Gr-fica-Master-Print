@@ -16,6 +16,7 @@ import { useCategorias } from '../hooks/useCategorias';
 import { Orcamento, OrcamentoItem, StatusOrcamento, STATUS_ORC } from '../types/orcamento';
 import { formatarEnderecoCliente } from '../types/cliente';
 import { useClientes } from '../hooks/useClientes';
+import { useRole } from '../hooks/useRole';
 import { ItemOrcEditor } from '../components/orcamentos/ItemOrcEditor';
 import { ClienteSelectorVenda } from '../components/vendas/ClienteSelectorVenda';
 import { CalculadoraFolhas } from '../components/CalculadoraFolhas';
@@ -57,6 +58,7 @@ export function Orcamentos() {
   const { data: produtos = [] } = useProdutos();
   const { data: categorias = [] } = useCategorias();
   const { data: clientes = [] } = useClientes();
+  const { isAdmin } = useRole();
   const navigate = useNavigate();
 
   const { confirmar, ConfirmModal } = useConfirm();
@@ -104,6 +106,17 @@ export function Orcamentos() {
   const subtotal   = itens.reduce((s, i) => s + Number(i.total), 0);
   const descGlobal = Number(form.desconto ?? 0);
   const totalFinal = subtotal * (1 - descGlobal / 100);
+
+  // Custo total do orçamento — soma o custo de cada item (gravado em cada
+  // linha pelo editor de item). Itens sem custo cadastrado (m² manual, ou
+  // material/produto sem receita/BOM montada) simplesmente não somam nada.
+  const custoTotalOrcamento = itens.reduce((s, i) => {
+    const custo = Number((i as any).custo_unitario ?? 0);
+    if (custo <= 0) return s;
+    const qtd = Number(i.quantidade ?? 0);
+    const area = (i as any).area_m2;
+    return s + custo * (area != null ? Number(area) * qtd : qtd);
+  }, 0);
 
   const { data: cfg } = useConfiguracoes();
   const layoutOrcamento = { ...DEFAULT_LAYOUT_ORCAMENTO, ...(cfg?.layout_impressao_orcamento ?? {}) };
@@ -1090,6 +1103,27 @@ export function Orcamentos() {
                   </div>
                 </div>
               </div>
+
+              {/* Custo Total — soma o custo de cada item (calculado no editor
+                  de item, gravado em cada linha) — só admin/dono, nunca
+                  aparece em impressão/mensagem. */}
+              {isAdmin && custoTotalOrcamento > 0 && (
+                <div className="pt-2 border-t border-gray-800">
+                  <div className="flex justify-between items-center bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+                    <span className="text-[10px] font-bold text-red-400 uppercase flex items-center gap-1">
+                      🔒 Custo Total (só você vê)
+                    </span>
+                    <div className="text-right">
+                      <p className="text-sm font-black text-red-300">{fmtBRL(custoTotalOrcamento)}</p>
+                      {totalFinal > 0 && (
+                        <p className="text-[9px] text-gray-500">
+                          Margem: {(((totalFinal - custoTotalOrcamento) / totalFinal) * 100).toFixed(1)}%
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
             <div className="mt-5 space-y-2">
               <button onClick={handleSalvar} disabled={isSaving || !form.cliente_nome.trim()}

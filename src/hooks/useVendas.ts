@@ -17,6 +17,9 @@ function serializarItens(itens: VendaItem[]) {
     unidade:        i.unidade        ?? 'un',
     area_m2:        i.area_m2        ?? null,
     total:          i.total,
+    // Custo por unidade (ou por m²) — só pra referência de admin/dono, nunca
+    // aparece em impressão/mensagem. Calculado a partir do BOM do produto.
+    custo_unitario: (i as any).custo_unitario ?? null,
   }));
 }
 
@@ -60,10 +63,11 @@ export function useVendas() {
 
       return data as Venda;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ['vendas'] });
       qc.invalidateQueries({ queryKey: ['dashboard-metrics'] });
       qc.invalidateQueries({ queryKey: ['lancamentos'] });
+      qc.invalidateQueries({ queryKey: ['venda-itens', data.id] });
       toast.success('Venda criada!');
     },
     onError: (e: any) => toast.error(e.message),
@@ -113,10 +117,14 @@ export function useVendas() {
         }
       }
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: ['vendas'] });
       qc.invalidateQueries({ queryKey: ['lancamentos'] });
       qc.invalidateQueries({ queryKey: ['dashboard-metrics'] });
+      // Faltava isso: sem invalidar 'venda-itens', a tela continuava mostrando
+      // os itens antigos (ou demorando) mesmo depois de salvar novos itens,
+      // porque o cache dessa query específica nunca era avisado da mudança.
+      qc.invalidateQueries({ queryKey: ['venda-itens', variables.id] });
       toast.success('Venda atualizada!');
     },
     onError: (e: any) => toast.error(e.message),

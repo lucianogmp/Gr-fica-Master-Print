@@ -132,17 +132,21 @@ export function PainelFinanceiro({
           <span className="text-xs font-bold text-white">{fmtBRL(subtotal)}</span>
         </div>
 
-        {/* Desconto */}
+        {/* Desconto — você digita em R$, o sistema converte pra % por baixo
+            dos panos (é assim que fica salvo no banco desde sempre; manter
+            a mesma unidade de armazenamento evita bagunçar vendas antigas). */}
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          <span className="text-[10px] text-gray-500 uppercase">Desconto (%)</span>
-          <input
-            type="number" min="0" max="100" step="0.1"
-            value={desconto || ''}
-            onChange={e => onDescontoChange(parseFloat(e.target.value) || 0)}
+          <span className="text-[10px] text-gray-500 uppercase">Desconto (R$)</span>
+          <MoneyInput
+            value={subtotal > 0 ? subtotal * (desconto / 100) : 0}
+            onChange={v => onDescontoChange(subtotal > 0 ? Math.min(100, (v / subtotal) * 100) : 0)}
             className={IN_SM}
-            style={{ width: 64 }}
-            placeholder="0"
+            style={{ width: 88 }}
+            placeholder="0,00"
           />
+          {desconto > 0 && (
+            <span className="text-[9px] text-gray-600">({desconto.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%)</span>
+          )}
         </div>
 
         {/* Frete */}

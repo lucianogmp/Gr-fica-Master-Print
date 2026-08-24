@@ -357,6 +357,20 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
       + Number((matSel as any).custo_operacional ?? 0)
     : 0;
 
+  // Mesma lógica, agora pro produto escolhido na aba "Catálogo" — antes só
+  // calculávamos custo pra aba m², deixando o Catálogo sem essa informação.
+  const { data: bomProdSel = [] } = useQuery({
+    queryKey: ['bom-item-orc', prodSel?.id],
+    queryFn: () => loadBom(prodSel!.id),
+    enabled: !!prodSel?.id && isAdmin,
+  });
+  const custoPorUnidadeProdSel = prodSel
+    ? calcCustoBOM(bomProdSel)
+      + Number((prodSel as any).custo_mao_obra ?? 0)
+      + Number((prodSel as any).custo_acabamento ?? 0)
+      + Number((prodSel as any).custo_operacional ?? 0)
+    : 0;
+
   // descrição que efetivamente conta pra validação/gravação: no modo "m²
   // Material" ela é sempre o nome do material (não depende de digitação).
   const descricaoEfetiva = tab === 'metro' ? (matSel?.nome ?? '') : descricao;
@@ -402,15 +416,19 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
   // a não ser que o usuário tenha arredondado manualmente com as setas.
   const totalEfetivo = totalManual ?? prev.total;
 
-  // Custo total do item (só existe informação pra aba "m² Material" por
-  // enquanto — Catálogo/manual não têm BOM linkado ainda). Visível só
-  // pra admin/dono, nunca entra no preço nem em nada impresso/copiado.
+  // Custo total do item, admin/dono only — nunca entra no preço nem em nada
+  // impresso/copiado. Cobre as duas abas com material/produto vinculado:
+  // "m² Material" (custo por m² × área × qtd) e "Catálogo" (custo por
+  // unidade × qtd, ou × área também se o produto for vendido por m²).
   // IMPORTANTE: prev.area é a área de UMA peça só — precisa multiplicar
   // pela quantidade também, senão o custo fica igual pra 1 ou 200 unidades.
   const qtdParaCusto = parseFloat(quantidade) || 1;
-  const custoItemTotal = tab === 'metro' && prev.area
-    ? custoPorM2MatSel * prev.area * qtdParaCusto
-    : null;
+  const custoItemTotal =
+    tab === 'metro' && prev.area
+      ? custoPorM2MatSel * prev.area * qtdParaCusto
+      : tab === 'catalogo' && prodSel
+        ? custoPorUnidadeProdSel * (prodPorM2 ? (prev.area ?? 0) : qtdParaCusto)
+        : null;
 
   // Leva um valor pro múltiplo de 5 mais próximo NA DIREÇÃO pedida — sempre se
   // move de fato, mesmo se já for múltiplo de 5 (avança mais um degrau).
@@ -469,7 +487,12 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
       area_m2: prodPorM2 ? (parseFloat(areaM2) || null) : (tipo === 'metro' ? (prev.area ?? null) : null),
       // Custo por m² do material (não é preço de venda) — só pra referência
       // interna de admin/dono, calculado a partir do BOM do produto.
-      custo_unitario: tipo === 'metro' ? custoPorM2MatSel : null,
+      // Custo por unidade (m² Material: custo/m²; Catálogo: custo por
+      // unidade ou por m² se o produto for por área) — referência interna
+      // de admin/dono, nunca aparece em impressão/mensagem.
+      custo_unitario:
+        tipo === 'metro' ? custoPorM2MatSel
+          : (produtoId ? custoPorUnidadeProdSel : null),
       folha_tipo: null,
       itens_por_folha: null,
       preco_por_folha: null,
@@ -635,6 +658,20 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
                   <X className="w-4 h-4" />
                 </button>
               </div>
+
+              {isAdmin && custoItemTotal != null && (
+                <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-red-400 uppercase flex items-center gap-1">
+                    🔒 Custo (só você vê — não sai na impressão)
+                  </span>
+                  <span className="text-sm font-black text-red-300">
+                    {fmtBRL(custoItemTotal)}
+                    {custoPorUnidadeProdSel === 0 && (
+                      <span className="ml-1.5 text-[9px] font-normal text-gray-500">(sem receita cadastrada)</span>
+                    )}
+                  </span>
+                </div>
+              )}
 
               {/* Descrição — linha inteira */}
               <div>

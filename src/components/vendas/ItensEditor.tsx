@@ -4,6 +4,8 @@ import { createPortal } from 'react-dom';
 import { VendaItem } from '../../types/venda';
 import { Produto } from '../../types/produto';
 import { useProdutos } from '../../hooks/useProdutos';
+import { loadBom, calcCustoBOM } from '../../hooks/useBom';
+import { useRole } from '../../hooks/useRole';
 import { X, Search, Package } from 'lucide-react';
 import { MoneyInput } from '../ui/MoneyInput';
 
@@ -24,21 +26,18 @@ interface ItensEditorProps {
   onChange: (itens: VendaItem[]) => void;
 }
 
-const ITEM_VAZIO: Omit<VendaItem, 'total'> = {
-  descricao: '', quantidade: 1, preco_unitario: 0,
-  desconto: 0, unidade: 'un', obs: '', produto_id: null,
-};
-
 export function ItensEditor({ itens, onChange }: ItensEditorProps) {
-  const [novoItem, setNovoItem]         = useState({ ...ITEM_VAZIO });
   const [buscaProduto, setBuscaProduto] = useState('');
   const [mostrarSugestoes, setMostrar]  = useState(false);
   const [dropRect, setDropRect]         = useState<DOMRect | null>(null);
+  // Navegação por teclado no dropdown de produtos (seta cima/baixo + Enter).
+  const [indiceAtivo, setIndiceAtivo]   = useState(0);
   const wrapRef  = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { data: produtos = [] } = useProdutos();
+  const { isAdmin } = useRole();
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -67,22 +66,36 @@ export function ItensEditor({ itens, onChange }: ItensEditorProps) {
     return qtd * preco * (1 - (desc || 0) / 100);
   }
 
-  function adicionarDoCatalogo(produto: Produto) {
+  async function adicionarDoCatalogo(produto: Produto) {
     const eM2 = produto.unidade_medida === 'm2';
+
+    // Custo por unidade (ou por m²) — só é usado pra referência de admin/dono,
+    // calculado a partir do BOM (receita) do produto + custos fixos dele.
+    // Não é preciso esperar isso pra adicionar o item — se demorar, o item
+    // entra sem custo e o admin pode recalcular depois se quiser (não é o
+    // caso comum, já que o BOM já vem carregado do cache na maioria das vezes).
+    let custoUnitario: number | null = null;
+    if (isAdmin) {
+      try {
+        const bom = await loadBom(produto.id);
+        custoUnitario = calcCustoBOM(bom)
+          + Number((produto as any).custo_mao_obra ?? 0)
+          + Number((produto as any).custo_acabamento ?? 0)
+          + Number((produto as any).custo_operacional ?? 0);
+      } catch {
+        // silencioso — item continua sendo adicionado normalmente sem custo
+      }
+    }
+
     onChange([...itens, {
       descricao: produto.nome, quantidade: 1,
       preco_unitario: Number(produto.preco_venda ?? 0), desconto: 0,
       unidade: eM2 ? 'm²' : 'un', obs: null, produto_id: produto.id,
       total: calcTotal(1, Number(produto.preco_venda ?? 0), 0),
+      ...(custoUnitario != null ? { custo_unitario: custoUnitario } as any : {}),
     }]);
     setBuscaProduto('');
     setMostrar(false);
-  }
-
-  function adicionarItem() {
-    if (!novoItem.descricao.trim() || novoItem.preco_unitario <= 0) return;
-    onChange([...itens, { ...novoItem, total: calcTotal(novoItem.quantidade, novoItem.preco_unitario, novoItem.desconto ?? 0) }]);
-    setNovoItem({ ...ITEM_VAZIO });
   }
 
   function removerItem(idx: number) { onChange(itens.filter((_, i) => i !== idx)); }
@@ -98,11 +111,34 @@ export function ItensEditor({ itens, onChange }: ItensEditorProps) {
 
   function handleBuscaChange(v: string) {
     setBuscaProduto(v);
+    setIndiceAtivo(0);
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => { atualizarRect(); setMostrar(true); }, 150);
   }
 
+  function handleBuscaKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (!mostrarSugestoes || produtosFiltrados.length === 0) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setIndiceAtivo(i => (i + 1) % produtosFiltrados.length);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setIndiceAtivo(i => (i - 1 + produtosFiltrados.length) % produtosFiltrados.length);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const p = produtosFiltrados[indiceAtivo];
+      if (p) adicionarDoCatalogo(p);
+    } else if (e.key === 'Escape') {
+      setMostrar(false);
+    }
+  }
+
   const subtotal = itens.reduce((s, i) => s + Number(i.total), 0);
+  // Custo total dos itens — só admin/dono, nunca aparece em impressão/mensagem.
+  const custoTotalItens = itens.reduce((s, i) => {
+    const custo = Number((i as any).custo_unitario ?? 0);
+    return custo > 0 ? s + custo * Number(i.quantidade ?? 0) : s;
+  }, 0);
 
   // Portal: renderiza no document.body, position:fixed relativo à viewport
   // getBoundingClientRect() retorna coords relativas à viewport — correto para fixed
@@ -125,19 +161,25 @@ export function ItensEditor({ itens, onChange }: ItensEditorProps) {
     >
       {produtosFiltrados.length === 0 ? (
         <p className="px-4 py-3 text-xs text-gray-500">Nenhum produto encontrado.</p>
-      ) : produtosFiltrados.map(p => {
+      ) : produtosFiltrados.map((p, idx) => {
         const eM2 = p.unidade_medida === 'm2';
+        const ativoPorTeclado = idx === indiceAtivo;
         return (
           <button
             key={p.id}
             onMouseDown={e => { e.preventDefault(); adicionarDoCatalogo(p); }}
+            onMouseEnter={() => setIndiceAtivo(idx)}
             style={{
               width: '100%', display: 'flex', alignItems: 'center',
               justifyContent: 'space-between', padding: '10px 14px',
-              backgroundColor: 'transparent', borderBottom: '1px solid #1f2937',
+              borderBottom: '1px solid #1f2937',
               cursor: 'pointer', textAlign: 'left',
+              // backgroundColor NÃO fica fixo aqui — travava a classe hover
+              // (estilo inline sempre vence classe CSS normal). Só fixa
+              // quando está ativo por teclado, senão deixa a classe cuidar.
+              ...(ativoPorTeclado ? { backgroundColor: 'rgba(30, 58, 138, 0.3)' } : {}),
             }}
-            className="hover:bg-blue-900/20 transition-colors"
+            className={`transition-colors duration-150 ${ativoPorTeclado ? '' : 'bg-transparent hover:bg-blue-900/20'}`}
           >
             <div className="min-w-0">
               <p className="text-white text-xs font-bold truncate flex items-center gap-1.5">
@@ -173,7 +215,8 @@ export function ItensEditor({ itens, onChange }: ItensEditorProps) {
             value={buscaProduto}
             onChange={e => handleBuscaChange(e.target.value)}
             onFocus={() => { atualizarRect(); if (buscaProduto.length > 0) setMostrar(true); }}
-            placeholder="Buscar produto por nome ou SKU..."
+            onKeyDown={handleBuscaKeyDown}
+            placeholder="Buscar produto por nome ou SKU... (setas + Enter pra selecionar)"
             className="flex-1 bg-transparent text-white text-xs placeholder-gray-600 focus:outline-none [color-scheme:dark]"
           />
         </div>
@@ -208,7 +251,7 @@ export function ItensEditor({ itens, onChange }: ItensEditorProps) {
                     <input value={it.unidade ?? 'un'} onChange={e => atualizarItem(i, 'unidade', e.target.value)} className={IN + ' text-center'} />
                   </td>
                   <td className="px-1.5 py-1.5">
-                    <input type="number" min="0.001" step="0.001" value={it.quantidade}
+                    <input type="number" onWheel={e => e.currentTarget.blur()} min="0.001" step="0.001" value={it.quantidade}
                       onChange={e => atualizarItem(i, 'quantidade', parseFloat(e.target.value) || 0)} className={IN_NUM + ' text-center'} />
                   </td>
                   <td className="px-1.5 py-1.5">
@@ -216,7 +259,7 @@ export function ItensEditor({ itens, onChange }: ItensEditorProps) {
                       onChange={v => atualizarItem(i, 'preco_unitario', v)} className={IN + ' text-right'} />
                   </td>
                   <td className="px-1.5 py-1.5">
-                    <input type="number" min="0" max="100" step="0.1" value={it.desconto ?? 0}
+                    <input type="number" onWheel={e => e.currentTarget.blur()} min="0" max="100" step="0.1" value={it.desconto ?? 0}
                       onChange={e => atualizarItem(i, 'desconto', parseFloat(e.target.value) || 0)} className={IN_NUM + ' text-center'} />
                   </td>
                   <td className="px-3 py-1.5 text-right font-bold text-white text-sm whitespace-nowrap">
@@ -234,56 +277,26 @@ export function ItensEditor({ itens, onChange }: ItensEditorProps) {
         </div>
       )}
 
-      {/* ── Novo item manual ── */}
-      <div className="bg-[#111827] border border-dashed border-gray-700 rounded-xl px-3 py-2.5">
-        <p className="text-[10px] font-bold text-gray-500 uppercase mb-2">
-          + Adicionar item manual (fora do catálogo)
-        </p>
-        <div className="flex gap-2 items-end flex-wrap">
-          <div className="flex-1 min-w-[160px]">
-            <label className="text-[9px] text-gray-600 uppercase block mb-1">Descrição *</label>
-            <input value={novoItem.descricao}
-              onChange={e => setNovoItem(f => ({ ...f, descricao: e.target.value }))}
-              placeholder="Nome do produto / serviço" className={IN}
-              onKeyDown={e => { if (e.key === 'Enter') adicionarItem(); }} />
-          </div>
-          <div style={{ width: 72 }}>
-            <label className="text-[9px] text-gray-600 uppercase block mb-1">Un.</label>
-            <input value={novoItem.unidade ?? 'un'}
-              onChange={e => setNovoItem(f => ({ ...f, unidade: e.target.value }))}
-              className={IN + ' text-center'} />
-          </div>
-          <div style={{ width: 110 }}>
-            <label className="text-[9px] text-gray-600 uppercase block mb-1">Qtd.</label>
-            <input type="number" min="0.001" step="0.001" value={novoItem.quantidade}
-              onChange={e => setNovoItem(f => ({ ...f, quantidade: parseFloat(e.target.value) || 1 }))}
-              className={IN_NUM + ' text-center'} />
-          </div>
-          <div style={{ width: 140 }}>
-            <label className="text-[9px] text-gray-600 uppercase block mb-1">Preço Unit. *</label>
-            <MoneyInput value={novoItem.preco_unitario}
-              onChange={v => setNovoItem(f => ({ ...f, preco_unitario: v }))}
-              placeholder="0,00" className={IN + ' text-right'} />
-          </div>
-          <div style={{ width: 100 }}>
-            <label className="text-[9px] text-gray-600 uppercase block mb-1">Desc.%</label>
-            <input type="number" min="0" max="100" step="0.1" value={novoItem.desconto || ''}
-              onChange={e => setNovoItem(f => ({ ...f, desconto: parseFloat(e.target.value) || 0 }))}
-              placeholder="0" className={IN_NUM + ' text-center'} />
-          </div>
-          <button onClick={adicionarItem}
-            disabled={!novoItem.descricao.trim() || novoItem.preco_unitario <= 0}
-            className="h-[34px] px-4 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white rounded-lg text-xs font-bold transition-all whitespace-nowrap flex-shrink-0">
-            Adicionar
-          </button>
-        </div>
-      </div>
-
       {/* ── Subtotal ── */}
       {itens.length > 0 && (
-        <div className="flex justify-end items-center gap-3 pr-1">
-          <span className="text-xs text-gray-500">{itens.length} item(s)</span>
-          <span className="text-base font-black text-white">{fmtBRL(subtotal)}</span>
+        <div className="flex flex-col items-end gap-1.5 pr-1">
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-gray-500">{itens.length} item(s)</span>
+            <span className="text-base font-black text-white">{fmtBRL(subtotal)}</span>
+          </div>
+          {isAdmin && custoTotalItens > 0 && (
+            <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-1.5">
+              <span className="text-[10px] font-bold text-red-400 uppercase flex items-center gap-1">
+                🔒 Custo Total (só você vê)
+              </span>
+              <span className="text-xs font-black text-red-300">{fmtBRL(custoTotalItens)}</span>
+              {subtotal > 0 && (
+                <span className="text-[9px] text-gray-500">
+                  · Margem {(((subtotal - custoTotalItens) / subtotal) * 100).toFixed(1)}%
+                </span>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

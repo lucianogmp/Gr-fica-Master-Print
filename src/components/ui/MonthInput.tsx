@@ -130,8 +130,18 @@ export function MonthInput({ value, onChange, className, placeholder = 'mês/aaa
       {aberto && pos && createPortal(
         <div
           ref={painelRef}
-          style={{ top: pos.top, left: pos.left, width: pos.width }}
-          className="fixed z-[9999] bg-[#1f2937] border border-gray-700 rounded-xl shadow-2xl shadow-black/50 p-3"
+          style={{
+            top: pos.top, left: pos.left, width: pos.width,
+            position: 'fixed', zIndex: 9999,
+            backgroundColor: '#1f2937', // inline de propósito — classe Tailwind
+            // arbitrária (bg-[#1f2937]) pode falhar de renderizar dependendo
+            // do build, deixando o painel transparente e o conteúdo de trás
+            // "vazando" por cima. Estilo inline sempre funciona.
+            border: '1px solid #374151',
+            borderRadius: 12,
+            boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+          }}
+          className="p-3"
         >
           {/* Cabeçalho: navegação de ano */}
           <div className="flex items-center justify-between mb-2">

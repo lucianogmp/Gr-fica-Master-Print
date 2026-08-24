@@ -36,7 +36,8 @@ const fmtBRL = (v: number | null | undefined) =>
 
 const IN = "w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors";
 
-const UNIDADES_MP = ['un', 'kg', 'g', 'l', 'ml', 'm', 'cm', 'folha', 'rolo', 'caixa', 'resma', 'par'];
+const UNIDADES_MP = ['un', 'kg', 'g', 'l', 'ml', 'm', 'm2', 'cm', 'folha', 'caixa', 'resma', 'par'];
+const UNIDADES_MP_OPCOES = UNIDADES_MP.map(u => ({ value: u, label: u === 'm2' ? 'm²' : u }));
 
 const NOVO: Omit<Produto, 'id' | 'created_at' | 'updated_at' | 'empresa_id'> = {
   nome: '', sku: '', descricao: '', categoria_id: null,
@@ -120,6 +121,7 @@ function ModalNovaMateriaPrima({ open, onClose, onCriada }: {
                 onChange={v => set('categoria', v)}
                 placeholder="Sem categoria"
                 className="flex-1"
+                searchable
                 options={categorias.map(c => c.nome)}
               />
               <button onClick={() => setModalCat(true)} title="Criar nova categoria"
@@ -134,7 +136,7 @@ function ModalNovaMateriaPrima({ open, onClose, onCriada }: {
               value={form.unidade}
               onChange={v => set('unidade', v)}
               allowEmpty={false}
-              options={UNIDADES_MP}
+              options={UNIDADES_MP_OPCOES}
             />
           </div>
         </div>
@@ -822,6 +824,7 @@ export function Produtos() {
                       onChange={v => setF('categoria_id', v || null)}
                       placeholder="Sem categoria"
                       className="flex-1"
+                      searchable
                       options={categorias.map(c => ({ value: c.id, label: c.nome }))}
                     />
                     <button onClick={() => setModalCat(true)} title="Criar nova categoria"

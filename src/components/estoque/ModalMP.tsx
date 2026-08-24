@@ -162,6 +162,7 @@ export function ModalMP({ open, editando, onClose, onSalvar }: ModalMPProps) {
                 onChange={v => set('categoria', v)}
                 placeholder="Sem categoria"
                 className="flex-1"
+                searchable
                 options={categorias.map(c => c.nome)}
               />
               <button onClick={() => setModalCat(true)} title="Criar nova categoria"
