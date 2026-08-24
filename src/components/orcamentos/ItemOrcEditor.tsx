@@ -12,6 +12,7 @@ import { useRole } from '../../hooks/useRole';
 import { Produto } from '../../types/produto';
 import { MoneyInput } from '../ui/MoneyInput';
 import { MedidaInput } from '../ui/MedidaInput';
+import { HelpTooltip } from '../ui/HelpTooltip';
 
 const fmtBRL = (v: number) =>
   Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -21,10 +22,13 @@ const IN_BASE =
 
 type TabMode = TipoCalculo | 'catalogo';
 
-const TIPOS: { key: TabMode; label: string; icon: LucideIcon }[] = [
-  { key: 'catalogo', label: 'Catálogo', icon: Package },
-  { key: 'metro', label: 'm² Material', icon: Ruler },
-  { key: 'metro_manual', label: 'm² Manual', icon: Pencil },
+const TIPOS: { key: TabMode; label: string; icon: LucideIcon; ajuda: string }[] = [
+  { key: 'catalogo', label: 'Catálogo', icon: Package,
+    ajuda: 'Escolhe um produto já cadastrado (com preço e, se tiver, receita de custo prontos). Use pra produtos comuns, ex: cartão de visita, caneca.' },
+  { key: 'metro', label: 'm² Material', icon: Ruler,
+    ajuda: 'Pra materiais vendidos por área (adesivo, lona, etc). Você digita largura e altura, o sistema calcula o m² e multiplica pelo preço do material.' },
+  { key: 'metro_manual', label: 'm² Manual', icon: Pencil,
+    ajuda: 'Igual "m² Material", mas sem escolher um material da lista — você digita o preço por m² na mão. Use quando for algo avulso que não tem cadastro.' },
 ];
 
 // ── Sub-componentes declarados ANTES do componente principal ─────────────────
@@ -550,7 +554,12 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
             ].join(' ')}
           >
             <t.icon className="w-4 h-4" />
-            {t.label}
+            <span className="flex items-center gap-1">
+              {t.label}
+              <span onClick={e => e.stopPropagation()}>
+                <HelpTooltip texto={t.ajuda} />
+              </span>
+            </span>
           </button>
         ))}
       </div>
@@ -709,8 +718,9 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
               {/* Área m² — só para produtos por m² */}
               {prodPorM2 && (
                 <div>
-                  <label className="text-[10px] font-bold text-blue-400 uppercase block mb-1.5">
+                  <label className="text-[10px] font-bold text-blue-400 uppercase mb-1.5 flex items-center gap-1.5">
                     Área (m²)
+                    <HelpTooltip texto="Digite a área total (largura × altura, em metros) que esse produto vai ocupar. O sistema multiplica pelo preço por m² do produto pra calcular o total." />
                   </label>
                   <NumInput
                     value={areaM2}
@@ -920,7 +930,10 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
                 arteInclusa ? 'left-5' : 'left-0.5',
               ].join(' ')} />
             </div>
-            <span className="text-xs text-gray-400">Acréscimo da Arte</span>
+            <span className="text-xs text-gray-400 flex items-center gap-1.5">
+              Acréscimo da Arte
+              <HelpTooltip texto="Cobra um percentual a mais pelo trabalho de criação/design do layout. A % é calculada automaticamente com base no valor do item — quanto menor o valor, maior a % (pra não virar um acréscimo insignificante em itens baratos)." />
+            </span>
           </label>
           {arteInclusa && prev.arteValor > 0 && (() => {
             const pct = calcTaxaArte(prev.total - prev.arteValor);

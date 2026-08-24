@@ -2,6 +2,7 @@ import { GcData } from '../../hooks/useGestaoCustos';
 import { CustosProduto } from '../../types/produto';
 import { Calculator, Lightbulb, Tag, Star } from 'lucide-react';
 import { MoneyInput } from '../ui/MoneyInput';
+import { HelpTooltip } from '../ui/HelpTooltip';
 
 const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -31,7 +32,8 @@ export function PrecPanel({ custos, preco, onPrecoChange, gc, tempo, porMetroQua
           <Calculator className="w-3.5 h-3.5" /> Composição de Custos
         </p>
         <div className="space-y-1.5">
-          <CustoLinha label="BOM (matérias-primas)" valor={custoBOM} />
+          <CustoLinha label="BOM (matérias-primas)" valor={custoBOM}
+            ajuda="Soma o custo de cada matéria-prima cadastrada na receita (BOM) deste produto, multiplicada pela quantidade que ele usa de cada uma." />
           <CustoLinha label="Mão de obra"           valor={maoObra} />
           <CustoLinha label="Acabamento"            valor={acabamento} />
           <CustoLinha label="Outros"                valor={outros} />
@@ -40,6 +42,7 @@ export function PrecPanel({ custos, preco, onPrecoChange, gc, tempo, porMetroQua
             valor={overhead}
             highlight={overhead > 0}
             dim={overhead === 0}
+            ajuda="Rateio dos custos fixos da gráfica (depreciação de máquina, aluguel, energia, etc) pelo tempo que esse produto leva pra ser feito. Calculado automaticamente a partir do 'Tempo de Produção' e da Gestão de Custos."
           />
           <div className="pt-2 border-t border-gray-700">
             <div className="flex justify-between items-center">
@@ -54,6 +57,7 @@ export function PrecPanel({ custos, preco, onPrecoChange, gc, tempo, porMetroQua
       <div className={`bg-[#1f2937] border-t-2 border-yellow-500/60 border-x border-b border-gray-700 rounded-xl p-4 ${total === 0 ? 'opacity-50' : ''}`}>
         <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
           <Lightbulb className="w-3.5 h-3.5" /> Preço Sugerido
+          <HelpTooltip texto="Calcula o preço de venda pra você ter exatamente essa % de margem de lucro sobre o preço final. Ex: 40% de margem em cima de um custo de R$10 dá um preço de R$16,67, não R$14." />
         </p>
         {total > 0 ? (
           <div className="grid grid-cols-3 gap-2">
@@ -112,7 +116,10 @@ export function PrecPanel({ custos, preco, onPrecoChange, gc, tempo, porMetroQua
               margem > 0   ? 'bg-yellow-500/10 border border-yellow-500/20' :
                              'bg-red-500/10 border border-red-500/20'
             }`}>
-              <span className="text-xs font-semibold text-gray-400">Margem de Lucro</span>
+              <span className="text-xs font-semibold text-gray-400 flex items-center gap-1.5">
+                Margem de Lucro
+                <HelpTooltip texto="% do preço de venda que sobra de lucro depois de tirar o custo total. Verde = 30%+ (saudável), amarelo = positivo mas apertado, vermelho = vendendo no prejuízo ou empatado." />
+              </span>
               <span className={`text-lg font-black ${margemCls}`}>{margem.toFixed(1)}%</span>
             </div>
             <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
@@ -128,10 +135,13 @@ export function PrecPanel({ custos, preco, onPrecoChange, gc, tempo, porMetroQua
   );
 }
 
-function CustoLinha({ label, valor, highlight, dim }: { label: string; valor: number; highlight?: boolean; dim?: boolean }) {
+function CustoLinha({ label, valor, highlight, dim, ajuda }: { label: string; valor: number; highlight?: boolean; dim?: boolean; ajuda?: string }) {
   return (
     <div className={`flex justify-between items-center py-1 text-xs border-b border-gray-800 last:border-0 ${dim ? 'opacity-40' : ''}`}>
-      <span className={highlight ? 'text-yellow-400' : 'text-gray-500'}>{label}</span>
+      <span className={`flex items-center gap-1.5 ${highlight ? 'text-yellow-400' : 'text-gray-500'}`}>
+        {label}
+        {ajuda && <HelpTooltip texto={ajuda} />}
+      </span>
       <span className={`font-semibold ${highlight ? 'text-yellow-400' : 'text-gray-300'}`}>{valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
     </div>
   );

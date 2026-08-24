@@ -12,6 +12,7 @@ import { PrecPanel } from '../components/produtos/PrecPanel';
 import { KpiCard } from '../components/ui/KpiCard';
 import { Modal } from '../components/ui/Modal';
 import { MoneyInput } from '../components/ui/MoneyInput';
+import { HelpTooltip } from '../components/ui/HelpTooltip';
 import { DarkSelect } from '../components/ui/DarkSelect';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
@@ -847,7 +848,10 @@ export function Produtos() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Tempo de Produção</label>
+                  <label className="text-xs font-bold text-gray-400 uppercase mb-1.5 flex items-center gap-1.5">
+                    Tempo de Produção
+                    <HelpTooltip texto="Quanto tempo leva pra produzir 1 unidade desse produto. Usado pra calcular o overhead (rateio de energia/depreciação de máquina/custos fixos) no custo final — não afeta o preço de venda diretamente." />
+                  </label>
                   <TempoProducaoInput valor={(form as any).tempo_producao ?? ''} onChange={v => setF('tempo_producao', v)} />
                 </div>
                 <div>
@@ -888,7 +892,10 @@ export function Produtos() {
 
                 {/* Tipo: Próprio vs Terceirizado */}
                 <div>
-                  <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Tipo de Produto</label>
+                  <label className="text-xs font-bold text-gray-400 uppercase mb-1.5 flex items-center gap-1.5">
+                    Tipo de Produto
+                    <HelpTooltip texto="Próprio: você mesmo produz, o custo vem da receita (BOM) + mão de obra + overhead. Terceirizado: você compra pronto de outro fornecedor — aparece na tela de Serviços e o custo é só o valor que você paga a esse fornecedor." />
+                  </label>
                   <div className="flex gap-2">
                     <button onClick={() => setF('terceirizado', false)}
                       className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs font-bold border transition-all ${
