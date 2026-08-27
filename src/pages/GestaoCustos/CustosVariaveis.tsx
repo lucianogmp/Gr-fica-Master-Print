@@ -4,6 +4,7 @@ import { useCustosVariaveis } from '../../hooks/useGestaoBase';
 import { useConfirm } from '../../components/ui/ConfirmModal';
 import { KpiCard } from '../../components/ui/KpiCard';
 import { MoneyInput } from '../../components/ui/MoneyInput';
+import { HelpTooltip } from '../../components/ui/HelpTooltip';
 import { GitCompare, Plus, X, Pencil, DollarSign, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const fmtBRL = (v: number) => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -92,6 +93,7 @@ export function CustosVariaveis() {
           <div>
             <h1 className="text-2xl font-black text-white flex items-center gap-2">
               <GitCompare className="w-6 h-6 text-blue-400" /> Custos Variáveis
+              <HelpTooltip texto="Diferente de Custos Fixos e Depreciação, o que você lança aqui NÃO entra automático no cálculo de Overhead/hora usado no custo dos produtos — é só pra você acompanhar/registrar gastos que mudam de mês a mês (energia, freelancer, etc)." />
             </h1>
             <p className="text-gray-500 text-sm">Custos que variam mês a mês (energia, freelancers, etc)</p>
           </div>

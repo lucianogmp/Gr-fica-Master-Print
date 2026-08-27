@@ -4,6 +4,7 @@ import { useCustosFixos } from '../../hooks/useGestaoBase';
 import { useDepreciacao } from '../../hooks/useGestaoBase';
 import { KpiCard } from '../../components/ui/KpiCard';
 import { PieChart, Building2, TrendingDown, DollarSign, Timer } from 'lucide-react';
+import { HelpTooltip } from '../../components/ui/HelpTooltip';
 
 const fmtBRL = (v: number) => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -51,7 +52,10 @@ export function Resumo() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {/* Composição */}
         <div className="bg-[#1f2937] border-t-2 border-blue-500 border-x border-b border-gray-700 rounded-xl p-5">
-          <p className="text-xs font-bold text-gray-400 uppercase mb-4">Composição do Overhead Mensal</p>
+          <p className="text-xs font-bold text-gray-400 uppercase mb-4 flex items-center gap-1.5">
+            Composição do Overhead Mensal
+            <HelpTooltip texto="Só Custos Fixos (os marcados como Ativo) e Depreciação de equipamentos entram nessa conta. Custos Variáveis são acompanhados separadamente e não afetam esse total." />
+          </p>
           <div className="space-y-3">
             <LinhaCusto label="Custos Fixos" valor={gcData.fixos} total={gcData.total} cor="bg-blue-500" />
             <LinhaCusto label="Depreciação"  valor={gcData.depr}  total={gcData.total} cor="bg-yellow-500" />
@@ -67,7 +71,10 @@ export function Resumo() {
 
         {/* Por período */}
         <div className="bg-[#1f2937] border-t-2 border-purple-500 border-x border-b border-gray-700 rounded-xl p-5">
-          <p className="text-xs font-bold text-gray-400 uppercase mb-4">Overhead por Período</p>
+          <p className="text-xs font-bold text-gray-400 uppercase mb-4 flex items-center gap-1.5">
+            Overhead por Período
+            <HelpTooltip texto="Assume um dia de trabalho de 8 horas e semana de 5 dias úteis pra converter o overhead mensal em valores por hora/dia/semana. É a base usada pra calcular o custo do 'Tempo de Produção' de cada produto." />
+          </p>
           <div className="space-y-3">
             {[
               { label: 'Por hora (8h/dia)', valor: gcData.porHora },

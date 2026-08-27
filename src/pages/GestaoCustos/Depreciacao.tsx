@@ -6,6 +6,7 @@ import { useConfirm } from '../../components/ui/ConfirmModal';
 import { KpiCard } from '../../components/ui/KpiCard';
 import { MoneyInput } from '../../components/ui/MoneyInput';
 import { DateInput } from '../../components/ui/DateInput';
+import { HelpTooltip } from '../../components/ui/HelpTooltip';
 import { TrendingDown, Plus, X, Pencil, Timer } from 'lucide-react';
 
 const fmtBRL = (v: number) => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -121,7 +122,10 @@ export function Depreciacao() {
                   onChange={setValor} className={IN} placeholder="0,00" />
               </div>
               <div>
-                <label className={LABEL}>Vida útil (anos) *</label>
+                <label className={LABEL + ' flex items-center gap-1.5'}>
+                  Vida útil (anos) *
+                  <HelpTooltip texto="Quantos anos esse equipamento deve durar até precisar ser trocado. O sistema divide o valor de compra por (vida útil × 12 meses) pra saber quanto desse ativo 'gasta' por mês — isso entra direto no Overhead." />
+                </label>
                 <input required type="number" min="1" step="1" value={form.vida_util_anos}
                   onChange={e => setF('vida_util_anos', e.target.value)} className={IN} placeholder="5" />
               </div>

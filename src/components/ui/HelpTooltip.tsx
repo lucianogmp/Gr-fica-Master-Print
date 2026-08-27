@@ -5,7 +5,7 @@
 // do DarkSelect/DateInput/MonthInput — nunca fica cortado ou escondido atrás
 // de outro elemento, mesmo dentro de modais com scroll.
 
-import { useState, useRef, useLayoutEffect } from 'react';
+import { useState, useRef, useLayoutEffect, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 
 interface HelpTooltipProps {
@@ -17,17 +17,40 @@ interface HelpTooltipProps {
 export function HelpTooltip({ texto, className }: HelpTooltipProps) {
   const [aberto, setAberto] = useState(false);
   const iconRef = useRef<HTMLButtonElement>(null);
-  const [pos, setPos] = useState<{ top: number; left: number; align: 'left' | 'center' | 'right' } | null>(null);
+  const painelRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
 
   useLayoutEffect(() => {
     if (!aberto || !iconRef.current) return;
     const r = iconRef.current.getBoundingClientRect();
     const largura = 240;
     let left = r.left + r.width / 2 - largura / 2;
-    let align: 'left' | 'center' | 'right' = 'center';
-    if (left < 8) { left = 8; align = 'left'; }
-    if (left + largura > window.innerWidth - 8) { left = window.innerWidth - largura - 8; align = 'right'; }
-    setPos({ top: r.bottom + 8, left, align });
+    left = Math.min(Math.max(left, 8), window.innerWidth - largura - 8);
+    setPos({ top: r.bottom + 8, left });
+  }, [aberto]);
+
+  // Trava de segurança: fecha em QUALQUER clique fora do ícone/painel — não
+  // depende só do mouse "sair" do ícone. Isso resolve dois problemas de uma
+  // vez: (1) quando um toggle próximo muda o layout (ex: ligar "Arte
+  // Inclusa" empurra conteúdo pra baixo), o mouse pode ficar parado mas
+  // "por baixo" do ícone sem ter se movido — dispara um hover fantasma que
+  // nunca recebe o mouseleave correspondente, e o tooltip fica grudado na
+  // tela. (2) no toque (celular), não existe hover de verdade — precisa
+  // fechar ao tocar em qualquer outro lugar, não só ao "tirar o dedo".
+  useEffect(() => {
+    if (!aberto) return;
+    function fecharSeClicouFora(e: MouseEvent) {
+      const alvo = e.target as Node;
+      if (iconRef.current?.contains(alvo)) return;
+      if (painelRef.current?.contains(alvo)) return;
+      setAberto(false);
+    }
+    document.addEventListener('mousedown', fecharSeClicouFora);
+    document.addEventListener('touchstart', fecharSeClicouFora);
+    return () => {
+      document.removeEventListener('mousedown', fecharSeClicouFora);
+      document.removeEventListener('touchstart', fecharSeClicouFora);
+    };
   }, [aberto]);
 
   return (
@@ -39,13 +62,14 @@ export function HelpTooltip({ texto, className }: HelpTooltipProps) {
         onMouseLeave={() => setAberto(false)}
         onClick={e => { e.preventDefault(); e.stopPropagation(); setAberto(a => !a); }}
         tabIndex={-1}
-        className="w-3.5 h-3.5 rounded-full bg-gray-700 hover:bg-gray-600 text-gray-300 text-[9px] font-bold flex items-center justify-center flex-shrink-0 cursor-help transition-colors"
+        className="w-3.5 h-3.5 rounded-full bg-gray-700 hover:bg-gray-600 text-gray-300 text-[9px] font-bold flex items-center justify-center flex-shrink-0 cursor-help"
       >
         ?
       </button>
 
       {aberto && pos && createPortal(
         <div
+          ref={painelRef}
           style={{
             position: 'fixed',
             top: pos.top,
@@ -58,7 +82,7 @@ export function HelpTooltip({ texto, className }: HelpTooltipProps) {
             padding: '8px 10px',
             boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
           }}
-          className="text-[11px] text-gray-300 leading-relaxed pointer-events-none"
+          className="text-[11px] text-gray-300 leading-relaxed"
         >
           {texto}
         </div>,
