@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { supabase } from '../lib/supabase';
-import { FileText, Zap, Banknote, Layers, Scissors, Plus, Edit2, Check, ArrowLeft, X, CornerDownRight, Ruler, Printer, Copy, MessageCircle, Eye, CheckSquare, Square } from 'lucide-react';
+import { FileText, Zap, Banknote, Layers, Scissors, Plus, Edit2, Check, ArrowLeft, X, CornerDownRight, Ruler, Printer, Copy, MessageCircle, Eye, EyeOff, CheckSquare, Square } from 'lucide-react';
 import { Modal } from '../components/ui/Modal';
 import { useConfiguracoes } from '../hooks/useConfiguracoes';
 import { DocumentoImpressaoData } from '../components/impressao/DocumentoImpressao';
@@ -59,6 +59,10 @@ export function Orcamentos() {
   const { data: categorias = [] } = useCategorias();
   const { data: clientes = [] } = useClientes();
   const { isAdmin } = useRole();
+  // Custo fica oculto por padrão, mesmo pra admin/dono — só aparece se
+  // clicar no botão de mostrar. Não salva em lugar nenhum (nem localStorage);
+  // ao atualizar a página ou reabrir a tela, volta a ficar oculto.
+  const [mostrarCusto, setMostrarCusto] = useState(false);
   const navigate = useNavigate();
 
   const { confirmar, ConfirmModal } = useConfirm();
@@ -978,6 +982,7 @@ export function Orcamentos() {
                   editando={editandoIdx !== null ? itens[editandoIdx] : null}
                   onAdicionar={handleAdicionarItem}
                   onCancelar={() => { setShowEditor(false); setEditandoIdx(null); }}
+                  mostrarCusto={mostrarCusto}
                 />
               </div>
             )}
@@ -1106,22 +1111,31 @@ export function Orcamentos() {
 
               {/* Custo Total — soma o custo de cada item (calculado no editor
                   de item, gravado em cada linha) — só admin/dono, nunca
-                  aparece em impressão/mensagem. */}
+                  aparece em impressão/mensagem. Fica oculto por padrão; o
+                  botão só reaparece a caixa até você atualizar a página. */}
               {isAdmin && custoTotalOrcamento > 0 && (
                 <div className="pt-2 border-t border-gray-800">
-                  <div className="flex justify-between items-center bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
-                    <span className="text-[10px] font-bold text-red-400 uppercase flex items-center gap-1">
-                      🔒 Custo Total (só você vê)
-                    </span>
-                    <div className="text-right">
-                      <p className="text-sm font-black text-red-300">{fmtBRL(custoTotalOrcamento)}</p>
-                      {totalFinal > 0 && (
-                        <p className="text-[9px] text-gray-500">
-                          Margem: {(((totalFinal - custoTotalOrcamento) / totalFinal) * 100).toFixed(1)}%
-                        </p>
-                      )}
-                    </div>
+                  <div className="flex justify-end mb-1.5">
+                    <button onClick={() => setMostrarCusto(v => !v)}
+                      className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400 hover:text-white transition-colors">
+                      {mostrarCusto ? <><EyeOff className="w-3.5 h-3.5" /> Ocultar custo</> : <><Eye className="w-3.5 h-3.5" /> Mostrar custo</>}
+                    </button>
                   </div>
+                  {mostrarCusto && (
+                    <div className="flex justify-between items-center bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+                      <span className="text-[10px] font-bold text-red-400 uppercase flex items-center gap-1">
+                        🔒 Custo Total (só você vê)
+                      </span>
+                      <div className="text-right">
+                        <p className="text-sm font-black text-red-300">{fmtBRL(custoTotalOrcamento)}</p>
+                        {totalFinal > 0 && (
+                          <p className="text-[9px] text-gray-500">
+                            Margem: {(((totalFinal - custoTotalOrcamento) / totalFinal) * 100).toFixed(1)}%
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

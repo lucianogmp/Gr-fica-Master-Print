@@ -229,9 +229,12 @@ interface Props {
   onAdicionar: (item: OrcamentoItem) => void;
   onCancelar: () => void;
   editando?: OrcamentoItem | null;
+  /** Controlado pela tela pai (Orcamentos.tsx) — custo fica oculto por
+   * padrão, só aparece se a pessoa clicar em "Mostrar custo" lá no total. */
+  mostrarCusto?: boolean;
 }
 
-export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
+export function ItemOrcEditor({ onAdicionar, onCancelar, editando, mostrarCusto = false }: Props) {
   const { data: acabamentos = [] } = useAcabamentos();
   const { data: produtos = [] } = useProdutos();
   const { isAdmin } = useRole();
@@ -668,7 +671,7 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
                 </button>
               </div>
 
-              {isAdmin && custoItemTotal != null && (
+              {isAdmin && mostrarCusto && custoItemTotal != null && (
                 <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 flex items-center justify-between">
                   <span className="text-[10px] font-bold text-red-400 uppercase flex items-center gap-1">
                     🔒 Custo (só você vê — não sai na impressão)
@@ -827,7 +830,7 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando }: Props) {
               { label: 'Unitário', value: fmtBRL(prev.unitario) },
             ]} />
           )}
-          {isAdmin && matSel && prev.area && prev.area > 0 && (
+          {isAdmin && mostrarCusto && matSel && prev.area && prev.area > 0 && (
             <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 flex items-center justify-between">
               <span className="text-[10px] font-bold text-red-400 uppercase flex items-center gap-1">
                 🔒 Custo (só você vê — não sai na impressão)
