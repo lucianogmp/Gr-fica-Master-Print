@@ -14,6 +14,26 @@ interface HelpTooltipProps {
   className?: string;
 }
 
+// Guarda global de "hover fantasma": em celular, um tap em QUALQUER lugar da
+// tela pode disparar mouseenter/mouseover sintéticos logo em seguida, como
+// parte da simulação de mouse que os navegadores mobile mantêm por
+// compatibilidade com sites antigos feitos só pra desktop. Se esse
+// mouseenter cair sobre um ícone de ajuda que esteja por perto (ex: ao lado
+// de um switch que acabou de ser tocado), o balão abre sozinho sem ninguém
+// ter pedido. Guardamos o instante do último toque em qualquer lugar da
+// página e ignoramos qualquer mouseenter que aconteça logo depois — módulo
+// compartilhado entre todas as instâncias do componente, então protege o
+// app inteiro, não só este campo específico.
+let ultimoToqueEm = 0;
+if (typeof window !== 'undefined') {
+  window.addEventListener(
+    'touchstart',
+    () => { ultimoToqueEm = Date.now(); },
+    { passive: true, capture: true },
+  );
+}
+const TOQUE_RECENTE_MS = 500;
+
 export function HelpTooltip({ texto, className }: HelpTooltipProps) {
   const [aberto, setAberto] = useState(false);
   const iconRef = useRef<HTMLButtonElement>(null);
@@ -58,7 +78,10 @@ export function HelpTooltip({ texto, className }: HelpTooltipProps) {
       <button
         type="button"
         ref={iconRef}
-        onMouseEnter={() => setAberto(true)}
+        onMouseEnter={() => {
+          if (Date.now() - ultimoToqueEm < TOQUE_RECENTE_MS) return;
+          setAberto(true);
+        }}
         onMouseLeave={() => setAberto(false)}
         onClick={e => { e.preventDefault(); e.stopPropagation(); setAberto(a => !a); }}
         tabIndex={-1}

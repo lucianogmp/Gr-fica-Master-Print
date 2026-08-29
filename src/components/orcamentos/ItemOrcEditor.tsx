@@ -920,24 +920,36 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando, mostrarCusto 
       {/* ── ACRÉSCIMO DA ARTE ── */}
       {(tab !== 'catalogo' || prodSel) && (
         <div className="flex items-center justify-between py-2 border-t border-gray-800">
-          <label
-            className="flex items-center gap-2 cursor-pointer"
-            onClick={() => setArteInclusa(v => !v)}
-          >
-            <div className={[
-              'w-10 h-5 rounded-full relative transition-all',
-              arteInclusa ? 'bg-green-600' : 'bg-gray-700',
-            ].join(' ')}>
+          <div className="flex items-center gap-2">
+            {/*
+              O "?" fica FORA do <label> clicável de propósito. Antes ele
+              era filho do label que alterna arteInclusa — em toque/mobile,
+              o próprio tap que liga o switch podia disparar um hover/click
+              sintético no botão do ícone (que é um elemento separado, mas
+              ficava dentro da mesma área clicável), abrindo o balão de
+              ajuda sempre que a pessoa marcava a opção. Com o ícone como
+              irmão do label (fora da área de toggle), o tap no switch não
+              tem mais nenhuma chance de tocar o botão do tooltip.
+            */}
+            <label
+              className="flex items-center gap-2 cursor-pointer"
+              onClick={() => setArteInclusa(v => !v)}
+            >
               <div className={[
-                'absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all',
-                arteInclusa ? 'left-5' : 'left-0.5',
-              ].join(' ')} />
-            </div>
-            <span className="text-xs text-gray-400 flex items-center gap-1.5">
-              Acréscimo da Arte
-              <HelpTooltip texto="Cobra um percentual a mais pelo trabalho de criação/design do layout. A % é calculada automaticamente com base no valor do item — quanto menor o valor, maior a % (pra não virar um acréscimo insignificante em itens baratos)." />
-            </span>
-          </label>
+                'w-10 h-5 rounded-full relative transition-all',
+                arteInclusa ? 'bg-green-600' : 'bg-gray-700',
+              ].join(' ')}>
+                <div className={[
+                  'absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all',
+                  arteInclusa ? 'left-5' : 'left-0.5',
+                ].join(' ')} />
+              </div>
+              <span className="text-xs text-gray-400">
+                Acréscimo da Arte
+              </span>
+            </label>
+            <HelpTooltip texto="Cobra um percentual a mais pelo trabalho de criação/design do layout. A % é calculada automaticamente com base no valor do item — quanto menor o valor, maior a % (pra não virar um acréscimo insignificante em itens baratos)." />
+          </div>
           {arteInclusa && prev.arteValor > 0 && (() => {
             const pct = calcTaxaArte(prev.total - prev.arteValor);
             return (
