@@ -94,6 +94,11 @@ export function ModalOrdem({ open, editando, etapaInicial, onClose, onSalvar }: 
           <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Título *</label>
           <input autoFocus value={form.titulo} onChange={e => set('titulo', e.target.value)}
             className={IN} placeholder="Ex: Adesivos Loja Silva - 500un" />
+          {editando?.venda_id && (
+            <p className="text-[10px] text-gray-600 mt-1">
+              Essa ordem está ligada a uma venda — renomear aqui atualiza o título lá também.
+            </p>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-4">

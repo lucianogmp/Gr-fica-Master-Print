@@ -54,7 +54,14 @@ export function useProducao() {
         .eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['producao'] }); toast.success('Salvo!'); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['producao'] });
+      // O título dessa ordem pode estar vinculado a uma venda (sincronizado
+      // automaticamente por um gatilho no banco) — invalida 'vendas' também
+      // pra tela de detalhe da venda não ficar com o título antigo em cache.
+      qc.invalidateQueries({ queryKey: ['vendas'] });
+      toast.success('Salvo!');
+    },
     onError:   (e: any) => toast.error(e.message),
   });
 

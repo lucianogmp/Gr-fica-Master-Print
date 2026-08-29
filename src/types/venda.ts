@@ -27,7 +27,13 @@ export interface Venda {
   data_venda?: string | null;
   vendedor?: string | null;
   vendedor_id?: string | null;
+  // Campo antigo de busca rápida — não tem mais input na tela, mas o
+  // dado de vendas antigas continua aqui, sem uso.
   palavra_chave?: string | null;
+  // Título curto e manual da venda (ex: "Fachada", "Cardápio", "Plaquinha
+  // PIX"), escolhido no orçamento ou na venda. É o que aparece em destaque
+  // no card da Produção — sincronizado automaticamente com o card pelo
+  // banco (editar aqui ou lá atualiza dos dois lados).
   tipo?: string | null;
   valor_pago?: number | null;
   forma_pagamento?: string | null;

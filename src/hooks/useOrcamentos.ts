@@ -120,6 +120,7 @@ export function useOrcamentos() {
           status:       'aprovado',
           desconto:     orc.desconto ?? 0,
           observacoes:  orc.observacoes,
+          tipo:         orc.tipo ?? null,
           valor_total:  orc.total ?? 0,
           data_venda:   new Date().toISOString().split('T')[0],
         })

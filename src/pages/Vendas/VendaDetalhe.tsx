@@ -162,7 +162,7 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
           const venda = vendas.find(v => v.id === vendaId);
           if (venda) {
             await criarOP({
-              titulo:       `Venda #${(venda as any).numero ?? ''} — ${venda.cliente_nome}`,
+              titulo:       venda.tipo?.trim() || 'Sem título',
               descricao:    venda.observacoes ?? null,
               etapa:        'fila',
               prioridade:   'normal',
@@ -303,7 +303,7 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   <div>
                     <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Data da Venda</label>
                     <DateInput value={form.data_venda}
@@ -319,17 +319,11 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
                     <DateInput value={form.data_entrega}
                       onChange={v => setF('data_entrega', v)} className={IN} />
                   </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Palavra-chave</label>
-                    <input value={form.palavra_chave ?? ''}
-                      onChange={e => setF('palavra_chave', e.target.value)}
-                      className={IN} placeholder="Tag busca rápida" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Tipo</label>
+                  <div className="col-span-2 sm:col-span-1">
+                    <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Título</label>
                     <input value={form.tipo ?? ''}
                       onChange={e => setF('tipo', e.target.value)}
-                      className={IN} placeholder="Categoria" />
+                      className={IN} placeholder="Ex: Fachada, Cardápio..." />
                   </div>
                 </div>
 

@@ -35,6 +35,11 @@ export interface Orcamento {
   status: StatusOrcamento;
   desconto?: number | null;
   observacoes?: string | null;
+  // Título curto e manual (ex: "Fachada", "Cardápio", "Plaquinha PIX").
+  // Vira o resumo do orçamento na mensagem de WhatsApp e, quando o
+  // orçamento é convertido em venda, segue pra Venda e pro card da
+  // Produção com esse mesmo nome (em vez do nome do cliente repetido).
+  tipo?: string | null;
   total?: number | null;
   venda_id?: string | null;
   empresa_id?: string | null;

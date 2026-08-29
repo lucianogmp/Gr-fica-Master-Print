@@ -48,7 +48,7 @@ const TIPO_LABEL: Record<string, string> = {
 };
 
 const NOVO_ORC: Omit<Orcamento, 'id' | 'created_at' | 'updated_at'> = {
-  cliente_nome: '', cliente_id: null, status: 'rascunho', desconto: 0, observacoes: '', total: 0,
+  cliente_nome: '', cliente_id: null, status: 'rascunho', desconto: 0, observacoes: '', total: 0, tipo: '',
 };
 
 export function Orcamentos() {
@@ -240,6 +240,7 @@ export function Orcamentos() {
     const linhas: string[] = [];
 
     linhas.push(`*ORÇAMENTO${orc.numero ? ` Nº ${orc.numero}` : ''}*`);
+    if (orc.tipo?.trim()) linhas.push(`*${orc.tipo.trim()}*`);
     linhas.push('');
     linhas.push(`Cliente: ${orc.cliente_nome || '-'}`);
     linhas.push('');
@@ -956,6 +957,21 @@ export function Orcamentos() {
                 clienteId={form.cliente_id}
                 onChange={(nome, id) => { setF('cliente_nome', nome); setF('cliente_id', id ?? null); }}
               />
+              <div>
+                <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">
+                  Título <span className="text-gray-600 normal-case font-normal">(opcional)</span>
+                </label>
+                <input
+                  value={form.tipo ?? ''}
+                  onChange={e => setF('tipo', e.target.value)}
+                  className={IN}
+                  placeholder="Ex: Fachada, Cardápio, Plaquinha PIX..."
+                />
+                <p className="text-[10px] text-gray-600 mt-1">
+                  Resume o orçamento numa frase. Aparece no topo da mensagem de WhatsApp e,
+                  se a venda for aprovada, também no card da Produção.
+                </p>
+              </div>
               <div>
                 <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Observações</label>
                 <textarea rows={2} value={form.observacoes ?? ''} onChange={e => setF('observacoes', e.target.value)}

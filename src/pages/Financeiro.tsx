@@ -316,7 +316,7 @@ export function Financeiro() {
           const v = vendas.find(x => x.id === vendaEditandoId);
           if (v) {
             await criarOP({
-              titulo: `Venda #${(v as any).numero ?? ''} — ${v.cliente_nome}`,
+              titulo: v.tipo?.trim() || 'Sem título',
               descricao: v.observacoes ?? null,
               etapa: 'fila', prioridade: 'normal', responsavel: null,
               data_entrega: v.data_entrega ?? null, venda_id: v.id,
