@@ -296,6 +296,7 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
                   <div>
                     <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Vendedor</label>
                     <VendedorSelector
+                      hideLabel
                       value={form.vendedor}
                       vendedorId={form.vendedor_id}
                       onChange={(nome, id) => { setF('vendedor', nome); setF('vendedor_id', id ?? null); }}

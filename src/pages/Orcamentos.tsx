@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { supabase } from '../lib/supabase';
-import { FileText, Zap, Banknote, Layers, Scissors, Plus, Edit2, Check, ArrowLeft, X, CornerDownRight, Ruler, Printer, Copy, MessageCircle, Eye, EyeOff, CheckSquare, Square } from 'lucide-react';
+import { FileText, Zap, Banknote, Scissors, Plus, Edit2, Check, ArrowLeft, X, CornerDownRight, Ruler, Printer, Copy, MessageCircle, Eye, EyeOff, CheckSquare, Square } from 'lucide-react';
 import { Modal } from '../components/ui/Modal';
 import { useConfiguracoes } from '../hooks/useConfiguracoes';
 import { DocumentoImpressaoData } from '../components/impressao/DocumentoImpressao';
@@ -9,8 +9,8 @@ import { imprimirDocumento } from '../components/impressao/imprimirDocumento';
 import { DEFAULT_LAYOUT_ORCAMENTO } from '../types/layoutImpressao';
 import { useNavigate } from 'react-router-dom';
 import { useOrcamentos, useOrcamentoItens } from '../hooks/useOrcamentos';
-import { useMateriaisImpressao } from '../hooks/useMateriaisImpressao';
 import { useAcabamentos } from '../hooks/useAcabamentos';
+import { useMateriasPrimas } from '../hooks/useEstoque';
 import { useProdutos } from '../hooks/useProdutos';
 import { useCategorias } from '../hooks/useCategorias';
 import { Orcamento, OrcamentoItem, StatusOrcamento, STATUS_ORC } from '../types/orcamento';
@@ -25,7 +25,7 @@ import { MoneyInput } from '../components/ui/MoneyInput';
 import { DarkSelect } from '../components/ui/DarkSelect';
 import { useConfirm } from '../components/ui/ConfirmModal';
 
-type View = 'lista' | 'detalhe' | 'materiais' | 'acabamentos' | 'folhas';
+type View = 'lista' | 'detalhe' | 'acabamentos' | 'folhas';
 type Filtro = 'todos' | StatusOrcamento;
 
 // Guarda os dados exatos do orçamento recém-salvo, pro popup de "o que fazer
@@ -53,8 +53,8 @@ const NOVO_ORC: Omit<Orcamento, 'id' | 'created_at' | 'updated_at'> = {
 
 export function Orcamentos() {
   const { data: orcamentos = [], isLoading, criar, atualizar, atualizarStatus, converterEmVenda, deletar, isSaving, isConvertendo } = useOrcamentos();
-  const { data: materiais = [], criar: criarMat, atualizar: atualizarMat, deletar: deletarMat } = useMateriaisImpressao();
   const { data: acabamentos = [], criar: criarAcab, atualizar: atualizarAcab, deletar: deletarAcab } = useAcabamentos();
+  const { data: materiasPrimas = [] } = useMateriasPrimas();
   const { data: produtos = [] } = useProdutos();
   const { data: categorias = [] } = useCategorias();
   const { data: clientes = [] } = useClientes();
@@ -84,20 +84,16 @@ export function Orcamentos() {
     return () => clearTimeout(timer);
   }, [posSalvar]);
 
-  // Forms de materiais
-  const [matNome, setMatNome]     = useState('');
-  const [matPreco, setMatPreco]   = useState(0);
-  const [matEditId, setMatEditId] = useState<string | null>(null);
-  const [matEditNome, setMatEditNome]   = useState('');
-  const [matEditPreco, setMatEditPreco] = useState(0);
-  const [salvandoMat, setSalvandoMat]   = useState(false);
-
   // Forms de acabamentos
   const [acabNome, setAcabNome]   = useState('');
   const [acabCusto, setAcabCusto] = useState(0);
+  const [acabTipo, setAcabTipo]   = useState<'servico' | 'estoque'>('servico');
+  const [acabMateriaId, setAcabMateriaId] = useState<string>('');
   const [acabEditId, setAcabEditId] = useState<string | null>(null);
   const [acabEditNome, setAcabEditNome]   = useState('');
   const [acabEditCusto, setAcabEditCusto] = useState(0);
+  const [acabEditTipo, setAcabEditTipo]   = useState<'servico' | 'estoque'>('servico');
+  const [acabEditMateriaId, setAcabEditMateriaId] = useState<string>('');
   const [salvandoAcab, setSalvandoAcab]   = useState(false);
 
   const isNovo = orcId === '__novo__';
@@ -412,31 +408,33 @@ export function Orcamentos() {
     navigate('/vendas');
   }
 
-  async function salvarMaterial() {
-    if (!matNome.trim()) return;
-    setSalvandoMat(true);
-    try {
-      await criarMat({ nome: matNome.trim(), preco_m2: matPreco || 0, ativo: true });
-      setMatNome(''); setMatPreco(0);
-    } finally { setSalvandoMat(false); }
-  }
-
-  async function salvarEditMat(id: string) {
-    await atualizarMat({ id, dados: { nome: matEditNome.trim(), preco_m2: matEditPreco || 0 } });
-    setMatEditId(null);
-  }
-
   async function salvarAcabamento() {
     if (!acabNome.trim()) return;
+    if (acabTipo === 'estoque' && !acabMateriaId) { toast.error('Escolha a matéria-prima no estoque.'); return; }
     setSalvandoAcab(true);
     try {
-      await criarAcab({ nome: acabNome.trim(), custo: acabCusto || 0, ativo: true });
-      setAcabNome(''); setAcabCusto(0);
+      await criarAcab({
+        nome: acabNome.trim(),
+        custo: acabCusto || 0,
+        ativo: true,
+        tipo: acabTipo,
+        materia_prima_id: acabTipo === 'estoque' ? acabMateriaId : null,
+      });
+      setAcabNome(''); setAcabCusto(0); setAcabTipo('servico'); setAcabMateriaId('');
     } finally { setSalvandoAcab(false); }
   }
 
   async function salvarEditAcab(id: string) {
-    await atualizarAcab({ id, dados: { nome: acabEditNome.trim(), custo: acabEditCusto || 0 } });
+    if (acabEditTipo === 'estoque' && !acabEditMateriaId) { toast.error('Escolha a matéria-prima no estoque.'); return; }
+    await atualizarAcab({
+      id,
+      dados: {
+        nome: acabEditNome.trim(),
+        custo: acabEditCusto || 0,
+        tipo: acabEditTipo,
+        materia_prima_id: acabEditTipo === 'estoque' ? acabEditMateriaId : null,
+      },
+    });
     setAcabEditId(null);
   }
 
@@ -481,117 +479,6 @@ export function Orcamentos() {
     </>
   );
 
-  /* ── MATERIAIS ── */
-  if (view === 'materiais') return (
-    <>
-    <ConfirmModal />
-    <div className="p-6 space-y-5">
-      <div className="flex items-center gap-4">
-        <button onClick={() => setView('lista')}
-          className="text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 w-9 h-9 rounded-lg flex items-center justify-center">
-          <ArrowLeft className="w-4 h-4" />
-        </button>
-        <div>
-          <h1 className="text-xl font-black text-white">Materiais de Impressão</h1>
-          <p className="text-gray-500 text-sm">Materiais disponíveis nos orçamentos (precificados por m²)</p>
-        </div>
-      </div>
-
-      {/* Novo */}
-      <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5">
-        <h3 className="text-xs font-bold text-gray-400 uppercase mb-4 flex items-center gap-2"><Plus className="w-3.5 h-3.5" />Novo Material</h3>
-        <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
-          <div className="flex-1">
-            <label className="text-[10px] text-gray-500 uppercase block mb-1.5">Nome *</label>
-            <input value={matNome} onChange={e => setMatNome(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') salvarMaterial(); }}
-              className={IN} placeholder="Ex: Lona Fosca, Adesivo Vinil..." />
-          </div>
-          <div className="w-full sm:w-40">
-            <label className="text-[10px] text-gray-500 uppercase block mb-1.5">Preço por m² (R$)</label>
-            <MoneyInput value={matPreco}
-              onChange={setMatPreco} className={IN} placeholder="0,00" />
-          </div>
-          <button onClick={salvarMaterial} disabled={salvandoMat || !matNome.trim()}
-            className="bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all w-full sm:w-auto">
-            {salvandoMat ? '...' : 'Adicionar'}
-          </button>
-        </div>
-      </div>
-
-      {/* Lista */}
-      <div className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">
-        <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-gray-400 text-[10px] font-bold uppercase border-b border-gray-700 bg-gray-800/40">
-              <th className="px-5 py-3 text-left">Material</th>
-              <th className="px-5 py-3 text-right">Preço/m²</th>
-              <th className="px-5 py-3 text-center">Ativo</th>
-              <th className="px-5 py-3 text-center">Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {materiais.length === 0 && (
-              <tr><td colSpan={4} className="px-5 py-12 text-center text-gray-600">Nenhum material cadastrado.</td></tr>
-            )}
-            {materiais.map(m => (
-              <tr key={m.id} className="border-b border-gray-800 hover:bg-gray-800/20">
-                <td className="px-5 py-3">
-                  {matEditId === m.id ? (
-                    <input value={matEditNome} onChange={e => setMatEditNome(e.target.value)}
-                      className="bg-[#111827] border border-blue-500 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none w-full" />
-                  ) : (
-                    <span className="font-medium text-white">{m.nome}</span>
-                  )}
-                </td>
-                <td className="px-5 py-3 text-right">
-                  {matEditId === m.id ? (
-                    <MoneyInput value={matEditPreco} onChange={setMatEditPreco}
-                      className="bg-[#111827] border border-blue-500 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none w-28 text-right" />
-                  ) : (
-                    <span className="font-bold text-white">{fmtBRL(m.preco_m2)}</span>
-                  )}
-                </td>
-                <td className="px-5 py-3 text-center">
-                  <button onClick={() => atualizarMat({ id: m.id, dados: { ativo: !m.ativo } })}
-                    className={`px-2 py-1 rounded-full text-[10px] font-bold border transition-all ${
-                      m.ativo ? 'bg-green-500/15 text-green-400 border-green-500/30' : 'bg-gray-500/15 text-gray-400 border-gray-500/30'
-                    }`}>
-                    {m.ativo ? 'Ativo' : 'Inativo'}
-                  </button>
-                </td>
-                <td className="px-5 py-3 text-center">
-                  <div className="flex gap-2 justify-center">
-                    {matEditId === m.id ? (
-                      <>
-                        <button onClick={() => salvarEditMat(m.id)}
-                          className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-green-500/15 text-green-400 hover:bg-green-500/25 border border-green-500/30">Salvar</button>
-                        <button onClick={() => setMatEditId(null)}
-                          className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-gray-500/15 text-gray-400 border border-gray-500/30">Cancelar</button>
-                      </>
-                    ) : (
-                      <>
-                        <button onClick={() => { setMatEditId(m.id); setMatEditNome(m.nome); setMatEditPreco(Number(m.preco_m2) || 0); }}
-                          className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 border border-blue-500/30">Editar</button>
-                        <button onClick={async () => { if (await confirmar(`Remover o material "${m.nome}"?`, "Remover Material")) deletarMat(m.id); }}
-                          className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-red-500/15 text-red-400 hover:bg-red-500/25 border border-red-500/30 flex items-center justify-center">
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        </div>
-      </div>
-    </div>
-    </>
-  );
-
   /* ── ACABAMENTOS ── */
   if (view === 'acabamentos') return (
     <>
@@ -610,22 +497,55 @@ export function Orcamentos() {
 
       <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5">
         <h3 className="text-xs font-bold text-gray-400 uppercase mb-4 flex items-center gap-2"><Plus className="w-3.5 h-3.5" />Novo Acabamento</h3>
-        <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
-          <div className="flex-1">
-            <label className="text-[10px] text-gray-500 uppercase block mb-1.5">Nome *</label>
-            <input value={acabNome} onChange={e => setAcabNome(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') salvarAcabamento(); }}
-              className={IN} placeholder="Ex: Ilhós, Laminação Fosca..." />
+        <div className="space-y-3">
+          <div className="flex gap-2">
+            <button type="button" onClick={() => setAcabTipo('servico')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                acabTipo === 'servico' ? 'bg-blue-600 border-blue-500 text-white' : 'bg-gray-800 border-gray-700 text-gray-400'
+              }`}>
+              Serviço (preço manual)
+            </button>
+            <button type="button" onClick={() => setAcabTipo('estoque')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                acabTipo === 'estoque' ? 'bg-blue-600 border-blue-500 text-white' : 'bg-gray-800 border-gray-700 text-gray-400'
+              }`}>
+              Vinculado ao Estoque
+            </button>
           </div>
-          <div className="w-full sm:w-40">
-            <label className="text-[10px] text-gray-500 uppercase block mb-1.5">Custo por un (R$)</label>
-            <MoneyInput value={acabCusto}
-              onChange={setAcabCusto} className={IN} placeholder="0,00" />
+          <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
+            <div className="flex-1">
+              <label className="text-[10px] text-gray-500 uppercase block mb-1.5">Nome *</label>
+              <input value={acabNome} onChange={e => setAcabNome(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') salvarAcabamento(); }}
+                className={IN} placeholder="Ex: Ilhós, Laminação Fosca, Vinco..." />
+            </div>
+            {acabTipo === 'estoque' && (
+              <div className="flex-1">
+                <label className="text-[10px] text-gray-500 uppercase block mb-1.5">Matéria-prima no estoque *</label>
+                <select value={acabMateriaId} onChange={e => setAcabMateriaId(e.target.value)} className={IN}>
+                  <option value="">Selecione...</option>
+                  {materiasPrimas.map(mp => (
+                    <option key={mp.id} value={mp.id}>{mp.nome} ({mp.unidade})</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <div className="w-full sm:w-40">
+              <label className="text-[10px] text-gray-500 uppercase block mb-1.5">Preço no orçamento (R$)</label>
+              <MoneyInput value={acabCusto}
+                onChange={setAcabCusto} className={IN} placeholder="0,00" />
+            </div>
+            <button onClick={salvarAcabamento} disabled={salvandoAcab || !acabNome.trim()}
+              className="bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all w-full sm:w-auto">
+              {salvandoAcab ? '...' : 'Adicionar'}
+            </button>
           </div>
-          <button onClick={salvarAcabamento} disabled={salvandoAcab || !acabNome.trim()}
-            className="bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all w-full sm:w-auto">
-            {salvandoAcab ? '...' : 'Adicionar'}
-          </button>
+          {acabTipo === 'estoque' && (
+            <p className="text-[10px] text-gray-600">
+              O custo desse item fica no cadastro do estoque — aqui você só define o preço cobrado no orçamento.
+              A quantidade a baixar é digitada item a item, na hora de montar o orçamento.
+            </p>
+          )}
         </div>
       </div>
 
@@ -635,14 +555,15 @@ export function Orcamentos() {
           <thead>
             <tr className="text-gray-400 text-[10px] font-bold uppercase border-b border-gray-700 bg-gray-800/40">
               <th className="px-5 py-3 text-left">Acabamento</th>
-              <th className="px-5 py-3 text-right">Custo/un</th>
+              <th className="px-5 py-3 text-left">Tipo</th>
+              <th className="px-5 py-3 text-right">Preço no orçamento</th>
               <th className="px-5 py-3 text-center">Ativo</th>
               <th className="px-5 py-3 text-center">Ações</th>
             </tr>
           </thead>
           <tbody>
             {acabamentos.length === 0 && (
-              <tr><td colSpan={4} className="px-5 py-12 text-center text-gray-600">Nenhum acabamento.</td></tr>
+              <tr><td colSpan={5} className="px-5 py-12 text-center text-gray-600">Nenhum acabamento.</td></tr>
             )}
             {acabamentos.map(a => (
               <tr key={a.id} className="border-b border-gray-800 hover:bg-gray-800/20">
@@ -652,6 +573,39 @@ export function Orcamentos() {
                       className="bg-[#111827] border border-blue-500 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none w-full" />
                   ) : (
                     <span className="font-medium text-white">{a.nome}</span>
+                  )}
+                </td>
+                <td className="px-5 py-3">
+                  {acabEditId === a.id ? (
+                    <div className="space-y-1.5">
+                      <div className="flex gap-1.5">
+                        <button type="button" onClick={() => setAcabEditTipo('servico')}
+                          className={`px-2 py-1 rounded text-[10px] font-bold border ${
+                            acabEditTipo === 'servico' ? 'bg-blue-600 border-blue-500 text-white' : 'bg-gray-800 border-gray-700 text-gray-400'
+                          }`}>Serviço</button>
+                        <button type="button" onClick={() => setAcabEditTipo('estoque')}
+                          className={`px-2 py-1 rounded text-[10px] font-bold border ${
+                            acabEditTipo === 'estoque' ? 'bg-blue-600 border-blue-500 text-white' : 'bg-gray-800 border-gray-700 text-gray-400'
+                          }`}>Estoque</button>
+                      </div>
+                      {acabEditTipo === 'estoque' && (
+                        <select value={acabEditMateriaId} onChange={e => setAcabEditMateriaId(e.target.value)}
+                          className="bg-[#111827] border border-blue-500 rounded-lg px-2 py-1 text-white text-xs focus:outline-none w-full">
+                          <option value="">Selecione...</option>
+                          {materiasPrimas.map(mp => (
+                            <option key={mp.id} value={mp.id}>{mp.nome} ({mp.unidade})</option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+                  ) : a.tipo === 'estoque' ? (
+                    <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-purple-500/15 text-purple-400 border border-purple-500/30">
+                      Estoque: {a.materias_primas?.nome ?? '—'}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-gray-500/15 text-gray-400 border border-gray-500/30">
+                      Serviço
+                    </span>
                   )}
                 </td>
                 <td className="px-5 py-3 text-right">
@@ -681,7 +635,10 @@ export function Orcamentos() {
                       </>
                     ) : (
                       <>
-                        <button onClick={() => { setAcabEditId(a.id); setAcabEditNome(a.nome); setAcabEditCusto(Number(a.custo) || 0); }}
+                        <button onClick={() => {
+                          setAcabEditId(a.id); setAcabEditNome(a.nome); setAcabEditCusto(Number(a.custo) || 0);
+                          setAcabEditTipo(a.tipo ?? 'servico'); setAcabEditMateriaId(a.materia_prima_id ?? '');
+                        }}
                           className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 border border-blue-500/30">Editar</button>
                         <button onClick={async () => { if (await confirmar(`Remover o acabamento "${a.nome}"?`, "Remover Acabamento")) deletarAcab(a.id); }}
                           className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-red-500/15 text-red-400 hover:bg-red-500/25 border border-red-500/30 flex items-center justify-center">
@@ -715,10 +672,6 @@ export function Orcamentos() {
           <button onClick={() => setView('folhas')}
             className="bg-gray-700 hover:bg-gray-600 text-gray-300 px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 whitespace-nowrap">
             <Ruler className="w-4 h-4 flex-shrink-0" /> Calc. Folhas
-          </button>
-          <button onClick={() => setView('materiais')}
-            className="bg-gray-700 hover:bg-gray-600 text-gray-300 px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 whitespace-nowrap">
-            <Layers className="w-4 h-4 flex-shrink-0" /> Materiais
           </button>
           <button onClick={() => setView('acabamentos')}
             className="bg-gray-700 hover:bg-gray-600 text-gray-300 px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 whitespace-nowrap">

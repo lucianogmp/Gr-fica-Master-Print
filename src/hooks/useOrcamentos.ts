@@ -23,6 +23,7 @@ function serializarItens(itens: OrcamentoItem[]) {
     acabamento_id:         i.acabamento_id         ?? null,
     acabamento_nome:       i.acabamento_nome       ?? null,
     acabamento_custo:      i.acabamento_custo      ?? null,
+    acabamento_qtd_estoque: i.acabamento_qtd_estoque ?? null,
     acabamentos_por_folha: i.acabamentos_por_folha ?? null,
     arte_inclusa:          i.arte_inclusa          ?? false,
     // Colunas que já existiam no banco mas nunca eram preenchidas — agora
@@ -140,6 +141,8 @@ export function useOrcamentos() {
         obs:            null,
         unidade:        'un',
         total:          i.total,
+        acabamento_id:          i.acabamento_id          ?? null,
+        acabamento_qtd_estoque: i.acabamento_qtd_estoque ?? null,
       }));
 
       const { error: iErr } = await supabase.rpc('salvar_itens_venda', {

@@ -6,6 +6,7 @@ import {
   Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
 import { useRelatorioFinanceiro, RelatorioFinanceiroFiltros } from '../../hooks/useRelatorios';
+import { useContainerReady } from '../../hooks/useContainerReady';
 import { DateInput } from '../../components/ui/DateInput';
 import { Landmark, Download, Printer, AlertTriangle, Inbox } from 'lucide-react';
 
@@ -28,6 +29,7 @@ function KPI({ label, value, cor = 'text-white' }: { label: string; value: strin
 }
 
 export function RelatorioFinanceiro() {
+  const { ref: chartRef, pronto: chartPronto } = useContainerReady<HTMLDivElement>();
   const [filtros, setFiltros]   = useState<RelatorioFinanceiroFiltros>({ data_inicio: inicioMes, data_fim: fimMes });
   const [rascunho, setRascunho] = useState(filtros);
 
@@ -149,7 +151,8 @@ export function RelatorioFinanceiro() {
             {rel.data.resumo.por_mes.length > 0 && (
               <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5">
                 <p className="text-xs font-bold text-gray-400 uppercase mb-4">Receita × Despesa por Mês</p>
-                <div className="h-52">
+                <div className="h-52" ref={chartRef}>
+                  {chartPronto && (
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={rel.data.resumo.por_mes}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#374151" />
@@ -164,6 +167,7 @@ export function RelatorioFinanceiro() {
                       <Line type="monotone" dataKey="saldo"   stroke="#3b82f6" dot={false} strokeWidth={1.5} strokeDasharray="4 2" name="Saldo" />
                     </LineChart>
                   </ResponsiveContainer>
+                  )}
                 </div>
               </div>
             )}

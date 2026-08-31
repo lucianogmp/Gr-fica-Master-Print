@@ -510,6 +510,10 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando, mostrarCusto 
       acabamento_nome: acabSel?.nome ?? null,
       acabamento_custo: acabSel?.custo ?? null,
       acabamentos_por_folha: acabId ? (parseInt(acabQtd) || null) : null,
+      // Acabamento vinculado a estoque -> essa mesma quantidade digitada
+      // acima (que já era usada pra multiplicar o preço) é o que vai ser
+      // baixado da matéria-prima quando a venda entrar em Produção.
+      acabamento_qtd_estoque: (acabId && acabSel?.tipo === 'estoque') ? (parseInt(acabQtd) || null) : null,
       arte_inclusa: arteInclusa,
     };
     onAdicionar(item);
@@ -904,7 +908,9 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando, mostrarCusto 
             ))}
             {acabId && (
               <div>
-                <label className="text-[9px] text-gray-500 uppercase block mb-0.5">Qtd. acabamento</label>
+                <label className="text-[9px] text-gray-500 uppercase block mb-0.5">
+                  {acabSel?.tipo === 'estoque' ? 'Qtd. (baixa do estoque)' : 'Qtd. acabamento'}
+                </label>
                 <QtdInput
                   value={acabQtd}
                   onChange={setAcabQtd}

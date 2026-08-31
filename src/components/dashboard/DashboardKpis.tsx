@@ -1,5 +1,6 @@
 import { DollarSign, ShoppingCart, TrendingUp, Landmark, type LucideIcon, ArrowUp, ArrowDown } from 'lucide-react';
 import { LineChart, Line, ResponsiveContainer } from 'recharts';
+import { useContainerReady } from '../../hooks/useContainerReady';
 
 const fmtBRL = (v: number | null | undefined) =>
   Number(v ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -22,6 +23,7 @@ function KpiCard({ title, value, pct, icon: Icon, cor, spark, invertPct = false,
   cor: string; spark: { v: number }[]; invertPct?: boolean; hideVar?: boolean;
 }) {
   const isPos = invertPct ? pct <= 0 : pct >= 0;
+  const { ref: chartRef, pronto: chartPronto } = useContainerReady<HTMLDivElement>();
   return (
     <div className="bg-[#1a2332] border border-gray-700/60 rounded-xl p-4 relative overflow-hidden">
       <div className="flex items-start justify-between mb-2">
@@ -40,12 +42,14 @@ function KpiCard({ title, value, pct, icon: Icon, cor, spark, invertPct = false,
           <Icon className="w-4 h-4" style={{ color: cor }} />
         </div>
       </div>
-      <div className="h-10 -mx-1 mt-2">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={spark}>
-            <Line type="monotone" dataKey="v" stroke={cor} dot={false} strokeWidth={1.5} />
-          </LineChart>
-        </ResponsiveContainer>
+      <div className="h-10 -mx-1 mt-2" ref={chartRef}>
+        {chartPronto && (
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={spark}>
+              <Line type="monotone" dataKey="v" stroke={cor} dot={false} strokeWidth={1.5} />
+            </LineChart>
+          </ResponsiveContainer>
+        )}
       </div>
     </div>
   );

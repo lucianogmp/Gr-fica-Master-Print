@@ -2,6 +2,7 @@ import {
   ResponsiveContainer, BarChart, Bar, LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
 } from 'recharts';
+import { useContainerReady } from '../../hooks/useContainerReady';
 
 const fmtBRL = (v: number | null | undefined) =>
   Number(v ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -19,6 +20,8 @@ interface ChartData {
 const CARD_BASE = "bg-[#1a2332] border border-gray-700/60 rounded-xl";
 
 export function DashboardCharts({ data }: { data: ChartData | undefined }) {
+  const { ref: chart1Ref, pronto: chart1Pronto } = useContainerReady<HTMLDivElement>();
+  const { ref: chart2Ref, pronto: chart2Pronto } = useContainerReady<HTMLDivElement>();
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
       {/* Gráfico 6 meses */}
@@ -30,7 +33,8 @@ export function DashboardCharts({ data }: { data: ChartData | undefined }) {
             <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500 inline-block" />Despesa</span>
           </div>
         </div>
-        <div className="h-48">
+        <div className="h-48" ref={chart1Ref}>
+          {chart1Pronto && (
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data?.chart6 ?? []} barGap={2}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1f2937" />
@@ -43,6 +47,7 @@ export function DashboardCharts({ data }: { data: ChartData | undefined }) {
               <Bar dataKey="despesa" fill="#ef4444" radius={[3,3,0,0]} maxBarSize={28} />
             </BarChart>
           </ResponsiveContainer>
+          )}
         </div>
       </div>
 
@@ -68,7 +73,8 @@ export function DashboardCharts({ data }: { data: ChartData | undefined }) {
             </div>
           </div>
           {/* Mini gráfico PE */}
-          <div className="h-32">
+          <div className="h-32" ref={chart2Ref}>
+            {chart2Pronto && (
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={data?.chart6?.map((c, i) => ({ x: i, receita: c.receita, custo: (data?.custoFixoTotal ?? 0) })) ?? []}>
                 <Line type="monotone" dataKey="receita" stroke="#10b981" dot={false} strokeWidth={1.5} />
@@ -79,6 +85,7 @@ export function DashboardCharts({ data }: { data: ChartData | undefined }) {
                   formatter={(v: any) => fmtBRL(v)} />
               </LineChart>
             </ResponsiveContainer>
+            )}
             <p className="text-[9px] text-gray-600 text-center mt-1">Receita Total ● Custo Total — Custo Fixo</p>
           </div>
         </div>

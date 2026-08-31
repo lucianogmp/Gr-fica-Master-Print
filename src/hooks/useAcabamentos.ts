@@ -7,6 +7,21 @@ export interface Acabamento {
   nome: string;
   custo: number;
   ativo: boolean;
+  /**
+   * 'servico' (padrão) — preço manual, não mexe em estoque (ex: Vinco).
+   * 'estoque' — vinculado a uma matéria-prima real (ex: Ilhós -> "Ilhós
+   * metálico 8mm"); ao usar no orçamento, a pessoa digita manualmente
+   * quanto vai consumir, e quando a venda entra em Produção o sistema
+   * baixa essa quantidade do estoque sozinho.
+   */
+  tipo: 'servico' | 'estoque';
+  materia_prima_id?: string | null;
+  materias_primas?: {
+    id: string;
+    nome: string;
+    unidade: string;
+    saldo: number;
+  } | null;
 }
 
 export function useAcabamentos() {
@@ -17,7 +32,7 @@ export function useAcabamentos() {
     queryFn: async (): Promise<Acabamento[]> => {
       const { data, error } = await supabase
         .from('acabamentos')
-        .select('*')
+        .select('*, materias_primas(id, nome, unidade, saldo)')
         .order('nome');
       if (error) throw error;
       return data ?? [];

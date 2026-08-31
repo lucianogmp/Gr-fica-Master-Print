@@ -79,12 +79,14 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
       (l.cliente_nome ?? '').toLowerCase().includes(busca.toLowerCase())
     ), [base, filtroStatus, busca]);
 
-  // Seleção múltipla: lançamentos vindos de venda (isDeVenda) não entram —
-  // eles são gerenciados automaticamente pela venda, apagar direto quebraria
-  // a sincronização (a mesma razão pela qual o botão Excluir individual já
-  // fica escondido pra eles).
+  // Seleção múltipla: inclui todos os lançamentos, inclusive os vindos de
+  // venda. Excluir um lançamento de venda não mexe na venda em si (o
+  // pagamento continua lá) — só some da lista do Financeiro, então o
+  // valor pago que aparece na tela da venda pode ficar sem bater com os
+  // lançamentos aqui. Por isso o aviso de confirmação é mais forte quando
+  // a seleção inclui algum desses.
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
-  const selecionaveis = useMemo(() => filtrados.filter(l => !l.venda_id), [filtrados]);
+  const selecionaveis = filtrados;
 
   function toggleSelecionado(id: string) {
     setSelecionados(prev => {
@@ -111,10 +113,12 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
 
   async function excluirSelecionados() {
     if (selecionados.size === 0) return;
-    const ok = await confirmar(
-      `Remover ${selecionados.size} lançamento(s) selecionado(s)? Essa ação não pode ser desfeita.`,
-      'Excluir lançamentos selecionados'
-    );
+    const itensSelecionados = filtrados.filter(l => selecionados.has(l.id));
+    const qtdDeVenda = itensSelecionados.filter(l => l.venda_id).length;
+    const mensagem = qtdDeVenda > 0
+      ? `Remover ${selecionados.size} lançamento(s) selecionado(s)? ${qtdDeVenda} deles vieram de uma venda — excluir aqui não mexe na venda, mas o valor pago/restante mostrado nela pode ficar sem bater com o Financeiro. Essa ação não pode ser desfeita.`
+      : `Remover ${selecionados.size} lançamento(s) selecionado(s)? Essa ação não pode ser desfeita.`;
+    const ok = await confirmar(mensagem, 'Excluir lançamentos selecionados');
     if (!ok) return;
     selecionados.forEach(id => deletar(id));
     setSelecionados(new Set());
@@ -211,13 +215,9 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
               return (
                 <tr key={l.id} className={`border-b border-gray-800 hover:bg-gray-800/30 transition-colors ${marcado ? 'bg-blue-500/5' : ''}`}>
                   <td className="px-3 py-3 text-center">
-                    {isDeVenda ? (
-                      <span className="inline-block w-4 h-4" title="Lançamento de venda — gerenciado automaticamente, não pode ser selecionado" />
-                    ) : (
-                      <button onClick={() => toggleSelecionado(l.id)} className="text-gray-500 hover:text-blue-400 transition-colors">
-                        {marcado ? <CheckSquare className="w-4 h-4 text-blue-400" /> : <Square className="w-4 h-4" />}
-                      </button>
-                    )}
+                    <button onClick={() => toggleSelecionado(l.id)} className="text-gray-500 hover:text-blue-400 transition-colors">
+                      {marcado ? <CheckSquare className="w-4 h-4 text-blue-400" /> : <Square className="w-4 h-4" />}
+                    </button>
                   </td>
                   {!fixarTipo && (
                     <td className="px-5 py-3">

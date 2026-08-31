@@ -12,6 +12,7 @@ import {
 import { STATUS_VENDA } from '../types/venda';
 import { DateInput } from '../components/ui/DateInput';
 import { FileText, Download, Printer, TrendingUp, Landmark, AlertTriangle, Inbox } from 'lucide-react';
+import { useContainerReady } from '../hooks/useContainerReady';
 
 const fmtBRL = (v: number) => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const fmtData = (d?: string | null) => d ? new Date(d + 'T00:00:00').toLocaleDateString('pt-BR') : '—';
@@ -29,6 +30,8 @@ const fimMes    = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0)
   .toISOString().slice(0, 10);
 
 export function Relatorios() {
+  const { ref: chart1Ref, pronto: chart1Pronto } = useContainerReady<HTMLDivElement>();
+  const { ref: chart2Ref, pronto: chart2Pronto } = useContainerReady<HTMLDivElement>();
   const [aba, setAba] = useState<Aba>('vendas');
   const printRef      = useRef<HTMLDivElement>(null);
 
@@ -280,7 +283,8 @@ export function Relatorios() {
                 {relV.data.resumo.por_dia.length > 0 && (
                   <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5 print:border-gray-300">
                     <p className="text-xs font-bold text-gray-400 uppercase mb-4">Vendas por Dia</p>
-                    <div className="h-52">
+                    <div className="h-52" ref={chart1Ref}>
+                      {chart1Pronto && (
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={relV.data.resumo.por_dia}>
                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1f2937" />
@@ -293,6 +297,7 @@ export function Relatorios() {
                           <Bar dataKey="total" fill="#3b82f6" radius={[3,3,0,0]} maxBarSize={32} name="Total" />
                         </BarChart>
                       </ResponsiveContainer>
+                      )}
                     </div>
                   </div>
                 )}
@@ -440,7 +445,8 @@ export function Relatorios() {
                 {relF.data.resumo.por_mes.length > 0 && (
                   <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5">
                     <p className="text-xs font-bold text-gray-400 uppercase mb-4">Receita × Despesa por Mês</p>
-                    <div className="h-52">
+                    <div className="h-52" ref={chart2Ref}>
+                      {chart2Pronto && (
                       <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={relF.data.resumo.por_mes}>
                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1f2937" />
@@ -455,6 +461,7 @@ export function Relatorios() {
                           <Line type="monotone" dataKey="saldo"   stroke="#3b82f6" dot={false} strokeWidth={1.5} strokeDasharray="4 2" name="Saldo" />
                         </LineChart>
                       </ResponsiveContainer>
+                      )}
                     </div>
                   </div>
                 )}

@@ -18,9 +18,12 @@ interface Props {
   value: string;
   vendedorId?: string | null;
   onChange: (nome: string, id?: string | null) => void;
+  /** Esconde o label interno "Vendedor" — usar quando a tela já mostra
+   *  seu próprio label em volta do campo, senão ele aparece duplicado. */
+  hideLabel?: boolean;
 }
 
-export function VendedorSelector({ value, vendedorId, onChange }: Props) {
+export function VendedorSelector({ value, vendedorId, onChange, hideLabel }: Props) {
   const [busca, setBusca]       = useState(value);
   const [opcoes, setOpcoes]     = useState<Vendedor[]>([]);
   const [aberto, setAberto]     = useState(false);
@@ -98,7 +101,7 @@ export function VendedorSelector({ value, vendedorId, onChange }: Props) {
 
   return (
     <div ref={wrapRef} className="relative">
-      <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Vendedor</label>
+      {!hideLabel && <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Vendedor</label>}
       <div className="relative" ref={inputWrapRef}>
         <input
           value={busca}

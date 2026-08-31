@@ -7,6 +7,7 @@ import {
 import {
   useRelatorioVendas, RelatorioVendasFiltros,
 } from '../../hooks/useRelatorios';
+import { useContainerReady } from '../../hooks/useContainerReady';
 import { STATUS_VENDA } from '../../types/venda';
 import { DateInput } from '../../components/ui/DateInput';
 import { TrendingUp, Download, Printer, AlertTriangle, Inbox } from 'lucide-react';
@@ -33,6 +34,7 @@ function KPI({ label, value, cor = 'text-white' }: { label: string; value: strin
 
 export function RelatorioVendas() {
   const printRef = useRef<HTMLDivElement>(null);
+  const { ref: chartRef, pronto: chartPronto } = useContainerReady<HTMLDivElement>();
 
   const [filtros, setFiltros]   = useState<RelatorioVendasFiltros>({ data_inicio: inicioMes, data_fim: fimMes });
   const [rascunho, setRascunho] = useState(filtros);
@@ -149,7 +151,8 @@ export function RelatorioVendas() {
             {rel.data.resumo.por_dia.length > 0 && (
               <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5">
                 <p className="text-xs font-bold text-gray-400 uppercase mb-4">Vendas por Dia</p>
-                <div className="h-52">
+                <div className="h-52" ref={chartRef}>
+                  {chartPronto && (
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={rel.data.resumo.por_dia}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#374151" />
@@ -160,6 +163,7 @@ export function RelatorioVendas() {
                       <Bar dataKey="total" fill="#3b82f6" radius={[3,3,0,0]} maxBarSize={32} name="Total" />
                     </BarChart>
                   </ResponsiveContainer>
+                  )}
                 </div>
               </div>
             )}

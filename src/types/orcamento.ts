@@ -21,6 +21,10 @@ export interface OrcamentoItem {
   acabamento_id?: string | null;
   acabamento_nome?: string | null;
   acabamento_custo?: number | null;
+  // Quando o acabamento escolhido é do tipo 'estoque' (linkado a uma
+  // matéria-prima), quanto baixar do estoque — digitado manualmente,
+  // não multiplica pela quantidade do item.
+  acabamento_qtd_estoque?: number | null;
   acabamentos_por_folha?: number | null;
   arte_inclusa?: boolean;
   // Área (m²) usada quando o item vem de um produto com unidade_medida='m2'.
