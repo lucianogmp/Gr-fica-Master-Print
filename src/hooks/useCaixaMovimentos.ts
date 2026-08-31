@@ -14,6 +14,9 @@ export interface CaixaMovimento {
   origem?: string | null;
   venda_id?: string | null;
   conta_id?: string | null;   // ← novo: vínculo com conta bancária
+  // Quem lançou — preenchido automático pelo banco (nunca pelo formulário).
+  criado_por_id?: string | null;
+  criado_por_email?: string | null;
   created_at?: string;
 }
 
