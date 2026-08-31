@@ -9,6 +9,7 @@ import { EstoqueAlertBanner } from './EstoqueAlertBanner';
 import { BackupAlertBanner } from './BackupAlertBanner';
 import { useTheme } from '../hooks/useTheme';
 import { useConfiguracoes } from '../hooks/useConfiguracoes';
+import { podeSairSemSalvar } from '../lib/unsavedChangesGuard';
 import toast from 'react-hot-toast';
 import {
   LayoutDashboard, ShoppingCart, Users, Landmark, FileText,
@@ -264,20 +265,6 @@ export function Layout() {
   // Fecha menu mobile ao navegar
   useEffect(() => { setMenuOpen(false); }, [location.pathname]);
 
-  // Sempre que a página é carregada "do zero" (reiniciar o PC, fechar/abrir
-  // de novo pelo celular, ou dar F5) — manda direto pra tela inicial do papel
-  // do usuário, em vez de ficar onde o navegador restaurou por conta própria.
-  // Isso NÃO interfere na navegação normal dentro do app: o Layout só monta
-  // uma vez por carregamento real da página, então esse efeito roda uma
-  // única vez (deps vazias) e nunca mais durante os cliques no menu.
-  useEffect(() => {
-    const telaInicial = role === 'vendedor' ? '/vendas/pedidos' : '/';
-    if (location.pathname !== telaInicial) {
-      navigate(telaInicial, { replace: true });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   // Abre o grupo correto ao navegar (ex: deep link)
   useEffect(() => {
     ALL_MENU.forEach(item => {
@@ -412,6 +399,10 @@ export function Layout() {
                   {showSeparator && <div className="border-t border-gray-700/50 my-2" />}
                   <Link
                     to={item.path!}
+                    onClick={e => {
+                      if (isActive) { e.preventDefault(); return; }
+                      if (!podeSairSemSalvar()) e.preventDefault();
+                    }}
                     title={collapsed ? item.label : undefined}
                     className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${collapsed ? 'md:justify-center md:px-2' : ''} ${
                       isActive
@@ -461,6 +452,10 @@ export function Layout() {
                         <Link
                           key={child.path}
                           to={child.path}
+                          onClick={e => {
+                            if (isActive) { e.preventDefault(); return; }
+                            if (!podeSairSemSalvar()) e.preventDefault();
+                          }}
                           className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
                             isActive
                               ? 'bg-blue-600 text-white shadow-md'

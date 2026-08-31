@@ -1,7 +1,7 @@
 // src/pages/Vendas/VendaDetalhe.tsx
 // Extraído de Vendas.tsx original — tela de criar/editar uma venda.
 // Usado por: Vendas/Nova.tsx (criar) e reaproveitado via navegação /vendas/nova/:id (editar)
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useVendas, useVendaItens } from '../../hooks/useVendas';
 import { usePagamentosVenda } from '../../hooks/usePagamentosVenda';
@@ -23,6 +23,7 @@ import {
 import { DocumentoImpressaoData } from '../../components/impressao/DocumentoImpressao';
 import { imprimirDocumento } from '../../components/impressao/imprimirDocumento';
 import { DEFAULT_LAYOUT_VENDA } from '../../types/layoutImpressao';
+import { marcarAlteracoesPendentes, limparAlteracoesPendentes } from '../../lib/unsavedChangesGuard';
 
 const IN = "w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors";
 
@@ -69,6 +70,10 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
 
   const [form, setForm]   = useState({ ...NOVA_VENDA });
   const [itens, setItens] = useState<VendaItem[]>([]);
+  // Enquanto os dados ainda estão sendo carregados (venda existente: form +
+  // itens chegam em momentos diferentes), ignora as mudanças de estado pra
+  // não marcar "alterações pendentes" por causa do próprio carregamento.
+  const carregandoRef = useRef(true);
 
   const { data: itensCarregados } = useVendaItens(isNovo ? null : vendaId);
   const {
@@ -79,8 +84,20 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
   } = usePagamentosVenda(vendaId);
 
   useEffect(() => {
-    if (isNovo) return;
+    carregandoRef.current = true;
+  }, [vendaId, isNovo]);
+
+  // Sai da tela por qualquer outro caminho (voltar do navegador, trocar de
+  // venda) sem passar por fechar()/handleSalvar — garante que o aviso não
+  // fique "grudado" pra próxima tela que a pessoa abrir.
+  useEffect(() => {
+    return () => limparAlteracoesPendentes();
+  }, []);
+
+  useEffect(() => {
+    if (isNovo) { carregandoRef.current = false; return; }
     if (itensCarregados !== undefined) setItens(itensCarregados);
+    if (itensCarregados !== undefined) carregandoRef.current = false;
   }, [itensCarregados, isNovo, vendaId]);
 
   // Carrega dados da venda existente
@@ -138,11 +155,15 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
   }, [isNovo, cfg]);
 
   function fechar() {
+    limparAlteracoesPendentes();
     navigate(rotaVoltar);
   }
 
   function setF(f: keyof typeof NOVA_VENDA, v: any) {
     setForm(p => ({ ...p, [f]: v }));
+    if (!carregandoRef.current) {
+      marcarAlteracoesPendentes('Você tem alterações não salvas nessa venda. Sair mesmo assim?');
+    }
   }
 
   // Cálculos financeiros
@@ -377,7 +398,12 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-1.5">
               <Package className="w-3.5 h-3.5" /> Itens da Venda
             </h3>
-            <ItensEditor itens={itens} onChange={setItens} />
+            <ItensEditor itens={itens} onChange={novosItens => {
+              setItens(novosItens);
+              if (!carregandoRef.current) {
+                marcarAlteracoesPendentes('Você tem alterações não salvas nessa venda. Sair mesmo assim?');
+              }
+            }} />
           </div>
 
           {/* ── Linha 2.5: Gastos vinculados a essa venda (fornecedor, terceirização) ── */}

@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Modal } from '../ui/Modal';
 import { Lancamento, CATEGORIAS_RECEITA, CATEGORIAS_DESPESA, FORMAS_PAGAMENTO } from '../../types/financeiro';
 import { Pencil, Plus, ArrowUp, ArrowDown } from 'lucide-react';
 import { MoneyInput } from '../ui/MoneyInput';
 import { DateInput } from '../ui/DateInput';
 import { DarkSelect } from '../ui/DarkSelect';
+import { marcarAlteracoesPendentes, limparAlteracoesPendentes } from '../../lib/unsavedChangesGuard';
 
 const IN = "w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors";
 
@@ -36,8 +37,13 @@ interface ModalLancamentoProps {
 export function ModalLancamento({ open, editando, tipoInicial, onClose, onSalvar }: ModalLancamentoProps) {
   const [form, setForm]       = useState<FormData>(EMPTY);
   const [salvando, setSalvando] = useState(false);
+  // Ignora as mudanças de estado disparadas pelo próprio carregamento
+  // (abrir o modal já preenchendo com o lançamento existente) — só marca
+  // "alterações pendentes" quando é a pessoa mexendo em algum campo.
+  const carregandoRef = useRef(true);
 
   useEffect(() => {
+    carregandoRef.current = true;
     if (editando) {
       setForm({
         tipo:            editando.tipo,
@@ -53,10 +59,23 @@ export function ModalLancamento({ open, editando, tipoInicial, onClose, onSalvar
     } else {
       setForm({ ...EMPTY, tipo: tipoInicial ?? 'despesa' });
     }
+    carregandoRef.current = false;
   }, [editando, tipoInicial, open]);
 
-  function set(f: Exclude<keyof FormData, 'valor'>, v: string) { setForm(p => ({ ...p, [f]: v })); }
-  function setValor(v: number) { setForm(p => ({ ...p, valor: v })); }
+  // Modal fechou por qualquer caminho (Salvar, Cancelar, X, Esc, clique
+  // fora) — limpa o aviso, não precisa mais dele.
+  useEffect(() => {
+    if (!open) limparAlteracoesPendentes();
+  }, [open]);
+
+  function marcarSujo() {
+    if (!carregandoRef.current) {
+      marcarAlteracoesPendentes('Você tem alterações não salvas nesse lançamento. Sair mesmo assim?');
+    }
+  }
+
+  function set(f: Exclude<keyof FormData, 'valor'>, v: string) { setForm(p => ({ ...p, [f]: v })); marcarSujo(); }
+  function setValor(v: number) { setForm(p => ({ ...p, valor: v })); marcarSujo(); }
 
   async function handleSalvar() {
     if (!form.descricao.trim() || !form.valor) return;

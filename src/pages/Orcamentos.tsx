@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { supabase } from '../lib/supabase';
 import { FileText, Zap, Banknote, Scissors, Plus, Edit2, Check, ArrowLeft, X, CornerDownRight, Ruler, Printer, Copy, MessageCircle, Eye, EyeOff, CheckSquare, Square } from 'lucide-react';
@@ -7,6 +7,7 @@ import { useConfiguracoes } from '../hooks/useConfiguracoes';
 import { DocumentoImpressaoData } from '../components/impressao/DocumentoImpressao';
 import { imprimirDocumento } from '../components/impressao/imprimirDocumento';
 import { DEFAULT_LAYOUT_ORCAMENTO } from '../types/layoutImpressao';
+import { marcarAlteracoesPendentes, limparAlteracoesPendentes } from '../lib/unsavedChangesGuard';
 import { useNavigate } from 'react-router-dom';
 import { useOrcamentos, useOrcamentoItens } from '../hooks/useOrcamentos';
 import { useAcabamentos } from '../hooks/useAcabamentos';
@@ -98,6 +99,25 @@ export function Orcamentos() {
 
   const isNovo = orcId === '__novo__';
   const { data: itensCarregados } = useOrcamentoItens(isNovo ? null : orcId);
+
+  // Mesma lógica da tela de Venda: ignora mudanças de estado enquanto os
+  // dados ainda estão carregando, pra não marcar "alterações pendentes"
+  // por causa do próprio carregamento.
+  const carregandoRef = useRef(true);
+  useEffect(() => { carregandoRef.current = true; }, [orcId]);
+  useEffect(() => {
+    if (view !== 'detalhe') return;
+    if (isNovo) { carregandoRef.current = false; return; }
+    if (itensCarregados !== undefined) carregandoRef.current = false;
+  }, [view, isNovo, itensCarregados, orcId]);
+  useEffect(() => {
+    return () => limparAlteracoesPendentes();
+  }, []);
+  function marcarSujoOrc() {
+    if (!carregandoRef.current) {
+      marcarAlteracoesPendentes('Você tem alterações não salvas nesse orçamento. Sair mesmo assim?');
+    }
+  }
 
   useMemo(() => {
     if (itensCarregados && !isNovo) setItens(itensCarregados);
@@ -222,7 +242,7 @@ export function Orcamentos() {
     setSelecionados(new Set());
   }
 
-  function setF(k: keyof typeof NOVO_ORC, v: any) { setForm(p => ({ ...p, [k]: v })); }
+  function setF(k: keyof typeof NOVO_ORC, v: any) { setForm(p => ({ ...p, [k]: v })); marcarSujoOrc(); }
 
   // Monta o texto resumido do orçamento pra mandar por WhatsApp — sem PDF,
   // sem página de impressão. Mostra material/produto, medidas, quantidade
@@ -322,9 +342,10 @@ export function Orcamentos() {
     setView('detalhe');
   }
 
-  function fechar() { setView('lista'); setOrcId(null); setForm({ ...NOVO_ORC }); setItens([]); setShowEditor(false); }
+  function fechar() { limparAlteracoesPendentes(); setView('lista'); setOrcId(null); setForm({ ...NOVO_ORC }); setItens([]); setShowEditor(false); }
 
   function handleAdicionarItem(item: OrcamentoItem) {
+    marcarSujoOrc();
     if (editandoIdx !== null) {
       setItens(p => p.map((it, i) => i === editandoIdx ? item : it));
       setEditandoIdx(null);
@@ -371,6 +392,7 @@ export function Orcamentos() {
     }
 
     setItens(novosItens);
+    marcarSujoOrc();
     setF('desconto', 0); // o ajuste já foi embutido no preço unitário — não precisa mais do desconto global
   }
 
@@ -1002,7 +1024,7 @@ export function Orcamentos() {
                             <div className="flex gap-1 justify-center">
                               <button onClick={() => { setEditandoIdx(i); setShowEditor(true); }}
                                 className="text-gray-500 hover:text-blue-400 transition-colors"><Edit2 className="w-3.5 h-3.5" /></button>
-                              <button onClick={() => setItens(p => p.filter((_, idx) => idx !== i))}
+                              <button onClick={() => { setItens(p => p.filter((_, idx) => idx !== i)); marcarSujoOrc(); }}
                                 className="text-gray-500 hover:text-red-400 transition-colors">
                                 <X className="w-3.5 h-3.5" />
                               </button>

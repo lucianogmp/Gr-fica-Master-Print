@@ -4,9 +4,10 @@ import { useUsuarios, UsuarioAdmin } from '../../hooks/useUsuarios';
 import { useRole } from '../../hooks/useRole';
 import { ROLES, Role } from '../../types/roles';
 import { Modal } from '../../components/ui/Modal';
-import { Users, User, Trash2 } from 'lucide-react';
+import { Users, User, Trash2, ShieldCheck } from 'lucide-react';
 import { DarkSelect } from '../../components/ui/DarkSelect';
 import { IN, Lbl } from './utils';
+import { ModalPermissoesUsuario } from '../../components/configuracoes/ModalPermissoesUsuario';
 
 export function Usuarios() {
   const { data: usuarios = [], isLoading, definirRole, convidarUsuario, isConvidando, excluirUsuario, isExcluindo } = useUsuarios();
@@ -15,6 +16,7 @@ export function Usuarios() {
   const [modalConvite, setModalConvite] = useState(false);
   const [conviteForm, setConviteForm]   = useState({ email: '', nome: '', role: 'vendedor' as Role });
   const [usuarioParaExcluir, setUsuarioParaExcluir] = useState<UsuarioAdmin | null>(null);
+  const [usuarioPermissoes, setUsuarioPermissoes]   = useState<UsuarioAdmin | null>(null);
 
   async function handleConvitar() {
     await convidarUsuario(conviteForm);
@@ -55,15 +57,16 @@ export function Usuarios() {
               <th className="px-5 py-3 text-left">Último acesso</th>
               <th className="px-5 py-3 text-center">Perfil</th>
               {isDono && <th className="px-5 py-3 text-center">Alterar perfil</th>}
+              {isDono && <th className="px-5 py-3 text-center">Permissões</th>}
               {isDono && <th className="px-5 py-3 text-center">Excluir</th>}
             </tr>
           </thead>
           <tbody>
             {isLoading && (
-              <tr><td colSpan={6} className="px-5 py-8 text-center text-blue-500 animate-pulse">Carregando usuários...</td></tr>
+              <tr><td colSpan={7} className="px-5 py-8 text-center text-blue-500 animate-pulse">Carregando usuários...</td></tr>
             )}
             {!isLoading && usuarios.length === 0 && (
-              <tr><td colSpan={6} className="px-5 py-8 text-center text-gray-600">Nenhum usuário encontrado.</td></tr>
+              <tr><td colSpan={7} className="px-5 py-8 text-center text-gray-600">Nenhum usuário encontrado.</td></tr>
             )}
             {usuarios.map((u: UsuarioAdmin) => {
               const roleInfo = u.role ? ROLES[u.role] : null;
@@ -98,6 +101,17 @@ export function Usuarios() {
                         triggerClassName="bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500 transition-colors w-full flex items-center justify-between gap-1 cursor-pointer"
                         options={Object.entries(ROLES).map(([key, r]) => ({ value: key, label: r.label }))}
                       />
+                    </td>
+                  )}
+                  {isDono && (
+                    <td className="px-5 py-3 text-center">
+                      <button
+                        onClick={() => setUsuarioPermissoes(u)}
+                        title="Permissões individuais"
+                        className="text-gray-500 hover:text-blue-400 transition-colors p-1.5 rounded-lg hover:bg-blue-500/10"
+                      >
+                        <ShieldCheck className="w-4 h-4" />
+                      </button>
                     </td>
                   )}
                   {isDono && (
@@ -180,6 +194,8 @@ export function Usuarios() {
           Essa ação não pode ser desfeita — o acesso ao sistema será removido imediatamente.
         </p>
       </Modal>
+
+      <ModalPermissoesUsuario usuario={usuarioPermissoes} onClose={() => setUsuarioPermissoes(null)} />
     </div>
   );
 }
