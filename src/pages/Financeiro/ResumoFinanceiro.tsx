@@ -34,59 +34,43 @@ export function ResumoFinanceiro() {
       </div>
 
       {/* ── Painel de Saldos por Conta ── */}
-      <div className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-700 flex items-center justify-between">
-          <h2 className="font-black text-white flex items-center gap-2">
-            <Building2 className="w-5 h-5 text-blue-400" /> Saldo por Conta
+      <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="font-black text-white flex items-center gap-2 text-sm">
+            <Building2 className="w-4 h-4 text-blue-400" /> Saldo por Conta
           </h2>
-          <div className="text-right">
-            <p className="text-[10px] text-gray-500 uppercase font-bold">Total consolidado</p>
-            <p className={`text-xl font-black ${totalGeral >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-gray-500 uppercase font-bold">Total consolidado</span>
+            <span className={`text-sm font-black ${totalGeral >= 0 ? 'text-green-400' : 'text-red-400'}`}>
               {fmtBRL(totalGeral)}
-            </p>
+            </span>
           </div>
         </div>
 
         {saldos.length === 0 ? (
-          <div className="p-8 text-center text-gray-600 text-sm">
+          <p className="text-gray-600 text-sm">
             Nenhuma conta cadastrada. Adicione em Configurações → Formas de Pagamento.
-          </div>
+          </p>
         ) : (
-          <div className="divide-y divide-gray-800">
+          <div className="flex flex-wrap gap-3">
             {saldos.map(c => {
               const info = TIPO_CONTA[c.tipo] ?? TIPO_CONTA.outro;
-              const pct  = totalGeral !== 0 ? Math.abs(c.saldo / totalGeral) * 100 : 0;
               return (
-                <div key={c.id} className="px-5 py-4 hover:bg-gray-800/20 transition-colors">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-3">
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${info.bg} ${info.cor}`}>
-                        {info.label}
-                      </span>
-                      <div>
-                        <p className="font-bold text-white text-sm">{c.nome}</p>
-                        {c.banco && <p className="text-[10px] text-gray-500">{c.banco}</p>}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className={`text-lg font-black ${c.saldo >= 0 ? 'text-white' : 'text-red-400'}`}>
-                        {fmtBRL(c.saldo)}
-                      </p>
-                      <div className="flex gap-3 text-[10px] justify-end mt-0.5">
-                        <span className="text-green-400">+{fmtBRL(c.entradas)}</span>
-                        <span className="text-red-400">-{fmtBRL(c.saidas)}</span>
-                      </div>
-                    </div>
+                <div key={c.id} className="flex-1 min-w-[200px] bg-[#111827] border border-gray-700 rounded-lg px-4 py-3 hover:border-gray-600 transition-colors">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${info.bg} ${info.cor}`}>
+                      {info.label}
+                    </span>
+                    <span className="font-bold text-white text-sm">{c.nome}</span>
+                    {c.banco && <span className="text-[10px] text-gray-500">· {c.banco}</span>}
                   </div>
-                  {/* Barra de proporção */}
-                  {totalGeral > 0 && c.saldo > 0 && (
-                    <div className="h-1 bg-gray-700/50 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-blue-500/60 rounded-full transition-all"
-                        style={{ width: `${Math.min(pct, 100)}%` }}
-                      />
-                    </div>
-                  )}
+                  <p className={`text-lg font-black ${c.saldo >= 0 ? 'text-white' : 'text-red-400'}`}>
+                    {fmtBRL(c.saldo)}
+                  </p>
+                  <div className="flex gap-2 text-[10px] mt-0.5">
+                    <span className="text-green-400">+{fmtBRL(c.entradas)}</span>
+                    <span className="text-red-400">-{fmtBRL(c.saidas)}</span>
+                  </div>
                 </div>
               );
             })}
@@ -137,22 +121,22 @@ export function ResumoFinanceiro() {
       </div>
 
       {/* ── Vendas por status ── */}
-      <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5">
-        <h3 className="text-xs font-bold text-gray-400 uppercase mb-4 flex items-center gap-2">
+      <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-4 space-y-3">
+        <h3 className="text-xs font-bold text-gray-400 uppercase flex items-center gap-2">
           <TrendingUp className="w-4 h-4" /> Vendas por Status
         </h3>
-        <div className="space-y-2">
+        <div className="flex flex-wrap gap-3">
           {Object.entries(STATUS_VENDA).map(([k, v]) => {
             const count = vendas.filter(x => x.status === k).length;
             const val   = vendas.filter(x => x.status === k).reduce((s, x) => s + Number(x.valor_total ?? x.total ?? 0), 0);
             if (count === 0) return null;
             return (
-              <div key={k} className="flex items-center justify-between py-2 border-b border-gray-800 last:border-0">
-                <div className="flex items-center gap-2">
+              <div key={k} className="flex-1 min-w-[180px] bg-[#111827] border border-gray-700 rounded-lg px-4 py-3 hover:border-gray-600 transition-colors">
+                <div className="flex items-center gap-2 mb-1">
                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${v.cor}`}>{v.label}</span>
-                  <span className="text-xs text-gray-500">{count} venda(s)</span>
+                  <span className="text-[10px] text-gray-500">{count} venda(s)</span>
                 </div>
-                <span className="font-bold text-white">{fmtBRL(val)}</span>
+                <p className="text-lg font-black text-white">{fmtBRL(val)}</p>
               </div>
             );
           })}
