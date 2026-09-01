@@ -16,6 +16,7 @@ interface KpiData {
   pctLucro: number;
   sparkLucro: { v: number }[];
   fluxoMes: number;
+  saldoCaixaAtual: number;
 }
 
 function KpiCard({ title, value, pct, icon: Icon, cor, spark, invertPct = false, hideVar = false }: {
@@ -61,7 +62,7 @@ export function DashboardKpis({ data }: { data: KpiData | undefined }) {
       <KpiCard title="RECEITA TOTAL"   value={data?.receitaMes ?? 0}  pct={data?.pctReceita ?? 0}  icon={DollarSign}   cor="#10b981" spark={data?.sparkReceita ?? []} />
       <KpiCard title="DESPESAS TOTAIS" value={data?.despesaMes ?? 0}  pct={data?.pctDespesa ?? 0}  icon={ShoppingCart} cor="#ef4444" spark={data?.sparkDespesa ?? []} invertPct />
       <KpiCard title="LUCRO LÍQUIDO"   value={data?.lucroMes ?? 0}    pct={data?.pctLucro ?? 0}    icon={TrendingUp}   cor="#10b981" spark={data?.sparkLucro ?? []} />
-      <KpiCard title="FLUXO DE CAIXA"  value={data?.fluxoMes ?? 0}    pct={0}                      icon={Landmark}     cor="#a855f7" spark={data?.sparkReceita ?? []} hideVar />
+      <KpiCard title="SALDO EM CAIXA"  value={data?.saldoCaixaAtual ?? 0}    pct={0}                      icon={Landmark}     cor="#a855f7" spark={data?.sparkReceita ?? []} hideVar />
     </div>
   );
 }

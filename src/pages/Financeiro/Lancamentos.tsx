@@ -1,12 +1,14 @@
 // src/pages/Financeiro/Lancamentos.tsx
 import { useState } from 'react';
 import { useLancamentos } from '../../hooks/useLancamentos';
+import { useCaixaMovimentos } from '../../hooks/useCaixaMovimentos';
 import { TabelaLancamentos, fmtBRL } from './TabelaLancamentos';
 import { Landmark, TrendingUp, TrendingDown, Clock, Banknote, ChevronLeft, ChevronRight } from 'lucide-react';
 import { MonthInput } from '../../components/ui/MonthInput';
 
 export function Lancamentos() {
   const { data: lancamentos = [] } = useLancamentos();
+  const { data: movsCaixa = [] } = useCaixaMovimentos();
   const [mesKpi, setMesKpi] = useState(() => new Date().toISOString().slice(0, 7));
 
   function deslocarMesKpi(delta: number) {
@@ -15,9 +17,14 @@ export function Lancamentos() {
     setMesKpi(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
   }
 
-  const doMes        = lancamentos.filter(l => (l.data_vencimento ?? l.created_at ?? '').startsWith(mesKpi));
-  const totalReceitas = doMes.filter(l => l.tipo === 'receita').reduce((s, l) => s + Number(l.valor), 0);
-  const totalDespesas = doMes.filter(l => l.tipo === 'despesa').reduce((s, l) => s + Number(l.valor), 0);
+  const doMes         = lancamentos.filter(l => (l.data_vencimento ?? l.created_at ?? '').startsWith(mesKpi));
+  const caixaDoMes     = movsCaixa.filter(m => (m.data ?? '').startsWith(mesKpi));
+  // "Receitas/Despesas do mês" contam tudo que foi lançado — lançamentos
+  // normais + os movimentos do Fluxo de Caixa desse mês.
+  const totalReceitas = doMes.filter(l => l.tipo === 'receita').reduce((s, l) => s + Number(l.valor), 0)
+    + caixaDoMes.filter(m => m.tipo === 'entrada').reduce((s, m) => s + Number(m.valor), 0);
+  const totalDespesas = doMes.filter(l => l.tipo === 'despesa').reduce((s, l) => s + Number(l.valor), 0)
+    + caixaDoMes.filter(m => m.tipo === 'saida').reduce((s, m) => s + Number(m.valor), 0);
   const aReceber      = lancamentos.filter(l => l.tipo === 'receita' && !['pago','cancelado'].includes(l.status)).reduce((s, l) => s + Number(l.valor), 0);
   const aPagar        = lancamentos.filter(l => l.tipo === 'despesa' && !['pago','cancelado'].includes(l.status)).reduce((s, l) => s + Number(l.valor), 0);
 
@@ -28,7 +35,7 @@ export function Lancamentos() {
           <h1 className="text-2xl font-black text-white flex items-center gap-2">
             <Landmark className="w-6 h-6 text-blue-400" /> Lançamentos
           </h1>
-          <p className="text-gray-500 text-sm">{lancamentos.length} lançamento(s)</p>
+          <p className="text-gray-500 text-sm">{lancamentos.length + movsCaixa.length} lançamento(s)</p>
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <div className="flex items-center gap-1 bg-[#1f2937] border border-gray-700 rounded-xl px-1.5 py-1.5">

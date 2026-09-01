@@ -133,3 +133,35 @@ export function useSaldoContas() {
 
   return { saldos, totalGeral, isLoading: query.isLoading || !contas.length };
 }
+
+/**
+ * Saldo do CAIXA FÍSICO especificamente (não soma banco/pix/cartão). Usa
+ * só as contas do tipo 'caixa' como ponto de partida, mais os movimentos
+ * de caixa_movimentos sem conta vinculada (o padrão hoje) ou vinculados
+ * explicitamente a uma conta do tipo 'caixa'.
+ */
+export function useSaldoCaixaFisico() {
+  const { data: contas = [] } = useContasBancarias();
+
+  const query = useQuery({
+    queryKey: ['saldo-caixa-fisico'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('caixa_movimentos')
+        .select('conta_id, tipo, valor');
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const contasCaixa = contas.filter(c => c.ativo && c.tipo === 'caixa');
+  const idsContasCaixa = new Set(contasCaixa.map(c => c.id));
+  const saldoInicial = contasCaixa.reduce((s, c) => s + Number(c.saldo_inicial ?? 0), 0);
+
+  const movimentos = (query.data ?? []).filter(m => !m.conta_id || idsContasCaixa.has(m.conta_id));
+  const entradas = movimentos.filter(m => m.tipo === 'entrada').reduce((s, m) => s + Number(m.valor), 0);
+  const saidas   = movimentos.filter(m => m.tipo === 'saida').reduce((s, m) => s + Number(m.valor), 0);
+  const saldo    = saldoInicial + entradas - saidas;
+
+  return { saldo, isLoading: query.isLoading || !contas.length };
+}

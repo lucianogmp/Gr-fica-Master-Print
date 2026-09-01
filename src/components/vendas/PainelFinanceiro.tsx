@@ -5,6 +5,7 @@ import {
   Configuracoes,
   FormasPagamentoConfig,
   FORMAS_PAGAMENTO_DEFAULT,
+  gerarTabelaTaxas,
   getTaxaParcela,
   calcTotalComTaxa,
 } from '../../types/configuracoes';
@@ -21,11 +22,31 @@ const fmtData = (d?: string | null) =>
 
 function parseFormas(raw: any): FormasPagamentoConfig[] {
   if (!raw) return FORMAS_PAGAMENTO_DEFAULT;
-  if (Array.isArray(raw)) return raw.length > 0 ? raw : FORMAS_PAGAMENTO_DEFAULT;
+  if (Array.isArray(raw)) return raw.length > 0 ? raw.map(normalizarForma) : FORMAS_PAGAMENTO_DEFAULT;
   if (typeof raw === 'string') {
-    try { const p = JSON.parse(raw); if (Array.isArray(p) && p.length > 0) return p; } catch {}
+    try {
+      const p = JSON.parse(raw);
+      if (Array.isArray(p) && p.length > 0) return p.map(normalizarForma);
+    } catch {}
   }
   return FORMAS_PAGAMENTO_DEFAULT;
+}
+
+function normalizarForma(forma: Partial<FormasPagamentoConfig>): FormasPagamentoConfig {
+  const maxParcelas = Number(forma.max_parcelas || forma.tabela_taxas?.length || 1);
+  const permiteParcelamento = Boolean(forma.permite_parcelamento || maxParcelas > 1);
+  const tabela = Array.isArray(forma.tabela_taxas) && forma.tabela_taxas.length > 0
+    ? forma.tabela_taxas
+    : gerarTabelaTaxas(permiteParcelamento ? Math.max(maxParcelas, 12) : 1);
+
+  return {
+    nome: forma.nome ?? '',
+    ativo: forma.ativo ?? true,
+    permite_parcelamento: permiteParcelamento,
+    max_parcelas: permiteParcelamento ? Math.max(maxParcelas, tabela.length, 1) : 1,
+    tabela_taxas: tabela,
+    dias_uteis_liquidacao: forma.dias_uteis_liquidacao ?? 0,
+  };
 }
 
 interface Props {
@@ -34,6 +55,7 @@ interface Props {
   frete: number;
   taxaAdicional: number;
   parcelas: number;
+  juros?: number;
   formaPagamento: string;
   valorPago: number;
   pagamentos: PagamentoVenda[];
@@ -43,6 +65,7 @@ interface Props {
   onFreteChange: (v: number) => void;
   onTaxaChange: (v: number) => void;
   onParcelasChange: (v: number) => void;
+  onJurosChange?: (v: number) => void;
   onFormaPagamentoChange: (v: string) => void;
   onRegistrarPagamento: (pag: Omit<PagamentoVenda, 'id' | 'created_at'>) => Promise<void>;
   onExcluirPagamento: (id: string, vendaId: string) => void;
@@ -68,7 +91,7 @@ export function PainelFinanceiro({
   const formas           = parseFormas(cfg?.formas_pagamento).filter(f => f.ativo);
   const formaNovoPag     = formas.find(f => f.nome === novoPag.forma);
   const permiteParc      = formaNovoPag?.permite_parcelamento;
-  const maxParcelas      = formaNovoPag?.max_parcelas ?? 1;
+  const maxParcelas      = Math.max(1, formaNovoPag?.max_parcelas ?? 1);
   const taxaPctNovoPag   = getTaxaParcela(formaNovoPag, novoPag.parcelas);
   const valorNovoPag     = novoPag.valor || 0;
   const taxaMaquininha   = calcTotalComTaxa(valorNovoPag, taxaPctNovoPag) - valorNovoPag;
@@ -209,12 +232,12 @@ export function PainelFinanceiro({
         </span>
 
         {/* Botão Registrar */}
-        {vendaId && vendaId !== '__novo__' && (
+        {vendaId && (
           <button
             onClick={() => {
               const abrindo = !showNovoPag;
               setShowNovoPag(abrindo);
-              if (abrindo) setNovoPag(prev => ({ ...prev, valor: valorRestante.toFixed(2) }));
+              if (abrindo) setNovoPag(prev => ({ ...prev, valor: Number(valorRestante.toFixed(2)) }));
             }}
             className="flex items-center gap-1 text-[10px] font-bold px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white rounded-lg transition-all flex-shrink-0"
           >
@@ -261,7 +284,7 @@ export function PainelFinanceiro({
                 )}
                 {p.observacoes && <span className="text-[10px] text-gray-500 truncate">{p.observacoes}</span>}
                 <div className="flex-1" />
-                {vendaId && vendaId !== '__novo__' && (
+                {vendaId && (
                   <button onClick={() => onExcluirPagamento(p.id, vendaId)} className="text-gray-600 hover:text-red-400 transition-colors flex-shrink-0">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -273,7 +296,7 @@ export function PainelFinanceiro({
       )}
 
       {/* ══ Form novo pagamento ══ */}
-      {showNovoPag && vendaId && vendaId !== '__novo__' && (
+      {showNovoPag && vendaId && (
         <div className="border-t border-gray-700 px-4 py-4 space-y-3">
           <p className="text-[10px] font-bold text-green-400 uppercase">Novo Pagamento</p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -305,10 +328,14 @@ export function PainelFinanceiro({
                   value={String(novoPag.parcelas)}
                   onChange={v => setNovoPag(f => ({ ...f, parcelas: parseInt(v) }))}
                   allowEmpty={false}
-                  options={Array.from({ length: maxParcelas }, (_, i) => ({
-                    value: String(i + 1),
-                    label: `${i + 1}x`,
-                  }))}
+                  options={Array.from({ length: maxParcelas }, (_, i) => {
+                    const parcelas = i + 1;
+                    const taxa = getTaxaParcela(formaNovoPag, parcelas);
+                    return {
+                      value: String(parcelas),
+                      label: `${parcelas}x${taxa > 0 ? ` (+${taxa.toLocaleString('pt-BR')}%)` : ' sem juros'}`,
+                    };
+                  })}
                 />
               </div>
             ) : (

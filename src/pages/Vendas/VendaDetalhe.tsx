@@ -5,9 +5,11 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useVendas, useVendaItens } from '../../hooks/useVendas';
 import { usePagamentosVenda } from '../../hooks/usePagamentosVenda';
+import { useLancamentos } from '../../hooks/useLancamentos';
 import { useConfiguracoes } from '../../hooks/useConfiguracoes';
 import { useProducao } from '../../hooks/useProducao';
-import { Venda, VendaItem, StatusVenda, STATUS_VENDA } from '../../types/venda';
+import { Venda, VendaItem, StatusVenda, STATUS_VENDA, PagamentoVenda } from '../../types/venda';
+import { Lancamento } from '../../types/financeiro';
 import { formatarEnderecoCliente } from '../../types/cliente';
 import { useClientes } from '../../hooks/useClientes';
 import { ItensEditor } from '../../components/vendas/ItensEditor';
@@ -63,6 +65,7 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
   const { data: clientes = [] } = useClientes();
   const { data: cfg } = useConfiguracoes();
   const { criar: criarOP } = useProducao();
+  const { criar: criarLancamento } = useLancamentos();
   const { confirmar, ConfirmModal } = useConfirm();
 
   const isNovo = !vendaIdProp || vendaIdProp === '__novo__';
@@ -70,6 +73,8 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
 
   const [form, setForm]   = useState({ ...NOVA_VENDA });
   const [itens, setItens] = useState<VendaItem[]>([]);
+  const [pagamentosRascunho, setPagamentosRascunho] = useState<PagamentoVenda[]>([]);
+  const [gastosRascunho, setGastosRascunho] = useState<Lancamento[]>([]);
   // Enquanto os dados ainda estão sendo carregados (venda existente: form +
   // itens chegam em momentos diferentes), ignora as mudanças de estado pra
   // não marcar "alterações pendentes" por causa do próprio carregamento.
@@ -105,6 +110,8 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
     if (isNovo) {
       setForm({ ...NOVA_VENDA, data_venda: new Date().toISOString().split('T')[0] });
       setItens([]);
+      setPagamentosRascunho([]);
+      setGastosRascunho([]);
       return;
     }
     const v = vendas.find(x => x.id === vendaId);
@@ -252,7 +259,21 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
     };
 
     if (isNovo) {
-      await criar({ venda: payload as any, itens });
+      const vendaCriada = await criar({ venda: payload as any, itens });
+      for (const pag of pagamentosRascunho) {
+        const { id: _id, created_at: _createdAt, ...pagamento } = pag;
+        await registrarPagamento({
+          ...pagamento,
+          venda_id: vendaCriada.id,
+        });
+      }
+      for (const gasto of gastosRascunho) {
+        const { id: _id, created_at: _createdAt, ...lancamento } = gasto;
+        await criarLancamento({
+          ...lancamento,
+          venda_id: vendaCriada.id,
+        });
+      }
     } else if (vendaId) {
       await atualizar({ id: vendaId, payload: payload as any, itens });
     }
@@ -407,13 +428,23 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
           </div>
 
           {/* ── Linha 2.5: Gastos vinculados a essa venda (fornecedor, terceirização) ── */}
-          {isNovo ? (
-            <div className="bg-[#1f2937]/50 border border-dashed border-gray-700 rounded-xl p-4 text-center">
-              <p className="text-xs text-gray-500">Salve a venda primeiro pra poder lançar gastos vinculados a ela.</p>
-            </div>
-          ) : (
-            <GastosVenda vendaId={vendaId} clienteNome={form.cliente_nome} itens={itens} />
-          )}
+          <GastosVenda
+            vendaId={vendaId}
+            clienteNome={form.cliente_nome}
+            itens={itens}
+            gastosRascunho={gastosRascunho}
+            onAdicionarRascunho={gasto => {
+              setGastosRascunho(prev => [
+                ...prev,
+                { ...gasto, id: crypto.randomUUID(), created_at: new Date().toISOString() } as Lancamento,
+              ]);
+              marcarAlteracoesPendentes('Você tem alterações não salvas nessa venda. Sair mesmo assim?');
+            }}
+            onExcluirRascunho={id => {
+              setGastosRascunho(prev => prev.filter(g => g.id !== id));
+              marcarAlteracoesPendentes('Você tem alterações não salvas nessa venda. Sair mesmo assim?');
+            }}
+          />
 
           {/* ── Linha 3: Resumo Financeiro ── */}
           <PainelFinanceiro
@@ -425,7 +456,7 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
             juros={form.juros}
             formaPagamento={form.forma_pagamento}
             valorPago={vendaId !== '__novo__' ? pagamentos.reduce((s, p) => s + p.valor, 0) : Number(form.valor_pago || 0)}
-            pagamentos={pagamentos}
+            pagamentos={isNovo ? pagamentosRascunho : pagamentos}
             cfg={cfg}
             vendaId={vendaId}
             onDescontoChange={v => setF('desconto', v)}
@@ -434,8 +465,21 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
             onParcelasChange={v => setF('parcelas', v)}
             onJurosChange={v => setF('juros', v)}
             onFormaPagamentoChange={v => setF('forma_pagamento', v)}
-            onRegistrarPagamento={registrarPagamento}
-            onExcluirPagamento={excluirPagamento}
+            onRegistrarPagamento={isNovo
+              ? async pag => {
+                setPagamentosRascunho(prev => [
+                  ...prev,
+                  { ...pag, id: crypto.randomUUID(), created_at: new Date().toISOString() },
+                ]);
+                marcarAlteracoesPendentes('Você tem alterações não salvas nessa venda. Sair mesmo assim?');
+              }
+              : registrarPagamento}
+            onExcluirPagamento={isNovo
+              ? id => {
+                setPagamentosRascunho(prev => prev.filter(p => p.id !== id));
+                marcarAlteracoesPendentes('Você tem alterações não salvas nessa venda. Sair mesmo assim?');
+              }
+              : excluirPagamento}
             isRegistrando={isRegistrando}
           />
         </div>

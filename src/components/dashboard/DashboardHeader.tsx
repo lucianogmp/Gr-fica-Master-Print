@@ -1,12 +1,6 @@
 import { useAuth } from '../../hooks/useAuth';
 import { MonthInput } from '../ui/MonthInput';
 
-const mesLabel = (mes: string) => {
-  const [y, m] = mes.split('-');
-  const nomes = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
-  return `${nomes[parseInt(m) - 1]} de ${y}`;
-};
-
 export function DashboardHeader({ mes, setMes }: { mes: string; setMes: (m: string) => void }) {
   const { user } = useAuth();
 
@@ -17,7 +11,6 @@ export function DashboardHeader({ mes, setMes }: { mes: string; setMes: (m: stri
         <p className="text-gray-500 text-sm">Aqui está o resumo geral da sua empresa.</p>
       </div>
       <div className="flex items-center gap-3">
-        <span className="text-gray-500 text-sm">{mesLabel(mes)}</span>
         <button onClick={() => {
           const [y, m] = mes.split('-').map(Number);
           const d = new Date(y, m - 2, 1);

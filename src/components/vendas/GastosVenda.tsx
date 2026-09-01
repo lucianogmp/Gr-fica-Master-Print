@@ -15,6 +15,7 @@ import { MoneyInput } from '../ui/MoneyInput';
 import { DateInput } from '../ui/DateInput';
 import { DarkSelect } from '../ui/DarkSelect';
 import { VendaItem } from '../../types/venda';
+import { Lancamento } from '../../types/financeiro';
 import { useConfirm } from '../ui/ConfirmModal';
 
 const IN = "w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-blue-500 transition-colors";
@@ -26,9 +27,12 @@ interface Props {
   vendaId: string;
   clienteNome: string;
   itens: VendaItem[];
+  gastosRascunho?: Lancamento[];
+  onAdicionarRascunho?: (gasto: Omit<Lancamento, 'id' | 'created_at'>) => void;
+  onExcluirRascunho?: (id: string) => void;
 }
 
-export function GastosVenda({ vendaId, clienteNome, itens }: Props) {
+export function GastosVenda({ vendaId, clienteNome, itens, gastosRascunho = [], onAdicionarRascunho, onExcluirRascunho }: Props) {
   const { data: lancamentos = [], criar, deletar, isSaving } = useLancamentos();
   const { data: fornecedores = [] } = useFornecedores();
   const { data: cfg } = useConfiguracoes();
@@ -53,7 +57,10 @@ export function GastosVenda({ vendaId, clienteNome, itens }: Props) {
 
   // Gastos já lançados pra essa venda (filtra do cache geral de lançamentos —
   // evita mais uma query só pra isso, já que useLancamentos já busca tudo).
-  const gastos = lancamentos.filter(l => l.tipo === 'despesa' && (l as any).venda_id === vendaId);
+  const isVendaNova = vendaId === '__novo__';
+  const gastos = isVendaNova
+    ? gastosRascunho
+    : lancamentos.filter(l => l.tipo === 'despesa' && (l as any).venda_id === vendaId);
   const totalGastos = gastos.reduce((s, g) => s + Number(g.valor), 0);
 
   // Ao escolher qual item da venda gerou esse gasto, a descrição já vem
@@ -79,22 +86,32 @@ export function GastosVenda({ vendaId, clienteNome, itens }: Props) {
   async function handleAdicionar() {
     if (!fornecedorNome.trim() || valor <= 0) return;
     if (jaPago && !formaPagamento) return; // precisa saber a forma pra calcular a data certa
-    await criar({
+    const payload = {
       tipo: 'despesa',
       valor,
       status: jaPago ? 'pago' : 'pendente',
       categoria: 'Fornecedor / Terceirização',
-      venda_id: vendaId,
+      venda_id: isVendaNova ? null : vendaId,
       cliente_nome: fornecedorNome, // campo genérico de "contraparte", igual já é usado em contas a pagar
       descricao: descricao.trim() || `Gasto — Venda de ${clienteNome}`,
       data_vencimento: dataVencimento,
       data_pagamento: jaPago ? dataLiquidacao : null,
       forma_pagamento: jaPago ? formaPagamento : null,
-    } as any);
+    } as Omit<Lancamento, 'id' | 'created_at'>;
+
+    if (isVendaNova) {
+      onAdicionarRascunho?.(payload);
+    } else {
+      await criar(payload as any);
+    }
     limparForm();
   }
 
   async function handleExcluir(id: string) {
+    if (isVendaNova) {
+      onExcluirRascunho?.(id);
+      return;
+    }
     const ok = await confirmar('Remover este lançamento de gasto? Essa ação não pode ser desfeita.', 'Excluir Gasto');
     if (ok) deletar(id);
   }
@@ -118,7 +135,9 @@ export function GastosVenda({ vendaId, clienteNome, itens }: Props) {
       </div>
 
       {gastos.length === 0 && !mostrarForm && (
-        <p className="text-xs text-gray-600">Nenhum gasto lançado nesta venda ainda — ex: material terceirizado, fornecedor externo.</p>
+        <p className="text-xs text-gray-600">
+          Nenhum gasto lançado nesta venda ainda — ex: material terceirizado, fornecedor externo.
+        </p>
       )}
 
       {gastos.length > 0 && (

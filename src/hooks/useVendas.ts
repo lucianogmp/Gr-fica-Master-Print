@@ -6,6 +6,11 @@ import toast from 'react-hot-toast';
 
 type VendaPayload = Omit<Venda, 'id' | 'created_at' | 'updated_at' | 'numero'>;
 
+const tituloVenda = (tipo: unknown) => {
+  const valor = typeof tipo === 'string' ? tipo.trim() : '';
+  return valor || 'Sem título';
+};
+
 function serializarItens(itens: VendaItem[]) {
   return itens.map(i => ({
     produto_id:     i.produto_id     ?? null,
@@ -43,7 +48,7 @@ export function useVendas() {
       const { total: _t, ...vendaSemTotal } = venda as any;
       const { data, error } = await supabase
         .from('vendas')
-        .insert(vendaSemTotal)
+        .insert({ ...vendaSemTotal, tipo: tituloVenda(vendaSemTotal.tipo) })
         .select()
         .single();
       if (error) throw error;

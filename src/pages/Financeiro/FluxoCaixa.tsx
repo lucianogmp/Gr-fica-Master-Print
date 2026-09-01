@@ -2,7 +2,7 @@
 import { useState, useMemo } from 'react';
 import { useCaixaMovimentos, CaixaMovimento } from '../../hooks/useCaixaMovimentos';
 import { useCaixaKpisDia } from '../../hooks/useCaixaKpisDia';
-import { useContasBancarias } from '../../hooks/useContasBancarias';
+import { useContasBancarias, useSaldoCaixaFisico } from '../../hooks/useContasBancarias';
 import { useUsuarios } from '../../hooks/useUsuarios';
 import { useConfirm } from '../../components/ui/ConfirmModal';
 import { useRole } from '../../hooks/useRole';
@@ -34,6 +34,7 @@ export function FluxoCaixa() {
   const { data: movimentos = [], isLoading, criar, atualizar, deletar, isSaving } = useCaixaMovimentos();
   const { data: kpisDia } = useCaixaKpisDia();
   const { data: contas = [] } = useContasBancarias();
+  const { saldo: saldoTotalCaixa } = useSaldoCaixaFisico();
   const { data: usuarios = [] } = useUsuarios();
   const { confirmar, ConfirmModal } = useConfirm();
   const { isVendedor } = useRole();
@@ -286,11 +287,13 @@ export function FluxoCaixa() {
         </div>
 
         {/* KPIs do dia — sempre visíveis, para todos os perfis (inclusive vendedor) */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <KpiCard label="Entradas hoje"  value={fmtBRL(entradasHoje)} icon={ArrowUp}   color="text-green-400" />
           <KpiCard label="Saídas hoje"    value={fmtBRL(saidasHoje)}   icon={ArrowDown} color="text-red-400" />
           <KpiCard label="Saldo do dia"   value={fmtBRL(entradasHoje - saidasHoje)} icon={Wallet}
             color={entradasHoje - saidasHoje >= 0 ? 'text-blue-400' : 'text-red-400'} />
+          <KpiCard label="Saldo Total em Caixa" value={fmtBRL(saldoTotalCaixa)} icon={Wallet}
+            color={saldoTotalCaixa >= 0 ? 'text-purple-400' : 'text-red-400'} />
         </div>
 
         {/* KPIs do mês — só dono/admin/financeiro. Vendedor vê só o dia (acima) */}

@@ -68,11 +68,15 @@ export function Dashboard() {
         <DashboardAlerts data={data} />
       </div>
 
-      {/* Row 4: Situação + Rankings + Indicadores (4 colunas: 1+1+1+1 distribuído) */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
-        <DashboardSituacao data={data} />
-        <DashboardRankings data={data} />
-        <DashboardIndicators data={data} />
+      {/* Row 4: Situação + Rankings + Indicadores */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-12 gap-3 items-stretch">
+        <DashboardSituacao data={data} className="xl:col-span-3" />
+        <DashboardRankings
+          data={data}
+          produtoClassName="xl:col-span-2"
+          clienteClassName="xl:col-span-3"
+        />
+        <DashboardIndicators data={data} className="lg:col-span-2 xl:col-span-4" />
       </div>
     </div>
   );

@@ -6,6 +6,11 @@ import toast from 'react-hot-toast';
 
 type OrcPayload = Omit<Orcamento, 'id' | 'created_at' | 'updated_at'>;
 
+const tituloVenda = (tipo: unknown) => {
+  const valor = typeof tipo === 'string' ? tipo.trim() : '';
+  return valor || 'Sem título';
+};
+
 function serializarItens(itens: OrcamentoItem[]) {
   return itens.map(i => ({
     descricao:             i.descricao,
@@ -121,7 +126,7 @@ export function useOrcamentos() {
           status:       'aprovado',
           desconto:     orc.desconto ?? 0,
           observacoes:  orc.observacoes,
-          tipo:         orc.tipo ?? null,
+          tipo:         tituloVenda(orc.tipo),
           valor_total:  orc.total ?? 0,
           data_venda:   new Date().toISOString().split('T')[0],
         })

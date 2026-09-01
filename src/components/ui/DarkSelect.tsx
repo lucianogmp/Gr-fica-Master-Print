@@ -143,7 +143,12 @@ export function DarkSelect({
   const triggerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const [coords, setCoords] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [coords, setCoords] = useState<{
+    top: number;
+    left: number;
+    width: number;
+    maxHeight: number;
+  } | null>(null);
   // Só usados no modo searchable: texto digitado e item destacado por teclado.
   const [busca, setBusca] = useState('');
   const [indiceAtivo, setIndiceAtivo] = useState(0);
@@ -151,7 +156,20 @@ export function DarkSelect({
   function recalcularPosicao() {
     const rect = triggerRef.current?.getBoundingClientRect();
     if (!rect) return;
-    setCoords({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+    const gap = 4;
+    const margin = 12;
+    const preferredHeight = 280;
+    const below = window.innerHeight - rect.bottom - margin;
+    const above = rect.top - margin;
+    const openUp = below < 160 && above > below;
+    const maxHeight = Math.max(120, Math.min(preferredHeight, openUp ? above - gap : below - gap));
+
+    setCoords({
+      top: openUp ? rect.top - gap - maxHeight : rect.bottom + gap,
+      left: rect.left,
+      width: rect.width,
+      maxHeight,
+    });
   }
 
   const flatOptions = useMemo(() => {
@@ -307,7 +325,7 @@ export function DarkSelect({
       </div>
 
       {aberto && !disabled && coords && createPortal(
-        <div ref={dropdownRef} style={{ ...DROPDOWN_BASE, top: coords.top, left: coords.left, width: coords.width }}>
+        <div ref={dropdownRef} style={{ ...DROPDOWN_BASE, top: coords.top, left: coords.left, width: coords.width, maxHeight: coords.maxHeight }}>
           {allowEmpty && (
             <button
               type="button"

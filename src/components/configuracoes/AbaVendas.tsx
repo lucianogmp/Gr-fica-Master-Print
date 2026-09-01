@@ -283,6 +283,25 @@ function FormaCard({
           </button>
         </div>
 
+        {/* Taxa fixa — pra formas que NÃO parcelam mas têm acréscimo mesmo
+            assim (ex: débito). Edita direto a taxa da parcela única. */}
+        {!formaNorm.permite_parcelamento && (
+          <div className="flex items-center gap-1.5 flex-shrink-0" title="Taxa cobrada nessa forma de pagamento, mesmo sem parcelamento (ex: débito)">
+            <span className="text-[10px] text-gray-500 whitespace-nowrap">Taxa</span>
+            <input
+              type="number" onWheel={e => e.currentTarget.blur()} min="0" step="0.01"
+              value={formaNorm.tabela_taxas[0]?.taxa_pct ?? 0}
+              onChange={e => {
+                const taxa = Math.max(0, parseFloat(e.target.value) || 0);
+                onChange({ ...formaNorm, tabela_taxas: [{ parcelas: 1, taxa_pct: taxa }] });
+              }}
+              className="bg-[#0d1117] border border-gray-700 rounded-lg px-2 py-1 text-white text-xs text-center focus:outline-none focus:border-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              style={{ width: 52 }}
+            />
+            <span className="text-[10px] text-gray-500 whitespace-nowrap">%</span>
+          </div>
+        )}
+
         {/* Toggle parcelamento */}
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <span className="text-[10px] text-gray-500">Parcela</span>

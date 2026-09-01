@@ -13,6 +13,8 @@ import { KpiCard } from '../../components/ui/KpiCard';
 import { useConfirm } from '../../components/ui/ConfirmModal';
 import { DollarSign, ClipboardList, X, LucideIcon, ChevronLeft, ChevronRight, Printer, CheckSquare, Square } from 'lucide-react';
 import { MonthInput } from '../../components/ui/MonthInput';
+import { OrdenarMenu, aplicarOrdenacao, Ordenacao } from '../../components/ui/OrdenarMenu';
+import { FiltrosAvancados, aplicarFiltrosAvancados, FiltrosAvancadosValor } from '../../components/ui/FiltrosAvancados';
 import { useEffect } from 'react';
 import { DocumentoImpressaoData } from '../../components/impressao/DocumentoImpressao';
 import { imprimirDocumento } from '../../components/impressao/imprimirDocumento';
@@ -66,6 +68,10 @@ export function ListaVendas({
 
   const [filtroExtra, setFiltroExtra] = useState<'todos' | StatusVenda>('todos');
   const [busca, setBusca] = useState('');
+  // Ordenação e filtros avançados — padrão do sistema (ver OrdenarMenu.tsx
+  // e FiltrosAvancados.tsx), reaproveitado em todas as listas.
+  const [ordenacao, setOrdenacao] = useState<Ordenacao | null>({ campo: 'data', direcao: 'desc' });
+  const [filtrosAv, setFiltrosAv] = useState<FiltrosAvancadosValor>({});
 
   // Filtro de mês: por padrão só mostra o mês atual, pra não empilhar vendas
   // antigas na tela sem necessidade — mas é fácil trocar de mês ou ver tudo.
@@ -98,15 +104,24 @@ export function ListaVendas({
     [vendasBase, mes]
   );
 
-  const filtradas = useMemo(() => vendasBase
-    .filter(v => filtroExtra === 'todos' || v.status === filtroExtra)
-    .filter(v => !mes || (v.data_venda ?? '').startsWith(mes))
-    .filter(v =>
-      !busca ||
-      v.cliente_nome.toLowerCase().includes(busca.toLowerCase()) ||
-      (v.numero ? String(v.numero).includes(busca) : false) ||
-      (v.palavra_chave ?? '').toLowerCase().includes(busca.toLowerCase())
-    ), [vendasBase, filtroExtra, mes, busca]);
+  const filtradas = useMemo(() => {
+    const base = vendasBase
+      .filter(v => filtroExtra === 'todos' || v.status === filtroExtra)
+      .filter(v => !mes || (v.data_venda ?? '').startsWith(mes))
+      .filter(v =>
+        !busca ||
+        v.cliente_nome.toLowerCase().includes(busca.toLowerCase()) ||
+        (v.numero ? String(v.numero).includes(busca) : false) ||
+        (v.palavra_chave ?? '').toLowerCase().includes(busca.toLowerCase())
+      );
+    const comFiltrosAv = aplicarFiltrosAvancados(base, filtrosAv, v => v.data_venda, v => v.valor_total);
+    return aplicarOrdenacao(comFiltrosAv, ordenacao, {
+      data:    v => v.data_venda,
+      cliente: v => v.cliente_nome,
+      valor:   v => Number(v.valor_total ?? 0),
+      numero:  v => Number(v.numero ?? 0),
+    });
+  }, [vendasBase, filtroExtra, mes, busca, filtrosAv, ordenacao]);
 
   // Impressão a partir da lista
   const [imprimindoId, setImprimindoId] = useState<string | null>(null);
@@ -299,6 +314,17 @@ export function ListaVendas({
             placeholder="Buscar por cliente, nº ou palavra-chave..."
             className="flex-1 min-w-48 bg-[#1f2937] border border-gray-700 rounded-xl px-4 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500"
           />
+          <OrdenarMenu
+            valor={ordenacao}
+            onChange={setOrdenacao}
+            campos={[
+              { key: 'data',    label: 'Data',    labelAsc: 'Mais antiga primeiro', labelDesc: 'Mais recente primeiro' },
+              { key: 'valor',   label: 'Valor',   labelAsc: 'Menor primeiro',       labelDesc: 'Maior primeiro' },
+              { key: 'cliente', label: 'Cliente',  labelAsc: 'A → Z',                labelDesc: 'Z → A' },
+              { key: 'numero',  label: 'Nº da venda' },
+            ]}
+          />
+          <FiltrosAvancados valor={filtrosAv} onChange={setFiltrosAv} mostrarData={false} labelValor="Valor da venda" />
         </div>
 
         <div className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">

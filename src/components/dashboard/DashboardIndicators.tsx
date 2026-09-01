@@ -10,16 +10,15 @@ const fmtPct = (v: number) => `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`;
 
 const CARD_BASE = "bg-[#1a2332] border border-gray-700/60 rounded-xl h-full flex flex-col";
 
-export function DashboardIndicators({ data }: { data: any }) {
+export function DashboardIndicators({ data, className = '' }: { data: any; className?: string }) {
   const navigate = useNavigate();
 
   return (
-    <div className={`${CARD_BASE} p-4`}>
+    <div className={`${CARD_BASE} ${className} p-3`}>
       <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
         <TrendingUp className="w-3.5 h-3.5" /> Indicadores Financeiros
       </h3>
-      <div className="flex-1 flex flex-col justify-between">
-        <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 xl:grid-cols-3 gap-2">
         {[
           { label: 'Ticket Médio',       valor: fmtBRL(data?.ticketMedio), sub: `${(data?.top5Clientes?.length ?? 0)} clientes`, cor: '#3b82f6', icon: Ticket },
           { label: 'Margem de Lucro',    valor: `${(data?.margemContrib ?? 0).toFixed(1)}%`, sub: '', cor: '#10b981', icon: TrendingUp },
@@ -28,30 +27,27 @@ export function DashboardIndicators({ data }: { data: any }) {
         ].map(ind => {
           const Icon = ind.icon;
           return (
-          <div key={ind.label} className="bg-gray-800/30 border border-gray-700/50 rounded-lg p-2.5">
-            <div className="flex items-center gap-1 mb-1">
-              <Icon className="w-3 h-3" style={{ color: ind.cor }} />
-              <span className="text-[9px] text-gray-500 font-bold uppercase">{ind.label}</span>
+          <div key={ind.label} className="bg-gray-800/30 border border-gray-700/50 rounded-lg p-2.5 min-w-0">
+            <div className="flex items-center gap-1 mb-1 min-w-0">
+              <Icon className="w-3 h-3 flex-shrink-0" style={{ color: ind.cor }} />
+              <span className="text-[9px] text-gray-500 font-bold uppercase truncate">{ind.label}</span>
             </div>
             <p className="text-sm font-black" style={{ color: ind.cor }}>{ind.valor}</p>
             {ind.sub && <p className="text-[9px] text-gray-600">{ind.sub}</p>}
           </div>
         ); })}
-      </div>
-      <div className="grid grid-cols-2 gap-2 mt-2">
         <button onClick={() => navigate('/financeiro')}
-          className="bg-gray-800/30 border border-gray-700/50 rounded-lg p-2.5 text-left hover:bg-gray-700/30 transition-all">
-          <div className="flex items-center gap-1 mb-1"><ShoppingCart className="w-3 h-3 text-gray-400" /><span className="text-[9px] text-gray-500 font-bold uppercase">Pedidos em Aberto</span></div>
+          className="bg-gray-800/30 border border-gray-700/50 rounded-lg p-2.5 text-left hover:bg-gray-700/30 transition-all min-w-0">
+          <div className="flex items-center gap-1 mb-1 min-w-0"><ShoppingCart className="w-3 h-3 text-gray-400 flex-shrink-0" /><span className="text-[9px] text-gray-500 font-bold uppercase truncate">Pedidos em Aberto</span></div>
           <p className="text-sm font-black text-white">{data?.situacao?.pendente ?? 0}</p>
           <p className="text-[9px] text-blue-400">Ver pedidos</p>
         </button>
         <button onClick={() => navigate('/producao')}
-          className="bg-gray-800/30 border border-gray-700/50 rounded-lg p-2.5 text-left hover:bg-gray-700/30 transition-all">
-          <div className="flex items-center gap-1 mb-1"><Factory className="w-3 h-3 text-gray-400" /><span className="text-[9px] text-gray-500 font-bold uppercase">Prod. em Andamento</span></div>
+          className="bg-gray-800/30 border border-gray-700/50 rounded-lg p-2.5 text-left hover:bg-gray-700/30 transition-all min-w-0">
+          <div className="flex items-center gap-1 mb-1 min-w-0"><Factory className="w-3 h-3 text-gray-400 flex-shrink-0" /><span className="text-[9px] text-gray-500 font-bold uppercase truncate">Prod. em Andamento</span></div>
           <p className="text-sm font-black text-white">{data?.prodEmAnd ?? 0}</p>
           <p className="text-[9px] text-blue-400">Acompanhar</p>
         </button>
-      </div>
       </div>
     </div>
   );

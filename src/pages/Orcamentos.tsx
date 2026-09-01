@@ -8,6 +8,8 @@ import { DocumentoImpressaoData } from '../components/impressao/DocumentoImpress
 import { imprimirDocumento } from '../components/impressao/imprimirDocumento';
 import { DEFAULT_LAYOUT_ORCAMENTO } from '../types/layoutImpressao';
 import { marcarAlteracoesPendentes, limparAlteracoesPendentes } from '../lib/unsavedChangesGuard';
+import { OrdenarMenu, aplicarOrdenacao, Ordenacao } from '../components/ui/OrdenarMenu';
+import { FiltrosAvancados, aplicarFiltrosAvancados, FiltrosAvancadosValor } from '../components/ui/FiltrosAvancados';
 import { useNavigate } from 'react-router-dom';
 import { useOrcamentos, useOrcamentoItens } from '../hooks/useOrcamentos';
 import { useAcabamentos } from '../hooks/useAcabamentos';
@@ -465,15 +467,25 @@ export function Orcamentos() {
   const convertidos = orcamentos.filter(o => o.status === 'convertido').length;
   const valorTotal  = orcamentos.filter(o => o.status !== 'recusado' && o.status !== 'convertido').reduce((s, o) => s + Number(o.total ?? 0), 0);
 
-  const filtrados = useMemo(() => orcamentos
-    .filter(o => {
-      // Convertidos só aparecem se o filtro for explicitamente 'convertido'
-      if (o.status === 'convertido' && filtro !== 'convertido') return false;
-      return filtro === 'todos' || o.status === filtro;
-    })
-    .filter(o => !busca || o.cliente_nome.toLowerCase().includes(busca.toLowerCase()) ||
-      (o.numero ? String(o.numero).includes(busca) : false))
-  , [orcamentos, filtro, busca]);
+  const [ordenacao, setOrdenacao] = useState<Ordenacao | null>({ campo: 'data', direcao: 'desc' });
+  const [filtrosAv, setFiltrosAv] = useState<FiltrosAvancadosValor>({});
+  const filtrados = useMemo(() => {
+    const base = orcamentos
+      .filter(o => {
+        // Convertidos só aparecem se o filtro for explicitamente 'convertido'
+        if (o.status === 'convertido' && filtro !== 'convertido') return false;
+        return filtro === 'todos' || o.status === filtro;
+      })
+      .filter(o => !busca || o.cliente_nome.toLowerCase().includes(busca.toLowerCase()) ||
+        (o.numero ? String(o.numero).includes(busca) : false));
+    const comFiltrosAv = aplicarFiltrosAvancados(base, filtrosAv, o => o.created_at, o => o.total);
+    return aplicarOrdenacao(comFiltrosAv, ordenacao, {
+      data:    o => o.created_at,
+      cliente: o => o.cliente_nome,
+      valor:   o => Number(o.total ?? 0),
+      numero:  o => Number(o.numero ?? 0),
+    });
+  }, [orcamentos, filtro, busca, filtrosAv, ordenacao]);
 
   if (isLoading) return <div className="p-8 text-blue-500 animate-pulse font-bold">Carregando Orçamentos...</div>;
 
@@ -726,6 +738,17 @@ export function Orcamentos() {
         </div>
         <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar..."
           className="flex-1 min-w-48 bg-[#1f2937] border border-gray-700 rounded-xl px-4 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500" />
+        <OrdenarMenu
+          valor={ordenacao}
+          onChange={setOrdenacao}
+          campos={[
+            { key: 'data',    label: 'Data',    labelAsc: 'Mais antigo primeiro', labelDesc: 'Mais recente primeiro' },
+            { key: 'valor',   label: 'Valor',   labelAsc: 'Menor primeiro',       labelDesc: 'Maior primeiro' },
+            { key: 'cliente', label: 'Cliente', labelAsc: 'A → Z',                 labelDesc: 'Z → A' },
+            { key: 'numero',  label: 'Nº do orçamento' },
+          ]}
+        />
+        <FiltrosAvancados valor={filtrosAv} onChange={setFiltrosAv} labelValor="Valor do orçamento" />
       </div>
 
       <div className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">

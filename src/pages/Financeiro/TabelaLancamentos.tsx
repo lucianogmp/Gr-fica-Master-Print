@@ -4,12 +4,15 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLancamentos } from '../../hooks/useLancamentos';
+import { useCaixaMovimentos } from '../../hooks/useCaixaMovimentos';
 import { Lancamento, StatusLancamento } from '../../types/financeiro';
 import { ModalLancamento } from '../../components/financeiro/ModalLancamento';
 import { KpiCard } from '../../components/ui/KpiCard';
 import { useConfirm } from '../../components/ui/ConfirmModal';
+import { OrdenarMenu, aplicarOrdenacao, Ordenacao } from '../../components/ui/OrdenarMenu';
+import { FiltrosAvancados, aplicarFiltrosAvancados, FiltrosAvancadosValor } from '../../components/ui/FiltrosAvancados';
 import {
-  ArrowUp, ArrowDown, Clock, AlertCircle, Check, X, ExternalLink, LucideIcon, CheckSquare, Square,
+  ArrowUp, ArrowDown, Clock, AlertCircle, Check, X, ExternalLink, LucideIcon, CheckSquare, Square, Wallet,
 } from 'lucide-react';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -34,6 +37,9 @@ export function calcStatusLanc(l: Lancamento): string {
 
 type FiltroStatus = 'todos' | 'pendente' | 'atrasado' | 'pago' | 'cancelado';
 
+/** Lançamento + os que vêm do Fluxo de Caixa, mesclados só pra exibição. */
+export type LancamentoExibido = Lancamento & { isDeCaixa?: boolean };
+
 type KpiExtra = {
   label: string;
   icon: LucideIcon;
@@ -52,6 +58,27 @@ type TabelaLancamentosProps = {
 export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio }: TabelaLancamentosProps) {
   const navigate = useNavigate();
   const { data: todos = [], isLoading, criar, atualizar, pagar, deletar, isSaving } = useLancamentos();
+  // Fluxo de Caixa também é "algo lançado no sistema" (entrada/saída de
+  // dinheiro) — mescla aqui só pra exibição, marcado com isDeCaixa. Editar
+  // e excluir desses continua só lá no Fluxo de Caixa, pra não arriscar
+  // mexer na tabela errada numa ação em massa.
+  const { data: movsCaixa = [], isLoading: isLoadingCaixa } = useCaixaMovimentos();
+  const todosComCaixa = useMemo<LancamentoExibido[]>(() => [
+    ...todos,
+    ...movsCaixa.map((m): LancamentoExibido => ({
+      id:              `caixa:${m.id}`,
+      tipo:            m.tipo === 'entrada' ? 'receita' : 'despesa',
+      descricao:       m.descricao,
+      valor:           Number(m.valor),
+      status:          'pago',
+      categoria:       'Fluxo de Caixa',
+      cliente_nome:    m.cliente_nome ?? null,
+      data_vencimento: m.data,
+      data_pagamento:  m.data,
+      observacoes:     m.observacoes ?? null,
+      isDeCaixa:       true,
+    })),
+  ], [todos, movsCaixa]);
   const { confirmar, ConfirmModal } = useConfirm();
 
   const [modalOpen, setModalOpen]       = useState(false);
@@ -60,24 +87,34 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
   const [filtroStatus, setFiltroStatus] = useState<FiltroStatus>('todos');
   const [busca, setBusca]               = useState('');
   const [mesLanc, setMesLanc]           = useState(() => new Date().toISOString().slice(0, 7));
+  const [ordenacao, setOrdenacao] = useState<Ordenacao | null>({ campo: 'data', direcao: 'desc' });
+  const [filtrosAv, setFiltrosAv] = useState<FiltrosAvancadosValor>({});
 
   // Aplica filtro de tipo fixo (se vier da tela pai)
   const base = useMemo(() =>
-    fixarTipo ? todos.filter(l => l.tipo === fixarTipo) : todos,
-    [todos, fixarTipo]
+    fixarTipo ? todosComCaixa.filter(l => l.tipo === fixarTipo) : todosComCaixa,
+    [todosComCaixa, fixarTipo]
   );
 
-  const filtrados = useMemo(() => base
-    .map(l => ({ ...l, statusCalc: calcStatusLanc(l) }))
-    .filter(l => {
-      if (filtroStatus !== 'todos') return l.statusCalc === filtroStatus;
-      return true;
-    })
-    .filter(l =>
-      !busca ||
-      l.descricao.toLowerCase().includes(busca.toLowerCase()) ||
-      (l.cliente_nome ?? '').toLowerCase().includes(busca.toLowerCase())
-    ), [base, filtroStatus, busca]);
+  const filtrados = useMemo(() => {
+    const basico = base
+      .map(l => ({ ...l, statusCalc: calcStatusLanc(l) }))
+      .filter(l => {
+        if (filtroStatus !== 'todos') return l.statusCalc === filtroStatus;
+        return true;
+      })
+      .filter(l =>
+        !busca ||
+        l.descricao.toLowerCase().includes(busca.toLowerCase()) ||
+        (l.cliente_nome ?? '').toLowerCase().includes(busca.toLowerCase())
+      );
+    const comFiltrosAv = aplicarFiltrosAvancados(basico, filtrosAv, l => l.data_vencimento, l => l.valor);
+    return aplicarOrdenacao(comFiltrosAv, ordenacao, {
+      data:    l => l.data_vencimento,
+      cliente: l => l.cliente_nome ?? '',
+      valor:   l => Number(l.valor ?? 0),
+    });
+  }, [base, filtroStatus, busca, filtrosAv, ordenacao]);
 
   // Seleção múltipla: inclui todos os lançamentos, inclusive os vindos de
   // venda. Excluir um lançamento de venda não mexe na venda em si (o
@@ -86,7 +123,7 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
   // lançamentos aqui. Por isso o aviso de confirmação é mais forte quando
   // a seleção inclui algum desses.
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
-  const selecionaveis = filtrados;
+  const selecionaveis = filtrados.filter(l => !(l as LancamentoExibido).isDeCaixa);
 
   function toggleSelecionado(id: string) {
     setSelecionados(prev => {
@@ -124,7 +161,7 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
     setSelecionados(new Set());
   }
 
-  if (isLoading) return <div className="p-8 text-blue-500 animate-pulse font-bold">Carregando...</div>;
+  if (isLoading || isLoadingCaixa) return <div className="p-8 text-blue-500 animate-pulse font-bold">Carregando...</div>;
 
   return (
     <>
@@ -177,6 +214,16 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
         <input value={busca} onChange={e => setBusca(e.target.value)}
           placeholder="Buscar por descrição ou cliente..."
           className="flex-1 min-w-48 bg-[#1f2937] border border-gray-700 rounded-xl px-4 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500" />
+        <OrdenarMenu
+          valor={ordenacao}
+          onChange={setOrdenacao}
+          campos={[
+            { key: 'data',    label: 'Vencimento', labelAsc: 'Mais antigo primeiro', labelDesc: 'Mais recente primeiro' },
+            { key: 'valor',   label: 'Valor',      labelAsc: 'Menor primeiro',       labelDesc: 'Maior primeiro' },
+            { key: 'cliente', label: 'Cliente/Forn.', labelAsc: 'A → Z',              labelDesc: 'Z → A' },
+          ]}
+        />
+        <FiltrosAvancados valor={filtrosAv} onChange={setFiltrosAv} labelData="Vencimento" labelValor="Valor" />
       </div>
 
       {/* Tabela */}
@@ -211,13 +258,16 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
             {filtrados.map(l => {
               const st = l.statusCalc;
               const isDeVenda = !!l.venda_id;
+              const isDeCaixa = !!(l as LancamentoExibido).isDeCaixa;
               const marcado = selecionados.has(l.id);
               return (
                 <tr key={l.id} className={`border-b border-gray-800 hover:bg-gray-800/30 transition-colors ${marcado ? 'bg-blue-500/5' : ''}`}>
                   <td className="px-3 py-3 text-center">
-                    <button onClick={() => toggleSelecionado(l.id)} className="text-gray-500 hover:text-blue-400 transition-colors">
-                      {marcado ? <CheckSquare className="w-4 h-4 text-blue-400" /> : <Square className="w-4 h-4" />}
-                    </button>
+                    {!isDeCaixa && (
+                      <button onClick={() => toggleSelecionado(l.id)} className="text-gray-500 hover:text-blue-400 transition-colors">
+                        {marcado ? <CheckSquare className="w-4 h-4 text-blue-400" /> : <Square className="w-4 h-4" />}
+                      </button>
+                    )}
                   </td>
                   {!fixarTipo && (
                     <td className="px-5 py-3">
@@ -236,6 +286,11 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
                           venda
                         </span>
                       )}
+                      {isDeCaixa && (
+                        <span className="text-[9px] font-bold bg-purple-500/20 text-purple-400 border border-purple-500/30 px-1.5 py-0.5 rounded-full">
+                          caixa
+                        </span>
+                      )}
                     </div>
                   </td>
                   <td className="px-5 py-3 text-gray-400 text-xs">{l.categoria || '—'}</td>
@@ -250,7 +305,14 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
                     </span>
                   </td>
                   <td className="px-5 py-3 text-center">
-                    {isDeVenda ? (
+                    {isDeCaixa ? (
+                      <button
+                        onClick={() => navigate('/financeiro/fluxo-caixa')}
+                        className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg bg-purple-500/15 text-purple-400 hover:bg-purple-500/25 border border-purple-500/30 transition-all mx-auto"
+                      >
+                        <Wallet className="w-3 h-3" /> Ver no Fluxo de Caixa
+                      </button>
+                    ) : isDeVenda ? (
                       <button
                         onClick={() => navigate(`/vendas/nova/${l.venda_id}`, { state: { from: '/financeiro/lancamentos' } })}
                         className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 border border-blue-500/30 transition-all mx-auto"

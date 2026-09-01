@@ -38,6 +38,7 @@ export function useDashboardData(mes: string) {
         lancRes,        // lançamentos do mês (despesas + receitas manuais)
         lancHist,       // lançamentos 6 meses (para gráfico de despesas)
         caixaRes,       // caixa do mês
+        caixaHist,      // caixa 6 meses (gráfico + mês anterior)
         vendasRes,      // todas as vendas (rankings, situação)
         producaoRes,    // produção
         fixosRes,       // custos fixos
@@ -46,6 +47,8 @@ export function useDashboardData(mes: string) {
         pagFut,         // contas a pagar pendentes
         vendaItensRes,  // itens para top produtos
         pagamentosRes,  // pagamentos de vendas (6 meses) — fonte principal de receita
+        caixaTudo,      // TODO o histórico de caixa (sem filtro de data) — pro saldo acumulado
+        contasRes,      // saldo inicial das contas — ponto de partida do saldo acumulado
       ] = await Promise.all([
         // Lançamentos do mês (receitas manuais sem venda_id + todas as despesas)
         supabase.from('lancamentos').select('tipo,valor,status,categoria,venda_id')
@@ -58,6 +61,11 @@ export function useDashboardData(mes: string) {
         // Caixa do mês
         supabase.from('caixa_movimentos').select('tipo,valor')
           .gte('data', start).lte('data', end),
+
+        // Caixa 6 meses — pro gráfico e pro mês anterior baterem com a
+        // mesma regra do mês atual (ver soma abaixo).
+        supabase.from('caixa_movimentos').select('tipo,valor,data')
+          .gte('data', start6),
 
         // Vendas — sem filtro de data para rankings e situação gerais
         supabase.from('vendas').select('status,valor_total,cliente_nome,data_venda'),
@@ -95,11 +103,25 @@ export function useDashboardData(mes: string) {
         supabase.from('pagamentos_venda')
           .select('valor,juros_pct,data_pagamento')
           .gte('data_pagamento', start6),
+
+        // Todo o histórico de caixa, sem filtro — o saldo em caixa é
+        // acumulado (não reinicia todo mês). "Sobrou R$1.000 mês passado,
+        // esse valor continua contando esse mês" — por isso não dá pra
+        // filtrar só o mês atual aqui. conta_id incluído pra separar
+        // dinheiro físico de movimentos amarrados a outras contas.
+        supabase.from('caixa_movimentos').select('tipo,valor,data,conta_id'),
+
+        // Saldo inicial cadastrado nas contas (ponto de partida antes do
+        // primeiro movimento lançado no sistema).
+        supabase.from('contas_bancarias').select('id,saldo_inicial,ativo,tipo'),
       ]);
 
       const lanc     = lancRes.data ?? [];
       const hist     = lancHist.data ?? [];
       const caixa    = caixaRes.data ?? [];
+      const caixaH   = caixaHist.data ?? [];
+      const caixaAll = caixaTudo.data ?? [];
+      const contasAtivas = (contasRes.data ?? []).filter((c: any) => c.ativo !== false);
       const vendas   = vendasRes.data ?? [];
       const prod     = producaoRes.data ?? [];
       const fixos    = fixosRes.data ?? [];
@@ -133,25 +155,51 @@ export function useDashboardData(mes: string) {
           )
           .reduce((acc, l) => acc + Number(l.valor ?? 0), 0);
 
+      // Fluxo de caixa (entradas e saídas reais registradas) — dinheiro
+      // físico, à parte de vendas/lançamentos.
+      const fluxoEnt = caixa.filter(c => c.tipo === 'entrada').reduce((s, c) => s + Number(c.valor), 0);
+      const fluxoSai = caixa.filter(c => c.tipo === 'saida').reduce((s, c) => s + Number(c.valor), 0);
+      const fluxoMes = fluxoEnt - fluxoSai;
+
+      // Saldo em caixa ACUMULADO até o fim do mês selecionado — SÓ dinheiro
+      // físico (conta(s) tipo 'caixa'), não soma banco/pix/cartão. Isso
+      // não reinicia mês a mês: se sobrou R$1.000 mês passado, esse valor
+      // continua contando neste mês.
+      const contasCaixa = contasAtivas.filter((c: any) => c.tipo === 'caixa');
+      const idsContasCaixa = new Set(contasCaixa.map((c: any) => c.id));
+      const saldoInicialTotal = contasCaixa.reduce((s: number, c: any) => s + Number(c.saldo_inicial ?? 0), 0);
+      const saldoCaixaAtual = caixaAll
+        .filter((c: any) => (c.data ?? '') <= end)
+        // só entra no caixa físico: sem conta vinculada (padrão de hoje) ou
+        // vinculado explicitamente a uma conta do tipo 'caixa'
+        .filter((c: any) => !c.conta_id || idsContasCaixa.has(c.conta_id))
+        .reduce((s: number, c: any) => s + (c.tipo === 'entrada' ? 1 : -1) * Number(c.valor), saldoInicialTotal);
+
+      // Soma de entradas/saídas do caixa físico num intervalo — usado pra
+      // "Receita Total"/"Despesas Totais" contarem TODO o dinheiro que
+      // mexe na empresa, e não só o que passa por venda/lançamento.
+      const somaCaixa = (tipo: 'entrada' | 'saida', s: string, e: string) =>
+        caixaH
+          .filter(c => c.tipo === tipo && (c.data ?? '') >= s && (c.data ?? '') <= e)
+          .reduce((acc, c) => acc + Number(c.valor ?? 0), 0);
+
       // ─── KPIs do mês ────────────────────────────────────────────────────────
 
       // Receita = pagamentos recebidos no mês (qualquer status da venda)
       //         + lançamentos manuais de receita pagos no mês (sem venda_id)
+      //         + entradas de dinheiro físico no Fluxo de Caixa no mês
       const receitaMes =
         somaPagementos(start, end) +
-        somaLancManual(lanc, start, end);
+        somaLancManual(lanc, start, end) +
+        somaCaixa('entrada', start, end);
 
       // Despesa = todos lançamentos de despesa do mês (independe de status)
-      const despesaMes = lanc
-        .filter(l => l.tipo === 'despesa')
-        .reduce((s, l) => s + Number(l.valor), 0);
+      //         + saídas de dinheiro físico no Fluxo de Caixa no mês
+      const despesaMes =
+        lanc.filter(l => l.tipo === 'despesa').reduce((s, l) => s + Number(l.valor), 0) +
+        somaCaixa('saida', start, end);
 
       const lucroMes = receitaMes - despesaMes;
-
-      // Fluxo de caixa (entradas e saídas reais registradas)
-      const fluxoEnt = caixa.filter(c => c.tipo === 'entrada').reduce((s, c) => s + Number(c.valor), 0);
-      const fluxoSai = caixa.filter(c => c.tipo === 'saida').reduce((s, c) => s + Number(c.valor), 0);
-      const fluxoMes = fluxoEnt - fluxoSai;
 
       // ─── Mês anterior para % variação ───────────────────────────────────────
 
@@ -161,8 +209,8 @@ export function useDashboardData(mes: string) {
       const { start: sa, end: ea } = mesRange(mesAnt);
 
       const lancAnt  = hist.filter(l => (l.data_vencimento ?? '') >= sa && (l.data_vencimento ?? '') <= ea);
-      const recAnt   = somaPagementos(sa, ea) + somaLancManual(lancAnt, sa, ea);
-      const despAnt  = lancAnt.filter(l => l.tipo === 'despesa').reduce((s, l) => s + Number(l.valor), 0);
+      const recAnt   = somaPagementos(sa, ea) + somaLancManual(lancAnt, sa, ea) + somaCaixa('entrada', sa, ea);
+      const despAnt  = lancAnt.filter(l => l.tipo === 'despesa').reduce((s, l) => s + Number(l.valor), 0) + somaCaixa('saida', sa, ea);
 
       const pct = (cur: number, prev: number) =>
         prev === 0 ? (cur > 0 ? 100 : 0) : ((cur - prev) / prev) * 100;
@@ -183,8 +231,8 @@ export function useDashboardData(mes: string) {
         return {
           name: NOMES_MES[mm.slice(5, 7)] ?? mm.slice(5, 7),
           vendas: somaVendas(ms, me),
-          receita: somaPagementos(ms, me) + somaLancManual(ml, ms, me),
-          despesa: ml.filter(l => l.tipo === 'despesa').reduce((s, l) => s + Number(l.valor), 0),
+          receita: somaPagementos(ms, me) + somaLancManual(ml, ms, me) + somaCaixa('entrada', ms, me),
+          despesa: ml.filter(l => l.tipo === 'despesa').reduce((s, l) => s + Number(l.valor), 0) + somaCaixa('saida', ms, me),
         };
       });
 
@@ -252,7 +300,7 @@ export function useDashboardData(mes: string) {
       const sparkLucro   = chart6.map(c => ({ v: c.receita - c.despesa }));
 
       return {
-        receitaMes, despesaMes, lucroMes, fluxoMes,
+        receitaMes, despesaMes, lucroMes, fluxoMes, saldoCaixaAtual,
         pctReceita: pct(receitaMes, recAnt),
         pctDespesa: pct(despesaMes, despAnt),
         pctLucro:   pct(lucroMes, recAnt - despAnt),
