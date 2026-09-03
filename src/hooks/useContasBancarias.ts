@@ -16,6 +16,9 @@ export interface ContaBancaria {
   ativo: boolean;
   ordem: number;
   observacoes?: string | null;
+  /** Nomes das formas de pagamento que esta conta aceita (ex: ['PIX','Transferência']).
+   *  Usado pra filtrar o select de conta na hora de registrar um pagamento/lançamento. */
+  formas_aceitas?: string[];
   created_at?: string;
   updated_at?: string;
 }

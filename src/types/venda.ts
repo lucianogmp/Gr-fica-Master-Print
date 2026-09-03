@@ -62,6 +62,8 @@ export interface PagamentoVenda {
   venda_id: string;
   valor: number;
   forma_pagamento: string;
+  /** Conta financeira (banco/caixa) que recebeu esse pagamento — obrigatória. */
+  conta_id: string;
   parcelas?: number | null;
   juros_pct?: number | null;
   data_pagamento: string;

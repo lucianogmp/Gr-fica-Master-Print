@@ -5,14 +5,16 @@ import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLancamentos } from '../../hooks/useLancamentos';
 import { useCaixaMovimentos } from '../../hooks/useCaixaMovimentos';
-import { Lancamento, StatusLancamento } from '../../types/financeiro';
+import { useContasBancarias } from '../../hooks/useContasBancarias';
+import { Lancamento, StatusLancamento, FORMAS_PAGAMENTO, CATEGORIAS_RECEITA, CATEGORIAS_DESPESA } from '../../types/financeiro';
 import { ModalLancamento } from '../../components/financeiro/ModalLancamento';
 import { KpiCard } from '../../components/ui/KpiCard';
 import { useConfirm } from '../../components/ui/ConfirmModal';
 import { OrdenarMenu, aplicarOrdenacao, Ordenacao } from '../../components/ui/OrdenarMenu';
 import { FiltrosAvancados, aplicarFiltrosAvancados, FiltrosAvancadosValor } from '../../components/ui/FiltrosAvancados';
+import { DarkSelect } from '../../components/ui/DarkSelect';
 import {
-  ArrowUp, ArrowDown, Clock, AlertCircle, Check, X, ExternalLink, LucideIcon, CheckSquare, Square, Wallet,
+  ArrowUp, ArrowDown, Clock, AlertCircle, Check, X, ExternalLink, LucideIcon, CheckSquare, Square, Wallet, Landmark,
 } from 'lucide-react';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -57,15 +59,17 @@ type TabelaLancamentosProps = {
 
 export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio }: TabelaLancamentosProps) {
   const navigate = useNavigate();
-  const { data: todos = [], isLoading, criar, atualizar, pagar, deletar, isSaving } = useLancamentos();
+  const { data: todos = [], isLoading, criar, atualizar, pagar, deletar, isSaving, isPagando } = useLancamentos();
+  const { data: contas = [] } = useContasBancarias();
   // Fluxo de Caixa também é "algo lançado no sistema" (entrada/saída de
   // dinheiro) — mescla aqui só pra exibição, marcado com isDeCaixa. Editar
   // e excluir desses continua só lá no Fluxo de Caixa, pra não arriscar
   // mexer na tabela errada numa ação em massa.
   const { data: movsCaixa = [], isLoading: isLoadingCaixa } = useCaixaMovimentos();
+  const movsCaixaReais = useMemo(() => movsCaixa.filter(m => m.origem !== 'transferencia'), [movsCaixa]);
   const todosComCaixa = useMemo<LancamentoExibido[]>(() => [
     ...todos,
-    ...movsCaixa.map((m): LancamentoExibido => ({
+    ...movsCaixaReais.map((m): LancamentoExibido => ({
       id:              `caixa:${m.id}`,
       tipo:            m.tipo === 'entrada' ? 'receita' : 'despesa',
       descricao:       m.descricao,
@@ -78,9 +82,12 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
       observacoes:     m.observacoes ?? null,
       isDeCaixa:       true,
     })),
-  ], [todos, movsCaixa]);
+  ], [todos, movsCaixaReais]);
   const { confirmar, ConfirmModal } = useConfirm();
 
+  const [pagandoLanc, setPagandoLanc] = useState<LancamentoExibido | null>(null);
+  const [formaPag, setFormaPag]       = useState('');
+  const [contaPagId, setContaPagId]   = useState('');
   const [modalOpen, setModalOpen]       = useState(false);
   const [editandoLanc, setEditandoLanc] = useState<Lancamento | null>(null);
   const [tipoInicial, setTipoInicial]   = useState<'receita' | 'despesa'>(fixarTipo ?? 'despesa');
@@ -89,6 +96,9 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
   const [mesLanc, setMesLanc]           = useState(() => new Date().toISOString().slice(0, 7));
   const [ordenacao, setOrdenacao] = useState<Ordenacao | null>({ campo: 'data', direcao: 'desc' });
   const [filtrosAv, setFiltrosAv] = useState<FiltrosAvancadosValor>({});
+  const [filtroContaId, setFiltroContaId] = useState('');
+  const [filtroCategoria, setFiltroCategoria] = useState('');
+  const [filtroForma, setFiltroForma] = useState('');
 
   // Aplica filtro de tipo fixo (se vier da tela pai)
   const base = useMemo(() =>
@@ -107,14 +117,17 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
         !busca ||
         l.descricao.toLowerCase().includes(busca.toLowerCase()) ||
         (l.cliente_nome ?? '').toLowerCase().includes(busca.toLowerCase())
-      );
+      )
+      .filter(l => !filtroContaId || l.conta_id === filtroContaId)
+      .filter(l => !filtroCategoria || l.categoria === filtroCategoria)
+      .filter(l => !filtroForma || l.forma_pagamento === filtroForma);
     const comFiltrosAv = aplicarFiltrosAvancados(basico, filtrosAv, l => l.data_vencimento, l => l.valor);
     return aplicarOrdenacao(comFiltrosAv, ordenacao, {
       data:    l => l.data_vencimento,
       cliente: l => l.cliente_nome ?? '',
       valor:   l => Number(l.valor ?? 0),
     });
-  }, [base, filtroStatus, busca, filtrosAv, ordenacao]);
+  }, [base, filtroStatus, busca, filtrosAv, ordenacao, filtroContaId, filtroCategoria, filtroForma]);
 
   // Seleção múltipla: inclui todos os lançamentos, inclusive os vindos de
   // venda. Excluir um lançamento de venda não mexe na venda em si (o
@@ -214,6 +227,35 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
         <input value={busca} onChange={e => setBusca(e.target.value)}
           placeholder="Buscar por descrição ou cliente..."
           className="flex-1 min-w-48 bg-[#1f2937] border border-gray-700 rounded-xl px-4 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500" />
+
+        <div className="w-40">
+          <DarkSelect
+            value={filtroContaId}
+            onChange={setFiltroContaId}
+            allowEmpty
+            placeholder="Todas as contas"
+            options={contas.filter(c => c.ativo).map(c => ({ value: c.id, label: c.nome }))}
+          />
+        </div>
+        <div className="w-40">
+          <DarkSelect
+            value={filtroCategoria}
+            onChange={setFiltroCategoria}
+            allowEmpty
+            placeholder="Toda categoria"
+            options={Array.from(new Set([...CATEGORIAS_RECEITA, ...CATEGORIAS_DESPESA]))}
+          />
+        </div>
+        <div className="w-40">
+          <DarkSelect
+            value={filtroForma}
+            onChange={setFiltroForma}
+            allowEmpty
+            placeholder="Toda forma"
+            options={FORMAS_PAGAMENTO}
+          />
+        </div>
+
         <OrdenarMenu
           valor={ordenacao}
           onChange={setOrdenacao}
@@ -322,7 +364,11 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
                     ) : (
                       <div className="flex gap-1 justify-center">
                         {st !== 'pago' && st !== 'cancelado' && (
-                          <button onClick={() => pagar({ id: l.id })}
+                          <button onClick={() => {
+                            setPagandoLanc(l);
+                            setFormaPag(l.forma_pagamento || FORMAS_PAGAMENTO[0]);
+                            setContaPagId('');
+                          }}
                             className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg bg-green-500/15 text-green-400 hover:bg-green-500/25 border border-green-500/30 transition-all">
                             <Check className="w-3 h-3" /> Pagar
                           </button>
@@ -345,6 +391,85 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
         </table>
         </div>
       </div>
+
+      {/* Confirmar pagamento — exige conta financeira, filtrada pela forma escolhida,
+          pra que o saldo da conta certa seja atualizado (regra: forma de pagamento ≠ conta). */}
+      {pagandoLanc && (() => {
+        const contasAtivas = contas.filter(c => c.ativo);
+        const contasDaForma = contasAtivas.filter(c => (c.formas_aceitas ?? []).includes(formaPag));
+        const opcoesConta = contasDaForma.length > 0 ? contasDaForma : contasAtivas;
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+            <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5 w-full max-w-sm space-y-4">
+              <p className="text-sm font-bold text-white flex items-center gap-2">
+                <Landmark className="w-4 h-4 text-green-400" />
+                {pagandoLanc.tipo === 'receita' ? 'Confirmar recebimento' : 'Confirmar pagamento'}
+              </p>
+              <p className="text-xs text-gray-400">{pagandoLanc.descricao} — {fmtBRL(Number(pagandoLanc.valor))}</p>
+
+              <div>
+                <label className="text-[10px] text-gray-500 uppercase block mb-1">Forma de pagamento</label>
+                <DarkSelect
+                  value={formaPag}
+                  onChange={v => { setFormaPag(v); setContaPagId(''); }}
+                  allowEmpty={false}
+                  options={FORMAS_PAGAMENTO}
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] text-gray-500 uppercase block mb-1">Conta financeira *</label>
+                {opcoesConta.length === 0 ? (
+                  <p className="text-[11px] text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 rounded-lg px-3 py-2">
+                    Nenhuma conta cadastrada ainda. Cadastre uma em Configurações → Formas de Pagamento.
+                  </p>
+                ) : (
+                  <>
+                    <DarkSelect
+                      value={contaPagId}
+                      onChange={setContaPagId}
+                      allowEmpty
+                      options={opcoesConta.map(c => ({ value: c.id, label: c.nome }))}
+                    />
+                    {contasDaForma.length === 0 && (
+                      <p className="text-[10px] text-gray-500 mt-1">
+                        Nenhuma conta marcada como aceitando "{formaPag}" — mostrando todas as contas ativas.
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-2 pt-1">
+                <button onClick={() => setPagandoLanc(null)}
+                  className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-xs font-bold">
+                  Cancelar
+                </button>
+                <button
+                  disabled={!contaPagId || isPagando}
+                  onClick={async () => {
+                    await pagar({
+                      id: pagandoLanc.id,
+                      contaId: contaPagId,
+                      forma: formaPag,
+                      lancamento: {
+                        tipo: pagandoLanc.tipo,
+                        valor: Number(pagandoLanc.valor),
+                        descricao: pagandoLanc.descricao,
+                        cliente_nome: pagandoLanc.cliente_nome ?? null,
+                        venda_id: pagandoLanc.venda_id ?? null,
+                      },
+                    });
+                    setPagandoLanc(null);
+                  }}
+                  className="px-4 py-1.5 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white rounded-lg text-xs font-bold">
+                  {isPagando ? 'Confirmando...' : 'Confirmar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       <ModalLancamento
         open={modalOpen}

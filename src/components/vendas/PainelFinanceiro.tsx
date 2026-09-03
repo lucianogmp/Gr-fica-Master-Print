@@ -1,6 +1,7 @@
 // src/components/vendas/PainelFinanceiro.tsx
 import { useState } from 'react';
 import { PagamentoVenda } from '../../types/venda';
+import { ContaBancaria } from '../../hooks/useContasBancarias';
 import {
   Configuracoes,
   FormasPagamentoConfig,
@@ -61,6 +62,7 @@ interface Props {
   pagamentos: PagamentoVenda[];
   cfg?: Configuracoes | null;
   vendaId?: string | null;
+  contas?: ContaBancaria[];
   onDescontoChange: (v: number) => void;
   onFreteChange: (v: number) => void;
   onTaxaChange: (v: number) => void;
@@ -77,16 +79,20 @@ const IN = "bg-[#111827] border border-gray-700 rounded-lg px-2.5 py-1.5 text-wh
 
 export function PainelFinanceiro({
   subtotal, desconto, frete, taxaAdicional, parcelas, formaPagamento,
-  valorPago, pagamentos, cfg, vendaId,
+  valorPago, pagamentos, cfg, vendaId, contas = [],
   onDescontoChange, onFreteChange, onTaxaChange, onParcelasChange,
   onFormaPagamentoChange, onRegistrarPagamento, onExcluirPagamento, isRegistrando,
 }: Props) {
   const [showNovoPag, setShowNovoPag]     = useState(false);
   const [showHistorico, setShowHistorico] = useState(false);
-  const [novoPag, setNovoPag] = useState<{ valor: number; forma: string; data: string; obs: string; parcelas: number }>({
+  const [novoPag, setNovoPag] = useState<{ valor: number; forma: string; data: string; obs: string; parcelas: number; contaId: string }>({
     valor: 0, forma: formaPagamento || 'PIX',
-    data: new Date().toISOString().slice(0, 10), obs: '', parcelas: 1,
+    data: new Date().toISOString().slice(0, 10), obs: '', parcelas: 1, contaId: '',
   });
+
+  const contasAtivas  = contas.filter(c => c.ativo);
+  const contasDaForma = contasAtivas.filter(c => (c.formas_aceitas ?? []).includes(novoPag.forma));
+  const opcoesConta   = contasDaForma.length > 0 ? contasDaForma : contasAtivas;
 
   const formas           = parseFormas(cfg?.formas_pagamento).filter(f => f.ativo);
   const formaNovoPag     = formas.find(f => f.nome === novoPag.forma);
@@ -120,11 +126,12 @@ export function PainelFinanceiro({
   const pctPago       = totalEfetivo > 0 ? Math.min(100, (valorLiquidoPago / totalEfetivo) * 100) : 0;
 
   async function handleRegistrar() {
-    if (!vendaId || !novoPag.valor) return;
+    if (!vendaId || !novoPag.valor || !novoPag.contaId) return;
     await onRegistrarPagamento({
       venda_id:        vendaId,
       valor:           novoPag.valor,
       forma_pagamento: novoPag.forma,
+      conta_id:        novoPag.contaId,
       parcelas:        permiteParc && novoPag.parcelas > 1 ? novoPag.parcelas : null,
       juros_pct:       taxaPctNovoPag > 0 ? taxaPctNovoPag : null,
       data_pagamento:  novoPag.data,
@@ -132,7 +139,7 @@ export function PainelFinanceiro({
       usuario_id:      null,
       usuario_nome:    null,
     });
-    setNovoPag({ valor: 0, forma: formaPagamento || 'PIX', data: new Date().toISOString().slice(0, 10), obs: '', parcelas: 1 });
+    setNovoPag({ valor: 0, forma: formaPagamento || 'PIX', data: new Date().toISOString().slice(0, 10), obs: '', parcelas: 1, contaId: '' });
     setShowNovoPag(false);
   }
 
@@ -299,7 +306,7 @@ export function PainelFinanceiro({
       {showNovoPag && vendaId && (
         <div className="border-t border-gray-700 px-4 py-4 space-y-3">
           <p className="text-[10px] font-bold text-green-400 uppercase">Novo Pagamento</p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             <div>
               <label className="text-[10px] text-gray-500 uppercase block mb-1">Valor (R$) *</label>
               <MoneyInput value={novoPag.valor}
@@ -316,10 +323,27 @@ export function PainelFinanceiro({
               <label className="text-[10px] text-gray-500 uppercase block mb-1">Forma</label>
               <DarkSelect
                 value={novoPag.forma}
-                onChange={v => setNovoPag(f => ({ ...f, forma: v, parcelas: 1 }))}
+                onChange={v => {
+                  const opcoes = contasAtivas.filter(c => (c.formas_aceitas ?? []).includes(v));
+                  const auto = opcoes.length === 1 ? opcoes[0].id : '';
+                  setNovoPag(f => ({ ...f, forma: v, parcelas: 1, contaId: auto }));
+                }}
                 allowEmpty={false}
                 options={formas.map(f => f.nome)}
               />
+            </div>
+            <div>
+              <label className="text-[10px] text-gray-500 uppercase block mb-1">Conta *</label>
+              {opcoesConta.length === 0 ? (
+                <span className="text-[10px] text-yellow-400">Cadastre uma conta em Configurações</span>
+              ) : (
+                <DarkSelect
+                  value={novoPag.contaId}
+                  onChange={v => setNovoPag(f => ({ ...f, contaId: v }))}
+                  allowEmpty
+                  options={opcoesConta.map(c => ({ value: c.id, label: c.nome }))}
+                />
+              )}
             </div>
             {permiteParc && maxParcelas > 1 ? (
               <div>
@@ -358,7 +382,7 @@ export function PainelFinanceiro({
               className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-xs font-bold">
               Cancelar
             </button>
-            <button onClick={handleRegistrar} disabled={isRegistrando || !novoPag.valor}
+            <button onClick={handleRegistrar} disabled={isRegistrando || !novoPag.valor || !novoPag.contaId}
               className="px-4 py-1.5 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white rounded-lg text-xs font-bold">
               {isRegistrando ? 'Salvando...' : 'Confirmar'}
             </button>

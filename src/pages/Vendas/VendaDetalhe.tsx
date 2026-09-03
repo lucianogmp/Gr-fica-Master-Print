@@ -16,6 +16,7 @@ import { ItensEditor } from '../../components/vendas/ItensEditor';
 import { ClienteSelectorVenda } from '../../components/vendas/ClienteSelectorVenda';
 import { VendedorSelector } from '../../components/vendas/VendedorSelector';
 import { PainelFinanceiro } from '../../components/vendas/PainelFinanceiro';
+import { useContasBancarias } from '../../hooks/useContasBancarias';
 import { GastosVenda } from '../../components/vendas/GastosVenda';
 import { DateInput } from '../../components/ui/DateInput';
 import { useConfirm } from '../../components/ui/ConfirmModal';
@@ -87,6 +88,7 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
     excluir: excluirPagamento,
     isRegistrando,
   } = usePagamentosVenda(vendaId);
+  const { data: contas = [] } = useContasBancarias();
 
   useEffect(() => {
     carregandoRef.current = true;
@@ -459,6 +461,7 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
             pagamentos={isNovo ? pagamentosRascunho : pagamentos}
             cfg={cfg}
             vendaId={vendaId}
+            contas={contas}
             onDescontoChange={v => setF('desconto', v)}
             onFreteChange={v => setF('frete', v)}
             onTaxaChange={v => setF('taxa_adicional', v)}

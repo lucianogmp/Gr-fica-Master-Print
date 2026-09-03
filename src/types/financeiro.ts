@@ -14,6 +14,9 @@ export interface Lancamento {
   data_pagamento?: string | null;
   observacoes?: string | null;
   forma_pagamento?: string | null;
+  /** Conta financeira (banco/caixa) onde o dinheiro entrou ou saiu. Obrigatória a partir de agora
+   *  pra marcar como pago/recebido — lançamentos antigos ficam null até serem revisados manualmente. */
+  conta_id?: string | null;
   grupo_recorrencia?: string | null;
   parcela_num?: number | null;
   total_parcelas?: number | null;

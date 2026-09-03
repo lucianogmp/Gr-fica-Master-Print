@@ -35,7 +35,8 @@ export function useDashboardData(mes: string) {
       const start6 = `${meses6[0]}-01`;
 
       const [
-        lancTodos,      // todos os lançamentos (filtro de mês feito no cliente)
+        lancRes,        // lançamentos do mês (despesas + receitas manuais)
+        lancHist,       // lançamentos 6 meses (para gráfico de despesas)
         caixaRes,       // caixa do mês
         caixaHist,      // caixa 6 meses (gráfico + mês anterior)
         vendasRes,      // todas as vendas (rankings, situação)
@@ -49,20 +50,21 @@ export function useDashboardData(mes: string) {
         caixaTudo,      // TODO o histórico de caixa (sem filtro de data) — pro saldo acumulado
         contasRes,      // saldo inicial das contas — ponto de partida do saldo acumulado
       ] = await Promise.all([
-        // Todos os lançamentos — sem filtro de data na consulta porque um
-        // lançamento sem vencimento definido (fica "—" na tela) não
-        // aparecia em NADA que filtrasse por data_vencimento no banco.
-        // O filtro por mês agora é feito no cliente, usando a data efetiva
-        // (vencimento, ou a data de criação quando não tem vencimento).
-        supabase.from('lancamentos').select('tipo,valor,status,categoria,venda_id,data_vencimento,created_at'),
+        // Lançamentos do mês (receitas manuais sem venda_id + todas as despesas)
+        supabase.from('lancamentos').select('tipo,valor,status,categoria,venda_id')
+          .gte('data_vencimento', start).lte('data_vencimento', end),
+
+        // Lançamentos 6 meses para gráfico de despesas
+        supabase.from('lancamentos').select('tipo,valor,status,data_vencimento,venda_id')
+          .gte('data_vencimento', start6),
 
         // Caixa do mês
-        supabase.from('caixa_movimentos').select('tipo,valor')
+        supabase.from('caixa_movimentos').select('tipo,valor,origem')
           .gte('data', start).lte('data', end),
 
         // Caixa 6 meses — pro gráfico e pro mês anterior baterem com a
         // mesma regra do mês atual (ver soma abaixo).
-        supabase.from('caixa_movimentos').select('tipo,valor,data')
+        supabase.from('caixa_movimentos').select('tipo,valor,data,origem')
           .gte('data', start6),
 
         // Vendas — sem filtro de data para rankings e situação gerais
@@ -114,15 +116,8 @@ export function useDashboardData(mes: string) {
         supabase.from('contas_bancarias').select('id,saldo_inicial,ativo,tipo'),
       ]);
 
-      // Data efetiva de um lançamento: usa o vencimento se tiver, senão
-      // cai pra data em que foi criado — assim nenhum lançamento "some"
-      // dos totais por falta de vencimento preenchido.
-      const dataEfetiva = (l: { data_vencimento?: string | null; created_at?: string | null }) =>
-        l.data_vencimento ?? (l.created_at ? l.created_at.slice(0, 10) : '');
-
-      const todosLanc = lancTodos.data ?? [];
-      const lanc = todosLanc.filter(l => dataEfetiva(l) >= start && dataEfetiva(l) <= end);
-      const hist = todosLanc.filter(l => dataEfetiva(l) >= start6);
+      const lanc     = lancRes.data ?? [];
+      const hist     = lancHist.data ?? [];
       const caixa    = caixaRes.data ?? [];
       const caixaH   = caixaHist.data ?? [];
       const caixaAll = caixaTudo.data ?? [];
@@ -148,22 +143,23 @@ export function useDashboardData(mes: string) {
           }, 0);
 
       // Receita manual: lançamentos de receita SEM venda vinculada (ex: serviços avulsos)
-      // Usa a data efetiva (vencimento ou criação) do lançamento
+      // Usa data_vencimento pois são lançamentos manuais
       const somaLancManual = (arr: typeof lanc, s: string, e: string) =>
         arr
           .filter(l =>
             l.tipo === 'receita' &&
             l.status === 'pago' &&
             !l.venda_id &&
-            dataEfetiva(l) >= s &&
-            dataEfetiva(l) <= e
+            (l.data_vencimento ?? '') >= s &&
+            (l.data_vencimento ?? '') <= e
           )
           .reduce((acc, l) => acc + Number(l.valor ?? 0), 0);
 
       // Fluxo de caixa (entradas e saídas reais registradas) — dinheiro
-      // físico, à parte de vendas/lançamentos.
-      const fluxoEnt = caixa.filter(c => c.tipo === 'entrada').reduce((s, c) => s + Number(c.valor), 0);
-      const fluxoSai = caixa.filter(c => c.tipo === 'saida').reduce((s, c) => s + Number(c.valor), 0);
+      // físico, à parte de vendas/lançamentos. Transferência entre contas
+      // não entra aqui — é movimentação interna, não receita nem despesa.
+      const fluxoEnt = caixa.filter(c => c.tipo === 'entrada' && c.origem !== 'transferencia').reduce((s, c) => s + Number(c.valor), 0);
+      const fluxoSai = caixa.filter(c => c.tipo === 'saida' && c.origem !== 'transferencia').reduce((s, c) => s + Number(c.valor), 0);
       const fluxoMes = fluxoEnt - fluxoSai;
 
       // Saldo em caixa ACUMULADO até o fim do mês selecionado — SÓ dinheiro
@@ -185,7 +181,7 @@ export function useDashboardData(mes: string) {
       // mexe na empresa, e não só o que passa por venda/lançamento.
       const somaCaixa = (tipo: 'entrada' | 'saida', s: string, e: string) =>
         caixaH
-          .filter(c => c.tipo === tipo && (c.data ?? '') >= s && (c.data ?? '') <= e)
+          .filter(c => c.tipo === tipo && c.origem !== 'transferencia' && (c.data ?? '') >= s && (c.data ?? '') <= e)
           .reduce((acc, c) => acc + Number(c.valor ?? 0), 0);
 
       // ─── KPIs do mês ────────────────────────────────────────────────────────
@@ -213,7 +209,7 @@ export function useDashboardData(mes: string) {
       const mesAnt = `${antD.getFullYear()}-${String(antD.getMonth() + 1).padStart(2, '0')}`;
       const { start: sa, end: ea } = mesRange(mesAnt);
 
-      const lancAnt  = hist.filter(l => dataEfetiva(l) >= sa && dataEfetiva(l) <= ea);
+      const lancAnt  = hist.filter(l => (l.data_vencimento ?? '') >= sa && (l.data_vencimento ?? '') <= ea);
       const recAnt   = somaPagementos(sa, ea) + somaLancManual(lancAnt, sa, ea) + somaCaixa('entrada', sa, ea);
       const despAnt  = lancAnt.filter(l => l.tipo === 'despesa').reduce((s, l) => s + Number(l.valor), 0) + somaCaixa('saida', sa, ea);
 
@@ -232,7 +228,7 @@ export function useDashboardData(mes: string) {
 
       const chart6 = meses6.map(mm => {
         const { start: ms, end: me } = mesRange(mm);
-        const ml = hist.filter(l => dataEfetiva(l) >= ms && dataEfetiva(l) <= me);
+        const ml = hist.filter(l => (l.data_vencimento ?? '') >= ms && (l.data_vencimento ?? '') <= me);
         return {
           name: NOMES_MES[mm.slice(5, 7)] ?? mm.slice(5, 7),
           vendas: somaVendas(ms, me),

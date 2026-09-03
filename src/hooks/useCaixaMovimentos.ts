@@ -14,6 +14,9 @@ export interface CaixaMovimento {
   origem?: string | null;
   venda_id?: string | null;
   conta_id?: string | null;   // ← novo: vínculo com conta bancária
+  /** Presente só em movimentos gerados por transferência entre contas — liga
+   *  a saída (conta origem) com a entrada (conta destino) do mesmo evento. */
+  transferencia_id?: string | null;
   // Quem lançou — preenchido automático pelo banco (nunca pelo formulário).
   criado_por_id?: string | null;
   criado_por_email?: string | null;
@@ -72,21 +75,65 @@ export function useCaixaMovimentos() {
 
   const deletar = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('caixa_movimentos')
-        .delete()
-        .eq('id', id);
-      if (error) throw error;
+      // Se for um dos lados de uma transferência, remove o par inteiro —
+      // apagar só um lado deixaria o saldo desbalanceado entre as contas.
+      const { data: mov } = await supabase.from('caixa_movimentos').select('transferencia_id').eq('id', id).maybeSingle();
+      if (mov?.transferencia_id) {
+        const { error } = await supabase.from('caixa_movimentos').delete().eq('transferencia_id', mov.transferencia_id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('caixa_movimentos').delete().eq('id', id);
+        if (error) throw error;
+      }
     },
     onSuccess: () => { invalidar(); toast.success('Movimento removido.'); },
     onError:   (e: any) => toast.error(e.message),
   });
 
+  /** Transferência entre contas — não é receita nem despesa, só move saldo. */
+  const transferir = useMutation({
+    mutationFn: async (params: {
+      contaOrigemId: string;
+      contaDestinoId: string;
+      valor: number;
+      data: string;
+      observacoes?: string | null;
+      nomeOrigem: string;
+      nomeDestino: string;
+    }) => {
+      const { contaOrigemId, contaDestinoId, valor, data, observacoes, nomeOrigem, nomeDestino } = params;
+      if (!contaOrigemId || !contaDestinoId) throw new Error('Selecione as duas contas.');
+      if (contaOrigemId === contaDestinoId) throw new Error('A conta de origem e destino não podem ser a mesma.');
+      if (!valor || valor <= 0) throw new Error('Informe um valor válido.');
+
+      const transferenciaId = crypto.randomUUID();
+      const descricaoBase = `Transferência: ${nomeOrigem} → ${nomeDestino}`;
+
+      const { error } = await supabase.from('caixa_movimentos').insert([
+        {
+          tipo: 'saida', valor, data, conta_id: contaOrigemId,
+          descricao: descricaoBase, observacoes: observacoes || null,
+          origem: 'transferencia', transferencia_id: transferenciaId,
+        },
+        {
+          tipo: 'entrada', valor, data, conta_id: contaDestinoId,
+          descricao: descricaoBase, observacoes: observacoes || null,
+          origem: 'transferencia', transferencia_id: transferenciaId,
+        },
+      ]);
+      if (error) throw error;
+    },
+    onSuccess: () => { invalidar(); toast.success('Transferência registrada!'); },
+    onError:   (e: any) => toast.error(e.message),
+  });
+
   return {
     ...query,
-    criar:     criar.mutateAsync,
-    atualizar: atualizar.mutateAsync,
-    deletar:   deletar.mutate,
-    isSaving:  criar.isPending || atualizar.isPending,
+    criar:      criar.mutateAsync,
+    atualizar:  atualizar.mutateAsync,
+    deletar:    deletar.mutate,
+    transferir: transferir.mutateAsync,
+    isSaving:      criar.isPending || atualizar.isPending,
+    isTransferindo: transferir.isPending,
   };
 }

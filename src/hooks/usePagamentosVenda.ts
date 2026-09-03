@@ -138,6 +138,9 @@ export function usePagamentosVenda(vendaId: string | null) {
 
   const registrar = useMutation({
     mutationFn: async (pag: Omit<PagamentoVenda, 'id' | 'created_at'>) => {
+      if (!pag.conta_id) {
+        throw new Error('Selecione a conta financeira que recebeu esse pagamento.');
+      }
       // Busca dados da venda
       const { data: venda } = await supabase
         .from('vendas')
@@ -189,22 +192,19 @@ export function usePagamentosVenda(vendaId: string | null) {
         }
       }
 
-      // 3. Registra entrada no fluxo de caixa SOMENTE para pagamentos em dinheiro.
-      // PIX, cartão, boleto etc. não movimentam o caixa físico.
-      const formaNorm = (pag.forma_pagamento ?? '').toLowerCase().trim();
-      const isDinheiro = formaNorm === 'dinheiro' || formaNorm === 'especie' || formaNorm === 'espécie';
-      if (isDinheiro) {
-        await supabase.from('caixa_movimentos').insert({
-          tipo:         'entrada',
-          valor:        valorLiq,
-          data:         pag.data_pagamento,
-          cliente_nome: venda?.cliente_nome || null,
-          descricao,
-          venda_id:     pag.venda_id,
-          origem,
-          observacoes:  obsPartes || null,
-        });
-      }
+      // 3. Registra entrada na conta financeira escolhida — antes só entrava em
+      // dinheiro; agora toda forma de pagamento move o saldo da conta certa.
+      await supabase.from('caixa_movimentos').insert({
+        tipo:         'entrada',
+        valor:        valorLiq,
+        data:         pag.data_pagamento,
+        cliente_nome: venda?.cliente_nome || null,
+        descricao,
+        venda_id:     pag.venda_id,
+        conta_id:     pag.conta_id,
+        origem,
+        observacoes:  obsPartes || null,
+      });
 
       // 4. Recalcula financeiro (atualiza valor_total, valor_pago e lançamento)
       await recalcularFinanceiroVenda(pag.venda_id);

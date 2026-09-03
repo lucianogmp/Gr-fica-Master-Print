@@ -1,12 +1,14 @@
 // src/pages/Financeiro/ResumoFinanceiro.tsx
+import { useState, useMemo } from 'react';
 import { useLancamentos } from '../../hooks/useLancamentos';
 import { useVendas } from '../../hooks/useVendas';
 import { useSaldoContas, TIPO_CONTA } from '../../hooks/useContasBancarias';
 import { STATUS_VENDA } from '../../types/venda';
 import { KpiCard } from '../../components/ui/KpiCard';
+import { MonthInput } from '../../components/ui/MonthInput';
 import {
   PieChart, ArrowUp, ArrowDown, Wallet, ShoppingCart,
-  Check, Clock, CreditCard, Building2, TrendingUp,
+  Check, Clock, CreditCard, Building2, TrendingUp, ChevronLeft, ChevronRight, Scale,
 } from 'lucide-react';
 
 const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -15,6 +17,26 @@ export function ResumoFinanceiro() {
   const { data: lancamentos = [], isLoading: loadLanc } = useLancamentos();
   const { data: vendas = [],      isLoading: loadVendas } = useVendas();
   const { saldos, totalGeral,     isLoading: loadContas } = useSaldoContas();
+
+  const [mesDre, setMesDre] = useState(() => new Date().toISOString().slice(0, 7));
+  function deslocarMesDre(delta: number) {
+    const [y, m] = mesDre.split('-').map(Number);
+    const d = new Date(y, m - 1 + delta, 1);
+    setMesDre(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  }
+
+  // ── DRE / Resultado do mês ──────────────────────────────────────────────
+  // Diferente do "Saldo por Conta" (dinheiro que existe agora) e do Fluxo de
+  // Caixa (entradas − saídas): aqui é desempenho do período — receitas menos
+  // despesas efetivamente pagas/recebidas dentro do mês, por competência de
+  // pagamento (data_pagamento), não de vencimento.
+  const { receitasMes, despesasMes, resultadoMes } = useMemo(() => {
+    const doMes = (l: typeof lancamentos[number]) =>
+      l.status === 'pago' && (l.data_pagamento ?? '').startsWith(mesDre);
+    const receitasMes = lancamentos.filter(l => l.tipo === 'receita' && doMes(l)).reduce((s, l) => s + Number(l.valor), 0);
+    const despesasMes = lancamentos.filter(l => l.tipo === 'despesa' && doMes(l)).reduce((s, l) => s + Number(l.valor), 0);
+    return { receitasMes, despesasMes, resultadoMes: receitasMes - despesasMes };
+  }, [lancamentos, mesDre]);
 
   const aReceber      = lancamentos.filter(l => l.tipo === 'receita' && !['pago','cancelado'].includes(l.status)).reduce((s, l) => s + Number(l.valor), 0);
   const aPagar        = lancamentos.filter(l => l.tipo === 'despesa' && !['pago','cancelado'].includes(l.status)).reduce((s, l) => s + Number(l.valor), 0);
@@ -33,6 +55,39 @@ export function ResumoFinanceiro() {
         <p className="text-gray-500 text-sm">Visão consolidada do financeiro</p>
       </div>
 
+      {/* ── DRE / Resultado do mês ── */}
+      <div className="bg-[#1f2937] border border-gray-700 border-t-2 border-t-purple-500 rounded-xl p-4 space-y-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <h2 className="font-black text-white flex items-center gap-2 text-sm">
+            <Scale className="w-4 h-4 text-purple-400" /> Resultado do Mês (DRE)
+          </h2>
+          <div className="flex items-center gap-1 bg-[#111827] border border-gray-700 rounded-xl px-1.5 py-1.5">
+            <button onClick={() => deslocarMesDre(-1)} title="Mês anterior"
+              className="p-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 transition-colors">
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <MonthInput
+              value={mesDre}
+              onChange={v => v && setMesDre(v)}
+              className="bg-transparent border-0 px-2 py-0.5 text-white text-sm font-bold capitalize min-w-[140px]"
+            />
+            <button onClick={() => deslocarMesDre(1)} title="Próximo mês"
+              className="p-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 transition-colors">
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+        <p className="text-[10px] text-gray-500">
+          Receita menos despesa efetivamente paga/recebida no mês — desempenho do período, diferente do saldo em conta abaixo.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <KpiCard label="Receitas do mês" value={fmtBRL(receitasMes)} icon={ArrowUp} color="text-green-400" />
+          <KpiCard label="Despesas do mês" value={fmtBRL(despesasMes)} icon={ArrowDown} color="text-red-400" />
+          <KpiCard label="Resultado do mês" value={fmtBRL(resultadoMes)} icon={Scale}
+            color={resultadoMes >= 0 ? 'text-blue-400' : 'text-red-400'} />
+        </div>
+      </div>
+
       {/* ── Painel de Saldos por Conta ── */}
       <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-4 space-y-3">
         <div className="flex items-center justify-between">
@@ -46,6 +101,9 @@ export function ResumoFinanceiro() {
             </span>
           </div>
         </div>
+        <p className="text-[10px] text-gray-500">
+          Dinheiro que existe nas contas agora — acumulado, não zera no fechamento do mês.
+        </p>
 
         {saldos.length === 0 ? (
           <p className="text-gray-600 text-sm">

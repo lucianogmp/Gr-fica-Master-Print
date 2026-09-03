@@ -11,7 +11,7 @@ import { MoneyInput } from '../../components/ui/MoneyInput';
 import { DateInput } from '../../components/ui/DateInput';
 import {
   TrendingUp, ArrowUp, ArrowDown, Wallet,
-  Plus, X, Save, ChevronLeft, ChevronRight, CheckSquare, Square, Trash2, User,
+  Plus, X, Save, ChevronLeft, ChevronRight, CheckSquare, Square, Trash2, User, ArrowLeftRight,
 } from 'lucide-react';
 import { DarkSelect } from '../../components/ui/DarkSelect';
 import { MonthInput } from '../../components/ui/MonthInput';
@@ -31,7 +31,7 @@ const NOVO_MOV = {
 };
 
 export function FluxoCaixa() {
-  const { data: movimentos = [], isLoading, criar, atualizar, deletar, isSaving } = useCaixaMovimentos();
+  const { data: movimentos = [], isLoading, criar, atualizar, deletar, transferir, isSaving, isTransferindo } = useCaixaMovimentos();
   const { data: kpisDia } = useCaixaKpisDia();
   const { data: contas = [] } = useContasBancarias();
   const { saldo: saldoTotalCaixa } = useSaldoCaixaFisico();
@@ -44,6 +44,8 @@ export function FluxoCaixa() {
   const [editando, setEditando]   = useState<CaixaMovimento | null>(null);
   const [form, setForm]          = useState({ ...NOVO_MOV });
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
+  const [showTransfModal, setShowTransfModal] = useState(false);
+  const [transf, setTransf] = useState({ origemId: '', destinoId: '', valor: 0, data: new Date().toISOString().split('T')[0], observacoes: '' });
 
   function nomeDoAutor(m: CaixaMovimento) {
     const email = (m as any).criado_por_email as string | undefined;
@@ -64,8 +66,8 @@ export function FluxoCaixa() {
     [movimentos, mesFx]
   );
 
-  const entradas = movDoMes.filter(m => m.tipo === 'entrada').reduce((s, m) => s + Number(m.valor), 0);
-  const saidas   = movDoMes.filter(m => m.tipo === 'saida').reduce((s, m) => s + Number(m.valor), 0);
+  const entradas = movDoMes.filter(m => m.tipo === 'entrada' && m.origem !== 'transferencia').reduce((s, m) => s + Number(m.valor), 0);
+  const saidas   = movDoMes.filter(m => m.tipo === 'saida' && m.origem !== 'transferencia').reduce((s, m) => s + Number(m.valor), 0);
   const saldo    = entradas - saidas;
 
   const entradasHoje  = kpisDia?.entradas_hoje ?? 0;
@@ -252,6 +254,90 @@ export function FluxoCaixa() {
         </div>
       )}
 
+      {/* ── Modal transferência entre contas ── */}
+      {showTransfModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-[#1f2937] border border-gray-700 rounded-2xl p-6 w-full max-w-md space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-black text-white flex items-center gap-2">
+                <ArrowLeftRight className="w-5 h-5 text-blue-400" /> Transferência entre contas
+              </h3>
+              <button onClick={() => setShowTransfModal(false)} className="text-gray-500 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <p className="text-xs text-gray-500">
+              Move dinheiro de uma conta pra outra. Não conta como receita nem despesa no financeiro.
+            </p>
+            <form
+              onSubmit={async e => {
+                e.preventDefault();
+                const origem  = contasAtivas.find(c => c.id === transf.origemId);
+                const destino = contasAtivas.find(c => c.id === transf.destinoId);
+                if (!origem || !destino) return;
+                await transferir({
+                  contaOrigemId: origem.id,
+                  contaDestinoId: destino.id,
+                  valor: transf.valor,
+                  data: transf.data,
+                  observacoes: transf.observacoes || null,
+                  nomeOrigem: origem.nome,
+                  nomeDestino: destino.nome,
+                });
+                setShowTransfModal(false);
+              }}
+              className="space-y-4"
+            >
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={LABEL}>De</label>
+                  <DarkSelect
+                    value={transf.origemId}
+                    onChange={v => setTransf(f => ({ ...f, origemId: v }))}
+                    allowEmpty
+                    options={contasAtivas.map(c => ({ value: c.id, label: c.nome }))}
+                  />
+                </div>
+                <div>
+                  <label className={LABEL}>Para</label>
+                  <DarkSelect
+                    value={transf.destinoId}
+                    onChange={v => setTransf(f => ({ ...f, destinoId: v }))}
+                    allowEmpty
+                    options={contasAtivas.filter(c => c.id !== transf.origemId).map(c => ({ value: c.id, label: c.nome }))}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={LABEL}>Valor (R$)</label>
+                  <MoneyInput value={transf.valor} onChange={v => setTransf(f => ({ ...f, valor: v }))} className={IN} placeholder="0,00" />
+                </div>
+                <div>
+                  <label className={LABEL}>Data</label>
+                  <DateInput value={transf.data} onChange={v => setTransf(f => ({ ...f, data: v }))} className={IN} />
+                </div>
+              </div>
+              <div>
+                <label className={LABEL}>Observações</label>
+                <input value={transf.observacoes} onChange={e => setTransf(f => ({ ...f, observacoes: e.target.value }))} className={IN} placeholder="Opcional" />
+              </div>
+              <div className="flex justify-end gap-2 pt-1">
+                <button type="button" onClick={() => setShowTransfModal(false)}
+                  className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-sm font-medium transition-all">
+                  Cancelar
+                </button>
+                <button type="submit"
+                  disabled={isTransferindo || !transf.origemId || !transf.destinoId || transf.origemId === transf.destinoId || !transf.valor}
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white rounded-lg text-sm font-bold transition-all">
+                  {isTransferindo ? 'Transferindo...' : 'Transferir'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       <div className="p-6 space-y-6">
         {/* Header */}
         <div className="flex items-start justify-between flex-wrap gap-3">
@@ -282,6 +368,12 @@ export function FluxoCaixa() {
               className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 shadow-lg shadow-blue-900/30"
             >
               <Plus className="w-4 h-4" /> Movimentação
+            </button>
+            <button
+              onClick={() => { setTransf({ origemId: '', destinoId: '', valor: 0, data: new Date().toISOString().split('T')[0], observacoes: '' }); setShowTransfModal(true); }}
+              className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2"
+            >
+              <ArrowLeftRight className="w-4 h-4" /> Transferência
             </button>
           </div>
         </div>
@@ -341,8 +433,8 @@ export function FluxoCaixa() {
             )}
             {datas.map(data => {
               const movs   = porData[data];
-              const entDia = movs.filter(m => m.tipo === 'entrada').reduce((s, m) => s + Number(m.valor), 0);
-              const saiDia = movs.filter(m => m.tipo === 'saida').reduce((s, m) => s + Number(m.valor), 0);
+              const entDia = movs.filter(m => m.tipo === 'entrada' && m.origem !== 'transferencia').reduce((s, m) => s + Number(m.valor), 0);
+              const saiDia = movs.filter(m => m.tipo === 'saida' && m.origem !== 'transferencia').reduce((s, m) => s + Number(m.valor), 0);
               return (
                 <div key={data} className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">
                   <div className="flex items-center justify-between px-5 py-3 border-b border-gray-700 bg-gray-800/40">
@@ -359,6 +451,7 @@ export function FluxoCaixa() {
                     const conta = contas.find(c => c.id === m.conta_id);
                     const autor = nomeDoAutor(m);
                     const marcado = selecionados.has(m.id);
+                    const isTransferencia = m.origem === 'transferencia';
                     return (
                       <div key={m.id} className="flex items-center justify-between px-5 py-3 border-b border-gray-800 last:border-b-0 hover:bg-gray-800/20 transition-colors group">
                         <div className="flex items-center gap-3 min-w-0">
@@ -367,14 +460,21 @@ export function FluxoCaixa() {
                               {marcado ? <CheckSquare className="w-4 h-4 text-blue-400" /> : <Square className="w-4 h-4" />}
                             </button>
                           )}
-                          <span className={`flex-shrink-0 ${m.tipo === 'entrada' ? 'text-green-400' : 'text-red-400'}`}>
-                            {m.tipo === 'entrada' ? <ArrowDown className="w-5 h-5" /> : <ArrowUp className="w-5 h-5" />}
+                          <span className={`flex-shrink-0 ${isTransferencia ? 'text-gray-400' : m.tipo === 'entrada' ? 'text-green-400' : 'text-red-400'}`}>
+                            {isTransferencia ? <ArrowLeftRight className="w-5 h-5" /> : m.tipo === 'entrada' ? <ArrowDown className="w-5 h-5" /> : <ArrowUp className="w-5 h-5" />}
                           </span>
                           <div className="min-w-0">
-                            <p className="text-sm font-medium text-white truncate">{m.descricao}</p>
+                            <p className="text-sm font-medium text-white truncate flex items-center gap-2">
+                              {m.descricao}
+                              {isTransferencia && (
+                                <span className="text-[9px] font-bold bg-gray-600/40 text-gray-300 border border-gray-500/30 px-1.5 py-0.5 rounded-full flex-shrink-0">
+                                  transferência
+                                </span>
+                              )}
+                            </p>
                             <p className="text-[10px] text-gray-500 flex items-center gap-2 flex-wrap">
                               {conta && <span className="font-bold text-gray-400">{conta.nome}</span>}
-                              {[m.cliente_nome, m.origem !== 'manual' ? m.origem : null, m.observacoes]
+                              {[m.cliente_nome, m.origem !== 'manual' && !isTransferencia ? m.origem : null, m.observacoes]
                                 .filter(Boolean).join(' · ')}
                               {autor && (
                                 <span className="flex items-center gap-1 text-gray-600">
@@ -385,21 +485,26 @@ export function FluxoCaixa() {
                           </div>
                         </div>
                         <div className="flex items-center gap-3 flex-shrink-0">
-                          <span className={`font-black text-sm ${m.tipo === 'entrada' ? 'text-green-400' : 'text-red-400'}`}>
+                          <span className={`font-black text-sm ${isTransferencia ? 'text-gray-300' : m.tipo === 'entrada' ? 'text-green-400' : 'text-red-400'}`}>
                             {m.tipo === 'entrada' ? '+' : '-'}{fmtBRL(Number(m.valor))}
                           </span>
                           {!m.venda_id && (
                             <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-all">
-                              <button
-                                onClick={() => abrirEdicao(m)}
-                                className="text-gray-600 hover:text-blue-400 p-1 rounded transition-all"
-                                title="Editar"
-                              >
-                                <Save className="w-4 h-4" />
-                              </button>
+                              {!isTransferencia && (
+                                <button
+                                  onClick={() => abrirEdicao(m)}
+                                  className="text-gray-600 hover:text-blue-400 p-1 rounded transition-all"
+                                  title="Editar"
+                                >
+                                  <Save className="w-4 h-4" />
+                                </button>
+                              )}
                               <button
                                 onClick={async () => {
-                                  if (await confirmar('Remover este movimento?', 'Remover'))
+                                  const msg = isTransferencia
+                                    ? 'Remover esta transferência? Os dois lados (origem e destino) serão desfeitos.'
+                                    : 'Remover este movimento?';
+                                  if (await confirmar(msg, 'Remover'))
                                     deletar(m.id);
                                 }}
                                 className="text-gray-600 hover:text-red-400 p-1 rounded transition-all"

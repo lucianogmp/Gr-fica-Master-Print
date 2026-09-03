@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { Modal } from '../ui/Modal';
 import { Lancamento, CATEGORIAS_RECEITA, CATEGORIAS_DESPESA, FORMAS_PAGAMENTO } from '../../types/financeiro';
+import { useContasBancarias } from '../../hooks/useContasBancarias';
 import { Pencil, Plus, ArrowUp, ArrowDown } from 'lucide-react';
 import { MoneyInput } from '../ui/MoneyInput';
 import { DateInput } from '../ui/DateInput';
 import { DarkSelect } from '../ui/DarkSelect';
 import { marcarAlteracoesPendentes, limparAlteracoesPendentes } from '../../lib/unsavedChangesGuard';
-import { ClienteFornecedorSelector } from './ClienteFornecedorSelector';
 
 const IN = "w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors";
 
@@ -20,11 +20,12 @@ type FormData = {
   cliente_nome: string;
   observacoes: string;
   status: string;
+  conta_id: string;
 };
 
 const EMPTY: FormData = {
   tipo: 'despesa', descricao: '', valor: 0, categoria: '',
-  data_vencimento: '', forma_pagamento: '', cliente_nome: '', observacoes: '', status: 'pendente',
+  data_vencimento: '', forma_pagamento: '', cliente_nome: '', observacoes: '', status: 'pendente', conta_id: '',
 };
 
 interface ModalLancamentoProps {
@@ -38,6 +39,10 @@ interface ModalLancamentoProps {
 export function ModalLancamento({ open, editando, tipoInicial, onClose, onSalvar }: ModalLancamentoProps) {
   const [form, setForm]       = useState<FormData>(EMPTY);
   const [salvando, setSalvando] = useState(false);
+  const { data: contas = [] } = useContasBancarias();
+  const contasAtivas = contas.filter(c => c.ativo);
+  const contasDaForma = contasAtivas.filter(c => (c.formas_aceitas ?? []).includes(form.forma_pagamento));
+  const opcoesConta = contasDaForma.length > 0 ? contasDaForma : contasAtivas;
   // Ignora as mudanças de estado disparadas pelo próprio carregamento
   // (abrir o modal já preenchendo com o lançamento existente) — só marca
   // "alterações pendentes" quando é a pessoa mexendo em algum campo.
@@ -56,6 +61,7 @@ export function ModalLancamento({ open, editando, tipoInicial, onClose, onSalvar
         cliente_nome:    editando.cliente_nome ?? '',
         observacoes:     editando.observacoes ?? '',
         status:          editando.status,
+        conta_id:        editando.conta_id ?? '',
       });
     } else {
       setForm({ ...EMPTY, tipo: tipoInicial ?? 'despesa' });
@@ -78,8 +84,11 @@ export function ModalLancamento({ open, editando, tipoInicial, onClose, onSalvar
   function set(f: Exclude<keyof FormData, 'valor'>, v: string) { setForm(p => ({ ...p, [f]: v })); marcarSujo(); }
   function setValor(v: number) { setForm(p => ({ ...p, valor: v })); marcarSujo(); }
 
+  const precisaConta = form.status === 'pago';
+  const podeSalvar = form.descricao.trim() && form.valor && (!precisaConta || form.conta_id);
+
   async function handleSalvar() {
-    if (!form.descricao.trim() || !form.valor) return;
+    if (!podeSalvar) return;
     setSalvando(true);
     try {
       await onSalvar({
@@ -88,10 +97,12 @@ export function ModalLancamento({ open, editando, tipoInicial, onClose, onSalvar
         valor:           form.valor,
         categoria:       form.categoria || null,
         data_vencimento: form.data_vencimento || null,
+        data_pagamento:  form.status === 'pago' ? (editando?.data_pagamento ?? new Date().toISOString().slice(0, 10)) : null,
         forma_pagamento: form.forma_pagamento || null,
         cliente_nome:    form.cliente_nome.trim() || null,
         observacoes:     form.observacoes.trim() || null,
         status:          form.status,
+        conta_id:        form.status === 'pago' ? (form.conta_id || null) : null,
       });
       onClose();
     } finally { setSalvando(false); }
@@ -110,7 +121,7 @@ export function ModalLancamento({ open, editando, tipoInicial, onClose, onSalvar
           <button onClick={onClose} className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-sm font-medium transition-all">
             Cancelar
           </button>
-          <button onClick={handleSalvar} disabled={salvando || !form.descricao.trim() || !form.valor}
+          <button onClick={handleSalvar} disabled={salvando || !podeSalvar}
             className="px-5 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white rounded-lg text-sm font-bold transition-all">
             {salvando ? 'Salvando...' : 'Salvar'}
           </button>
@@ -183,22 +194,43 @@ export function ModalLancamento({ open, editando, tipoInicial, onClose, onSalvar
             <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Forma de Pagamento</label>
             <DarkSelect
               value={form.forma_pagamento}
-              onChange={v => set('forma_pagamento', v)}
+              onChange={v => { set('forma_pagamento', v); setForm(f => ({ ...f, conta_id: '' })); }}
               placeholder="—"
               options={FORMAS_PAGAMENTO}
             />
           </div>
           <div>
-            <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">
-              {form.tipo === 'receita' ? 'Cliente' : 'Fornecedor'}
-            </label>
-            <ClienteFornecedorSelector
-              tipo={form.tipo}
-              value={form.cliente_nome}
-              onChange={v => set('cliente_nome', v)}
-            />
+            <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Cliente / Fornecedor</label>
+            <input value={form.cliente_nome} onChange={e => set('cliente_nome', e.target.value)} className={IN} placeholder="Nome..." />
           </div>
         </div>
+
+        {/* Conta financeira — só faz sentido perguntar quando já está pago,
+            porque é o que efetivamente atualiza o saldo daquela conta. */}
+        {precisaConta && (
+          <div>
+            <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Conta financeira *</label>
+            {opcoesConta.length === 0 ? (
+              <p className="text-[11px] text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 rounded-lg px-3 py-2">
+                Nenhuma conta cadastrada ainda. Cadastre uma em Configurações → Formas de Pagamento.
+              </p>
+            ) : (
+              <>
+                <DarkSelect
+                  value={form.conta_id}
+                  onChange={v => set('conta_id', v)}
+                  allowEmpty
+                  options={opcoesConta.map(c => ({ value: c.id, label: c.nome }))}
+                />
+                {contasDaForma.length === 0 && form.forma_pagamento && (
+                  <p className="text-[10px] text-gray-500 mt-1">
+                    Nenhuma conta marcada como aceitando "{form.forma_pagamento}" — mostrando todas as contas ativas.
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+        )}
       </div>
     </Modal>
   );

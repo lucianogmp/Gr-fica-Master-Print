@@ -5,14 +5,24 @@ import { useState, useEffect } from 'react';
 import { useConfiguracoes } from '../../hooks/useConfiguracoes';
 import { useContasBancarias, TIPO_CONTA, TipoConta } from '../../hooks/useContasBancarias';
 import { useConfirm } from '../../components/ui/ConfirmModal';
-import { Configuracoes as ConfigType } from '../../types/configuracoes';
+import { Configuracoes as ConfigType, FormasPagamentoConfig, FORMAS_PAGAMENTO_DEFAULT } from '../../types/configuracoes';
 import { AbaVendas } from '../../components/configuracoes/AbaVendas';
 import { CreditCard, Building2, Plus, X, Pencil, Save, Check } from 'lucide-react';
 import { MoneyInput } from '../../components/ui/MoneyInput';
 import { DarkSelect } from '../../components/ui/DarkSelect';
 import { IN, IN_N, Lbl, Section, Row } from './utils';
 
-const FORM_CONTA_VAZIO = { nome: '', tipo: 'caixa' as TipoConta, banco: '', agencia: '', conta: '', saldo_inicial: 0 as number, observacoes: '' };
+const FORM_CONTA_VAZIO = { nome: '', tipo: 'caixa' as TipoConta, banco: '', agencia: '', conta: '', saldo_inicial: 0 as number, observacoes: '', formas_aceitas: [] as string[] };
+
+/** Nomes das formas de pagamento configuradas, pra montar o checklist "Formas aceitas" de cada conta. */
+function listarNomesFormas(raw: any): string[] {
+  let lista: FormasPagamentoConfig[] = FORMAS_PAGAMENTO_DEFAULT;
+  if (Array.isArray(raw) && raw.length > 0) lista = raw;
+  else if (typeof raw === 'string') {
+    try { const p = JSON.parse(raw); if (Array.isArray(p) && p.length > 0) lista = p; } catch {}
+  }
+  return lista.map(f => f.nome).filter(Boolean);
+}
 
 export function FormasPagamento() {
   const { data: cfg, isLoading, salvar, isSaving } = useConfiguracoes();
@@ -51,8 +61,18 @@ export function FormasPagamento() {
       conta:          c.conta ?? '',
       saldo_inicial:  Number(c.saldo_inicial) || 0,
       observacoes:    c.observacoes ?? '',
+      formas_aceitas: Array.isArray(c.formas_aceitas) ? c.formas_aceitas : [],
     });
     setShowFormConta(true);
+  }
+
+  function toggleFormaAceita(nome: string) {
+    setFormConta(f => ({
+      ...f,
+      formas_aceitas: f.formas_aceitas.includes(nome)
+        ? f.formas_aceitas.filter(n => n !== nome)
+        : [...f.formas_aceitas, nome],
+    }));
   }
 
   async function handleSalvarConta(e: React.FormEvent) {
@@ -65,6 +85,7 @@ export function FormasPagamento() {
       conta:         formConta.conta || null,
       saldo_inicial: formConta.saldo_inicial || 0,
       observacoes:   formConta.observacoes || null,
+      formas_aceitas: formConta.formas_aceitas,
       ativo:         true,
       ordem:         editandoContaId ? contas.find(c => c.id === editandoContaId)?.ordem ?? 0 : contas.length + 1,
     };
@@ -154,6 +175,37 @@ export function FormasPagamento() {
                   <input value={formConta.conta} onChange={e => setFormConta(f => ({ ...f, conta: e.target.value }))} className={IN} />
                 </div>
               </div>
+
+              <div>
+                <Lbl>Formas de pagamento aceitas</Lbl>
+                <p className="text-[10px] text-gray-500 mb-2">
+                  Define quais contas aparecem pra escolher quando alguém registra um pagamento com essa forma
+                  (ex: Pix pode cair em mais de um banco — marque todos que recebem Pix).
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {listarNomesFormas(cfg?.formas_pagamento).map(nome => {
+                    const marcado = formConta.formas_aceitas.includes(nome);
+                    return (
+                      <button
+                        key={nome}
+                        type="button"
+                        onClick={() => toggleFormaAceita(nome)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                          marcado
+                            ? 'bg-blue-500/20 text-blue-400 border-blue-500/40'
+                            : 'bg-gray-800/60 text-gray-500 border-gray-700 hover:border-gray-600'
+                        }`}
+                      >
+                        {nome}
+                      </button>
+                    );
+                  })}
+                  {listarNomesFormas(cfg?.formas_pagamento).length === 0 && (
+                    <span className="text-[10px] text-gray-600">Cadastre formas de pagamento acima primeiro.</span>
+                  )}
+                </div>
+              </div>
+
               <div className="flex justify-end gap-2">
                 {editandoContaId && (
                   <button type="button" onClick={() => { setShowFormConta(false); setEditandoContaId(null); }}
