@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { BomItem } from '../../types/produto';
 import { MateriaPrima } from '../../types/estoque';
 import { Modal } from '../ui/Modal';
+import { QtdInput } from '../ui/QtdInput';
 import { calcCustoBOM } from '../../hooks/useBom';
 import { Boxes, X, ArrowRight } from 'lucide-react';
 
@@ -110,13 +111,13 @@ export function BomEditor({ bom, materias, onChange, porMetroQuadrado }: BomEdit
                         <span className="text-[10px] font-bold bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full">{unidadeLabel(mp.unidade)}</span>
                       </td>
                       <td className="px-3 py-2 text-right">
-                        <input
-                          type="number" onWheel={e => e.currentTarget.blur()} min="0.001" step="0.001"
-                          value={b.quantidade}
-                          onChange={e => handleQtdChange(i, e.target.value)}
-                          title={porMetroQuadrado ? `Quantidade por 1 m² de produto` : undefined}
-                          className="w-24 bg-gray-900 border border-gray-700 rounded px-2 py-1 text-right text-white text-xs focus:outline-none focus:border-blue-500"
-                        />
+                        <span title={porMetroQuadrado ? `Quantidade por 1 m² de produto` : undefined}>
+                          <QtdInput
+                            value={String(b.quantidade ?? '')}
+                            onChange={v => handleQtdChange(i, v)}
+                            className="w-24 bg-gray-900 border border-gray-700 rounded px-2 py-1 text-right text-white text-xs focus:outline-none focus:border-blue-500"
+                          />
+                        </span>
                       </td>
                       <td className="px-3 py-2 text-right text-gray-400 text-xs">{fmtBRL(mp.custo_unitario)}</td>
                       <td className="px-3 py-2 text-right font-bold text-blue-400">{fmtBRL(sub)}</td>
@@ -233,12 +234,11 @@ export function BomEditor({ bom, materias, onChange, porMetroQuadrado }: BomEdit
                   ? `Quantidade por 1 m² (${unidadeLabel(selecionada.unidade)})`
                   : `Quantidade (${unidadeLabel(selecionada.unidade)})`}
               </label>
-              <input
-                autoFocus
-                type="number" onWheel={e => e.currentTarget.blur()} min="0.001" step="0.001"
+              <QtdInput
                 value={qtd}
-                onChange={e => setQtd(e.target.value)}
-                placeholder="0.000"
+                onChange={setQtd}
+                placeholder="0,000"
+                big
                 className="w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 text-center text-lg font-bold"
               />
               {porMetroQuadrado && (

@@ -1,5 +1,5 @@
 // src/components/vendas/PainelFinanceiro.tsx
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { PagamentoVenda } from '../../types/venda';
 import { ContaBancaria } from '../../hooks/useContasBancarias';
 import {
@@ -94,6 +94,36 @@ export function PainelFinanceiro({
   const contasDaForma = contasAtivas.filter(c => (c.formas_aceitas ?? []).includes(novoPag.forma));
   const opcoesConta   = contasDaForma.length > 0 ? contasDaForma : contasAtivas;
 
+  // Desconto pode ser digitado em R$ ou em % — a pessoa escolhe. Por baixo
+  // dos panos sempre fica salvo como % (mesma coluna de sempre, não bagunça
+  // vendas antigas); só a forma de digitar muda. O buffer local de R$ só
+  // resincroniza quando "desconto" muda por fora (venda carregando do
+  // banco) — nunca quando a mudança veio do próprio campo, senão o
+  // arredondamento %→R$→% ficaria brigando com o que a pessoa digitou.
+  const [modoDesconto, setModoDesconto] = useState<'valor' | 'pct'>('valor');
+  const [descontoValorLocal, setDescontoValorLocal] = useState(() => subtotal > 0 ? subtotal * (desconto / 100) : 0);
+  const ultimoDescontoEmitido = useRef(desconto);
+
+  useEffect(() => {
+    if (desconto !== ultimoDescontoEmitido.current) {
+      ultimoDescontoEmitido.current = desconto;
+      setDescontoValorLocal(subtotal > 0 ? subtotal * (desconto / 100) : 0);
+    }
+  }, [desconto, subtotal]);
+
+  function mudarDescontoValor(v: number) {
+    setDescontoValorLocal(v);
+    const pct = subtotal > 0 ? Math.min(100, (v / subtotal) * 100) : 0;
+    ultimoDescontoEmitido.current = pct;
+    onDescontoChange(pct);
+  }
+
+  function mudarDescontoPct(v: number) {
+    ultimoDescontoEmitido.current = v;
+    onDescontoChange(v);
+    setDescontoValorLocal(subtotal > 0 ? subtotal * (v / 100) : 0);
+  }
+
   const formas           = parseFormas(cfg?.formas_pagamento).filter(f => f.ativo);
   const formaNovoPag     = formas.find(f => f.nome === novoPag.forma);
   const permiteParc      = formaNovoPag?.permite_parcelamento;
@@ -162,20 +192,51 @@ export function PainelFinanceiro({
           <span className="text-xs font-bold text-white">{fmtBRL(subtotal)}</span>
         </div>
 
-        {/* Desconto — você digita em R$, o sistema converte pra % por baixo
-            dos panos (é assim que fica salvo no banco desde sempre; manter
-            a mesma unidade de armazenamento evita bagunçar vendas antigas). */}
+        {/* Desconto — a pessoa escolhe se digita em R$ ou em %. Guardado
+            sempre como % no banco (coluna de sempre), só a forma de
+            digitar muda. */}
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          <span className="text-[10px] text-gray-500 uppercase">Desconto (R$)</span>
-          <MoneyInput
-            value={subtotal > 0 ? subtotal * (desconto / 100) : 0}
-            onChange={v => onDescontoChange(subtotal > 0 ? Math.min(100, (v / subtotal) * 100) : 0)}
-            className={IN_SM}
-            style={{ width: 88 }}
-            placeholder="0,00"
-          />
+          <span className="text-[10px] text-gray-500 uppercase">Desconto</span>
+          <div className="flex items-center bg-[#111827] border border-gray-700 rounded-md overflow-hidden text-[9px] font-bold">
+            <button type="button"
+              onClick={() => setModoDesconto('valor')}
+              className={`px-1.5 py-1 transition-colors ${modoDesconto === 'valor' ? 'bg-blue-500/30 text-blue-300' : 'text-gray-500 hover:text-gray-300'}`}
+            >
+              R$
+            </button>
+            <button type="button"
+              onClick={() => setModoDesconto('pct')}
+              className={`px-1.5 py-1 transition-colors ${modoDesconto === 'pct' ? 'bg-blue-500/30 text-blue-300' : 'text-gray-500 hover:text-gray-300'}`}
+            >
+              %
+            </button>
+          </div>
+          {modoDesconto === 'valor' ? (
+            <MoneyInput
+              value={descontoValorLocal}
+              onChange={mudarDescontoValor}
+              className={IN_SM}
+              style={{ width: 88 }}
+              placeholder="0,00"
+            />
+          ) : (
+            <div className="relative" style={{ width: 72 }}>
+              <input
+                type="number" min={0} max={100} step="0.1"
+                value={desconto || ''}
+                onChange={e => mudarDescontoPct(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+                className={IN_SM}
+                style={{ width: '100%' }}
+                placeholder="0"
+              />
+            </div>
+          )}
           {desconto > 0 && (
-            <span className="text-[9px] text-gray-600">({desconto.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%)</span>
+            <span className="text-[9px] text-gray-600">
+              ({modoDesconto === 'valor'
+                ? `${desconto.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`
+                : fmtBRL(subtotal * (desconto / 100))})
+            </span>
           )}
         </div>
 

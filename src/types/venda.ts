@@ -81,3 +81,10 @@ export const STATUS_VENDA: Record<StatusVenda, { label: string; cor: string }> =
   entregue:  { label: 'Entregue',   cor: 'bg-green-500/20 text-green-400 border-green-500/30' },
   cancelado: { label: 'Cancelado',  cor: 'bg-red-500/20 text-red-400 border-red-500/30' },
 };
+
+/** Status que a pessoa pode escolher pra uma venda. Venda já é um fato
+ *  consumado — não existe "orçamento"/"aprovado" aqui (isso é o módulo de
+ *  Orçamentos, separado) nem "cancelado" (se cancelar, exclui a venda).
+ *  'orcamento'/'aprovado'/'cancelado' continuam no tipo só pra não quebrar
+ *  registros antigos que já tinham esse status. */
+export const STATUS_VENDA_SELECIONAVEIS: StatusVenda[] = ['producao', 'pronto', 'entregue'];

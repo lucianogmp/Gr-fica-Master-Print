@@ -8,6 +8,7 @@ import { loadBom, calcCustoBOM } from '../../hooks/useBom';
 import { useRole } from '../../hooks/useRole';
 import { X, Search, Package } from 'lucide-react';
 import { MoneyInput } from '../ui/MoneyInput';
+import { QtdInput } from '../ui/QtdInput';
 
 const fmtBRL = (v: number) => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -251,8 +252,8 @@ export function ItensEditor({ itens, onChange }: ItensEditorProps) {
                     <input value={it.unidade ?? 'un'} onChange={e => atualizarItem(i, 'unidade', e.target.value)} className={IN + ' text-center'} />
                   </td>
                   <td className="px-1.5 py-1.5">
-                    <input type="number" onWheel={e => e.currentTarget.blur()} min="0.001" step="0.001" value={it.quantidade}
-                      onChange={e => atualizarItem(i, 'quantidade', parseFloat(e.target.value) || 0)} className={IN_NUM + ' text-center'} />
+                    <QtdInput value={String(it.quantidade ?? '')}
+                      onChange={v => atualizarItem(i, 'quantidade', parseFloat(v) || 0)} className={IN_NUM + ' text-center'} />
                   </td>
                   <td className="px-1.5 py-1.5">
                     <MoneyInput value={it.preco_unitario}

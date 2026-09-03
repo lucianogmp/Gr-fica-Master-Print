@@ -65,8 +65,15 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
   // dinheiro) — mescla aqui só pra exibição, marcado com isDeCaixa. Editar
   // e excluir desses continua só lá no Fluxo de Caixa, pra não arriscar
   // mexer na tabela errada numa ação em massa.
+  // IMPORTANTE: movimento de caixa que já pertence a uma venda (venda_id
+  // preenchido) NÃO entra aqui — essa venda já aparece como lançamento
+  // (vindo da aba Vendas). Sem esse filtro, uma venda paga em dinheiro/Pix/
+  // cartão aparecia duplicada: uma vez como "venda", outra como "caixa".
   const { data: movsCaixa = [], isLoading: isLoadingCaixa } = useCaixaMovimentos();
-  const movsCaixaReais = useMemo(() => movsCaixa.filter(m => m.origem !== 'transferencia'), [movsCaixa]);
+  const movsCaixaReais = useMemo(
+    () => movsCaixa.filter(m => m.origem !== 'transferencia' && !m.venda_id),
+    [movsCaixa]
+  );
   const todosComCaixa = useMemo<LancamentoExibido[]>(() => [
     ...todos,
     ...movsCaixaReais.map((m): LancamentoExibido => ({

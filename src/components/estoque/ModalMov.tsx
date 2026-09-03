@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Modal } from '../ui/Modal';
+import { QtdInput } from '../ui/QtdInput';
 import { MateriaPrima } from '../../types/estoque';
 import { ArrowDownToLine, ArrowUpFromLine, AlertTriangle } from 'lucide-react';
 
@@ -154,12 +155,12 @@ export function ModalMov({ open, tipo, materia, onClose, onConfirmar }: ModalMov
           <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">
             Quantidade ({unidadeLabel(materia.unidade)})
           </label>
-          <input
-            autoFocus
-            type="number" onWheel={e => e.currentTarget.blur()} min="0.001" step="0.001"
+          <QtdInput
             value={qtd}
-            onChange={e => setQtd(e.target.value)}
+            onChange={setQtd}
             placeholder="0"
+            autoFocus
+            big
             className="w-full bg-[#111827] border border-gray-700 rounded-lg px-4 py-3 text-white text-2xl font-black text-center focus:outline-none focus:border-blue-500 transition-colors"
           />
           {tipo === 'saida' && qNum > saldoPos && qNum > 0 && (

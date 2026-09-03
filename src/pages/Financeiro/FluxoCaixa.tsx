@@ -1,5 +1,6 @@
 // src/pages/Financeiro/FluxoCaixa.tsx
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useCaixaMovimentos, CaixaMovimento } from '../../hooks/useCaixaMovimentos';
 import { useCaixaKpisDia } from '../../hooks/useCaixaKpisDia';
 import { useContasBancarias, useSaldoCaixaFisico } from '../../hooks/useContasBancarias';
@@ -11,7 +12,7 @@ import { MoneyInput } from '../../components/ui/MoneyInput';
 import { DateInput } from '../../components/ui/DateInput';
 import {
   TrendingUp, ArrowUp, ArrowDown, Wallet,
-  Plus, X, Save, ChevronLeft, ChevronRight, CheckSquare, Square, Trash2, User, ArrowLeftRight,
+  Plus, X, Save, ChevronLeft, ChevronRight, CheckSquare, Square, Trash2, User, ArrowLeftRight, ExternalLink,
 } from 'lucide-react';
 import { DarkSelect } from '../../components/ui/DarkSelect';
 import { MonthInput } from '../../components/ui/MonthInput';
@@ -31,6 +32,7 @@ const NOVO_MOV = {
 };
 
 export function FluxoCaixa() {
+  const navigate = useNavigate();
   const { data: movimentos = [], isLoading, criar, atualizar, deletar, transferir, isSaving, isTransferindo } = useCaixaMovimentos();
   const { data: kpisDia } = useCaixaKpisDia();
   const { data: contas = [] } = useContasBancarias();
@@ -513,6 +515,14 @@ export function FluxoCaixa() {
                                 <X className="w-4 h-4" />
                               </button>
                             </div>
+                          )}
+                          {m.venda_id && (
+                            <button
+                              onClick={() => navigate(`/vendas/nova/${m.venda_id}`, { state: { from: '/financeiro/fluxo-caixa' } })}
+                              className="opacity-0 group-hover:opacity-100 flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 border border-blue-500/30 transition-all"
+                            >
+                              <ExternalLink className="w-3 h-3" /> Ver venda
+                            </button>
                           )}
                         </div>
                       </div>

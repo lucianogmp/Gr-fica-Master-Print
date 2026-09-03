@@ -8,7 +8,7 @@ import { usePagamentosVenda } from '../../hooks/usePagamentosVenda';
 import { useLancamentos } from '../../hooks/useLancamentos';
 import { useConfiguracoes } from '../../hooks/useConfiguracoes';
 import { useProducao } from '../../hooks/useProducao';
-import { Venda, VendaItem, StatusVenda, STATUS_VENDA, PagamentoVenda } from '../../types/venda';
+import { Venda, VendaItem, StatusVenda, STATUS_VENDA, STATUS_VENDA_SELECIONAVEIS, PagamentoVenda } from '../../types/venda';
 import { Lancamento } from '../../types/financeiro';
 import { formatarEnderecoCliente } from '../../types/cliente';
 import { useClientes } from '../../hooks/useClientes';
@@ -33,7 +33,7 @@ const IN = "w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 te
 const NOVA_VENDA = {
   cliente_nome:    '',
   cliente_id:      null as string | null,
-  status:          'orcamento' as StatusVenda,
+  status:          'producao' as StatusVenda,
   desconto:        0,
   frete:           0,
   taxa_adicional:  0,
@@ -389,7 +389,9 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
                   <Settings className="w-3 h-3" /> Status
                 </p>
                 <div className="space-y-1 flex-1">
-                  {Object.entries(STATUS_VENDA).map(([k, v]) => (
+                  {STATUS_VENDA_SELECIONAVEIS.map(k => {
+                    const v = STATUS_VENDA[k];
+                    return (
                     <button
                       key={k}
                       onClick={() => handleMudarStatus(k as StatusVenda)}
@@ -404,7 +406,7 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
                         <span className="text-[8px] text-yellow-400 font-normal">OP auto</span>
                       )}
                     </button>
-                  ))}
+                  );})}
                 </div>
                 {form.status === 'producao' && !isNovo && (
                   <div className="mt-2 flex items-start gap-1.5 bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-2">
