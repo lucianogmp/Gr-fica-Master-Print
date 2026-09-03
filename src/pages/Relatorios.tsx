@@ -166,9 +166,9 @@ export function Relatorios() {
   // ── KPI Card reutilizável ─────────────────────────────────────────────────
   function KPI({ label, value, cor = 'text-white' }: { label: string; value: string; cor?: string }) {
     return (
-      <div className="bg-[#111827] border border-gray-700 rounded-xl p-4 print:border-gray-300 print:bg-white">
-        <p className="text-[10px] font-bold text-gray-500 uppercase mb-1 print:text-gray-600">{label}</p>
-        <p className={`text-xl font-black ${cor} print:text-gray-900`}>{value}</p>
+      <div className="bg-[#111827] border border-gray-700 rounded-lg px-3.5 py-2.5 print:border-gray-300 print:bg-white">
+        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-0.5 print:text-gray-600">{label}</p>
+        <p className={`text-lg font-black ${cor} print:text-gray-900`}>{value}</p>
       </div>
     );
   }
@@ -185,78 +185,78 @@ export function Relatorios() {
         }
       `}</style>
 
-      <div className="p-6 space-y-6">
+      <div className="p-4 space-y-4">
         {/* Header */}
-        <div className="flex justify-between items-start no-print">
+        <div className="flex justify-between items-center flex-wrap gap-2 no-print">
           <div>
-            <h1 className="text-2xl font-black text-white flex items-center gap-2">
-              <FileText className="w-6 h-6 text-blue-400" /> Relatórios
+            <h1 className="text-xl font-black text-white flex items-center gap-2">
+              <FileText className="w-5 h-5 text-blue-400" /> Relatórios
             </h1>
-            <p className="text-gray-500 text-sm">Vendas e financeiro com export PDF e Excel</p>
+            <p className="text-gray-500 text-xs">Vendas e financeiro com export PDF e Excel</p>
           </div>
           <div className="flex gap-2">
             <button
               onClick={imprimirRelatorio}
-              className="flex items-center gap-2 px-4 py-2.5 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-xl font-bold text-sm transition-all"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg font-bold text-xs transition-all"
             >
-              <Printer className="w-4 h-4" /> PDF / Imprimir
+              <Printer className="w-3.5 h-3.5" /> PDF / Imprimir
             </button>
             <button
               onClick={aba === 'vendas' ? exportarVendasExcel : exportarFinanceiroExcel}
               disabled={aba === 'vendas' ? !relV.data : !relF.data}
-              className="flex items-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white rounded-xl font-bold text-sm transition-all"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white rounded-lg font-bold text-xs transition-all"
             >
-              <Download className="w-4 h-4" /> Excel
+              <Download className="w-3.5 h-3.5" /> Excel
             </button>
           </div>
         </div>
 
         {/* Abas */}
-        <div className="flex gap-1 bg-[#1f2937] border border-gray-700 rounded-xl p-1 w-fit no-print">
+        <div className="flex gap-1 bg-[#1f2937] border border-gray-700 rounded-lg p-1 w-fit no-print">
           <button onClick={() => setAba('vendas')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${aba === 'vendas' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'}`}>
-            <TrendingUp className="w-4 h-4" /> Vendas
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1.5 ${aba === 'vendas' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'}`}>
+            <TrendingUp className="w-3.5 h-3.5" /> Vendas
           </button>
           <button onClick={() => setAba('financeiro')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${aba === 'financeiro' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'}`}>
-            <Landmark className="w-4 h-4" /> Financeiro
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1.5 ${aba === 'financeiro' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'}`}>
+            <Landmark className="w-3.5 h-3.5" /> Financeiro
           </button>
         </div>
 
         {/* ── ABA VENDAS ── */}
         {aba === 'vendas' && (
-          <div className="space-y-5">
+          <div className="space-y-4">
             {/* Filtros */}
-            <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-4 no-print">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="bg-[#1f2937] border border-gray-700 rounded-lg p-3 no-print">
+              <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2.5 items-end">
                 <div>
-                  <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">De</label>
+                  <label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">De</label>
                   <DateInput value={rascV.data_inicio} onChange={v => setRascV(f => ({ ...f, data_inicio: v }))} className={IN + ' w-full'} />
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Até</label>
+                  <label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Até</label>
                   <DateInput value={rascV.data_fim} onChange={v => setRascV(f => ({ ...f, data_fim: v }))} className={IN + ' w-full'} />
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Status</label>
+                  <label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Status</label>
                   <select value={rascV.status ?? ''} onChange={e => setRascV(f => ({ ...f, status: e.target.value || undefined }))} className={IN + ' w-full'}>
                     <option value="">Todos</option>
                     {Object.entries(STATUS_VENDA).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Cliente</label>
+                  <label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Cliente</label>
                   <input value={rascV.cliente ?? ''} onChange={e => setRascV(f => ({ ...f, cliente: e.target.value || undefined }))} placeholder="parte do nome..." className={IN + ' w-full'} />
                 </div>
-              </div>
-              <div className="flex justify-end mt-3">
-                <button onClick={() => setFiltrosV(rascV)} className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold transition-all">
-                  Gerar relatório
-                </button>
+                <div className="col-span-2 sm:col-span-2 md:col-span-4 lg:col-span-1">
+                  <button onClick={() => setFiltrosV(rascV)} className="w-full py-1.5 px-3 bg-blue-600 hover:bg-blue-500 text-white rounded-md text-xs font-bold transition-all flex items-center justify-center">
+                    Filtrar
+                  </button>
+                </div>
               </div>
             </div>
 
-            {relV.isLoading && <div className="p-8 text-center text-blue-500 animate-pulse font-bold">Gerando relatório...</div>}
+            {relV.isLoading && <div className="p-6 text-center text-blue-500 animate-pulse font-bold text-sm">Gerando relatório...</div>}
             {relV.isError && <ErroRelatorio msg={(relV.error as Error)?.message ?? 'Falha ao carregar dados de vendas.'} />}
 
             {relV.data && relV.data.vendas.length === 0 && (

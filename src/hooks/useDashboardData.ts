@@ -35,8 +35,7 @@ export function useDashboardData(mes: string) {
       const start6 = `${meses6[0]}-01`;
 
       const [
-        lancRes,        // lançamentos do mês (despesas + receitas manuais)
-        lancHist,       // lançamentos 6 meses (para gráfico de despesas)
+        lancTodos,      // todos os lançamentos (filtro de mês feito no cliente)
         caixaRes,       // caixa do mês
         caixaHist,      // caixa 6 meses (gráfico + mês anterior)
         vendasRes,      // todas as vendas (rankings, situação)
@@ -50,13 +49,12 @@ export function useDashboardData(mes: string) {
         caixaTudo,      // TODO o histórico de caixa (sem filtro de data) — pro saldo acumulado
         contasRes,      // saldo inicial das contas — ponto de partida do saldo acumulado
       ] = await Promise.all([
-        // Lançamentos do mês (receitas manuais sem venda_id + todas as despesas)
-        supabase.from('lancamentos').select('tipo,valor,status,categoria,venda_id')
-          .gte('data_vencimento', start).lte('data_vencimento', end),
-
-        // Lançamentos 6 meses para gráfico de despesas
-        supabase.from('lancamentos').select('tipo,valor,status,data_vencimento,venda_id')
-          .gte('data_vencimento', start6),
+        // Todos os lançamentos — sem filtro de data na consulta porque um
+        // lançamento sem vencimento definido (fica "—" na tela) não
+        // aparecia em NADA que filtrasse por data_vencimento no banco.
+        // O filtro por mês agora é feito no cliente, usando a data efetiva
+        // (vencimento, ou a data de criação quando não tem vencimento).
+        supabase.from('lancamentos').select('tipo,valor,status,categoria,venda_id,data_vencimento,created_at'),
 
         // Caixa do mês
         supabase.from('caixa_movimentos').select('tipo,valor')
@@ -116,8 +114,15 @@ export function useDashboardData(mes: string) {
         supabase.from('contas_bancarias').select('id,saldo_inicial,ativo,tipo'),
       ]);
 
-      const lanc     = lancRes.data ?? [];
-      const hist     = lancHist.data ?? [];
+      // Data efetiva de um lançamento: usa o vencimento se tiver, senão
+      // cai pra data em que foi criado — assim nenhum lançamento "some"
+      // dos totais por falta de vencimento preenchido.
+      const dataEfetiva = (l: { data_vencimento?: string | null; created_at?: string | null }) =>
+        l.data_vencimento ?? (l.created_at ? l.created_at.slice(0, 10) : '');
+
+      const todosLanc = lancTodos.data ?? [];
+      const lanc = todosLanc.filter(l => dataEfetiva(l) >= start && dataEfetiva(l) <= end);
+      const hist = todosLanc.filter(l => dataEfetiva(l) >= start6);
       const caixa    = caixaRes.data ?? [];
       const caixaH   = caixaHist.data ?? [];
       const caixaAll = caixaTudo.data ?? [];
@@ -143,15 +148,15 @@ export function useDashboardData(mes: string) {
           }, 0);
 
       // Receita manual: lançamentos de receita SEM venda vinculada (ex: serviços avulsos)
-      // Usa data_vencimento pois são lançamentos manuais
+      // Usa a data efetiva (vencimento ou criação) do lançamento
       const somaLancManual = (arr: typeof lanc, s: string, e: string) =>
         arr
           .filter(l =>
             l.tipo === 'receita' &&
             l.status === 'pago' &&
             !l.venda_id &&
-            (l.data_vencimento ?? '') >= s &&
-            (l.data_vencimento ?? '') <= e
+            dataEfetiva(l) >= s &&
+            dataEfetiva(l) <= e
           )
           .reduce((acc, l) => acc + Number(l.valor ?? 0), 0);
 
@@ -208,7 +213,7 @@ export function useDashboardData(mes: string) {
       const mesAnt = `${antD.getFullYear()}-${String(antD.getMonth() + 1).padStart(2, '0')}`;
       const { start: sa, end: ea } = mesRange(mesAnt);
 
-      const lancAnt  = hist.filter(l => (l.data_vencimento ?? '') >= sa && (l.data_vencimento ?? '') <= ea);
+      const lancAnt  = hist.filter(l => dataEfetiva(l) >= sa && dataEfetiva(l) <= ea);
       const recAnt   = somaPagementos(sa, ea) + somaLancManual(lancAnt, sa, ea) + somaCaixa('entrada', sa, ea);
       const despAnt  = lancAnt.filter(l => l.tipo === 'despesa').reduce((s, l) => s + Number(l.valor), 0) + somaCaixa('saida', sa, ea);
 
@@ -227,7 +232,7 @@ export function useDashboardData(mes: string) {
 
       const chart6 = meses6.map(mm => {
         const { start: ms, end: me } = mesRange(mm);
-        const ml = hist.filter(l => (l.data_vencimento ?? '') >= ms && (l.data_vencimento ?? '') <= me);
+        const ml = hist.filter(l => dataEfetiva(l) >= ms && dataEfetiva(l) <= me);
         return {
           name: NOMES_MES[mm.slice(5, 7)] ?? mm.slice(5, 7),
           vendas: somaVendas(ms, me),

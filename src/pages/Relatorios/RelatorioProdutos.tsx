@@ -1,5 +1,4 @@
 // src/pages/Relatorios/RelatorioProdutos.tsx
-import { useMemo } from 'react';
 import { useProdutos } from '../../hooks/useProdutos';
 import { KpiCard } from '../../components/ui/KpiCard';
 import { Package, DollarSign, CheckCircle2, Tag } from 'lucide-react';
@@ -15,93 +14,83 @@ export function RelatorioProdutos() {
   const avgPreco  = ativos.length > 0
     ? ativos.reduce((s, p) => s + Number(p.preco_venda), 0) / ativos.length : 0;
 
-  const porCategoria = useMemo(() => {
-    const map: Record<string, { count: number; avgPreco: number; total: number }> = {};
-    produtos.forEach(p => {
-      const cat = (p as any).categoria_id ? 'Com categoria' : 'Sem categoria';
-      if (!map[cat]) map[cat] = { count: 0, avgPreco: 0, total: 0 };
-      map[cat].count++;
-      map[cat].total += Number(p.preco_venda);
-    });
-    return Object.entries(map).map(([cat, d]) => ({
-      categoria: cat,
-      count: d.count,
-      avgPreco: d.count > 0 ? d.total / d.count : 0,
-    }));
-  }, [produtos]);
-
-  if (isLoading) return <div className="p-8 text-blue-500 animate-pulse font-bold">Carregando...</div>;
+  if (isLoading) return <div className="p-6 text-blue-500 animate-pulse font-bold text-sm">Carregando...</div>;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 space-y-4">
       <div>
-        <h1 className="text-2xl font-black text-white flex items-center gap-2">
-          <Package className="w-6 h-6 text-blue-400" /> Relatório de Produtos
+        <h1 className="text-xl font-black text-white flex items-center gap-2">
+          <Package className="w-5 h-5 text-blue-400" /> Relatório de Produtos
         </h1>
-        <p className="text-gray-500 text-sm">Visão geral do catálogo de produtos</p>
+        <p className="text-gray-500 text-xs">Visão geral do catálogo de produtos</p>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <KpiCard label="Total"      value={produtos.length} icon={Package}      color="text-blue-400" />
-        <KpiCard label="Ativos"     value={ativos.length}   icon={CheckCircle2} color="text-green-400" />
-        <KpiCard label="Preço médio" value={fmtBRL(avgPreco)} icon={DollarSign} color="text-yellow-400" />
-        <KpiCard label="Rascunhos"  value={rascunhos.length} icon={Tag}         color="text-gray-400" />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+        <KpiCard label="Total"       value={produtos.length} icon={Package}      color="text-blue-400" compact />
+        <KpiCard label="Ativos"      value={ativos.length}   icon={CheckCircle2} color="text-green-400" compact />
+        <KpiCard label="Preço médio" value={fmtBRL(avgPreco)} icon={DollarSign} color="text-yellow-400" compact />
+        <KpiCard label="Rascunhos"   value={rascunhos.length} icon={Tag}         color="text-gray-400" compact />
       </div>
 
-      {/* Status */}
-      <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5">
-        <h3 className="text-xs font-bold text-gray-400 uppercase mb-4">Produtos por Status</h3>
-        <div className="space-y-2">
-          {[
-            { label: 'Ativos',    count: ativos.length,    cor: 'text-green-400',  bg: 'bg-green-500/15 border-green-500/30' },
-            { label: 'Inativos',  count: inativos.length,  cor: 'text-gray-400',   bg: 'bg-gray-500/15 border-gray-500/30' },
-            { label: 'Rascunhos', count: rascunhos.length, cor: 'text-yellow-400', bg: 'bg-yellow-500/15 border-yellow-500/30' },
-          ].map(s => (
-            <div key={s.label} className="flex items-center justify-between py-2 border-b border-gray-800 last:border-0">
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${s.bg} ${s.cor}`}>{s.label}</span>
-              <span className="font-bold text-white">{s.count} produto(s)</span>
-            </div>
-          ))}
+      {/* Status compactado em uma linha só */}
+      <div className="bg-[#1f2937] border border-gray-700 rounded-lg px-3.5 py-2 flex items-center justify-between flex-wrap gap-2">
+        <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Produtos por Status</span>
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-green-500/10 border border-green-500/25">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-400"></span>
+            <span className="text-[11px] font-medium text-green-400">Ativos:</span>
+            <span className="text-xs font-black text-white">{ativos.length}</span>
+          </div>
+          <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-gray-500/10 border border-gray-500/25">
+            <span className="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
+            <span className="text-[11px] font-medium text-gray-400">Inativos:</span>
+            <span className="text-xs font-black text-white">{inativos.length}</span>
+          </div>
+          <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-yellow-500/10 border border-yellow-500/25">
+            <span className="w-1.5 h-1.5 rounded-full bg-yellow-400"></span>
+            <span className="text-[11px] font-medium text-yellow-400">Rascunhos:</span>
+            <span className="text-xs font-black text-white">{rascunhos.length}</span>
+          </div>
         </div>
       </div>
 
-      {/* Lista completa */}
-      <div className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">
-        <div className="px-5 py-3 border-b border-gray-700">
-          <p className="text-xs font-bold text-gray-400 uppercase">Catálogo Completo ({produtos.length})</p>
+      {/* Lista completa compacta */}
+      <div className="bg-[#1f2937] border border-gray-700 rounded-lg overflow-hidden">
+        <div className="px-3.5 py-2 border-b border-gray-700 bg-gray-800/30">
+          <p className="text-[11px] font-bold text-gray-400 uppercase">Catálogo Completo ({produtos.length})</p>
         </div>
         <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-xs">
           <thead>
             <tr className="text-gray-400 text-[10px] font-bold uppercase bg-gray-800/40">
-              <th className="px-5 py-3 text-left">Produto</th>
-              <th className="px-5 py-3 text-left">SKU</th>
-              <th className="px-5 py-3 text-center">Unidade</th>
-              <th className="px-5 py-3 text-center">Status</th>
-              <th className="px-5 py-3 text-right">Preço</th>
+              <th className="px-3 py-1.5 text-left">Produto</th>
+              <th className="px-3 py-1.5 text-left w-28">SKU</th>
+              <th className="px-3 py-1.5 text-center w-20">Unidade</th>
+              <th className="px-3 py-1.5 text-center w-24">Status</th>
+              <th className="px-3 py-1.5 text-right w-28">Preço</th>
             </tr>
           </thead>
           <tbody>
             {produtos.length === 0 && (
-              <tr><td colSpan={5} className="px-5 py-12 text-center text-gray-600">Nenhum produto cadastrado.</td></tr>
+              <tr><td colSpan={5} className="px-3 py-8 text-center text-gray-600 text-xs">Nenhum produto cadastrado.</td></tr>
             )}
             {produtos.map(p => (
-              <tr key={p.id} className="border-b border-gray-800 hover:bg-gray-800/30 transition-colors">
-                <td className="px-5 py-3 font-medium text-white">{p.nome}</td>
-                <td className="px-5 py-3 text-gray-500 font-mono text-xs">{p.sku || '—'}</td>
-                <td className="px-5 py-3 text-center">
-                  <span className="text-[10px] font-bold bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full">
+              <tr key={p.id} className="border-b border-gray-800/60 hover:bg-gray-800/30 transition-colors">
+                <td className="px-3 py-1.5 font-medium text-white">{p.nome}</td>
+                <td className="px-3 py-1.5 text-gray-500 font-mono text-[11px]">{p.sku || '—'}</td>
+                <td className="px-3 py-1.5 text-center">
+                  <span className="text-[10px] font-bold bg-gray-700/60 text-gray-300 px-1.5 py-0.5 rounded">
                     {p.unidade_medida === 'm2' ? 'm²' : 'un'}
                   </span>
                 </td>
-                <td className="px-5 py-3 text-center">
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                <td className="px-3 py-1.5 text-center">
+                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold border capitalize ${
                     p.status === 'ativo'    ? 'bg-green-500/15 text-green-400 border-green-500/30' :
                     p.status === 'inativo'  ? 'bg-gray-500/15 text-gray-400 border-gray-500/30' :
                     'bg-yellow-500/15 text-yellow-400 border-yellow-500/30'
                   }`}>{p.status}</span>
                 </td>
-                <td className="px-5 py-3 text-right font-bold text-green-400">
+                <td className="px-3 py-1.5 text-right font-bold text-green-400">
                   {fmtBRL(Number(p.preco_venda))}
                   {p.unidade_medida === 'm2' && <span className="text-[10px] text-gray-500 font-normal ml-0.5">/m²</span>}
                 </td>
@@ -114,3 +103,4 @@ export function RelatorioProdutos() {
     </div>
   );
 }
+

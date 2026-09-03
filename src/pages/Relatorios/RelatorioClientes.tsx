@@ -29,60 +29,60 @@ export function RelatorioClientes() {
   const ticketMedio = ranking.length > 0
     ? ranking.reduce((s, c) => s + c.total / c.pedidos, 0) / ranking.length : 0;
 
-  if (loadC || loadV) return <div className="p-8 text-blue-500 animate-pulse font-bold">Carregando...</div>;
+  if (loadC || loadV) return <div className="p-6 text-blue-500 animate-pulse font-bold text-sm">Carregando...</div>;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 space-y-4">
       <div>
-        <h1 className="text-2xl font-black text-white flex items-center gap-2">
-          <Users2 className="w-6 h-6 text-blue-400" /> Relatório de Clientes
+        <h1 className="text-xl font-black text-white flex items-center gap-2">
+          <Users2 className="w-5 h-5 text-blue-400" /> Relatório de Clientes
         </h1>
-        <p className="text-gray-500 text-sm">Ranking e análise de clientes</p>
+        <p className="text-gray-500 text-xs">Ranking e análise de clientes</p>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <KpiCard label="Clientes cadastrados" value={clientes.length}     icon={Users2}      color="text-blue-400" />
-        <KpiCard label="Com compras"          value={ranking.length}      icon={ShoppingCart} color="text-green-400" />
-        <KpiCard label="Total geral"          value={fmtBRL(totalGeral)}  icon={DollarSign}  color="text-green-400" />
-        <KpiCard label="Ticket médio"         value={fmtBRL(ticketMedio)} icon={TrendingUp}  color="text-purple-400" />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+        <KpiCard label="Clientes cadastrados" value={clientes.length}     icon={Users2}      color="text-blue-400" compact />
+        <KpiCard label="Com compras"          value={ranking.length}      icon={ShoppingCart} color="text-green-400" compact />
+        <KpiCard label="Total geral"          value={fmtBRL(totalGeral)}  icon={DollarSign}  color="text-green-400" compact />
+        <KpiCard label="Ticket médio"         value={fmtBRL(ticketMedio)} icon={TrendingUp}  color="text-purple-400" compact />
       </div>
 
-      <div className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">
-        <div className="px-5 py-3 border-b border-gray-700">
-          <p className="text-xs font-bold text-gray-400 uppercase">Ranking de Clientes por Valor Total</p>
+      <div className="bg-[#1f2937] border border-gray-700 rounded-lg overflow-hidden">
+        <div className="px-3.5 py-2 border-b border-gray-700 bg-gray-800/30">
+          <p className="text-[11px] font-bold text-gray-400 uppercase">Ranking de Clientes por Valor Total</p>
         </div>
         <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-xs">
           <thead>
             <tr className="text-gray-400 text-[10px] font-bold uppercase bg-gray-800/40">
-              <th className="px-5 py-3 text-left">#</th>
-              <th className="px-5 py-3 text-left">Cliente</th>
-              <th className="px-5 py-3 text-right">Pedidos</th>
-              <th className="px-5 py-3 text-right">Ticket Médio</th>
-              <th className="px-5 py-3 text-left">Última Compra</th>
-              <th className="px-5 py-3 text-right">Total</th>
+              <th className="px-3 py-1.5 text-left w-10">#</th>
+              <th className="px-3 py-1.5 text-left">Cliente</th>
+              <th className="px-3 py-1.5 text-right w-24">Pedidos</th>
+              <th className="px-3 py-1.5 text-right w-32">Ticket Médio</th>
+              <th className="px-3 py-1.5 text-left w-32">Última Compra</th>
+              <th className="px-3 py-1.5 text-right w-32">Total</th>
             </tr>
           </thead>
           <tbody>
             {ranking.length === 0 && (
-              <tr><td colSpan={6} className="px-5 py-12 text-center text-gray-600">Nenhuma venda registrada ainda.</td></tr>
+              <tr><td colSpan={6} className="px-3 py-8 text-center text-gray-600 text-xs">Nenhuma venda registrada ainda.</td></tr>
             )}
             {ranking.map((c, i) => (
-              <tr key={c.nome} className="border-b border-gray-800 hover:bg-gray-800/30 transition-colors">
-                <td className="px-5 py-3 text-gray-500 font-bold">{i + 1}</td>
-                <td className="px-5 py-3 font-medium text-white">{c.nome}</td>
-                <td className="px-5 py-3 text-right text-gray-400">{c.pedidos}</td>
-                <td className="px-5 py-3 text-right text-blue-400 font-bold">{fmtBRL(c.total / c.pedidos)}</td>
-                <td className="px-5 py-3 text-gray-400 text-xs">{fmtData(c.ultima)}</td>
-                <td className="px-5 py-3 text-right font-black text-green-400">{fmtBRL(c.total)}</td>
+              <tr key={c.nome} className="border-b border-gray-800/60 hover:bg-gray-800/30 transition-colors">
+                <td className="px-3 py-1.5 text-gray-500 font-bold">{i + 1}</td>
+                <td className="px-3 py-1.5 font-medium text-white">{c.nome}</td>
+                <td className="px-3 py-1.5 text-right text-gray-400">{c.count ?? c.pedidos}</td>
+                <td className="px-3 py-1.5 text-right text-blue-400 font-bold">{fmtBRL(c.total / c.pedidos)}</td>
+                <td className="px-3 py-1.5 text-gray-400 text-[11px]">{fmtData(c.ultima)}</td>
+                <td className="px-3 py-1.5 text-right font-bold text-green-400">{fmtBRL(c.total)}</td>
               </tr>
             ))}
           </tbody>
           {ranking.length > 0 && (
             <tfoot>
-              <tr className="border-t border-green-500/20 bg-green-900/10">
-                <td colSpan={5} className="px-5 py-2.5 text-right text-xs font-bold text-gray-500 uppercase">Total geral</td>
-                <td className="px-5 py-2.5 text-right font-black text-green-400">{fmtBRL(totalGeral)}</td>
+              <tr className="border-t border-green-500/20 bg-green-900/15">
+                <td colSpan={5} className="px-3 py-1.5 text-right text-[11px] font-bold text-gray-400 uppercase">Total geral</td>
+                <td className="px-3 py-1.5 text-right font-black text-green-400 text-xs">{fmtBRL(totalGeral)}</td>
               </tr>
             </tfoot>
           )}
@@ -92,3 +92,4 @@ export function RelatorioClientes() {
     </div>
   );
 }
+
