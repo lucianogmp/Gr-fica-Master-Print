@@ -15,6 +15,8 @@ import {
   Plus, Trash2, CreditCard, ShoppingCart, ChevronDown, ChevronUp, Info,
 } from 'lucide-react';
 import { MoneyInput } from '../ui/MoneyInput';
+import { PctInput } from '../ui/PctInput';
+import { QtdInput } from '../ui/QtdInput';
 import { DarkSelect } from '../ui/DarkSelect';
 
 const IN   = "w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors";
@@ -149,13 +151,9 @@ function TabelaTaxasEditor({
 
                 {/* Taxa % */}
                 <div className="flex items-center gap-1 justify-end">
-                  <input
-                    type="number" onWheel={e => e.currentTarget.blur()}
-                    min="0"
-                    max="100"
-                    step="0.01"
-                    value={taxa || ''}
-                    onChange={e => setTaxa(t.parcelas, parseFloat(e.target.value) || 0)}
+                  <PctInput
+                    value={taxa}
+                    onChange={v => setTaxa(t.parcelas, v)}
                     placeholder="0,00"
                     className={IN_SM}
                     style={{ maxWidth: 80 }}
@@ -258,11 +256,10 @@ function FormaCard({
         {/* Dias úteis pra compensar */}
         <div className="flex items-center gap-1.5 flex-shrink-0" title="Depois de quantos dias úteis o valor realmente cai/compensa (dinheiro e PIX geralmente é 0 — na hora)">
           <span className="text-[10px] text-gray-500 whitespace-nowrap">Compensa em</span>
-          <input
-            type="number" onWheel={e => e.currentTarget.blur()} min="0" step="1" maxLength={2}
-            value={formaNorm.dias_uteis_liquidacao ?? 0}
-            onChange={e => onChange({ ...formaNorm, dias_uteis_liquidacao: Math.max(0, parseInt(e.target.value) || 0) })}
-            className="bg-[#0d1117] border border-gray-700 rounded-lg px-2 py-1 text-white text-xs text-center focus:outline-none focus:border-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          <QtdInput
+            value={String(formaNorm.dias_uteis_liquidacao ?? 0)}
+            onChange={v => onChange({ ...formaNorm, dias_uteis_liquidacao: Math.max(0, Math.round(parseFloat(v) || 0)) })}
+            className="bg-[#0d1117] border border-gray-700 rounded-lg px-2 py-1 text-white text-xs text-center focus:outline-none focus:border-blue-500"
             style={{ width: 44 }}
           />
           <span className="text-[10px] text-gray-500 whitespace-nowrap">dia(s) útil(eis)</span>
@@ -288,14 +285,10 @@ function FormaCard({
         {!formaNorm.permite_parcelamento && (
           <div className="flex items-center gap-1.5 flex-shrink-0" title="Taxa cobrada nessa forma de pagamento, mesmo sem parcelamento (ex: débito)">
             <span className="text-[10px] text-gray-500 whitespace-nowrap">Taxa</span>
-            <input
-              type="number" onWheel={e => e.currentTarget.blur()} min="0" step="0.01"
+            <PctInput
               value={formaNorm.tabela_taxas[0]?.taxa_pct ?? 0}
-              onChange={e => {
-                const taxa = Math.max(0, parseFloat(e.target.value) || 0);
-                onChange({ ...formaNorm, tabela_taxas: [{ parcelas: 1, taxa_pct: taxa }] });
-              }}
-              className="bg-[#0d1117] border border-gray-700 rounded-lg px-2 py-1 text-white text-xs text-center focus:outline-none focus:border-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              onChange={v => onChange({ ...formaNorm, tabela_taxas: [{ parcelas: 1, taxa_pct: v }] })}
+              className="bg-[#0d1117] border border-gray-700 rounded-lg px-2 py-1 text-white text-xs text-center focus:outline-none focus:border-blue-500"
               style={{ width: 52 }}
             />
             <span className="text-[10px] text-gray-500 whitespace-nowrap">%</span>
@@ -399,10 +392,9 @@ export function AbaVendas({ form, set }: Props) {
             <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">
               Prazo padrão de entrega (dias)
             </label>
-            <input
-              type="number" onWheel={e => e.currentTarget.blur()} min="0" step="1"
-              value={num('venda_prazo_entrega_dias')}
-              onChange={e => set('venda_prazo_entrega_dias', parseInt(e.target.value) || null)}
+            <QtdInput
+              value={String(num('venda_prazo_entrega_dias') || '')}
+              onChange={v => set('venda_prazo_entrega_dias', v ? Math.round(parseFloat(v)) : null)}
               className={IN_N}
               placeholder="Ex: 5"
             />

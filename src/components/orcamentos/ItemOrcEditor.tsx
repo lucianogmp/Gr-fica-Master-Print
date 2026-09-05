@@ -37,45 +37,6 @@ const TIPOS: { key: TabMode; label: string; icon: LucideIcon; ajuda: string }[] 
 // Campo de quantidade — ver componente compartilhado QtdInput (mesma
 // mecânica do MoneyInput/MedidaInput, agora reaproveitada em todo o sistema
 // em vez de só aqui).
-function NumInput({
-  value,
-  onChange,
-  className,
-  placeholder,
-  step = '0.001',
-  min = '0',
-  center = false,
-  big = false,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  className?: string;
-  placeholder?: string;
-  step?: string;
-  min?: string;
-  center?: boolean;
-  big?: boolean;
-}) {
-  return (
-    <input
-      type="number"
-      inputMode="decimal"
-      min={min}
-      step={step}
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      onFocus={e => e.target.select()}
-      onWheel={e => e.currentTarget.blur()}
-      placeholder={placeholder}
-      className={[
-        className ?? IN_BASE,
-        center ? 'text-center' : '',
-        big ? 'text-xl font-black py-3' : '',
-        '[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none',
-      ].join(' ')}
-    />
-  );
-}
 
 function DimQtd({
   l, a, q,
@@ -633,10 +594,9 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando, mostrarCusto 
                     Área (m²)
                     <HelpTooltip texto="Digite a área total (largura × altura, em metros) que esse produto vai ocupar. O sistema multiplica pelo preço por m² do produto pra calcular o total." />
                   </label>
-                  <NumInput
+                  <QtdInput
                     value={areaM2}
                     onChange={setAreaM2}
-                    step="0.001" min="0"
                     center big
                     placeholder="Ex: 1.250"
                     className="bg-[#111827] border border-blue-500/50 rounded-lg px-2.5 py-2 text-blue-300 text-xs focus:outline-none focus:border-blue-400 transition-colors w-full"

@@ -9,7 +9,6 @@ import { formatarEnderecoCliente } from '../../types/cliente';
 import { useConfiguracoes } from '../../hooks/useConfiguracoes';
 import { useRole } from '../../hooks/useRole';
 import { Venda, StatusVenda, STATUS_VENDA } from '../../types/venda';
-import { KpiCard } from '../../components/ui/KpiCard';
 import { useConfirm } from '../../components/ui/ConfirmModal';
 import { DollarSign, ClipboardList, X, LucideIcon, ChevronLeft, ChevronRight, Printer, CheckSquare, Square } from 'lucide-react';
 import { MonthInput } from '../../components/ui/MonthInput';
@@ -244,27 +243,41 @@ export function ListaVendas({
     <>
       <ConfirmModal />
       <div className={`p-6 space-y-6 ${selecionadas.size > 0 ? 'pb-24' : ''}`}>
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
           <div>
             <h1 className="text-2xl font-black text-white flex items-center gap-2">
               <Icon className="w-6 h-6 text-blue-400" /> {titulo}
             </h1>
             <p className="text-gray-500 text-sm">{vendasDoMes.length} venda(s){mes ? ' neste mês' : ''}</p>
           </div>
-          {mostrarBotaoNovo && (
-            <button
-              onClick={() => navigate(`${rotaDetalhe}/__novo__`, { state: { from: rotaAtual } })}
-              className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg shadow-blue-900/30 whitespace-nowrap"
-            >
-              + Nova Venda
-            </button>
-          )}
-        </div>
-
-        <div className={`grid grid-cols-2 gap-4 ${kpisAtivos.length === 2 ? 'md:grid-cols-2' : kpisAtivos.length === 3 ? 'md:grid-cols-3' : 'md:grid-cols-4'}`}>
-          {kpisAtivos.map((k, i) => (
-            <KpiCard key={i} label={k.label} value={k.calcular(vendasDoMes)} icon={k.icon} color={k.color} />
-          ))}
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* Compacto — mesmo padrão do Fluxo de Caixa: card pequeno com
+                ícone + label + valor, encaixado ao lado do título em vez de
+                ocupar uma linha inteira embaixo. */}
+            {kpisAtivos.map((k, i) => {
+              const KIcon = k.icon;
+              const valor = k.calcular(vendasDoMes);
+              return (
+                <div key={i} className="bg-[#1f2937] border border-gray-700 rounded-xl px-4 py-2 flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-gray-800/60">
+                    <KIcon className={`w-4 h-4 ${k.color}`} />
+                  </div>
+                  <div>
+                    <p className="text-[8px] font-bold text-gray-500 uppercase whitespace-nowrap leading-tight">{k.label}</p>
+                    <p className={`text-sm font-black ${k.color} whitespace-nowrap`}>{valor}</p>
+                  </div>
+                </div>
+              );
+            })}
+            {mostrarBotaoNovo && (
+              <button
+                onClick={() => navigate(`${rotaDetalhe}/__novo__`, { state: { from: rotaAtual } })}
+                className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg shadow-blue-900/30 whitespace-nowrap"
+              >
+                + Nova Venda
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="flex gap-2 flex-wrap items-center">

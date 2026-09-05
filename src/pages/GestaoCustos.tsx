@@ -4,6 +4,7 @@ import { useGestaoCustos } from '../hooks/useGestaoCustos';
 import { Modal } from '../components/ui/Modal';
 import { KpiCard } from '../components/ui/KpiCard';
 import { MoneyInput } from '../components/ui/MoneyInput';
+import { QtdInput } from '../components/ui/QtdInput';
 import { DateInput } from '../components/ui/DateInput';
 import {
   TrendingDown, Building2, DollarSign, Timer, BarChart3, Plus, type LucideIcon,
@@ -284,7 +285,7 @@ export function GestaoCustos() {
             <div><label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Valor de compra (R$) *</label>
               <MoneyInput value={formDepr.valor} onChange={v => setFormDepr(f => ({ ...f, valor: v }))} className={IN} placeholder="0,00" /></div>
             <div><label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Vida útil (anos) *</label>
-              <input type="number" min="1" step="1" value={formDepr.vida_util_anos} onChange={e => setFormDepr(f => ({ ...f, vida_util_anos: e.target.value }))} className={IN} placeholder="5" /></div>
+              <QtdInput value={formDepr.vida_util_anos} onChange={v => setFormDepr(f => ({ ...f, vida_util_anos: v }))} className={IN} placeholder="5" /></div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div><label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Categoria</label>

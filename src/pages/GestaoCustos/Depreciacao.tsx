@@ -5,6 +5,7 @@ import { useGestaoCustos } from '../../hooks/useGestaoCustos';
 import { useConfirm } from '../../components/ui/ConfirmModal';
 import { KpiCard } from '../../components/ui/KpiCard';
 import { MoneyInput } from '../../components/ui/MoneyInput';
+import { QtdInput } from '../../components/ui/QtdInput';
 import { DateInput } from '../../components/ui/DateInput';
 import { HelpTooltip } from '../../components/ui/HelpTooltip';
 import { TrendingDown, Plus, X, Pencil, Timer } from 'lucide-react';
@@ -126,8 +127,8 @@ export function Depreciacao() {
                   Vida útil (anos) *
                   <HelpTooltip texto="Quantos anos esse equipamento deve durar até precisar ser trocado. O sistema divide o valor de compra por (vida útil × 12 meses) pra saber quanto desse ativo 'gasta' por mês — isso entra direto no Overhead." />
                 </label>
-                <input required type="number" min="1" step="1" value={form.vida_util_anos}
-                  onChange={e => setF('vida_util_anos', e.target.value)} className={IN} placeholder="5" />
+                <QtdInput value={form.vida_util_anos}
+                  onChange={v => setF('vida_util_anos', v)} className={IN} placeholder="5" />
               </div>
               <div>
                 <label className={LABEL}>Categoria</label>

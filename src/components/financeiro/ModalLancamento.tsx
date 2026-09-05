@@ -41,8 +41,13 @@ export function ModalLancamento({ open, editando, tipoInicial, onClose, onSalvar
   const [salvando, setSalvando] = useState(false);
   const { data: contas = [] } = useContasBancarias();
   const contasAtivas = contas.filter(c => c.ativo);
-  const contasDaForma = contasAtivas.filter(c => (c.formas_aceitas ?? []).includes(form.forma_pagamento));
-  const opcoesConta = contasDaForma.length > 0 ? contasDaForma : contasAtivas;
+  // Dinheiro só pode ir pro caixa físico; outras formas nunca podem cair
+  // na conta Caixa — mesma regra do pagamento de venda.
+  const contasCompativeis = form.forma_pagamento === 'Dinheiro'
+    ? contasAtivas.filter(c => c.tipo === 'caixa')
+    : contasAtivas.filter(c => c.tipo !== 'caixa');
+  const contasDaForma = contasCompativeis.filter(c => (c.formas_aceitas ?? []).includes(form.forma_pagamento));
+  const opcoesConta = contasDaForma.length > 0 ? contasDaForma : contasCompativeis;
   // Ignora as mudanças de estado disparadas pelo próprio carregamento
   // (abrir o modal já preenchendo com o lançamento existente) — só marca
   // "alterações pendentes" quando é a pessoa mexendo em algum campo.

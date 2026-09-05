@@ -120,24 +120,18 @@ export function ModalMov({ open, tipo, materia, onClose, onConfirmar }: ModalMov
                 <div className="grid grid-cols-3 gap-2">
                   <div>
                     <label className="text-[9px] font-bold text-gray-500 uppercase block mb-1">Largura (cm)</label>
-                    <input type="number" onWheel={e => e.currentTarget.blur()} min="0" step="0.1" value={larguraCm}
-                      onFocus={e => e.target.select()}
-                      onChange={e => setLarguraCm(e.target.value)}
-                      placeholder="61" className="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-2 py-2 text-white text-sm text-center focus:outline-none focus:border-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                    <QtdInput value={larguraCm} onChange={setLarguraCm}
+                      placeholder="61" className="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-2 py-2 text-white text-sm text-center focus:outline-none focus:border-blue-500" />
                   </div>
                   <div>
                     <label className="text-[9px] font-bold text-gray-500 uppercase block mb-1">Compr. (m)</label>
-                    <input type="number" onWheel={e => e.currentTarget.blur()} min="0" step="0.1" value={comprimentoM}
-                      onFocus={e => e.target.select()}
-                      onChange={e => setComprimentoM(e.target.value)}
-                      placeholder="50" className="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-2 py-2 text-white text-sm text-center focus:outline-none focus:border-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                    <QtdInput value={comprimentoM} onChange={setComprimentoM}
+                      placeholder="50" className="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-2 py-2 text-white text-sm text-center focus:outline-none focus:border-blue-500" />
                   </div>
                   <div>
                     <label className="text-[9px] font-bold text-gray-500 uppercase block mb-1">Bobinas</label>
-                    <input type="number" onWheel={e => e.currentTarget.blur()} min="0" step="1" value={numBobinas}
-                      onFocus={e => e.target.select()}
-                      onChange={e => setNumBobinas(e.target.value)}
-                      placeholder="1" className="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-2 py-2 text-white text-sm text-center focus:outline-none focus:border-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                    <QtdInput value={numBobinas} onChange={setNumBobinas}
+                      placeholder="1" className="w-full bg-[#0d1117] border border-gray-700 rounded-lg px-2 py-2 text-white text-sm text-center focus:outline-none focus:border-blue-500" />
                   </div>
                 </div>
                 {m2Calculado > 0 && (

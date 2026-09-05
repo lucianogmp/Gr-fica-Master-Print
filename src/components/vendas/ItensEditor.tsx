@@ -9,6 +9,7 @@ import { useRole } from '../../hooks/useRole';
 import { X, Search, Package } from 'lucide-react';
 import { MoneyInput } from '../ui/MoneyInput';
 import { QtdInput } from '../ui/QtdInput';
+import { PctInput } from '../ui/PctInput';
 
 const fmtBRL = (v: number) => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -260,8 +261,8 @@ export function ItensEditor({ itens, onChange }: ItensEditorProps) {
                       onChange={v => atualizarItem(i, 'preco_unitario', v)} className={IN + ' text-right'} />
                   </td>
                   <td className="px-1.5 py-1.5">
-                    <input type="number" onWheel={e => e.currentTarget.blur()} min="0" max="100" step="0.1" value={it.desconto ?? 0}
-                      onChange={e => atualizarItem(i, 'desconto', parseFloat(e.target.value) || 0)} className={IN_NUM + ' text-center'} />
+                    <PctInput value={Number(it.desconto ?? 0)}
+                      onChange={v => atualizarItem(i, 'desconto', v)} className={IN_NUM + ' text-center'} />
                   </td>
                   <td className="px-3 py-1.5 text-right font-bold text-white text-sm whitespace-nowrap">
                     {fmtBRL(it.total)}

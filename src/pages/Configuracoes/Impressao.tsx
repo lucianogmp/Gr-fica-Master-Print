@@ -6,6 +6,7 @@ import { EditorLayoutImpressao } from '../../components/configuracoes/EditorLayo
 import { DEFAULT_LAYOUT_VENDA, DEFAULT_LAYOUT_ORCAMENTO } from '../../types/layoutImpressao';
 import { Printer, Save, Check, Hash, Loader2 } from 'lucide-react';
 import { IN_N, Lbl } from './utils';
+import { QtdInput } from '../../components/ui/QtdInput';
 import { supabase } from '../../lib/supabase';
 import { useConfirm } from '../../components/ui/ConfirmModal';
 import toast from 'react-hot-toast';
@@ -44,7 +45,7 @@ function NumeracaoCard({ tabela, label }: { tabela: 'vendas' | 'orcamentos'; lab
       </p>
       <Lbl>Próximo número a usar</Lbl>
       <div className="flex gap-2">
-        <input type="number" min="1" step="1" value={valor} onChange={e => setValor(e.target.value)}
+        <QtdInput value={valor} onChange={setValor}
           className={IN_N} placeholder="Ex: 1" />
         <button onClick={aplicar} disabled={aplicando || !valor}
           className="bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white px-4 rounded-lg font-bold text-sm transition-all flex items-center gap-1.5 flex-shrink-0">
@@ -122,9 +123,9 @@ export function Impressao() {
             <NumeracaoCard tabela="orcamentos" label="Orçamentos" />
             <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-4 w-full max-w-[280px]">
               <Lbl>Validade da proposta (dias)</Lbl>
-              <input type="number" min="1" step="1"
-                value={(form.orc_validade_dias as number | null | undefined) ?? ''}
-                onChange={e => set('orc_validade_dias', parseInt(e.target.value) || null)}
+              <QtdInput
+                value={String((form.orc_validade_dias as number | null | undefined) ?? '')}
+                onChange={v => set('orc_validade_dias', v ? Math.round(parseFloat(v)) : null)}
                 className={IN_N} placeholder="7" />
               <p className="text-[11px] text-gray-500 mt-1.5">
                 Aparece no orçamento impresso quando "Validade da proposta" estiver marcada abaixo.

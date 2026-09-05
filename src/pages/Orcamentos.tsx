@@ -25,6 +25,7 @@ import { ClienteSelectorVenda } from '../components/vendas/ClienteSelectorVenda'
 import { CalculadoraFolhas } from '../components/CalculadoraFolhas';
 import { KpiCard } from '../components/ui/KpiCard';
 import { MoneyInput } from '../components/ui/MoneyInput';
+import { PctInput } from '../components/ui/PctInput';
 import { DarkSelect } from '../components/ui/DarkSelect';
 import { useConfirm } from '../components/ui/ConfirmModal';
 
@@ -1092,9 +1093,11 @@ export function Orcamentos() {
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-400">Desconto (%)</span>
-                <input type="number" onWheel={e => e.currentTarget.blur()} min="0" max="100" step="0.5"
-                  value={form.desconto ?? 0} onChange={e => setF('desconto', parseFloat(e.target.value) || 0)}
-                  className="w-20 bg-[#111827] border border-gray-700 rounded-lg px-2 py-1 text-white text-sm text-right focus:outline-none focus:border-blue-500" />
+                <PctInput
+                  value={Number(form.desconto ?? 0)}
+                  onChange={v => setF('desconto', v)}
+                  className="w-20 bg-[#111827] border border-gray-700 rounded-lg px-2 py-1 text-white text-sm text-right focus:outline-none focus:border-blue-500"
+                />
               </div>
               {descGlobal > 0 && (
                 <div className="flex justify-between text-xs text-red-400">

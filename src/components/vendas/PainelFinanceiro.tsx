@@ -91,8 +91,16 @@ export function PainelFinanceiro({
   });
 
   const contasAtivas  = contas.filter(c => c.ativo);
-  const contasDaForma = contasAtivas.filter(c => (c.formas_aceitas ?? []).includes(novoPag.forma));
-  const opcoesConta   = contasDaForma.length > 0 ? contasDaForma : contasAtivas;
+  // Dinheiro só pode ir pro caixa físico; qualquer outra forma (Pix, cartão,
+  // transferência...) nunca pode cair na conta Caixa — senão o dinheiro some
+  // do Resumo Financeiro sem aparecer em conta nenhuma de verdade, e o
+  // Fluxo de Caixa (que é só dinheiro físico) mostraria um pagamento que
+  // na real nunca passou pela gaveta do caixa.
+  const contasCompativeis = novoPag.forma === 'Dinheiro'
+    ? contasAtivas.filter(c => c.tipo === 'caixa')
+    : contasAtivas.filter(c => c.tipo !== 'caixa');
+  const contasDaForma = contasCompativeis.filter(c => (c.formas_aceitas ?? []).includes(novoPag.forma));
+  const opcoesConta   = contasDaForma.length > 0 ? contasDaForma : contasCompativeis;
 
   // Desconto pode ser digitado em R$ ou em % — a pessoa escolhe. Por baixo
   // dos panos sempre fica salvo como % (mesma coluna de sempre, não bagunça
@@ -220,16 +228,13 @@ export function PainelFinanceiro({
               placeholder="0,00"
             />
           ) : (
-            <div className="relative" style={{ width: 72 }}>
-              <input
-                type="number" min={0} max={100} step="0.1"
-                value={desconto || ''}
-                onChange={e => mudarDescontoPct(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
-                className={IN_SM}
-                style={{ width: '100%' }}
-                placeholder="0"
-              />
-            </div>
+            <PctInput
+              value={desconto}
+              onChange={mudarDescontoPct}
+              className={IN_SM}
+              style={{ width: 72 }}
+              placeholder="0"
+            />
           )}
           {desconto > 0 && (
             <span className="text-[9px] text-gray-600">
@@ -385,8 +390,11 @@ export function PainelFinanceiro({
               <DarkSelect
                 value={novoPag.forma}
                 onChange={v => {
-                  const opcoes = contasAtivas.filter(c => (c.formas_aceitas ?? []).includes(v));
-                  const auto = opcoes.length === 1 ? opcoes[0].id : '';
+                  const compat = v === 'Dinheiro'
+                    ? contasAtivas.filter(c => c.tipo === 'caixa')
+                    : contasAtivas.filter(c => c.tipo !== 'caixa');
+                  const opcoes = compat.filter(c => (c.formas_aceitas ?? []).includes(v));
+                  const auto = (opcoes.length === 1 ? opcoes[0] : compat.length === 1 ? compat[0] : null)?.id ?? '';
                   setNovoPag(f => ({ ...f, forma: v, parcelas: 1, contaId: auto }));
                 }}
                 allowEmpty={false}

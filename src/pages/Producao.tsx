@@ -91,9 +91,9 @@ export function Producao() {
   if (isLoading) return <div className="p-8 text-blue-500 animate-pulse font-bold">Carregando Produção...</div>;
 
   return (
-    <div className="p-4 md:p-5 space-y-3.5">
-      {/* Header */}
-      <div className="flex justify-between items-center flex-wrap gap-2">
+    <div className="h-full flex flex-col overflow-hidden p-4 md:p-5 gap-3.5">
+      {/* Header — fixo, não rola */}
+      <div className="flex justify-between items-center flex-wrap gap-2 flex-shrink-0">
         <div>
           <h1 className="text-xl font-black text-white flex items-center gap-2">
             <Factory className="w-5 h-5 text-blue-400" /> Produção
@@ -102,7 +102,12 @@ export function Producao() {
             Kanban — arraste para mover · pedidos entregues somem após 30 dias
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* KPIs — encaixados na mesma linha do título, compactos */}
+          <KpiCard compact label="Total em aberto" value={total}     icon={ClipboardList} color="text-blue-400" />
+          <KpiCard compact label="Urgentes"        value={urgentes}  icon={AlertCircle}   color="text-red-400" />
+          <KpiCard compact label="Atrasados"       value={atrasados} icon={AlarmClock}    color="text-yellow-400" />
+          <KpiCard compact label="Prontos"         value={prontos}   icon={CheckCircle2}  color="text-green-400" />
           <button
             onClick={() => abrirNova('fila')}
             className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl font-bold text-xs transition-all shadow-md shadow-blue-900/30"
@@ -112,17 +117,12 @@ export function Producao() {
         </div>
       </div>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
-        <KpiCard compact label="Total em aberto" value={total}     icon={ClipboardList} color="text-blue-400" />
-        <KpiCard compact label="Urgentes"        value={urgentes}  icon={AlertCircle}   color="text-red-400" />
-        <KpiCard compact label="Atrasados"       value={atrasados} icon={AlarmClock}    color="text-yellow-400" />
-        <KpiCard compact label="Prontos"         value={prontos}   icon={CheckCircle2}  color="text-green-400" />
-      </div>
-
-      {/* Kanban */}
-      <div className="overflow-x-auto pb-2">
-        <div className="flex gap-3 min-w-max">
+      {/* Kanban — a aba inteira é fixa (sem rolagem de página); só cabe
+          rolar pro lado pra ver as colunas. Cada coluna rola por conta
+          própria (igual Trello), e o próprio quadro fica com a altura
+          disponível inteira, sem sobrar espaço embaixo. */}
+      <div className="flex-1 min-h-0 overflow-x-auto pb-2">
+        <div className="flex gap-3 min-w-max h-full">
           {ETAPAS.map(etapa => {
             const cards  = porEtapa[etapa.key] ?? [];
             const isOver = dragOver === etapa.key;
@@ -133,12 +133,12 @@ export function Producao() {
                 onDragOver={e => handleDragOver(e, etapa.key)}
                 onDrop={() => handleDrop(etapa.key)}
                 onDragLeave={() => setDragOver(null)}
-                className={`w-64 flex-shrink-0 rounded-xl border transition-all ${
+                className={`w-64 flex-shrink-0 flex flex-col h-full rounded-xl border transition-all ${
                   isOver ? 'border-blue-500 bg-blue-900/10' : 'border-gray-700 bg-[#1a2332]'
                 }`}
               >
-                {/* Cabeçalho da coluna */}
-                <div className="px-3.5 py-2 border-b border-gray-700 flex items-center justify-between">
+                {/* Cabeçalho da coluna — fixo, não rola junto com os cards */}
+                <div className="px-3.5 py-2 border-b border-gray-700 flex items-center justify-between flex-shrink-0">
                   <div className="flex items-center gap-2">
                     <div className="w-2 h-2 rounded-full" style={{ backgroundColor: etapa.cor }} />
                     <span className="text-xs font-bold text-white">{etapa.label}</span>
@@ -154,15 +154,19 @@ export function Producao() {
                   </button>
                 </div>
 
-                {/* Cards */}
-                <div className="p-2.5 space-y-2 min-h-20">
-                  {cards.length === 0 && (
-                    <div className={`border-2 border-dashed rounded-lg h-12 flex items-center justify-center transition-all ${
-                      isOver ? 'border-blue-500/50 bg-blue-900/10' : 'border-gray-700/50'
-                    }`}>
-                      <span className="text-[11px] text-gray-600">Solte aqui</span>
-                    </div>
-                  )}
+                {/* Cards — essa área rola sozinha, só a coluna, não a página.
+                    Os degradês em cima/embaixo "escondem" o card cortado,
+                    igual o efeito do Trello quando tem mais conteúdo pra
+                    rolar além do que já está visível. */}
+                <div className="relative flex-1 min-h-0">
+                  <div className="absolute inset-0 overflow-y-auto p-2.5 space-y-2 min-h-20">
+                    {cards.length === 0 && (
+                      <div className={`border-2 border-dashed rounded-lg h-12 flex items-center justify-center transition-all ${
+                        isOver ? 'border-blue-500/50 bg-blue-900/10' : 'border-gray-700/50'
+                      }`}>
+                        <span className="text-[11px] text-gray-600">Solte aqui</span>
+                      </div>
+                    )}
 
                   {cards.map(ordem => {
                     const prio       = PRIORIDADES.find(p => p.key === ordem.prioridade);
@@ -263,6 +267,11 @@ export function Producao() {
                       </div>
                     );
                   })}
+                  </div>
+                  {/* Degradê topo/base — sugere que tem mais card cortado
+                      pra rolar, sem precisar de scrollbar visível o tempo todo */}
+                  <div className="absolute top-0 left-0 right-0 h-4 bg-gradient-to-b from-[#1a2332] to-transparent pointer-events-none rounded-t-xl" />
+                  <div className="absolute bottom-0 left-0 right-0 h-4 bg-gradient-to-t from-[#1a2332] to-transparent pointer-events-none rounded-b-xl" />
                 </div>
               </div>
             );

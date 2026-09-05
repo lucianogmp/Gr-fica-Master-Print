@@ -1,40 +1,36 @@
-// src/components/ui/QtdInput.tsx
+// src/components/ui/PctInput.tsx
 //
-// Campo de quantidade no mesmo estilo "calculadora de caixa registradora" do
-// MoneyInput/MedidaInput — dígitos entram da direita pra esquerda empurrando
-// a vírgula, Ctrl+A/duplo-clique selecionam tudo pra sobrescrever, colar só
-// aceita dígitos. Isso evita os bugs clássicos de <input type="number"> em
-// React (cursor pulando, dígito comido, scroll do mouse mudando o valor,
-// etc.) — usado em Orçamentos desde sempre; extraído aqui pra ficar padrão
-// em qualquer lugar do sistema que peça uma quantidade.
+// Mesma mecânica do QtdInput (dígitos entram da direita pra esquerda,
+// Ctrl+A/duplo-clique selecionam tudo, colar só aceita dígitos — sem os
+// bugs clássicos de <input type="number">), só que pra porcentagem:
+// travado em 0-100 e sem separador de milhar.
 import { useState, useRef, useEffect } from 'react';
 
 const IN_BASE =
   'bg-[#111827] border border-gray-700 rounded-lg px-2.5 py-2 text-white text-xs focus:outline-none focus:border-blue-500 transition-colors w-full';
 
-export function QtdInput({
-  value, onChange, className, placeholder, center, big, autoFocus, style,
+export function PctInput({
+  value, onChange, className, placeholder, center = true, autoFocus, style,
 }: {
-  /** Quantidade como string (ex: "3", "1.5", "" pra vazio). */
-  value: string;
-  onChange: (v: string) => void;
+  /** Porcentagem como número (0 a 100). */
+  value: number;
+  onChange: (v: number) => void;
   className?: string;
   placeholder?: string;
   center?: boolean;
-  big?: boolean;
   autoFocus?: boolean;
   style?: React.CSSProperties;
 }) {
-  const LIMITE_CENTESIMOS = 99_999_999;
+  const LIMITE_CENTESIMOS = 10000; // 100,00%
 
   function paraTexto(centesimos: number): string {
-    const v = (Math.max(0, centesimos) / 100).toFixed(2);
-    const [intPart, decPart] = v.split('.');
-    const intFormatado = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-    return `${intFormatado},${decPart}`;
+    const inteiro = Math.floor(Math.max(0, centesimos) / 100);
+    const frac = Math.max(0, centesimos) % 100;
+    if (frac === 0) return String(inteiro);
+    const fracTxt = frac % 10 === 0 ? String(frac / 10) : String(frac).padStart(2, '0');
+    return `${inteiro},${fracTxt}`;
   }
-  function paraCentesimos(valor: string): number {
-    const n = parseFloat((valor || '0').replace(',', '.'));
+  function paraCentesimos(n: number): number {
     if (!isFinite(n) || isNaN(n)) return 0;
     return Math.round(n * 100);
   }
@@ -51,10 +47,10 @@ export function QtdInput({
   }, [value]);
 
   function emitir(novoCentesimos: number) {
-    const limitado = Math.min(novoCentesimos, LIMITE_CENTESIMOS);
+    const limitado = Math.min(Math.max(0, novoCentesimos), LIMITE_CENTESIMOS);
     setCentesimos(limitado);
     ultimoValorEmitido.current = limitado;
-    onChange(limitado > 0 ? String(limitado / 100) : '');
+    onChange(limitado / 100);
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -102,11 +98,7 @@ export function QtdInput({
       onChange={() => {/* controlado via onKeyDown/onPaste */}}
       placeholder={placeholder}
       style={style}
-      className={[
-        className ?? IN_BASE,
-        center ? 'text-center' : '',
-        big ? 'text-xl font-black py-3' : '',
-      ].join(' ')}
+      className={[className ?? IN_BASE, center ? 'text-center' : ''].join(' ')}
       autoComplete="off"
     />
   );

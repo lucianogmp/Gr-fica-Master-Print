@@ -403,8 +403,11 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
           pra que o saldo da conta certa seja atualizado (regra: forma de pagamento ≠ conta). */}
       {pagandoLanc && (() => {
         const contasAtivas = contas.filter(c => c.ativo);
-        const contasDaForma = contasAtivas.filter(c => (c.formas_aceitas ?? []).includes(formaPag));
-        const opcoesConta = contasDaForma.length > 0 ? contasDaForma : contasAtivas;
+        const contasCompativeis = formaPag === 'Dinheiro'
+          ? contasAtivas.filter(c => c.tipo === 'caixa')
+          : contasAtivas.filter(c => c.tipo !== 'caixa');
+        const contasDaForma = contasCompativeis.filter(c => (c.formas_aceitas ?? []).includes(formaPag));
+        const opcoesConta = contasDaForma.length > 0 ? contasDaForma : contasCompativeis;
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
             <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5 w-full max-w-sm space-y-4">

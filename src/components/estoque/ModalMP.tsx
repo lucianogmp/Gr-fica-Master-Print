@@ -4,6 +4,7 @@ import { MateriaPrima } from '../../types/estoque';
 import { Pencil, Plus } from 'lucide-react';
 import { DarkSelect } from '../ui/DarkSelect';
 import { MoneyInput } from '../ui/MoneyInput';
+import { QtdInput } from '../ui/QtdInput';
 import { useCategorias } from '../../hooks/useCategorias';
 import { useMovimentos } from '../../hooks/useEstoque';
 import toast from 'react-hot-toast';
@@ -183,10 +184,9 @@ export function ModalMP({ open, editando, onClose, onSalvar }: ModalMPProps) {
 
         {form.unidade === 'm2' && (
           <Field label="Largura do Rolo (cm)">
-            <input type="number" onWheel={e => e.currentTarget.blur()} min="0" step="0.1" value={form.largura_padrao_cm}
-              onFocus={e => e.target.select()}
-              onChange={e => set('largura_padrao_cm', e.target.value)}
-              className={INPUT + " [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"}
+            <QtdInput value={form.largura_padrao_cm}
+              onChange={v => set('largura_padrao_cm', v)}
+              className={INPUT}
               placeholder="Ex: 61" />
             <p className="text-[10px] text-gray-600 mt-1">
               Largura fixa desse rolo/bobina — usada pra pré-preencher a calculadora de m² ao registrar entrada/saída, sem precisar redigitar toda vez.
@@ -202,8 +202,8 @@ export function ModalMP({ open, editando, onClose, onSalvar }: ModalMPProps) {
                 className={INPUT} placeholder="0,00" />
             </Field>
             <Field label="Estoque Mínimo">
-              <input type="number" onWheel={e => e.currentTarget.blur()} min="0" step="0.001" value={form.estoque_minimo}
-                onChange={e => set('estoque_minimo', e.target.value)}
+              <QtdInput value={form.estoque_minimo}
+                onChange={v => set('estoque_minimo', v)}
                 className={INPUT} placeholder="0" />
             </Field>
           </div>
@@ -217,16 +217,16 @@ export function ModalMP({ open, editando, onClose, onSalvar }: ModalMPProps) {
 
         {!editando && form.controla_estoque && (
           <Field label="Saldo Inicial">
-            <input type="number" onWheel={e => e.currentTarget.blur()} min="0" step="0.001" value={form.saldo_inicial}
-              onChange={e => set('saldo_inicial', e.target.value)}
+            <QtdInput value={form.saldo_inicial}
+              onChange={v => set('saldo_inicial', v)}
               className={INPUT} placeholder="0" />
           </Field>
         )}
 
         {editando && form.controla_estoque && (
           <Field label={`Saldo Atual (${form.unidade === 'm2' ? 'm²' : form.unidade})`}>
-            <input type="number" onWheel={e => e.currentTarget.blur()} min="0" step="0.001" value={form.saldo_atual}
-              onChange={e => set('saldo_atual', e.target.value)}
+            <QtdInput value={form.saldo_atual}
+              onChange={v => set('saldo_atual', v)}
               className={INPUT} placeholder="0" />
             {parseFloat(form.saldo_atual) !== Number(editando.saldo ?? 0) && !isNaN(parseFloat(form.saldo_atual)) && (
               <p className="text-[10px] text-yellow-500 mt-1">

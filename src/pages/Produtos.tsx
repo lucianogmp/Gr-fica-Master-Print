@@ -12,6 +12,7 @@ import { PrecPanel } from '../components/produtos/PrecPanel';
 import { KpiCard } from '../components/ui/KpiCard';
 import { Modal } from '../components/ui/Modal';
 import { MoneyInput } from '../components/ui/MoneyInput';
+import { QtdInput } from '../components/ui/QtdInput';
 import { HelpTooltip } from '../components/ui/HelpTooltip';
 import { DarkSelect } from '../components/ui/DarkSelect';
 import { supabase } from '../lib/supabase';
@@ -149,14 +150,14 @@ function ModalNovaMateriaPrima({ open, onClose, onCriada }: {
           </div>
           <div>
             <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Estoque Mínimo</label>
-            <input type="number" onWheel={e => e.currentTarget.blur()} min="0" step="0.001" value={form.estoque_minimo}
-              onChange={e => set('estoque_minimo', e.target.value)} className={IN} placeholder="0" />
+            <QtdInput value={form.estoque_minimo}
+              onChange={v => set('estoque_minimo', v)} className={IN} placeholder="0" />
           </div>
         </div>
         <div>
           <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Saldo Inicial</label>
-          <input type="number" onWheel={e => e.currentTarget.blur()} min="0" step="0.001" value={form.saldo_inicial}
-            onChange={e => set('saldo_inicial', e.target.value)} className={IN} placeholder="0" />
+          <QtdInput value={form.saldo_inicial}
+            onChange={v => set('saldo_inicial', v)} className={IN} placeholder="0" />
         </div>
         <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg px-3 py-2 text-xs text-blue-300">
           Ficará disponível também no módulo Estoque.
@@ -190,19 +191,15 @@ function TempoProducaoInput({ valor, onChange }: { valor: string; onChange: (v: 
   return (
     <div className="flex items-end gap-2">
       <div className="flex-1">
-        <input type="number" onWheel={e => e.currentTarget.blur()} min="0" step="1" inputMode="numeric"
-          value={horasAtuais || ''} placeholder="0"
-          onFocus={e => e.target.select()}
-          onChange={e => atualizar(parseInt(e.target.value) || 0, minutosAtuais)}
+        <QtdInput value={String(horasAtuais || '')} placeholder="0"
+          onChange={v => atualizar(parseInt(v) || 0, minutosAtuais)}
           className={NUM} />
         <span className="text-[9px] text-gray-500 block mt-0.5 text-center">horas</span>
       </div>
       <span className="text-gray-600 font-black pb-4">:</span>
       <div className="flex-1">
-        <input type="number" onWheel={e => e.currentTarget.blur()} min="0" max="59" step="1" inputMode="numeric"
-          value={minutosAtuais || ''} placeholder="0"
-          onFocus={e => e.target.select()}
-          onChange={e => atualizar(horasAtuais, parseInt(e.target.value) || 0)}
+        <QtdInput value={String(minutosAtuais || '')} placeholder="0"
+          onChange={v => atualizar(horasAtuais, parseInt(v) || 0)}
           className={NUM} />
         <span className="text-[9px] text-gray-500 block mt-0.5 text-center">minutos</span>
       </div>
