@@ -37,7 +37,7 @@ export function Dashboard() {
   );
 
   return (
-    <div className="p-5 space-y-4 min-h-screen">
+    <div className="p-4 space-y-3 min-h-screen">
       {/* Header com botão de refresh */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1">

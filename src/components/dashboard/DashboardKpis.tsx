@@ -26,11 +26,11 @@ function KpiCard({ title, value, pct, icon: Icon, cor, spark, invertPct = false,
   const isPos = invertPct ? pct <= 0 : pct >= 0;
   const { ref: chartRef, pronto: chartPronto } = useContainerReady<HTMLDivElement>();
   return (
-    <div className="bg-[#1a2332] border border-gray-700/60 rounded-xl p-4 relative overflow-hidden">
-      <div className="flex items-start justify-between mb-2">
+    <div className="bg-[#1a2332] border border-gray-700/60 rounded-xl p-3 relative overflow-hidden">
+      <div className="flex items-start justify-between mb-1.5">
         <div>
-          <p className="text-[9px] font-bold text-gray-500 uppercase tracking-wider mb-1">{title}</p>
-          <p className="text-xl font-black text-white">{fmtBRL(value)}</p>
+          <p className="text-[9px] font-bold text-gray-500 uppercase tracking-wider mb-0.5">{title}</p>
+          <p className="text-lg font-black text-white">{fmtBRL(value)}</p>
           {!hideVar && (
             <p className={`text-[10px] font-bold mt-0.5 flex items-center gap-0.5 ${isPos ? 'text-green-400' : 'text-red-400'}`}>
               {isPos ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}
@@ -38,12 +38,12 @@ function KpiCard({ title, value, pct, icon: Icon, cor, spark, invertPct = false,
             </p>
           )}
         </div>
-        <div className="w-8 h-8 rounded-lg flex items-center justify-center"
+        <div className="w-7 h-7 rounded-lg flex items-center justify-center"
           style={{ backgroundColor: cor + '20' }}>
           <Icon className="w-4 h-4" style={{ color: cor }} />
         </div>
       </div>
-      <div className="h-10 -mx-1 mt-2" ref={chartRef}>
+      <div className="h-8 -mx-1 mt-1.5" ref={chartRef}>
         {chartPronto && (
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={spark}>

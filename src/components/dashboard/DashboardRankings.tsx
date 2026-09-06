@@ -15,7 +15,7 @@ export function DashboardRankings({
     <>
       {/* Top 5 Produtos */}
       <div className={`${CARD_BASE} ${produtoClassName} p-3`}>
-        <div className="flex items-center justify-between gap-2 mb-3">
+        <div className="flex items-center justify-between gap-2 mb-2">
           <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Top 5 Produtos</h3>
           <span className="text-[9px] bg-green-500/20 text-green-400 border border-green-500/30 px-2 py-0.5 rounded-full font-bold flex-shrink-0">Este mês</span>
         </div>
@@ -37,7 +37,7 @@ export function DashboardRankings({
 
       {/* Top 5 Clientes */}
       <div className={`${CARD_BASE} ${clienteClassName} p-3`}>
-        <div className="flex items-center justify-between gap-2 mb-3">
+        <div className="flex items-center justify-between gap-2 mb-2">
           <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Top 5 Clientes</h3>
           <span className="text-[9px] bg-blue-500/20 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded-full font-bold flex-shrink-0">Este mês</span>
         </div>

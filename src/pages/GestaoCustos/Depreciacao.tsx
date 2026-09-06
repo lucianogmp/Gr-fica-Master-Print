@@ -90,17 +90,24 @@ export function Depreciacao() {
     <>
       <ConfirmModal />
       <div className="p-6 space-y-6">
-        <div className="flex items-start justify-between flex-wrap gap-3">
+        <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
             <h1 className="text-2xl font-black text-white flex items-center gap-2">
               <TrendingDown className="w-6 h-6 text-yellow-400" /> Depreciação
             </h1>
             <p className="text-gray-500 text-sm">{deprs.length} ativo(s) cadastrado(s)</p>
           </div>
-          <button onClick={() => showForm ? fecharForm() : abrirNovo()}
-            className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg shadow-blue-900/30 flex items-center gap-2">
-            {showForm ? <><X className="w-4 h-4" /> Cancelar</> : <><Plus className="w-4 h-4" /> Novo Ativo</>}
-          </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* KPIs — encaixados na mesma linha do título, compactos */}
+            <KpiCard compact label="Depreciação/mês"  value={fmtBRL(totalDeprMes)} icon={TrendingDown} color="text-yellow-400" />
+            <KpiCard compact label="Total em ativos"  value={fmtBRL(deprs.reduce((s, d) => s + Number(d.valor), 0))} icon={TrendingDown} color="text-gray-400" />
+            <KpiCard compact label="Overhead/hora"    value={fmtBRL(gc?.porHora ?? 0)} icon={Timer} color="text-purple-400" />
+
+            <button onClick={() => showForm ? fecharForm() : abrirNovo()}
+              className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg shadow-blue-900/30 flex items-center gap-2 whitespace-nowrap">
+              {showForm ? <><X className="w-4 h-4" /> Cancelar</> : <><Plus className="w-4 h-4" /> Novo Ativo</>}
+            </button>
+          </div>
         </div>
 
         {/* Formulário */}
@@ -171,11 +178,6 @@ export function Depreciacao() {
           </form>
         )}
 
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <KpiCard label="Depreciação/mês"  value={fmtBRL(totalDeprMes)} icon={TrendingDown} color="text-yellow-400" />
-          <KpiCard label="Total em ativos"  value={fmtBRL(deprs.reduce((s, d) => s + Number(d.valor), 0))} icon={TrendingDown} color="text-gray-400" />
-          <KpiCard label="Overhead/hora"    value={fmtBRL(gc?.porHora ?? 0)} icon={Timer} color="text-purple-400" />
-        </div>
 
         <div className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">
           <div className="overflow-x-auto">

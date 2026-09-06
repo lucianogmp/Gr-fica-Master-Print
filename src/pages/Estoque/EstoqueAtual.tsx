@@ -38,27 +38,27 @@ export function EstoqueAtual() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-start justify-between flex-wrap gap-3">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-black text-white flex items-center gap-2">
             <Warehouse className="w-6 h-6 text-blue-400" /> Estoque Atual
           </h1>
           <p className="text-gray-500 text-sm">Saldo de matérias-primas e insumos</p>
         </div>
-        {/* Botão nova matéria-prima aqui também conforme solicitado */}
-        <button
-          onClick={() => setModalMP(true)}
-          className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg shadow-blue-900/30 flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" /> Nova Matéria-Prima
-        </button>
-      </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* KPIs — encaixados na mesma linha do título, compactos */}
+          <KpiCard compact label="Total cadastradas" value={mps.length}        icon={Package}       color="text-blue-400" />
+          <KpiCard compact label="Estoque baixo"     value={baixos}            icon={AlertTriangle} color="text-yellow-400" />
+          <KpiCard compact label="Zeradas"           value={zerados}           icon={AlertCircle}   color="text-red-400" />
+          <KpiCard compact label="Valor em estoque"  value={fmtBRL(valorTotal)} icon={DollarSign}   color="text-green-400" />
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <KpiCard label="Total cadastradas" value={mps.length}        icon={Package}       color="text-blue-400" />
-        <KpiCard label="Estoque baixo"     value={baixos}            icon={AlertTriangle} color="text-yellow-400" />
-        <KpiCard label="Zeradas"           value={zerados}           icon={AlertCircle}   color="text-red-400" />
-        <KpiCard label="Valor em estoque"  value={fmtBRL(valorTotal)} icon={DollarSign}   color="text-green-400" />
+          <button
+            onClick={() => setModalMP(true)}
+            className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg shadow-blue-900/30 flex items-center gap-2 whitespace-nowrap"
+          >
+            <Plus className="w-4 h-4" /> Nova Matéria-Prima
+          </button>
+        </div>
       </div>
 
       <div className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">

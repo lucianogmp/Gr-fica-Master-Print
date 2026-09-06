@@ -7,8 +7,8 @@ const CARD_BASE = "bg-[#1a2332] border border-gray-700/60 rounded-xl h-full flex
 
 export function DashboardAlerts({ data }: { data: any }) {
   return (
-    <div className={`${CARD_BASE} lg:col-span-1 p-4`}>
-      <div className="flex items-center justify-between mb-3">
+    <div className={`${CARD_BASE} lg:col-span-1 p-3`}>
+      <div className="flex items-center justify-between mb-2">
         <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Avisos e Notificações</h3>
         {((data?.contasReceber?.length ?? 0) + (data?.contasPagar?.length ?? 0)) > 0 && (
           <span className="bg-red-500 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center">

@@ -15,7 +15,7 @@ export function DashboardIndicators({ data, className = '' }: { data: any; class
 
   return (
     <div className={`${CARD_BASE} ${className} p-3`}>
-      <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+      <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
         <TrendingUp className="w-3.5 h-3.5" /> Indicadores Financeiros
       </h3>
       <div className="grid grid-cols-2 xl:grid-cols-3 gap-2">

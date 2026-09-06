@@ -79,17 +79,24 @@ export function CustosFixos() {
     <>
       <ConfirmModal />
       <div className="p-6 space-y-6">
-        <div className="flex items-start justify-between flex-wrap gap-3">
+        <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
             <h1 className="text-2xl font-black text-white flex items-center gap-2">
               <Building2 className="w-6 h-6 text-blue-400" /> Custos Fixos
             </h1>
             <p className="text-gray-500 text-sm">{fixos.length} custo(s) cadastrado(s)</p>
           </div>
-          <button onClick={() => showForm ? fecharForm() : abrirNovo()}
-            className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg shadow-blue-900/30 flex items-center gap-2">
-            {showForm ? <><X className="w-4 h-4" /> Cancelar</> : <><Plus className="w-4 h-4" /> Novo Custo Fixo</>}
-          </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* KPIs — encaixados na mesma linha do título, compactos */}
+            <KpiCard compact label="Total ativos/mês"   value={fmtBRL(totalAtivo)}    icon={Building2}  color="text-blue-400" />
+            <KpiCard compact label="Overhead total/mês" value={fmtBRL(gc?.total ?? 0)} icon={DollarSign} color="text-red-400" />
+            <KpiCard compact label="Overhead/hora"      value={fmtBRL(gc?.porHora ?? 0)} icon={DollarSign} color="text-purple-400" />
+
+            <button onClick={() => showForm ? fecharForm() : abrirNovo()}
+              className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg shadow-blue-900/30 flex items-center gap-2 whitespace-nowrap">
+              {showForm ? <><X className="w-4 h-4" /> Cancelar</> : <><Plus className="w-4 h-4" /> Novo Custo Fixo</>}
+            </button>
+          </div>
         </div>
 
         {/* Formulário (criar ou editar) */}
@@ -141,11 +148,6 @@ export function CustosFixos() {
           </form>
         )}
 
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <KpiCard label="Total ativos/mês"   value={fmtBRL(totalAtivo)}    icon={Building2}  color="text-blue-400" />
-          <KpiCard label="Overhead total/mês" value={fmtBRL(gc?.total ?? 0)} icon={DollarSign} color="text-red-400" />
-          <KpiCard label="Overhead/hora"      value={fmtBRL(gc?.porHora ?? 0)} icon={DollarSign} color="text-purple-400" />
-        </div>
 
         <div className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">
           <div className="overflow-x-auto">

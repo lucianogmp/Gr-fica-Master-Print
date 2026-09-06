@@ -3,7 +3,7 @@ const CARD_BASE = "bg-[#1a2332] border border-gray-700/60 rounded-xl h-full flex
 export function DashboardSituacao({ data, className = '' }: { data: any; className?: string }) {
   return (
     <div className={`${CARD_BASE} ${className} p-3`}>
-      <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-3">Vendas por Situação</h3>
+      <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Vendas por Situação</h3>
       <div className="flex flex-1 items-center gap-3">
         <div className="text-center w-16 flex-shrink-0">
           <p className="text-2xl font-black text-white">{data?.totalVendas ?? 0}</p>

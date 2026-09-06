@@ -8,7 +8,6 @@ import { useCaixaMovimentos } from '../../hooks/useCaixaMovimentos';
 import { useContasBancarias } from '../../hooks/useContasBancarias';
 import { Lancamento, StatusLancamento, FORMAS_PAGAMENTO, CATEGORIAS_RECEITA, CATEGORIAS_DESPESA } from '../../types/financeiro';
 import { ModalLancamento } from '../../components/financeiro/ModalLancamento';
-import { KpiCard } from '../../components/ui/KpiCard';
 import { useConfirm } from '../../components/ui/ConfirmModal';
 import { OrdenarMenu, aplicarOrdenacao, Ordenacao } from '../../components/ui/OrdenarMenu';
 import { FiltrosAvancados, aplicarFiltrosAvancados, FiltrosAvancadosValor } from '../../components/ui/FiltrosAvancados';
@@ -187,14 +186,8 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
     <>
       <ConfirmModal />
 
-      {/* KPIs */}
-      {kpis && kpis.length > 0 && (
-        <div className={`grid grid-cols-2 md:grid-cols-${Math.min(kpis.length, 4)} gap-4`}>
-          {kpis.map((k, i) => (
-            <KpiCard key={i} label={k.label} value={k.value} icon={k.icon} color={k.color} />
-          ))}
-        </div>
-      )}
+      {/* KPIs agora ficam na mesma linha do título (ver página que usa este
+          componente) — mais compacto, não duplica aqui embaixo. */}
 
       {/* Filtros + ações */}
       <div className="flex gap-2 flex-wrap items-center">

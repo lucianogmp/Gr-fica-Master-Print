@@ -698,12 +698,20 @@ export function Orcamentos() {
     <>
     <ConfirmModal />
     <div className="p-6 space-y-6">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <div>
           <h1 className="text-2xl font-black text-white">Orçamentos</h1>
           <p className="text-gray-500 text-sm">{orcamentos.length} orçamento(s)</p>
         </div>
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* KPIs — encaixados na mesma linha do título, compactos */}
+          <KpiCard compact label="Total"       value={totalOrc}           icon={FileText} color="text-blue-400" />
+          <KpiCard compact label="Aprovados"   value={aprovados}          icon={Check } color="text-green-400" />
+          <div onClick={() => navigate('/vendas')} className="cursor-pointer" title="Clique para ver as vendas geradas">
+            <KpiCard compact label="Convertidos → Vendas" value={convertidos} icon={Zap} color="text-purple-400" />
+          </div>
+          <KpiCard compact label="Valor total" value={fmtBRL(valorTotal)} icon={Banknote} color="text-yellow-400" />
+
           <button onClick={() => setView('folhas')}
             className="bg-gray-700 hover:bg-gray-600 text-gray-300 px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 whitespace-nowrap">
             <Ruler className="w-4 h-4 flex-shrink-0" /> Calc. Folhas
@@ -717,15 +725,6 @@ export function Orcamentos() {
             <Plus className="w-4 h-4 flex-shrink-0" /> Novo Orçamento
           </button>
         </div>
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <KpiCard label="Total"       value={totalOrc}           icon={FileText} color="text-blue-400" />
-        <KpiCard label="Aprovados"   value={aprovados}          icon={Check } color="text-green-400" />
-        <div onClick={() => navigate('/vendas')} className="cursor-pointer" title="Clique para ver as vendas geradas">
-          <KpiCard label="Convertidos → Vendas" value={convertidos} icon={Zap} color="text-purple-400" />
-        </div>
-        <KpiCard label="Valor total" value={fmtBRL(valorTotal)} icon={Banknote} color="text-yellow-400" />
       </div>
 
       <div className="flex gap-2 flex-wrap items-center">
