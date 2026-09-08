@@ -192,7 +192,7 @@ export function DocumentoImpressao({ layout, empresa, documento: doc, style }: D
           )}
           {doc.itens.map((it, i) => (
             <tr key={i} style={{ borderBottom: '1px solid #e5e7eb' }}>
-              <td style={{ padding: 8 }}>{it.descricao}</td>
+              <td style={{ padding: 8, whiteSpace: 'pre-line' }}>{it.descricao}</td>
               {layout.colunasItens.quantidade && <td style={{ padding: 8, textAlign: 'right' }}>{it.quantidade}</td>}
               {layout.colunasItens.unidade && <td style={{ padding: 8, textAlign: 'center' }}>{it.unidade || 'un'}</td>}
               {layout.colunasItens.precoUnitario && <td style={{ padding: 8, textAlign: 'right' }}>{fmtBRL(it.precoUnitario)}</td>}

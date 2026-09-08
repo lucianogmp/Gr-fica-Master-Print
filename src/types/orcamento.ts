@@ -1,4 +1,6 @@
-export type TipoCalculo = 'metro' | 'metro_manual' | 'folha' | 'livre';
+import { DetalhePlaca, TipoInstalacaoPlaca } from '../lib/placaCalc';
+
+export type TipoCalculo = 'metro' | 'metro_manual' | 'folha' | 'livre' | 'placa';
 export type StatusOrcamento = 'rascunho' | 'enviado' | 'aprovado' | 'recusado' | 'convertido';
 
 export interface OrcamentoItem {
@@ -29,6 +31,16 @@ export interface OrcamentoItem {
   arte_inclusa?: boolean;
   // Área (m²) usada quando o item vem de um produto com unidade_medida='m2'.
   area_m2?: number | null;
+
+  // ---- Orçamento de Placa (tipo_calculo === 'placa') ----
+  possui_armacao?: boolean | null;
+  metalon_tipo_id?: string | null;
+  metalon_qtd_calculada?: number | null;
+  metalon_qtd_usada?: number | null;
+  espacamento_travessa_m?: number | null;
+  tipo_instalacao?: TipoInstalacaoPlaca | null;
+  /** Snapshot congelado com todo o detalhamento — ver src/lib/placaCalc.ts */
+  detalhe_placa?: DetalhePlaca | null;
 }
 
 export interface Orcamento {

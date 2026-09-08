@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { supabase } from '../lib/supabase';
-import { FileText, Zap, Banknote, Scissors, Plus, Edit2, Check, ArrowLeft, X, CornerDownRight, Ruler, Printer, Copy, MessageCircle, Eye, EyeOff, CheckSquare, Square } from 'lucide-react';
+import { FileText, Zap, Banknote, Scissors, Plus, Edit2, Check, ArrowLeft, X, CornerDownRight, Ruler, Printer, Copy, MessageCircle, Eye, EyeOff, CheckSquare, Square, Layers } from 'lucide-react';
 import { Modal } from '../components/ui/Modal';
 import { useConfiguracoes } from '../hooks/useConfiguracoes';
 import { DocumentoImpressaoData } from '../components/impressao/DocumentoImpressao';
@@ -17,10 +17,12 @@ import { useMateriasPrimas } from '../hooks/useEstoque';
 import { useProdutos } from '../hooks/useProdutos';
 import { useCategorias } from '../hooks/useCategorias';
 import { Orcamento, OrcamentoItem, StatusOrcamento, STATUS_ORC } from '../types/orcamento';
+import { formatarDescricaoImpressaoPlaca } from '../lib/placaCalc';
 import { formatarEnderecoCliente } from '../types/cliente';
 import { useClientes } from '../hooks/useClientes';
 import { useRole } from '../hooks/useRole';
 import { ItemOrcEditor } from '../components/orcamentos/ItemOrcEditor';
+import { PlacaOrcEditor } from '../components/orcamentos/PlacaOrcEditor';
 import { ClienteSelectorVenda } from '../components/vendas/ClienteSelectorVenda';
 import { CalculadoraFolhas } from '../components/CalculadoraFolhas';
 import { KpiCard } from '../components/ui/KpiCard';
@@ -76,6 +78,9 @@ export function Orcamentos() {
   const [itens, setItens]             = useState<OrcamentoItem[]>([]);
   const [showEditor, setShowEditor]   = useState(false);
   const [editandoIdx, setEditandoIdx] = useState<number | null>(null);
+  // Item novo ainda não escolheu o tipo (chooser "Item padrão" vs "Placa").
+  // Editando um item existente, o tipo é decidido pelo próprio item.
+  const [tipoItemNovo, setTipoItemNovo] = useState<'padrao' | 'placa' | null>(null);
   const [filtro, setFiltro]           = useState<Filtro>('todos');
   const [busca, setBusca]             = useState('');
   const [posSalvar, setPosSalvar]     = useState<SnapshotOrcamento | null>(null);
@@ -167,7 +172,7 @@ export function Orcamentos() {
       clienteEmail,
       clienteEndereco,
       itens: itensRef.map(i => ({
-        descricao: i.descricao,
+        descricao: formatarDescricaoImpressaoPlaca(i.descricao, i.detalhe_placa),
         quantidade: Number(i.quantidade),
         unidade: undefined,
         precoUnitario: Number(i.total) / (Number(i.quantidade) || 1),
@@ -329,23 +334,25 @@ export function Orcamentos() {
     }
   }
 
-  async function abrirDetalhe(o: Orcamento | null) {
+  async function abrirDetalhe(o: Orcamento | null, tipoInicial?: 'placa') {
     if (o) {
       setOrcId(o.id);
       setForm({ ...NOVO_ORC, ...o });
       setShowEditor(false);
     } else {
-      // Novo orçamento: pula a telinha de "Adicionar Item" e cai direto no
-      // editor de item (m² / catálogo / etc), já pronto pra usar.
+      // Novo orçamento: cai direto no editor de item, já pronto pra usar.
+      // Com tipoInicial='placa' (atalho "Orçamento de Placa"), pula até o
+      // chooser "Item padrão vs Placa" e abre a Placa direto.
       setOrcId('__novo__');
       setForm({ ...NOVO_ORC });
       setItens([]);
+      setTipoItemNovo(tipoInicial ?? null);
       setShowEditor(true);
     }
     setView('detalhe');
   }
 
-  function fechar() { limparAlteracoesPendentes(); setView('lista'); setOrcId(null); setForm({ ...NOVO_ORC }); setItens([]); setShowEditor(false); }
+  function fechar() { limparAlteracoesPendentes(); setView('lista'); setOrcId(null); setForm({ ...NOVO_ORC }); setItens([]); setShowEditor(false); setTipoItemNovo(null); }
 
   function handleAdicionarItem(item: OrcamentoItem) {
     marcarSujoOrc();
@@ -355,6 +362,7 @@ export function Orcamentos() {
     } else {
       setItens(p => [...p, item]);
     }
+    setTipoItemNovo(null);
     setShowEditor(false);
   }
 
@@ -724,6 +732,10 @@ export function Orcamentos() {
             className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 whitespace-nowrap">
             <Plus className="w-4 h-4 flex-shrink-0" /> Novo Orçamento
           </button>
+          <button onClick={() => abrirDetalhe(null, 'placa')}
+            className="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 whitespace-nowrap">
+            <Layers className="w-4 h-4 flex-shrink-0" /> Orçamento de Placa
+          </button>
         </div>
       </div>
 
@@ -944,10 +956,9 @@ export function Orcamentos() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
-        <div className="xl:col-span-2 space-y-5">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-5 items-stretch">
           {/* Dados */}
-          <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5">
+          <div className="xl:col-span-2 bg-[#1f2937] border border-gray-700 rounded-xl p-5">
             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Dados do Orçamento</h3>
             <div className="space-y-4">
               <ClienteSelectorVenda
@@ -977,101 +988,6 @@ export function Orcamentos() {
               </div>
             </div>
           </div>
-
-          {/* Itens */}
-          <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Itens do Orçamento</h3>
-              {!showEditor && !jaConvertido && (
-                <button onClick={() => { setEditandoIdx(null); setShowEditor(true); }}
-                  className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5">
-                  <Plus className="w-3.5 h-3.5" /> Adicionar Item
-                </button>
-              )}
-            </div>
-
-            {showEditor && (
-              <div className="mb-5">
-                <ItemOrcEditor
-                  editando={editandoIdx !== null ? itens[editandoIdx] : null}
-                  onAdicionar={handleAdicionarItem}
-                  onCancelar={() => { setShowEditor(false); setEditandoIdx(null); }}
-                  mostrarCusto={mostrarCusto}
-                />
-              </div>
-            )}
-
-            {itens.length > 0 ? (
-              <div className="overflow-x-auto rounded-xl border border-gray-700">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="text-[10px] font-bold text-gray-500 uppercase bg-gray-800/50 border-b border-gray-700">
-                      <th className="px-3 py-2 text-left">Descrição</th>
-                      <th className="px-3 py-2 text-center">Categoria</th>
-                      <th className="px-3 py-2 text-right w-14">Qtd</th>
-                      <th className="px-3 py-2 text-right w-24">Unit.</th>
-                      <th className="px-3 py-2 text-right w-24">Total</th>
-                      <th className="px-3 py-2 w-16"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {itens.map((it, i) => {
-                      const produto = produtos.find(p => p.id === it.produto_id);
-                      const categoria = categorias.find(c => c.id === produto?.categoria_id);
-                      const nomeCategoria = categoria ? categoria.nome : '';
-                      return (
-                      <tr key={i} className="border-b border-gray-800 hover:bg-gray-800/20">
-                        <td className="px-3 py-2.5">
-                          <div className="font-medium text-white">{it.descricao}</div>
-                          {it.acabamento_nome && it.acabamento_nome !== 'Sem acabamento' && (
-                            <div className="text-[9px] text-gray-500 flex items-center gap-1">
-                              <CornerDownRight className="w-3 h-3 flex-shrink-0" />
-                              {it.acabamento_nome}
-                              {it.acabamentos_por_folha ? ` (${it.acabamentos_por_folha}×${it.quantidade})` : ''}
-                            </div>
-                          )}
-                          {it.arte_inclusa && <div className="text-[9px] text-green-500">Acréscimo da Arte</div>}
-                        </td>
-                        <td className="px-3 py-2.5 text-center">
-                          {nomeCategoria && (
-                            <span className="text-[9px] font-bold bg-gray-700 text-gray-300 px-1.5 py-0.5 rounded-full">
-                              {nomeCategoria}
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-3 py-2.5 text-right text-white">{it.quantidade}</td>
-                        <td className="px-3 py-2.5 text-right text-gray-300">{fmtBRL(Number(it.total) / (Number(it.quantidade) || 1))}</td>
-                        <td className="px-3 py-2.5 text-right font-black text-white">{fmtBRL(it.total)}</td>
-                        <td className="px-3 py-2.5">
-                          {!jaConvertido && (
-                            <div className="flex gap-1 justify-center">
-                              <button onClick={() => { setEditandoIdx(i); setShowEditor(true); }}
-                                className="text-gray-500 hover:text-blue-400 transition-colors"><Edit2 className="w-3.5 h-3.5" /></button>
-                              <button onClick={() => { setItens(p => p.filter((_, idx) => idx !== i)); marcarSujoOrc(); }}
-                                className="text-gray-500 hover:text-red-400 transition-colors">
-                                <X className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            ) : !showEditor ? (
-              <div className="text-center py-10 border-2 border-dashed border-gray-700 rounded-xl">
-                
-                <p className="text-sm text-gray-600">Nenhum item adicionado.</p>
-                <button onClick={() => setShowEditor(true)}
-                  className="mt-3 text-blue-400 hover:text-blue-300 text-xs font-bold underline flex items-center gap-1 mx-auto">
-                  <Plus className="w-3.5 h-3.5" /> Adicionar primeiro item
-                </button>
-              </div>
-            ) : null}
-          </div>
-        </div>
 
         {/* Resumo */}
         <div>
@@ -1183,6 +1099,140 @@ export function Orcamentos() {
           </div>
         </div>
       </div>
+
+          {/* Itens */}
+          <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Itens do Orçamento</h3>
+              {!showEditor && !jaConvertido && (
+                <button onClick={() => { setEditandoIdx(null); setTipoItemNovo(null); setShowEditor(true); }}
+                  className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5">
+                  <Plus className="w-3.5 h-3.5" /> Adicionar Item
+                </button>
+              )}
+            </div>
+
+            {showEditor && (() => {
+              const editandoItem = editandoIdx !== null ? itens[editandoIdx] : null;
+              const tipoEditor = editandoItem ? (editandoItem.tipo_calculo === 'placa' ? 'placa' : 'padrao') : tipoItemNovo;
+              const cancelar = () => { setShowEditor(false); setEditandoIdx(null); setTipoItemNovo(null); };
+
+              if (tipoEditor === null) {
+                return (
+                  <div className="mb-5 bg-[#1f2937] border border-gray-700 rounded-xl p-5">
+                    <h3 className="text-xs font-bold text-gray-400 uppercase mb-4">Que tipo de item?</h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button onClick={() => setTipoItemNovo('padrao')}
+                        className="text-left p-4 rounded-xl border border-gray-700 bg-[#111827] hover:border-blue-500 transition-colors">
+                        <div className="text-sm font-bold text-white">Item padrão</div>
+                        <div className="text-xs text-gray-500 mt-1">m² / catálogo / folha / livre</div>
+                      </button>
+                      <button onClick={() => setTipoItemNovo('placa')}
+                        className="text-left p-4 rounded-xl border border-gray-700 bg-[#111827] hover:border-blue-500 transition-colors">
+                        <div className="text-sm font-bold text-white">Placa</div>
+                        <div className="text-xs text-gray-500 mt-1">Com ou sem armação, serralheria e instalação</div>
+                      </button>
+                    </div>
+                    <button onClick={cancelar} className="text-xs text-gray-500 hover:text-white mt-4">Cancelar</button>
+                  </div>
+                );
+              }
+
+              if (tipoEditor === 'placa') {
+                return (
+                  <div className="mb-5">
+                    <PlacaOrcEditor
+                      editando={editandoItem}
+                      onAdicionar={handleAdicionarItem}
+                      onCancelar={cancelar}
+                      mostrarCusto={mostrarCusto}
+                    />
+                  </div>
+                );
+              }
+
+              return (
+                <div className="mb-5">
+                  <ItemOrcEditor
+                    editando={editandoItem}
+                    onAdicionar={handleAdicionarItem}
+                    onCancelar={cancelar}
+                    mostrarCusto={mostrarCusto}
+                  />
+                </div>
+              );
+            })()}
+
+            {itens.length > 0 ? (
+              <div className="overflow-x-auto rounded-xl border border-gray-700">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="text-[10px] font-bold text-gray-500 uppercase bg-gray-800/50 border-b border-gray-700">
+                      <th className="px-3 py-2 text-left">Descrição</th>
+                      <th className="px-3 py-2 text-center">Categoria</th>
+                      <th className="px-3 py-2 text-right w-14">Qtd</th>
+                      <th className="px-3 py-2 text-right w-24">Unit.</th>
+                      <th className="px-3 py-2 text-right w-24">Total</th>
+                      <th className="px-3 py-2 w-16"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {itens.map((it, i) => {
+                      const produto = produtos.find(p => p.id === it.produto_id);
+                      const categoria = categorias.find(c => c.id === produto?.categoria_id);
+                      const nomeCategoria = categoria ? categoria.nome : '';
+                      return (
+                      <tr key={i} className="border-b border-gray-800 hover:bg-gray-800/20">
+                        <td className="px-3 py-2.5">
+                          <div className="font-medium text-white">{it.descricao}</div>
+                          {it.acabamento_nome && it.acabamento_nome !== 'Sem acabamento' && (
+                            <div className="text-[9px] text-gray-500 flex items-center gap-1">
+                              <CornerDownRight className="w-3 h-3 flex-shrink-0" />
+                              {it.acabamento_nome}
+                              {it.acabamentos_por_folha ? ` (${it.acabamentos_por_folha}×${it.quantidade})` : ''}
+                            </div>
+                          )}
+                          {it.arte_inclusa && <div className="text-[9px] text-green-500">Acréscimo da Arte</div>}
+                        </td>
+                        <td className="px-3 py-2.5 text-center">
+                          {nomeCategoria && (
+                            <span className="text-[9px] font-bold bg-gray-700 text-gray-300 px-1.5 py-0.5 rounded-full">
+                              {nomeCategoria}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2.5 text-right text-white">{it.quantidade}</td>
+                        <td className="px-3 py-2.5 text-right text-gray-300">{fmtBRL(Number(it.total) / (Number(it.quantidade) || 1))}</td>
+                        <td className="px-3 py-2.5 text-right font-black text-white">{fmtBRL(it.total)}</td>
+                        <td className="px-3 py-2.5">
+                          {!jaConvertido && (
+                            <div className="flex gap-1 justify-center">
+                              <button onClick={() => { setEditandoIdx(i); setTipoItemNovo(null); setShowEditor(true); }}
+                                className="text-gray-500 hover:text-blue-400 transition-colors"><Edit2 className="w-3.5 h-3.5" /></button>
+                              <button onClick={() => { setItens(p => p.filter((_, idx) => idx !== i)); marcarSujoOrc(); }}
+                                className="text-gray-500 hover:text-red-400 transition-colors">
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : !showEditor ? (
+              <div className="text-center py-10 border-2 border-dashed border-gray-700 rounded-xl">
+                
+                <p className="text-sm text-gray-600">Nenhum item adicionado.</p>
+                <button onClick={() => setShowEditor(true)}
+                  className="mt-3 text-blue-400 hover:text-blue-300 text-xs font-bold underline flex items-center gap-1 mx-auto">
+                  <Plus className="w-3.5 h-3.5" /> Adicionar primeiro item
+                </button>
+              </div>
+            ) : null}
+          </div>
     </div>
     </>
   );

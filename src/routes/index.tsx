@@ -53,6 +53,7 @@ const EstoqueHistorico = lazy(() => import('../pages/Estoque/Historico').then(m 
 // ─── Gestão de Custos (sub-rotas) ────────────────────────────────────────────
 const CustosFixos      = lazy(() => import('../pages/GestaoCustos/CustosFixos').then(m => ({ default: m.CustosFixos })));
 const CustosVariaveis  = lazy(() => import('../pages/GestaoCustos/CustosVariaveis').then(m => ({ default: m.CustosVariaveis })));
+const Serralheria      = lazy(() => import('../pages/GestaoCustos/Serralheria').then(m => ({ default: m.Serralheria })));
 const DepreciacaoPage  = lazy(() => import('../pages/GestaoCustos/Depreciacao').then(m => ({ default: m.Depreciacao })));
 const CustosResumo     = lazy(() => import('../pages/GestaoCustos/Resumo').then(m => ({ default: m.Resumo })));
 
@@ -197,6 +198,7 @@ export function AppRoutes() {
           <Route path="custos/variaveis"   element={<PR rota="/custos/variaveis"><CustosVariaveis /></PR>} />
           <Route path="custos/depreciacao" element={<PR rota="/custos/depreciacao"><DepreciacaoPage /></PR>} />
           <Route path="custos/resumo"      element={<PR rota="/custos/resumo"><CustosResumo /></PR>} />
+          <Route path="custos/serralheria" element={<PR rota="/custos/serralheria"><Serralheria /></PR>} />
 
           {/* ── Relatórios ── */}
           <Route path="relatorios" element={<Navigate to="/relatorios/vendas" replace />} />

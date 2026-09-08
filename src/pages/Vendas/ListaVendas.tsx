@@ -9,6 +9,7 @@ import { formatarEnderecoCliente } from '../../types/cliente';
 import { useConfiguracoes } from '../../hooks/useConfiguracoes';
 import { useRole } from '../../hooks/useRole';
 import { Venda, StatusVenda, STATUS_VENDA } from '../../types/venda';
+import { formatarDescricaoImpressaoPlaca } from '../../lib/placaCalc';
 import { useConfirm } from '../../components/ui/ConfirmModal';
 import { DollarSign, ClipboardList, X, LucideIcon, ChevronLeft, ChevronRight, Printer, CheckSquare, Square } from 'lucide-react';
 import { MonthInput } from '../../components/ui/MonthInput';
@@ -195,7 +196,7 @@ export function ListaVendas({
       clienteEmail: clientes.find(c => c.id === vendaImprimir.cliente_id)?.email ?? null,
       clienteEndereco: formatarEnderecoCliente(clientes.find(c => c.id === vendaImprimir.cliente_id)) || null,
       itens: itensImprimir.map(i => ({
-        descricao: i.descricao, quantidade: Number(i.quantidade),
+        descricao: formatarDescricaoImpressaoPlaca(i.descricao, i.detalhe_placa), quantidade: Number(i.quantidade),
         unidade: i.unidade ?? 'un', precoUnitario: Number(i.preco_unitario),
         desconto: Number(i.desconto ?? 0), total: Number(i.total),
       })),

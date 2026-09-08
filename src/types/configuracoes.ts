@@ -64,6 +64,11 @@ export interface Configuracoes {
   mp_webhook_url?: string | null;
   layout_impressao_venda?: LayoutImpressaoConfig | null;
   layout_impressao_orcamento?: LayoutImpressaoConfig | null;
+  // Serralheria / Orçamento de Placas (Gestão de Custos → Serralheria)
+  mao_obra_serralheria_pct?: number | null;
+  mao_obra_instalacao_esticar?: number | null;
+  mao_obra_instalacao_completa?: number | null;
+  espacamento_travessa_padrao_m?: number | null;
   updated_at?: string;
 }
 

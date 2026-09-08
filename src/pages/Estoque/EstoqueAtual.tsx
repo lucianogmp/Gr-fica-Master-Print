@@ -76,13 +76,14 @@ export function EstoqueAtual() {
               <th className="px-5 py-3 text-right">Saldo</th>
               <th className="px-5 py-3 text-right">Mínimo</th>
               <th className="px-5 py-3 text-right">Custo/un</th>
+              <th className="px-5 py-3 text-right">Venda/un</th>
               <th className="px-5 py-3 text-center">Status</th>
               <th className="px-5 py-3 text-center">Movimentar</th>
             </tr>
           </thead>
           <tbody>
             {filtradas.length === 0 && (
-              <tr><td colSpan={7} className="px-5 py-12 text-center text-gray-600">Nenhuma matéria-prima encontrada.</td></tr>
+              <tr><td colSpan={8} className="px-5 py-12 text-center text-gray-600">Nenhuma matéria-prima encontrada.</td></tr>
             )}
             {filtradas.map(mp => {
               const st = statusEstoque(mp);
@@ -99,6 +100,7 @@ export function EstoqueAtual() {
                     {mp.controla_estoque === false ? '—' : (mp.estoque_minimo ? `${mp.estoque_minimo} ${mp.unidade}` : '—')}
                   </td>
                   <td className="px-5 py-3 text-right text-gray-400 text-xs">{fmtBRL(mp.custo_unitario)}</td>
+                  <td className="px-5 py-3 text-right text-gray-500 text-xs">{mp.preco_venda ? fmtBRL(mp.preco_venda) : '—'}</td>
                   <td className="px-5 py-3 text-center">
                     <span className="px-2 py-1 rounded-full text-[10px] font-bold border"
                       style={{ color: st.cor, borderColor: st.cor + '40', backgroundColor: st.cor + '15' }}>

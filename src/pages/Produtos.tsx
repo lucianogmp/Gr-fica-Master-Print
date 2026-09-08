@@ -350,7 +350,16 @@ export function Produtos() {
   // Acabamentos form
   const [acabNome, setAcabNome]   = useState('');
   const [acabCusto, setAcabCusto] = useState(0);
+  const [acabTipoCalculo, setAcabTipoCalculo] = useState<'perimetro' | 'm2' | 'metro_linear' | 'manual'>('manual');
+  const [acabFator, setAcabFator] = useState(0);
   const [salvandoAcab, setSalvandoAcab] = useState(false);
+
+  const ACAB_TIPO_CALCULO_LABEL: Record<string, string> = {
+    manual:       'Manual (sem cálculo automático)',
+    perimetro:    'Por espaçamento na borda (ex: parafuso, ilhós, rebite)',
+    m2:           'Por m² da placa',
+    metro_linear: 'Por perímetro da placa (ex: fita dupla face, cantoneira)',
+  };
 
   // Categorias form
   const [catNomeLista, setCatNomeLista]   = useState('');
@@ -477,8 +486,14 @@ export function Produtos() {
     if (!acabNome.trim()) return;
     setSalvandoAcab(true);
     try {
-      await criarAcab({ nome: acabNome.trim(), custo: acabCusto || 0, ativo: true });
-      setAcabNome(''); setAcabCusto(0);
+      await criarAcab({
+        nome: acabNome.trim(),
+        custo: acabCusto || 0,
+        ativo: true,
+        tipo_calculo: acabTipoCalculo,
+        fator_calculo: acabTipoCalculo === 'manual' ? null : (acabFator || 0),
+      } as any);
+      setAcabNome(''); setAcabCusto(0); setAcabTipoCalculo('manual'); setAcabFator(0);
     } finally { setSalvandoAcab(false); }
   }
 
@@ -520,7 +535,7 @@ export function Produtos() {
       </div>
       <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5">
         <h3 className="text-xs font-bold text-gray-400 uppercase mb-4 flex items-center gap-1.5"><Plus className="w-3.5 h-3.5" /> Novo Acabamento</h3>
-        <div className="flex gap-3 items-end">
+        <div className="flex gap-3 items-end mb-3">
           <div className="flex-1">
             <label className="text-[10px] text-gray-500 uppercase block mb-1.5">Nome *</label>
             <input value={acabNome} onChange={e => setAcabNome(e.target.value)}
@@ -532,6 +547,33 @@ export function Produtos() {
             <MoneyInput value={acabCusto}
               onChange={setAcabCusto} className={IN} placeholder="0,00" />
           </div>
+        </div>
+        <div className="flex gap-3 items-end">
+          <div className="flex-1">
+            <label className="text-[10px] text-gray-500 uppercase block mb-1.5 flex items-center gap-1">
+              Cálculo automático (Orçamento de Placa)
+              <HelpTooltip texto="Define como a quantidade é sugerida quando esse acabamento é usado num orçamento de placa. O usuário sempre pode ajustar a quantidade manualmente depois." />
+            </label>
+            <DarkSelect
+              value={acabTipoCalculo}
+              onChange={v => setAcabTipoCalculo((v as any) || 'manual')}
+              allowEmpty={false}
+              options={Object.entries(ACAB_TIPO_CALCULO_LABEL).map(([value, label]) => ({ value, label }))}
+            />
+          </div>
+          {acabTipoCalculo !== 'manual' && (
+            <div className="w-48">
+              <label className="text-[10px] text-gray-500 uppercase block mb-1.5">
+                Fator {acabTipoCalculo === 'm2' ? '(un/m²)' : acabTipoCalculo === 'perimetro' ? '(un por metro de borda)' : '(m de material por m de perímetro)'}
+              </label>
+              <input type="number" step="0.01" value={acabFator || ''}
+                onChange={e => setAcabFator(parseFloat(e.target.value) || 0)}
+                className={IN} placeholder={acabTipoCalculo === 'perimetro' ? 'Ex: 6,67 (a cada 15cm)' : acabTipoCalculo === 'metro_linear' ? 'Ex: 1 (1m por 1m de perímetro)' : 'Ex: 2,5'} />
+              {acabTipoCalculo === 'perimetro' && (
+                <p className="text-[9px] text-gray-600 mt-1">Fator = 1 ÷ espaçamento em metros. A cada 15cm → 1 ÷ 0,15 ≈ 6,67</p>
+              )}
+            </div>
+          )}
           <button onClick={handleSalvarAcab} disabled={salvandoAcab || !acabNome.trim()}
             className="bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all flex-shrink-0">
             {salvandoAcab ? 'Salvando...' : 'Adicionar'}
@@ -545,18 +587,25 @@ export function Produtos() {
             <tr className="text-gray-400 text-[10px] font-bold uppercase border-b border-gray-700 bg-gray-800/40">
               <th className="px-5 py-3 text-left">Nome</th>
               <th className="px-5 py-3 text-right">Custo/un</th>
+              <th className="px-5 py-3 text-left">Cálculo (Placa)</th>
               <th className="px-5 py-3 text-center">Ativo</th>
               <th className="px-5 py-3 text-center">Ações</th>
             </tr>
           </thead>
           <tbody>
             {acabamentos.length === 0 && (
-              <tr><td colSpan={4} className="px-5 py-12 text-center text-gray-600">Nenhum acabamento cadastrado.</td></tr>
+              <tr><td colSpan={5} className="px-5 py-12 text-center text-gray-600">Nenhum acabamento cadastrado.</td></tr>
             )}
             {acabamentos.map(a => (
               <tr key={a.id} className="border-b border-gray-800 hover:bg-gray-800/30">
                 <td className="px-5 py-3 font-medium text-white">{a.nome}</td>
                 <td className="px-5 py-3 text-right text-gray-300">{fmtBRL(a.custo)}</td>
+                <td className="px-5 py-3 text-gray-400 text-xs">
+                  {ACAB_TIPO_CALCULO_LABEL[a.tipo_calculo ?? 'manual']}
+                  {a.tipo_calculo && a.tipo_calculo !== 'manual' && a.fator_calculo != null && (
+                    <span className="text-gray-600"> · fator {a.fator_calculo}</span>
+                  )}
+                </td>
                 <td className="px-5 py-3 text-center">
                   <button onClick={() => atualizarAcab({ id: a.id, dados: { ativo: !a.ativo } })}
                     className={`px-2 py-1 rounded-full text-[10px] font-bold border transition-all ${a.ativo ? 'bg-green-500/15 text-green-400 border-green-500/30' : 'bg-gray-500/15 text-gray-400 border-gray-500/30'}`}>
@@ -931,6 +980,22 @@ export function Produtos() {
                         }`}>
                         <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all`}
                           style={{ left: (form as any).por_metro_quadrado ? 22 : 2 }} />
+                      </button>
+                    </div>
+                    <div className="flex items-center justify-between pt-2 border-t border-blue-500/20">
+                      <div>
+                        <p className="text-xs font-bold text-white">Aparece no Orçamento de Placa?</p>
+                        <p className="text-[10px] text-gray-400">
+                          Ligado (padrão): some como opção de material no passo "Material" do orçamento de Placa.
+                          Desligado: continua disponível no resto do sistema, só não aparece ali.
+                        </p>
+                      </div>
+                      <button type="button" onClick={() => setF('usar_em_orcamento_placa', !(form as any).usar_em_orcamento_placa)}
+                        className={`flex-shrink-0 w-11 h-6 rounded-full relative transition-all ${
+                          (form as any).usar_em_orcamento_placa !== false ? 'bg-green-600' : 'bg-gray-700'
+                        }`}>
+                        <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all`}
+                          style={{ left: (form as any).usar_em_orcamento_placa !== false ? 22 : 2 }} />
                       </button>
                     </div>
                   </div>

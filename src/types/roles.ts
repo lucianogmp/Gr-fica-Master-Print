@@ -66,6 +66,7 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   '/custos/variaveis':    ['dono', 'admin', 'financeiro'],
   '/custos/depreciacao':  ['dono', 'admin', 'financeiro'],
   '/custos/resumo':       ['dono', 'admin', 'financeiro'],
+  '/custos/serralheria':  ['dono', 'admin', 'financeiro'],
 
   // ── Relatórios ──
   '/relatorios':            ['dono', 'admin', 'financeiro'],

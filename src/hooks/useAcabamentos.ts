@@ -22,6 +22,14 @@ export interface Acabamento {
     unidade: string;
     saldo: number;
   } | null;
+  /**
+   * Regra de cálculo automático de quantidade, usada no Orçamento de Placa
+   * (item 8 da especificação — sem fórmula fixa no código por produto):
+   * 'perimetro'/'m2'/'metro_linear' multiplicam por `fator_calculo`;
+   * 'manual' (padrão) deixa a quantidade sempre por conta do usuário.
+   */
+  tipo_calculo?: 'perimetro' | 'm2' | 'metro_linear' | 'manual';
+  fator_calculo?: number | null;
 }
 
 export function useAcabamentos() {

@@ -9,6 +9,7 @@ import { useLancamentos } from '../../hooks/useLancamentos';
 import { useConfiguracoes } from '../../hooks/useConfiguracoes';
 import { useProducao } from '../../hooks/useProducao';
 import { Venda, VendaItem, StatusVenda, STATUS_VENDA, STATUS_VENDA_SELECIONAVEIS, PagamentoVenda } from '../../types/venda';
+import { formatarDescricaoImpressaoPlaca } from '../../lib/placaCalc';
 import { Lancamento } from '../../types/financeiro';
 import { formatarEnderecoCliente } from '../../types/cliente';
 import { useClientes } from '../../hooks/useClientes';
@@ -222,7 +223,7 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
     clienteEmail: clienteSelecionado?.email ?? null,
     clienteEndereco: formatarEnderecoCliente(clienteSelecionado) || null,
     itens: itens.map(i => ({
-      descricao: i.descricao,
+      descricao: formatarDescricaoImpressaoPlaca(i.descricao, i.detalhe_placa),
       quantidade: Number(i.quantidade),
       unidade: i.unidade ?? 'un',
       precoUnitario: Number(i.preco_unitario),

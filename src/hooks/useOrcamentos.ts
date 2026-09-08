@@ -148,6 +148,7 @@ export function useOrcamentos() {
         total:          i.total,
         acabamento_id:          i.acabamento_id          ?? null,
         acabamento_qtd_estoque: i.acabamento_qtd_estoque ?? null,
+        detalhe_placa:          i.detalhe_placa          ?? null,
       }));
 
       const { error: iErr } = await supabase.rpc('salvar_itens_venda', {

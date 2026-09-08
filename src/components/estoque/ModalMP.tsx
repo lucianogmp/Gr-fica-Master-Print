@@ -18,6 +18,7 @@ type FormData = {
   categoria: string;
   unidade: string;
   custo_unitario: number;
+  preco_venda: number;
   estoque_minimo: string;
   saldo_inicial: string;
   saldo_atual: string;
@@ -25,7 +26,7 @@ type FormData = {
   largura_padrao_cm: string;
 };
 
-const EMPTY: FormData = { nome: '', categoria: '', unidade: 'un', custo_unitario: 0, estoque_minimo: '', saldo_inicial: '', saldo_atual: '', controla_estoque: true, largura_padrao_cm: '' };
+const EMPTY: FormData = { nome: '', categoria: '', unidade: 'un', custo_unitario: 0, preco_venda: 0, estoque_minimo: '', saldo_inicial: '', saldo_atual: '', controla_estoque: true, largura_padrao_cm: '' };
 
 interface ModalMPProps {
   open: boolean;
@@ -50,6 +51,7 @@ export function ModalMP({ open, editando, onClose, onSalvar }: ModalMPProps) {
         categoria:      editando.categoria ?? '',
         unidade:        editando.unidade,
         custo_unitario: Number(editando.custo_unitario) || 0,
+        preco_venda:    Number(editando.preco_venda) || 0,
         estoque_minimo: String(editando.estoque_minimo ?? ''),
         saldo_inicial:  '',
         saldo_atual:    String(editando.saldo ?? 0),
@@ -61,11 +63,14 @@ export function ModalMP({ open, editando, onClose, onSalvar }: ModalMPProps) {
     }
   }, [editando, open]);
 
-  function set(field: Exclude<keyof FormData, 'custo_unitario' | 'controla_estoque'>, val: string) {
+  function set(field: Exclude<keyof FormData, 'custo_unitario' | 'preco_venda' | 'controla_estoque'>, val: string) {
     setForm(f => ({ ...f, [field]: val }));
   }
   function setCustoUnitario(val: number) {
     setForm(f => ({ ...f, custo_unitario: val }));
+  }
+  function setPrecoVenda(val: number) {
+    setForm(f => ({ ...f, preco_venda: val }));
   }
   function setControlaEstoque(val: boolean) {
     setForm(f => ({ ...f, controla_estoque: val }));
@@ -80,6 +85,7 @@ export function ModalMP({ open, editando, onClose, onSalvar }: ModalMPProps) {
         categoria:      form.categoria.trim() || null,
         unidade:        form.unidade,
         custo_unitario: form.custo_unitario || 0,
+        preco_venda: form.preco_venda || null,
         controla_estoque: form.controla_estoque,
         largura_padrao_cm: form.unidade === 'm2' && form.largura_padrao_cm
           ? parseFloat(form.largura_padrao_cm) || null
@@ -214,6 +220,15 @@ export function ModalMP({ open, editando, onClose, onSalvar }: ModalMPProps) {
               className={INPUT} placeholder="0,00" />
           </Field>
         )}
+
+        <Field label="Preço de Venda (R$)">
+          <MoneyInput value={form.preco_venda}
+            onChange={setPrecoVenda}
+            className={INPUT} placeholder="0,00" />
+          <p className="text-[10px] text-gray-600 mt-1">
+            Só pra sua referência na hora de precificar — não entra em nenhum cálculo automático do sistema.
+          </p>
+        </Field>
 
         {!editando && form.controla_estoque && (
           <Field label="Saldo Inicial">

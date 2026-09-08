@@ -8,6 +8,9 @@ export interface MateriaPrima {
   saldo: number;
   estoque_minimo: number;
   custo_unitario: number;
+  /** Preço de venda de referência (informativo) — não entra em nenhum
+   * cálculo automático, é só consulta rápida ao lado do custo. */
+  preco_venda?: number | null;
   /** false = item comprado sob medida/encomenda, sem saldo rastreado — não
    * entra em alertas de estoque baixo/zerado nem exige quantidade. Padrão
    * true pra manter o comportamento de sempre em itens já cadastrados. */

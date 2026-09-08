@@ -63,6 +63,7 @@ export const PERMISSOES_MENU: GrupoPermissao[] = [
     { rota: '/custos/variaveis',   label: 'Custos Variáveis' },
     { rota: '/custos/depreciacao', label: 'Depreciação' },
     { rota: '/custos/resumo',      label: 'Resumo' },
+    { rota: '/custos/serralheria', label: 'Serralheria' },
   ]},
   { grupo: 'Relatórios', itens: [
     { rota: '/relatorios',            label: 'Relatórios (geral)' },

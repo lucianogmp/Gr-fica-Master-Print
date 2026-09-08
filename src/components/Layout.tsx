@@ -150,6 +150,7 @@ const ALL_MENU: MenuItem[] = [
       { path: '/custos/variaveis',  label: 'Custos Variáveis', icon: GitCompare },
       { path: '/custos/depreciacao', label: 'Depreciação',     icon: TrendingDown },
       { path: '/custos/resumo',     label: 'Resumo',           icon: PieChart },
+      { path: '/custos/serralheria', label: 'Serralheria',     icon: Wrench },
     ],
   },
 
