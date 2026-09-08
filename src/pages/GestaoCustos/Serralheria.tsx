@@ -4,6 +4,8 @@ import { useMetalonTipos, MetalonTipo } from '../../hooks/useMetalonTipos';
 import { useConfiguracoes } from '../../hooks/useConfiguracoes';
 import { useConfirm } from '../../components/ui/ConfirmModal';
 import { MoneyInput } from '../../components/ui/MoneyInput';
+import { MedidaInput } from '../../components/ui/MedidaInput';
+import { PctInput } from '../../components/ui/PctInput';
 import { Wrench, Plus, X, Pencil } from 'lucide-react';
 
 const fmtBRL = (v: number) => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -95,8 +97,7 @@ export function Serralheria() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div>
             <label className={LABEL}>Mão de obra serralheria (%)</label>
-            <input type="number" step="1" className={IN} value={maoObraSerralheriaPct}
-              onChange={e => setMaoObraSerralheriaPct(parseFloat(e.target.value) || 0)} />
+            <PctInput className={IN} value={maoObraSerralheriaPct} onChange={setMaoObraSerralheriaPct} center={false} />
             <p className="text-[10px] text-gray-600 mt-1">% sobre o custo do metalon usado</p>
           </div>
           <div>
@@ -109,8 +110,7 @@ export function Serralheria() {
           </div>
           <div>
             <label className={LABEL}>Espaçamento padrão de travessa (m)</label>
-            <input type="number" step="0.1" className={IN} value={espacamentoPadrao}
-              onChange={e => setEspacamentoPadrao(parseFloat(e.target.value) || 0.1)} />
+            <MedidaInput className={IN} value={espacamentoPadrao} onChange={setEspacamentoPadrao} />
             <p className="text-[10px] text-gray-600 mt-1">Sugestão inicial — ajustável em cada orçamento</p>
           </div>
         </div>

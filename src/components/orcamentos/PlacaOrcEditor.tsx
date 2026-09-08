@@ -5,6 +5,10 @@ import { useMetalonTipos } from '../../hooks/useMetalonTipos';
 import { useAcabamentos } from '../../hooks/useAcabamentos';
 import { useConfigSerralheria } from '../../hooks/useConfiguracoes';
 import { useRole } from '../../hooks/useRole';
+import { MoneyInput } from '../ui/MoneyInput';
+import { MedidaInput } from '../ui/MedidaInput';
+import { QtdInput } from '../ui/QtdInput';
+import { PctInput } from '../ui/PctInput';
 import { loadBom, calcCustoBOM } from '../../hooks/useBom';
 import { OrcamentoItem } from '../../types/orcamento';
 import {
@@ -292,18 +296,16 @@ export function PlacaOrcEditor({ editando, onAdicionar, onCancelar, mostrarCusto
                 <div className="grid grid-cols-3 gap-3">
                   <div>
                     <label className={LABEL}>Largura (m)</label>
-                    <input type="number" step="0.01" className={IN} value={largura}
-                      onChange={e => setLargura(parseFloat(e.target.value) || 0)} />
+                    <MedidaInput className={IN} value={largura} onChange={setLargura} />
                   </div>
                   <div>
                     <label className={LABEL}>Altura (m)</label>
-                    <input type="number" step="0.01" className={IN} value={altura}
-                      onChange={e => setAltura(parseFloat(e.target.value) || 0)} />
+                    <MedidaInput className={IN} value={altura} onChange={setAltura} />
                   </div>
                   <div>
                     <label className={LABEL}>Quantidade</label>
-                    <input type="number" className={IN} value={quantidade}
-                      onChange={e => setQuantidade(parseInt(e.target.value) || 1)} />
+                    <QtdInput className={IN} value={String(quantidade)}
+                      onChange={v => setQuantidade(v === '' ? 1 : parseFloat(v))} />
                   </div>
                 </div>
                 <div>
@@ -390,8 +392,7 @@ export function PlacaOrcEditor({ editando, onAdicionar, onCancelar, mostrarCusto
                       <div className="flex items-center justify-between">
                         <span className="text-xs text-gray-400">Espaçamento máximo do reforço (travessa)</span>
                         <div className="flex items-center gap-1.5">
-                          <input type="number" step="0.1" value={espacamentoMax}
-                            onChange={e => setEspacamentoMax(parseFloat(e.target.value) || 0.1)}
+                          <MedidaInput value={espacamentoMax} onChange={setEspacamentoMax}
                             className="w-20 bg-[#0d1420] border border-gray-700 rounded px-2 py-1 text-sm text-right text-white" />
                           <span className="text-xs text-gray-500">m</span>
                         </div>
@@ -402,9 +403,7 @@ export function PlacaOrcEditor({ editando, onAdicionar, onCancelar, mostrarCusto
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-gray-400">Quantidade utilizada</span>
-                        <input type="number" step="0.05"
-                          value={metalonQtdUsada.toFixed(2)}
-                          onChange={e => setMetalonQtdManual(parseFloat(e.target.value) || 0)}
+                        <MedidaInput value={metalonQtdUsada} onChange={setMetalonQtdManual}
                           className="w-24 bg-[#0d1420] border border-gray-700 rounded px-2 py-1 text-sm text-right font-semibold text-white" />
                       </div>
                       <button onClick={() => setVerCalculo(true)}
@@ -447,9 +446,8 @@ export function PlacaOrcEditor({ editando, onAdicionar, onCancelar, mostrarCusto
                         </button>
                         {usado && (
                           <div className="flex items-center gap-1.5">
-                            <input type="number" step="0.5"
-                              value={sel!.qtdManual ?? qtdCalc}
-                              onChange={e => setAcabQtd(a.id, parseFloat(e.target.value) || 0)}
+                            <QtdInput value={String(sel!.qtdManual ?? qtdCalc)}
+                              onChange={v => setAcabQtd(a.id, v === '' ? 0 : parseFloat(v))}
                               className="w-16 bg-[#0d1420] border border-gray-700 rounded px-2 py-1 text-sm text-right text-white" />
                             <span className="text-xs text-gray-500 w-8">un.</span>
                           </div>
@@ -483,22 +481,17 @@ export function PlacaOrcEditor({ editando, onAdicionar, onCancelar, mostrarCusto
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className={LABEL}>Margem desejada (%)</label>
-                      <input type="number" className={IN} value={margem}
-                        onChange={e => setMargem(parseFloat(e.target.value) || 0)} />
+                      <PctInput className={IN} value={margem} onChange={setMargem} center={false} />
                     </div>
                     <div>
                       <label className={LABEL}>Preço final (editável)</label>
-                      <input type="number" step="0.01" className={IN}
-                        value={precoFinal.toFixed(2)}
-                        onChange={e => setPrecoFinalManual(parseFloat(e.target.value) || 0)} />
+                      <MoneyInput className={IN} value={precoFinal} onChange={setPrecoFinalManual} />
                     </div>
                   </div>
                 ) : (
                   <div>
                     <label className={LABEL}>Preço final</label>
-                    <input type="number" step="0.01" className={IN}
-                      value={precoFinal.toFixed(2)}
-                      onChange={e => setPrecoFinalManual(parseFloat(e.target.value) || 0)} />
+                    <MoneyInput className={IN} value={precoFinal} onChange={setPrecoFinalManual} />
                   </div>
                 )}
                 <button onClick={() => setVerCalculo(true)}

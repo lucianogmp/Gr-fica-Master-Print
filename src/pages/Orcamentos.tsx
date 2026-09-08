@@ -960,31 +960,32 @@ export function Orcamentos() {
           {/* Dados */}
           <div className="xl:col-span-2 bg-[#1f2937] border border-gray-700 rounded-xl p-5">
             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Dados do Orçamento</h3>
-            <div className="space-y-4">
+            <div className="space-y-3">
               <ClienteSelectorVenda
                 value={form.cliente_nome ?? ''}
                 clienteId={form.cliente_id}
                 onChange={(nome, id) => { setF('cliente_nome', nome); setF('cliente_id', id ?? null); }}
               />
-              <div>
-                <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">
-                  Título <span className="text-gray-600 normal-case font-normal">(opcional)</span>
-                </label>
-                <input
-                  value={form.tipo ?? ''}
-                  onChange={e => setF('tipo', e.target.value)}
-                  className={IN}
-                  placeholder="Ex: Fachada, Cardápio, Plaquinha PIX..."
-                />
-                <p className="text-[10px] text-gray-600 mt-1">
-                  Resume o orçamento numa frase. Aparece no topo da mensagem de WhatsApp e,
-                  se a venda for aprovada, também no card da Produção.
-                </p>
-              </div>
-              <div>
-                <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Observações</label>
-                <textarea rows={2} value={form.observacoes ?? ''} onChange={e => setF('observacoes', e.target.value)}
-                  className={IN + ' resize-none'} placeholder="Condições, prazos, informações adicionais..." />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">
+                    Título <span className="text-gray-600 normal-case font-normal">(opcional)</span>
+                  </label>
+                  <input
+                    value={form.tipo ?? ''}
+                    onChange={e => setF('tipo', e.target.value)}
+                    className={IN}
+                    placeholder="Ex: Fachada, Cardápio, Plaquinha PIX..."
+                  />
+                  <p className="text-[10px] text-gray-600 mt-1">
+                    Aparece no WhatsApp e, se aprovado, no card da Produção.
+                  </p>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Observações</label>
+                  <textarea rows={1} value={form.observacoes ?? ''} onChange={e => setF('observacoes', e.target.value)}
+                    className={IN + ' resize-none'} placeholder="Condições, prazos, informações adicionais..." />
+                </div>
               </div>
             </div>
           </div>

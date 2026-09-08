@@ -566,8 +566,8 @@ export function Produtos() {
               <label className="text-[10px] text-gray-500 uppercase block mb-1.5">
                 Fator {acabTipoCalculo === 'm2' ? '(un/m²)' : acabTipoCalculo === 'perimetro' ? '(un por metro de borda)' : '(m de material por m de perímetro)'}
               </label>
-              <input type="number" step="0.01" value={acabFator || ''}
-                onChange={e => setAcabFator(parseFloat(e.target.value) || 0)}
+              <QtdInput value={acabFator ? String(acabFator) : ''}
+                onChange={v => setAcabFator(v === '' ? 0 : parseFloat(v))}
                 className={IN} placeholder={acabTipoCalculo === 'perimetro' ? 'Ex: 6,67 (a cada 15cm)' : acabTipoCalculo === 'metro_linear' ? 'Ex: 1 (1m por 1m de perímetro)' : 'Ex: 2,5'} />
               {acabTipoCalculo === 'perimetro' && (
                 <p className="text-[9px] text-gray-600 mt-1">Fator = 1 ÷ espaçamento em metros. A cada 15cm → 1 ÷ 0,15 ≈ 6,67</p>
