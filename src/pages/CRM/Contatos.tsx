@@ -8,6 +8,7 @@ import { PhoneCall, Plus, X, AlertCircle, Mail, MessageCircle, Building2, Pencil
 import { TableSkeleton } from '../../components/ui/Skeleton';
 import { DateInput } from '../../components/ui/DateInput';
 import { DarkSelect } from '../../components/ui/DarkSelect';
+import { correspondeABuscaEmCampos } from '../../lib/buscaFlexivel';
 
 const NOVO = { cliente_id: '', nome: '', cargo: '', telefone: '', whatsapp: '', email: '', data_nascimento: '', observacoes: '' };
 const IN = "w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors";
@@ -31,11 +32,7 @@ export function Contatos() {
   const { deletar } = useContatos(null);
 
   const filtrados = useMemo(() => (contatos ?? []).filter(c =>
-    !busca ||
-    c.nome.toLowerCase().includes(busca.toLowerCase()) ||
-    (c.clientes?.nome ?? '').toLowerCase().includes(busca.toLowerCase()) ||
-    (c.telefone ?? '').includes(busca) ||
-    (c.cargo ?? '').toLowerCase().includes(busca.toLowerCase())
+    correspondeABuscaEmCampos([c.nome, c.clientes?.nome, c.telefone, c.cargo], busca)
   ), [contatos, busca]);
 
   function abrirNovo() {

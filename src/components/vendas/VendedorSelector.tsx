@@ -7,6 +7,7 @@ import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react
 import { createPortal } from 'react-dom';
 import { supabase } from '../../lib/supabase';
 import { ChevronDown } from 'lucide-react';
+import { correspondeABuscaEmCampos } from '../../lib/buscaFlexivel';
 
 interface Vendedor {
   id: string;
@@ -94,10 +95,7 @@ export function VendedorSelector({ value, vendedorId, onChange, hideLabel }: Pro
     setAberto(false);
   }
 
-  const opcoesFiltradas = opcoes.filter(o =>
-    !busca || o.nome.toLowerCase().includes(busca.toLowerCase()) ||
-    o.email.toLowerCase().includes(busca.toLowerCase())
-  );
+  const opcoesFiltradas = opcoes.filter(o => correspondeABuscaEmCampos([o.nome, o.email], busca));
 
   return (
     <div ref={wrapRef} className="relative">

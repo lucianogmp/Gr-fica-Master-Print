@@ -18,6 +18,7 @@ import { useProdutos } from '../hooks/useProdutos';
 import { useCategorias } from '../hooks/useCategorias';
 import { Orcamento, OrcamentoItem, StatusOrcamento, STATUS_ORC } from '../types/orcamento';
 import { formatarDescricaoImpressaoPlaca } from '../lib/placaCalc';
+import { correspondeABuscaEmCampos } from '../lib/buscaFlexivel';
 import { formatarEnderecoCliente } from '../types/cliente';
 import { useClientes } from '../hooks/useClientes';
 import { useRole } from '../hooks/useRole';
@@ -334,6 +335,13 @@ export function Orcamentos() {
     }
   }
 
+  const SEM_CLIENTE_LABEL = 'Cliente não identificado';
+  const semCliente = !form.cliente_id && form.cliente_nome === SEM_CLIENTE_LABEL;
+  function toggleSemCliente(marcado: boolean) {
+    if (marcado) { setF('cliente_nome', SEM_CLIENTE_LABEL); setF('cliente_id', null); }
+    else { setF('cliente_nome', ''); setF('cliente_id', null); }
+  }
+
   async function abrirDetalhe(o: Orcamento | null, tipoInicial?: 'placa') {
     if (o) {
       setOrcId(o.id);
@@ -485,8 +493,7 @@ export function Orcamentos() {
         if (o.status === 'convertido' && filtro !== 'convertido') return false;
         return filtro === 'todos' || o.status === filtro;
       })
-      .filter(o => !busca || o.cliente_nome.toLowerCase().includes(busca.toLowerCase()) ||
-        (o.numero ? String(o.numero).includes(busca) : false));
+      .filter(o => correspondeABuscaEmCampos([o.cliente_nome, o.tipo, o.numero], busca));
     const comFiltrosAv = aplicarFiltrosAvancados(base, filtrosAv, o => o.created_at, o => o.total);
     return aplicarOrdenacao(comFiltrosAv, ordenacao, {
       data:    o => o.created_at,
@@ -961,11 +968,29 @@ export function Orcamentos() {
           <div className="xl:col-span-2 bg-[#1f2937] border border-gray-700 rounded-xl p-5">
             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Dados do Orçamento</h3>
             <div className="space-y-3">
-              <ClienteSelectorVenda
-                value={form.cliente_nome ?? ''}
-                clienteId={form.cliente_id}
-                onChange={(nome, id) => { setF('cliente_nome', nome); setF('cliente_id', id ?? null); }}
-              />
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-bold text-gray-400 uppercase">Cliente</label>
+                  <label className="flex items-center gap-1.5 text-[11px] text-gray-500 cursor-pointer hover:text-gray-300">
+                    <input type="checkbox" checked={semCliente}
+                      onChange={e => toggleSemCliente(e.target.checked)}
+                      className="accent-blue-600 w-3.5 h-3.5" />
+                    Sem cliente definido
+                  </label>
+                </div>
+                {semCliente ? (
+                  <div className="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-gray-500 italic">
+                    Cliente não identificado — possível cliente / orçamento avulso
+                  </div>
+                ) : (
+                  <ClienteSelectorVenda
+                    value={form.cliente_nome ?? ''}
+                    clienteId={form.cliente_id}
+                    onChange={(nome, id) => { setF('cliente_nome', nome); setF('cliente_id', id ?? null); }}
+                    hideLabel
+                  />
+                )}
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">

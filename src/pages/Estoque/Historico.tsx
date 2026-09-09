@@ -2,6 +2,7 @@
 import { useState, useMemo } from 'react';
 import { useMovimentos } from '../../hooks/useEstoque';
 import { History, ArrowUp, ArrowDown } from 'lucide-react';
+import { correspondeABuscaEmCampos } from '../../lib/buscaFlexivel';
 
 export function Historico() {
   const { data: movimentos = [], isLoading } = useMovimentos();
@@ -11,11 +12,7 @@ export function Historico() {
   const filtrados = useMemo(() =>
     movimentos
       .filter(m => filtroTipo === 'todos' || m.tipo === filtroTipo)
-      .filter(m =>
-        !filtro ||
-        (m.materias_primas?.nome ?? '').toLowerCase().includes(filtro.toLowerCase()) ||
-        (m.motivo ?? '').toLowerCase().includes(filtro.toLowerCase())
-      ),
+      .filter(m => correspondeABuscaEmCampos([m.materias_primas?.nome, m.motivo], filtro)),
     [movimentos, filtro, filtroTipo]
   );
 

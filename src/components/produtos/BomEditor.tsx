@@ -5,6 +5,7 @@ import { Modal } from '../ui/Modal';
 import { QtdInput } from '../ui/QtdInput';
 import { calcCustoBOM } from '../../hooks/useBom';
 import { Boxes, X, ArrowRight } from 'lucide-react';
+import { correspondeABusca } from '../../lib/buscaFlexivel';
 
 const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const unidadeLabel = (u: string) => u === 'm2' ? 'm²' : u;
@@ -30,8 +31,7 @@ export function BomEditor({ bom, materias, onChange, porMetroQuadrado }: BomEdit
   const custoBOM = calcCustoBOM(bom);
   const usadas   = new Set(bom.map(b => b.materias_primas?.id));
   const disponiveis = materias.filter(m =>
-    !usadas.has(m.id) &&
-    (!busca || m.nome.toLowerCase().includes(busca.toLowerCase()))
+    !usadas.has(m.id) && correspondeABusca(m.nome, busca)
   ).slice(0, 10);
 
   function handleAddMP() {

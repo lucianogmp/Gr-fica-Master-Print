@@ -176,6 +176,12 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
     }
   }
 
+  function toggleConsumidorFinal(marcado: boolean) {
+    setF('consumidor_final', marcado);
+    if (marcado) { setF('cliente_nome', 'Consumidor Final'); setF('cliente_id', null); }
+    else { setF('cliente_nome', ''); setF('cliente_id', null); }
+  }
+
   // Cálculos financeiros
   const subtotal        = itens.reduce((s, i) => s + Number(i.total), 0);
   const descontoValor   = subtotal * (form.desconto / 100);
@@ -330,13 +336,27 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
               <div className="flex-1 min-w-0 space-y-2.5">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Cliente *</label>
-                    <ClienteSelectorVenda
-                      hideLabel
-                      value={form.cliente_nome}
-                      clienteId={form.cliente_id}
-                      onChange={(nome, id) => { setF('cliente_nome', nome); setF('cliente_id', id ?? null); }}
-                    />
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-[10px] font-bold text-gray-500 uppercase">Cliente</label>
+                      <label className="flex items-center gap-1 text-[10px] text-gray-500 cursor-pointer hover:text-gray-300">
+                        <input type="checkbox" checked={form.consumidor_final}
+                          onChange={e => toggleConsumidorFinal(e.target.checked)}
+                          className="accent-blue-600 w-3 h-3" />
+                        Consumidor final
+                      </label>
+                    </div>
+                    {form.consumidor_final ? (
+                      <div className="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-gray-500 italic">
+                        Consumidor final — sem cliente identificado
+                      </div>
+                    ) : (
+                      <ClienteSelectorVenda
+                        hideLabel
+                        value={form.cliente_nome}
+                        clienteId={form.cliente_id}
+                        onChange={(nome, id) => { setF('cliente_nome', nome); setF('cliente_id', id ?? null); }}
+                      />
+                    )}
                   </div>
                   <div>
                     <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Vendedor</label>

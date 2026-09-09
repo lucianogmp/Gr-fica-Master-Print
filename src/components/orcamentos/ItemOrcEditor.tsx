@@ -13,6 +13,7 @@ import { Produto } from '../../types/produto';
 import { MoneyInput } from '../ui/MoneyInput';
 import { MedidaInput } from '../ui/MedidaInput';
 import { QtdInput } from '../ui/QtdInput';
+import { correspondeABusca } from '../../lib/buscaFlexivel';
 import { HelpTooltip } from '../ui/HelpTooltip';
 
 const fmtBRL = (v: number) =>
@@ -386,9 +387,7 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando, mostrarCusto 
 
   const produtosFiltrados = produtos
     .filter(p => p.status === 'ativo' && !p.por_metro_quadrado)
-    .filter(p =>
-      !buscaProd || p.nome.toLowerCase().includes(buscaProd.toLowerCase()),
-    );
+    .filter(p => correspondeABusca(p.nome, buscaProd));
 
   // ── render ─────────────────────────────────────────────────────────────────
 

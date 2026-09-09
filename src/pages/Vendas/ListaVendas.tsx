@@ -10,6 +10,7 @@ import { useConfiguracoes } from '../../hooks/useConfiguracoes';
 import { useRole } from '../../hooks/useRole';
 import { Venda, StatusVenda, STATUS_VENDA } from '../../types/venda';
 import { formatarDescricaoImpressaoPlaca } from '../../lib/placaCalc';
+import { correspondeABuscaEmCampos } from '../../lib/buscaFlexivel';
 import { useConfirm } from '../../components/ui/ConfirmModal';
 import { DollarSign, ClipboardList, X, LucideIcon, ChevronLeft, ChevronRight, Printer, CheckSquare, Square } from 'lucide-react';
 import { MonthInput } from '../../components/ui/MonthInput';
@@ -108,12 +109,7 @@ export function ListaVendas({
     const base = vendasBase
       .filter(v => filtroExtra === 'todos' || v.status === filtroExtra)
       .filter(v => !mes || (v.data_venda ?? '').startsWith(mes))
-      .filter(v =>
-        !busca ||
-        v.cliente_nome.toLowerCase().includes(busca.toLowerCase()) ||
-        (v.numero ? String(v.numero).includes(busca) : false) ||
-        (v.palavra_chave ?? '').toLowerCase().includes(busca.toLowerCase())
-      );
+      .filter(v => correspondeABuscaEmCampos([v.cliente_nome, v.numero, v.palavra_chave], busca));
     const comFiltrosAv = aplicarFiltrosAvancados(base, filtrosAv, v => v.data_venda, v => v.valor_total);
     return aplicarOrdenacao(comFiltrosAv, ordenacao, {
       data:    v => v.data_venda,

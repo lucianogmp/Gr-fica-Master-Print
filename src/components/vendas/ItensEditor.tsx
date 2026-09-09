@@ -7,6 +7,7 @@ import { useProdutos } from '../../hooks/useProdutos';
 import { loadBom, calcCustoBOM } from '../../hooks/useBom';
 import { useRole } from '../../hooks/useRole';
 import { X, Search, Package } from 'lucide-react';
+import { correspondeABuscaEmCampos } from '../../lib/buscaFlexivel';
 import { MoneyInput } from '../ui/MoneyInput';
 import { QtdInput } from '../ui/QtdInput';
 import { PctInput } from '../ui/PctInput';
@@ -58,9 +59,8 @@ export function ItensEditor({ itens, onChange }: ItensEditorProps) {
 
   const produtosFiltrados = useMemo(() => {
     if (!buscaProduto.trim()) return produtosAtivos.slice(0, 8);
-    const t = buscaProduto.toLowerCase();
     return produtosAtivos
-      .filter(p => p.nome.toLowerCase().includes(t) || (p.sku ?? '').toLowerCase().includes(t))
+      .filter(p => correspondeABuscaEmCampos([p.nome, p.sku], buscaProduto))
       .slice(0, 8);
   }, [produtosAtivos, buscaProduto]);
 

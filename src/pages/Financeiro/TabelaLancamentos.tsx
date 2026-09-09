@@ -10,6 +10,7 @@ import { Lancamento, StatusLancamento, FORMAS_PAGAMENTO, CATEGORIAS_RECEITA, CAT
 import { ModalLancamento } from '../../components/financeiro/ModalLancamento';
 import { useConfirm } from '../../components/ui/ConfirmModal';
 import { OrdenarMenu, aplicarOrdenacao, Ordenacao } from '../../components/ui/OrdenarMenu';
+import { correspondeABuscaEmCampos } from '../../lib/buscaFlexivel';
 import { FiltrosAvancados, aplicarFiltrosAvancados, FiltrosAvancadosValor } from '../../components/ui/FiltrosAvancados';
 import { DarkSelect } from '../../components/ui/DarkSelect';
 import {
@@ -119,11 +120,7 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
         if (filtroStatus !== 'todos') return l.statusCalc === filtroStatus;
         return true;
       })
-      .filter(l =>
-        !busca ||
-        l.descricao.toLowerCase().includes(busca.toLowerCase()) ||
-        (l.cliente_nome ?? '').toLowerCase().includes(busca.toLowerCase())
-      )
+      .filter(l => correspondeABuscaEmCampos([l.descricao, l.cliente_nome], busca))
       .filter(l => !filtroContaId || l.conta_id === filtroContaId)
       .filter(l => !filtroCategoria || l.categoria === filtroCategoria)
       .filter(l => !filtroForma || l.forma_pagamento === filtroForma);

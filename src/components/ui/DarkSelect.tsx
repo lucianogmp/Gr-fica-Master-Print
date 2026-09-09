@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronDown } from 'lucide-react';
+import { correspondeABusca } from '../../lib/buscaFlexivel';
 
 export interface DarkSelectOption {
   value: string;
@@ -181,7 +182,7 @@ export function DarkSelect({
   // qualquer parte do nome (não só no começo) — igual já fizemos nos outros
   // campos de busca do sistema (Catálogo, BOM, Vendedor).
   const opcoesExibidas = searchable && busca
-    ? flatOptions.filter(o => o.label.toLowerCase().includes(busca.toLowerCase()))
+    ? flatOptions.filter(o => correspondeABusca(o.label, busca))
     : flatOptions;
 
   const label = flatOptions.find(o => o.value === value)?.label ?? placeholder;

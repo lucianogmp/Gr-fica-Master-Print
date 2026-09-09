@@ -13,19 +13,21 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-const LIMITE_CENTESIMOS = 99_999_999; // até 999.999,99 m — mais que suficiente pra qualquer peça
+const LIMITE_CENTESIMOS = 999_999_999_999; // margem folgada em qualquer casa decimal
 
-function centesimosParaTexto(centesimos: number): string {
-  const v = (Math.max(0, centesimos) / 100).toFixed(2);
+function centesimosParaTexto(centesimos: number, casasDecimais: number): string {
+  const fator = 10 ** casasDecimais;
+  const v = (Math.max(0, centesimos) / fator).toFixed(casasDecimais);
   const [intPart, decPart] = v.split('.');
   const intFormatado = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
   return `${intFormatado},${decPart}`;
 }
 
-function metrosParaCentesimos(valor: number | string | null | undefined): number {
+function metrosParaCentesimos(valor: number | string | null | undefined, casasDecimais: number): number {
+  const fator = 10 ** casasDecimais;
   const n = typeof valor === 'string' ? parseFloat(valor.replace(',', '.')) : (valor ?? 0);
   if (!isFinite(n) || isNaN(n)) return 0;
-  return Math.round(n * 100);
+  return Math.round(n * fator);
 }
 
 interface MedidaInputProps {
@@ -42,29 +44,36 @@ interface MedidaInputProps {
   required?: boolean;
   id?: string;
   name?: string;
+  /**
+   * Quantas casas decimais o campo aceita (padrão 2 = precisão de
+   * centímetro). Use 4 quando precisar de frações de centímetro — ex:
+   * dimensões de placa, onde "5,5 cm" precisa virar "0,0550" m.
+   */
+  casasDecimais?: number;
 }
 
 export function MedidaInput({
-  value, onChange, onBlur, className, style, placeholder, autoFocus, disabled, required, id, name,
+  value, onChange, onBlur, className, style, placeholder, autoFocus, disabled, required, id, name, casasDecimais = 2,
 }: MedidaInputProps) {
-  const [centesimos, setCentesimos] = useState<number>(() => metrosParaCentesimos(value));
+  const [centesimos, setCentesimos] = useState<number>(() => metrosParaCentesimos(value, casasDecimais));
   const inputRef = useRef<HTMLInputElement>(null);
-  const ultimoValorEmitido = useRef<number>(metrosParaCentesimos(value));
+  const ultimoValorEmitido = useRef<number>(metrosParaCentesimos(value, casasDecimais));
+  const fator = 10 ** casasDecimais;
 
   // Sincroniza quando o valor muda por fora (ex: carregar item para edição, trocar de aba, limpar formulário).
   useEffect(() => {
-    const novo = metrosParaCentesimos(value);
+    const novo = metrosParaCentesimos(value, casasDecimais);
     if (novo !== ultimoValorEmitido.current) {
       setCentesimos(novo);
       ultimoValorEmitido.current = novo;
     }
-  }, [value]);
+  }, [value, casasDecimais]);
 
   function emitir(novoCentesimos: number) {
     const limitado = Math.min(novoCentesimos, LIMITE_CENTESIMOS);
     setCentesimos(limitado);
     ultimoValorEmitido.current = limitado;
-    onChange(limitado / 100);
+    onChange(limitado / fator);
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -126,7 +135,7 @@ export function MedidaInput({
       name={name}
       type="text"
       inputMode="numeric"
-      value={centesimosParaTexto(centesimos)}
+      value={centesimosParaTexto(centesimos, casasDecimais)}
       onKeyDown={handleKeyDown}
       onPaste={handlePaste}
       onFocus={e => irParaOFinalSeNaoHouverSelecao(e.target)}

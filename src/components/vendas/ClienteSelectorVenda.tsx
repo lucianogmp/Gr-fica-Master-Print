@@ -80,12 +80,17 @@ export function ClienteSelectorVenda({ value, clienteId, onChange, hideLabel }: 
       setCarregando(true);
       atualizarRect();
       try {
-        // Busca por nome, telefone ou CPF/CNPJ
-        const { data } = await supabase
+        // Busca por nome, telefone ou CPF/CNPJ — cada palavra digitada
+        // precisa aparecer em algum desses campos (em qualquer ordem),
+        // não só quando o texto bate exatamente como está cadastrado.
+        const palavras = q.trim().split(/\s+/).filter(Boolean);
+        let query = supabase
           .from('clientes')
-          .select('id, nome, telefone, email, cpf_cnpj')
-          .or(`nome.ilike.%${q}%,telefone.ilike.%${q}%,cpf_cnpj.ilike.%${q}%`)
-          .limit(8);
+          .select('id, nome, telefone, email, cpf_cnpj');
+        for (const palavra of palavras) {
+          query = query.or(`nome.ilike.%${palavra}%,telefone.ilike.%${palavra}%,cpf_cnpj.ilike.%${palavra}%`);
+        }
+        const { data } = await query.limit(8);
         setOpcoes(data ?? []);
         setAberto(true);
       } finally {

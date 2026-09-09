@@ -8,6 +8,7 @@ import { buscarCNPJ, buscarCEP, formatarCNPJ, formatarCEP, apenasNumeros } from 
 import toast from 'react-hot-toast';
 import { Users2, Plus, X, AlertCircle, Phone, Mail, MapPin, Search, Loader2, CheckCircle2, Pencil } from 'lucide-react';
 import { DarkSelect } from '../../components/ui/DarkSelect';
+import { correspondeABuscaEmCampos } from '../../lib/buscaFlexivel';
 
 const NOVO: Omit<Cliente, 'id' | 'created_at' | 'updated_at'> = {
   nome: '', telefone: '', email: '', cpf_cnpj: '',
@@ -29,11 +30,7 @@ export function Clientes() {
   const [buscandoCnpj, setBuscandoCnpj] = useState(false);
   const [buscandoCep, setBuscandoCep] = useState(false);
 
-  const filtrados = clientes?.filter(c =>
-    c.nome.toLowerCase().includes(busca.toLowerCase()) ||
-    c.email?.toLowerCase().includes(busca.toLowerCase()) ||
-    c.telefone?.includes(busca)
-  );
+  const filtrados = clientes?.filter(c => correspondeABuscaEmCampos([c.nome, c.email, c.telefone], busca));
 
   async function handleSalvar(e: React.FormEvent) {
     e.preventDefault();

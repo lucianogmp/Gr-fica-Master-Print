@@ -5,6 +5,7 @@ import { MateriaPrima } from '../../types/estoque';
 import { ModalMP } from '../../components/estoque/ModalMP';
 import { useConfirm } from '../../components/ui/ConfirmModal';
 import { PackageSearch, Plus } from 'lucide-react';
+import { correspondeABuscaEmCampos } from '../../lib/buscaFlexivel';
 
 const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -17,11 +18,8 @@ export function Gerenciar() {
   const [editando, setEditando] = useState<MateriaPrima | null>(null);
 
   const filtradas = useMemo(() =>
-    mps.filter(m =>
-      !busca ||
-      m.nome.toLowerCase().includes(busca.toLowerCase()) ||
-      (m.categoria ?? '').toLowerCase().includes(busca.toLowerCase())
-    ), [mps, busca]);
+    mps.filter(m => correspondeABuscaEmCampos([m.nome, m.categoria], busca)),
+    [mps, busca]);
 
   if (isLoading) return <div className="p-8 text-blue-500 animate-pulse font-bold">Carregando...</div>;
 

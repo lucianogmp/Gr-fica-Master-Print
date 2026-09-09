@@ -9,6 +9,7 @@ import { useConfirm } from '../../components/ui/ConfirmModal';
 import { useRole } from '../../hooks/useRole';
 import { MoneyInput } from '../../components/ui/MoneyInput';
 import { DateInput } from '../../components/ui/DateInput';
+import { correspondeABuscaEmCampos } from '../../lib/buscaFlexivel';
 import {
   TrendingUp, ArrowUp, ArrowDown, Wallet,
   Plus, X, Save, ChevronLeft, ChevronRight, CheckSquare, Square, Trash2, User, ArrowLeftRight, ExternalLink,
@@ -104,11 +105,7 @@ export function FluxoCaixa() {
     // Mesmos filtros padrão do resto do financeiro (busca, conta, tipo) —
     // afetam só a listagem, não os KPIs de entradas/saídas/saldo do mês.
     const filtrados = movDoMes
-      .filter(m =>
-        !busca ||
-        (m.descricao ?? '').toLowerCase().includes(busca.toLowerCase()) ||
-        (m.cliente_nome ?? '').toLowerCase().includes(busca.toLowerCase())
-      )
+      .filter(m => correspondeABuscaEmCampos([m.descricao, m.cliente_nome], busca))
       .filter(m => !filtroTipo || m.tipo === filtroTipo);
     // Mais novo primeiro: por data, e dentro do mesmo dia por quando foi
     // lançado no sistema (created_at) — antes ficava na ordem que vinha do

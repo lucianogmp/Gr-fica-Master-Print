@@ -6,6 +6,7 @@ import { KpiCard } from '../../components/ui/KpiCard';
 import { ModalMP } from '../../components/estoque/ModalMP';
 import { ModalMov } from '../../components/estoque/ModalMov';
 import { Warehouse, Package, AlertTriangle, AlertCircle, DollarSign, Plus } from 'lucide-react';
+import { correspondeABuscaEmCampos } from '../../lib/buscaFlexivel';
 
 const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -19,11 +20,8 @@ export function EstoqueAtual() {
   const [movMP, setMovMP]       = useState<MateriaPrima | null>(null);
 
   const filtradas = useMemo(() =>
-    mps.filter(m =>
-      !busca ||
-      m.nome.toLowerCase().includes(busca.toLowerCase()) ||
-      (m.categoria ?? '').toLowerCase().includes(busca.toLowerCase())
-    ), [mps, busca]);
+    mps.filter(m => correspondeABuscaEmCampos([m.nome, m.categoria], busca)),
+    [mps, busca]);
 
   const zerados    = mps.filter(m => m.controla_estoque !== false && Number(m.saldo) <= 0).length;
   const baixos     = mps.filter(m => m.controla_estoque !== false && statusEstoque(m).key === 'baixo').length;

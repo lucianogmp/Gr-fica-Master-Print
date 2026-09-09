@@ -8,6 +8,7 @@ import { buscarCNPJ, buscarCEP, formatarCEP, apenasNumeros } from '../utils/cnpj
 import toast from 'react-hot-toast';
 import { Truck, Plus, X, AlertCircle, Phone, Mail, MapPin, Search, Loader2, Pencil, PackageSearch } from 'lucide-react';
 import { DarkSelect } from '../components/ui/DarkSelect';
+import { correspondeABuscaEmCampos } from '../lib/buscaFlexivel';
 
 const NOVO: Omit<Fornecedor, 'id' | 'created_at' | 'updated_at' | 'ativo'> = {
   nome: '', telefone: '', email: '', cpf_cnpj: '',
@@ -30,10 +31,7 @@ export function Fornecedores() {
   const [buscandoCep, setBuscandoCep] = useState(false);
 
   const filtrados = fornecedores?.filter(f =>
-    f.nome.toLowerCase().includes(busca.toLowerCase()) ||
-    f.email?.toLowerCase().includes(busca.toLowerCase()) ||
-    f.telefone?.includes(busca) ||
-    f.categoria?.toLowerCase().includes(busca.toLowerCase())
+    correspondeABuscaEmCampos([f.nome, f.email, f.telefone, f.categoria], busca)
   );
 
   async function handleSalvar(e: React.FormEvent) {

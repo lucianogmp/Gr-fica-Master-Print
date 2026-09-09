@@ -13,7 +13,9 @@ import { KpiCard } from '../components/ui/KpiCard';
 import { Modal } from '../components/ui/Modal';
 import { MoneyInput } from '../components/ui/MoneyInput';
 import { QtdInput } from '../components/ui/QtdInput';
+import { InteiroInput } from '../components/ui/InteiroInput';
 import { HelpTooltip } from '../components/ui/HelpTooltip';
+import { correspondeABuscaEmCampos } from '../lib/buscaFlexivel';
 import { DarkSelect } from '../components/ui/DarkSelect';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
@@ -191,15 +193,15 @@ function TempoProducaoInput({ valor, onChange }: { valor: string; onChange: (v: 
   return (
     <div className="flex items-end gap-2">
       <div className="flex-1">
-        <QtdInput value={String(horasAtuais || '')} placeholder="0"
-          onChange={v => atualizar(parseInt(v) || 0, minutosAtuais)}
+        <InteiroInput value={horasAtuais} placeholder="0"
+          onChange={h => atualizar(h, minutosAtuais)}
           className={NUM} />
         <span className="text-[9px] text-gray-500 block mt-0.5 text-center">horas</span>
       </div>
       <span className="text-gray-600 font-black pb-4">:</span>
       <div className="flex-1">
-        <QtdInput value={String(minutosAtuais || '')} placeholder="0"
-          onChange={v => atualizar(horasAtuais, parseInt(v) || 0)}
+        <InteiroInput value={minutosAtuais} max={59} placeholder="0"
+          onChange={m => atualizar(horasAtuais, m)}
           className={NUM} />
         <span className="text-[9px] text-gray-500 block mt-0.5 text-center">minutos</span>
       </div>
@@ -507,11 +509,8 @@ export function Produtos() {
   }
 
   const filtrados = useMemo(() =>
-    produtos.filter(p =>
-      !busca ||
-      p.nome.toLowerCase().includes(busca.toLowerCase()) ||
-      (p.sku ?? '').toLowerCase().includes(busca.toLowerCase())
-    ), [produtos, busca]);
+    produtos.filter(p => correspondeABuscaEmCampos([p.nome, p.sku], busca)),
+    [produtos, busca]);
 
   const ativos    = produtos.filter(p => p.status === 'ativo').length;
   const avgPreco  = produtos.length

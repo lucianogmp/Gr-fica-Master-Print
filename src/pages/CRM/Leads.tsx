@@ -7,6 +7,7 @@ import { useConfirm } from '../../components/ui/ConfirmModal';
 import { UserPlus, Plus, X, AlertCircle, ArrowRightCircle, Phone, Building2 } from 'lucide-react';
 import { TableSkeleton } from '../../components/ui/Skeleton';
 import { DarkSelect } from '../../components/ui/DarkSelect';
+import { correspondeABuscaEmCampos } from '../../lib/buscaFlexivel';
 
 const NOVO = {
   nome: '', telefone: '', empresa: '', como_conheceu: '', produto_interesse: '',
@@ -31,12 +32,7 @@ export function Leads() {
 
   const filtrados = useMemo(() => leadsAtivos
     .filter(l => filtro === 'todos' || l.status === filtro)
-    .filter(l =>
-      !busca ||
-      l.nome.toLowerCase().includes(busca.toLowerCase()) ||
-      (l.empresa ?? '').toLowerCase().includes(busca.toLowerCase()) ||
-      (l.telefone ?? '').includes(busca)
-    ), [leadsAtivos, filtro, busca]);
+    .filter(l => correspondeABuscaEmCampos([l.nome, l.empresa, l.telefone], busca)), [leadsAtivos, filtro, busca]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();

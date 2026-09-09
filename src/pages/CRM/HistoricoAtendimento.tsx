@@ -10,6 +10,7 @@ import { MessageSquare, Plus, X, AlertCircle, Phone, Mail, MapPin, Users2, UserP
 import { TableSkeleton } from '../../components/ui/Skeleton';
 import { DateInput } from '../../components/ui/DateInput';
 import { DarkSelect } from '../../components/ui/DarkSelect';
+import { correspondeABuscaEmCampos } from '../../lib/buscaFlexivel';
 
 const NOVO = {
   alvo: '',          // formato "cliente:<id>" ou "lead:<id>"
@@ -40,11 +41,8 @@ export function HistoricoAtendimento() {
 
   const filtrados = useMemo(() => (atendimentos ?? [])
     .filter(a => filtroTipo === 'todos' || a.tipo === filtroTipo)
-    .filter(a => {
-      if (!busca) return true;
-      const nomeAlvo = (a.clientes?.nome ?? a.leads?.nome ?? '').toLowerCase();
-      return nomeAlvo.includes(busca.toLowerCase()) || a.descricao.toLowerCase().includes(busca.toLowerCase());
-    }), [atendimentos, filtroTipo, busca]);
+    .filter(a => correspondeABuscaEmCampos([a.clientes?.nome ?? a.leads?.nome, a.descricao], busca)),
+    [atendimentos, filtroTipo, busca]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
