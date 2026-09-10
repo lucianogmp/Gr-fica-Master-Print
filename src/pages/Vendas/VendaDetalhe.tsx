@@ -21,6 +21,7 @@ import { useContasBancarias } from '../../hooks/useContasBancarias';
 import { GastosVenda } from '../../components/vendas/GastosVenda';
 import { DateInput } from '../../components/ui/DateInput';
 import { useConfirm } from '../../components/ui/ConfirmModal';
+import { useAuth } from '../../hooks/useAuth';
 import {
   ArrowLeft, Save, Package, Settings, Printer, Calendar, AlertTriangle,
 } from 'lucide-react';
@@ -90,6 +91,15 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
     isRegistrando,
   } = usePagamentosVenda(vendaId);
   const { data: contas = [] } = useContasBancarias();
+  const { user } = useAuth();
+
+  // Vendedor logado entra como padrão numa venda nova — o usuário pode
+  // trocar livremente depois, isso só evita ter que selecionar toda vez.
+  useEffect(() => {
+    if (isNovo && user && !form.vendedor_id) {
+      setForm(f => ({ ...f, vendedor: user.name, vendedor_id: user.id }));
+    }
+  }, [isNovo, user]);
 
   useEffect(() => {
     carregandoRef.current = true;
@@ -178,7 +188,7 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
 
   function toggleConsumidorFinal(marcado: boolean) {
     setF('consumidor_final', marcado);
-    if (marcado) { setF('cliente_nome', 'Consumidor Final'); setF('cliente_id', null); }
+    if (marcado) { setF('cliente_nome', 'Cliente sem cadastro'); setF('cliente_id', null); }
     else { setF('cliente_nome', ''); setF('cliente_id', null); }
   }
 
@@ -342,12 +352,12 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
                         <input type="checkbox" checked={form.consumidor_final}
                           onChange={e => toggleConsumidorFinal(e.target.checked)}
                           className="accent-blue-600 w-3 h-3" />
-                        Consumidor final
+                        Cliente sem cadastro
                       </label>
                     </div>
                     {form.consumidor_final ? (
                       <div className="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-gray-500 italic">
-                        Consumidor final — sem cliente identificado
+                        Cliente sem cadastro — sem cliente identificado
                       </div>
                     ) : (
                       <ClienteSelectorVenda

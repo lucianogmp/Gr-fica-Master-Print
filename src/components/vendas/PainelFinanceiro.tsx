@@ -14,6 +14,8 @@ import { DollarSign, Plus, Trash2, CreditCard, Calendar, User, ChevronDown, Chev
 import { MoneyInput } from '../ui/MoneyInput';
 import { DateInput } from '../ui/DateInput';
 import { DarkSelect } from '../ui/DarkSelect';
+import { useRole } from '../../hooks/useRole';
+import { supabase } from '../../lib/supabase';
 
 const fmtBRL = (v: number | null | undefined) =>
   Number(v ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -90,6 +92,7 @@ export function PainelFinanceiro({
     data: new Date().toISOString().slice(0, 10), obs: '', parcelas: 1, contaId: '',
   });
 
+  const { isVendedor } = useRole();
   const contasAtivas  = contas.filter(c => c.ativo);
   // Dinheiro só pode ir pro caixa físico; qualquer outra forma (Pix, cartão,
   // transferência...) nunca pode cair na conta Caixa — senão o dinheiro some
@@ -101,6 +104,26 @@ export function PainelFinanceiro({
     : contasAtivas.filter(c => c.tipo !== 'caixa');
   const contasDaForma = contasCompativeis.filter(c => (c.formas_aceitas ?? []).includes(novoPag.forma));
   const opcoesConta   = contasDaForma.length > 0 ? contasDaForma : contasCompativeis;
+
+  // Vendedor não tem acesso à tabela de contas bancárias (tem agência,
+  // conta, saldo — informação financeira que não é dele). Sem isso, a
+  // conta ficava sempre vazia/bloqueada, pedindo pra escolher algo que
+  // ele nunca conseguiria ver. Pra ele, busca só o nome da conta padrão
+  // daquela forma de pagamento via RPC (sem expor a lista inteira) e usa
+  // isso direto — sem dropdown, sem escolha.
+  const [contaPadraoVendedor, setContaPadraoVendedor] = useState<{ id: string; nome: string } | null>(null);
+  useEffect(() => {
+    if (!isVendedor || !novoPag.forma) { setContaPadraoVendedor(null); return; }
+    let cancelado = false;
+    supabase.rpc('obter_conta_padrao_pagamento', { p_forma: novoPag.forma }).then(({ data }) => {
+      if (cancelado) return;
+      const registro = Array.isArray(data) ? data[0] : data;
+      const conta = registro ? { id: registro.conta_id, nome: registro.nome } : null;
+      setContaPadraoVendedor(conta);
+      setNovoPag(f => ({ ...f, contaId: conta?.id ?? '' }));
+    });
+    return () => { cancelado = true; };
+  }, [isVendedor, novoPag.forma]);
 
   // Desconto pode ser digitado em R$ ou em % — a pessoa escolhe. Por baixo
   // dos panos sempre fica salvo como % (mesma coluna de sempre, não bagunça
@@ -403,7 +426,11 @@ export function PainelFinanceiro({
             </div>
             <div>
               <label className="text-[10px] text-gray-500 uppercase block mb-1">Conta *</label>
-              {opcoesConta.length === 0 ? (
+              {isVendedor ? (
+                <div className="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-xs text-gray-400">
+                  {contaPadraoVendedor?.nome ?? 'Carregando...'}
+                </div>
+              ) : opcoesConta.length === 0 ? (
                 <span className="text-[10px] text-yellow-400">Cadastre uma conta em Configurações</span>
               ) : (
                 <DarkSelect
