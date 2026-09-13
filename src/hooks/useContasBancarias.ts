@@ -138,6 +138,23 @@ export function useSaldoContas() {
 }
 
 /**
+ * IDs das contas tipo 'caixa' — via RPC estreita, não pela tabela
+ * `contas_bancarias` inteira (só dono/admin/financeiro conseguem lê-la;
+ * vendedor também precisa saber "isso é dinheiro físico ou não" pra
+ * filtrar o Fluxo de Caixa, sem precisar ver agência/saldo de ninguém).
+ */
+export function useIdsContasCaixa() {
+  return useQuery({
+    queryKey: ['ids-contas-caixa'],
+    queryFn: async (): Promise<Set<string>> => {
+      const { data, error } = await supabase.rpc('listar_ids_contas_caixa');
+      if (error) throw error;
+      return new Set((data ?? []).map((r: { conta_id: string }) => r.conta_id));
+    },
+  });
+}
+
+/**
  * Saldo do CAIXA FÍSICO especificamente (não soma banco/pix/cartão). Usa
  * só as contas do tipo 'caixa' como ponto de partida, mais os movimentos
  * de caixa_movimentos sem conta vinculada (o padrão hoje) ou vinculados
@@ -145,6 +162,7 @@ export function useSaldoContas() {
  */
 export function useSaldoCaixaFisico() {
   const { data: contas = [] } = useContasBancarias();
+  const { data: idsContasCaixaRpc } = useIdsContasCaixa();
 
   const query = useQuery({
     queryKey: ['saldo-caixa-fisico'],
@@ -158,7 +176,7 @@ export function useSaldoCaixaFisico() {
   });
 
   const contasCaixa = contas.filter(c => c.ativo && c.tipo === 'caixa');
-  const idsContasCaixa = new Set(contasCaixa.map(c => c.id));
+  const idsContasCaixa = new Set([...contasCaixa.map(c => c.id), ...(idsContasCaixaRpc ?? [])]);
   const saldoInicial = contasCaixa.reduce((s, c) => s + Number(c.saldo_inicial ?? 0), 0);
 
   const movimentos = (query.data ?? []).filter(m => !m.conta_id || idsContasCaixa.has(m.conta_id));

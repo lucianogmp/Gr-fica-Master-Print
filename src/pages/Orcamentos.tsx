@@ -261,7 +261,12 @@ export function Orcamentos() {
     const orc = dados ? dados.orcamento : (form as Orcamento);
     const itensRef = dados ? dados.itens : itens;
     const totalRef = dados ? Number(orc.total) : totalFinal;
-    const fmtNum = (v: number) => v.toFixed(2).replace('.', ',');
+    // Antes usava .toFixed(2), o que arredondava/escondia medidas pequenas
+    // (ex: um adesivo de 5,5×5,5cm tem 0,003025 m² de área — com 2 casas
+    // fixas isso virava "0,00 m²"). Aqui só limpa ruído de ponto flutuante
+    // (arredondando numa casa bem folgada) e deixa o número aparecer com
+    // quantas casas decimais ele realmente tiver, sem zeros à direita.
+    const fmtNum = (v: number) => String(Math.round(v * 1e6) / 1e6).replace('.', ',');
     const linhas: string[] = [];
 
     linhas.push(`*ORÇAMENTO${orc.numero ? ` Nº ${orc.numero}` : ''}*`);

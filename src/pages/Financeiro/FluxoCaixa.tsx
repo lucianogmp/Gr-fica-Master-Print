@@ -3,7 +3,7 @@ import { useState, useMemo, Fragment } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCaixaMovimentos, CaixaMovimento } from '../../hooks/useCaixaMovimentos';
 import { useCaixaKpisDia } from '../../hooks/useCaixaKpisDia';
-import { useContasBancarias, useSaldoCaixaFisico } from '../../hooks/useContasBancarias';
+import { useContasBancarias, useSaldoCaixaFisico, useIdsContasCaixa } from '../../hooks/useContasBancarias';
 import { useUsuarios } from '../../hooks/useUsuarios';
 import { useConfirm } from '../../components/ui/ConfirmModal';
 import { useRole } from '../../hooks/useRole';
@@ -46,6 +46,7 @@ export function FluxoCaixa() {
   const { data: movimentos = [], isLoading, criar, atualizar, deletar, transferir, isSaving, isTransferindo } = useCaixaMovimentos();
   const { data: kpisDia } = useCaixaKpisDia();
   const { data: contas = [] } = useContasBancarias();
+  const { data: idsContasCaixaRpc } = useIdsContasCaixa();
   const { saldo: saldoTotalCaixa } = useSaldoCaixaFisico();
   const { data: usuarios = [] } = useUsuarios();
   const { confirmar, ConfirmModal } = useConfirm();
@@ -82,16 +83,25 @@ export function FluxoCaixa() {
   const contasCaixaFisico = contasAtivas.filter(c => c.tipo === 'caixa');
 
   const movDoMes = useMemo(() => {
-    const idsCaixaFisico = new Set(contas.filter(c => c.tipo === 'caixa').map(c => c.id));
+    const idsCaixaFisico = new Set([
+      ...contas.filter(c => c.tipo === 'caixa').map(c => c.id),
+      ...(idsContasCaixaRpc ?? []),
+    ]);
+    // Vendedor só pode ver o dia de hoje (item já resolvido em "Resultados
+    // do Mês" e no Saldo Total, mas a LISTA de movimentos também precisa
+    // ficar restrita — senão dava pra somar os itens do mês na mão e
+    // descobrir o total mesmo com o card escondido).
+    const hoje = new Date().toISOString().slice(0, 10);
+    const escopo = isVendedor ? hoje : mesFx;
     return movimentos.filter(m =>
-      (m.data ?? '').startsWith(mesFx) &&
+      (isVendedor ? (m.data ?? '') === escopo : (m.data ?? '').startsWith(escopo)) &&
       // Fluxo de Caixa é só dinheiro físico — pagamento em cartão/Pix/
       // transferência que caiu numa conta bancária não entra aqui, mesmo
       // que tenha sido registrado no mesmo mês. Aparece no Resumo
       // Financeiro (Saldo por Conta) normalmente.
       (!m.conta_id || idsCaixaFisico.has(m.conta_id))
     );
-  }, [movimentos, mesFx, contas]);
+  }, [movimentos, mesFx, contas, isVendedor, idsContasCaixaRpc]);
 
   const entradas = movDoMes.filter(m => m.tipo === 'entrada' && m.origem !== 'transferencia').reduce((s, m) => s + Number(m.valor), 0);
   const saidas   = movDoMes.filter(m => m.tipo === 'saida' && m.origem !== 'transferencia').reduce((s, m) => s + Number(m.valor), 0);
@@ -402,21 +412,27 @@ export function FluxoCaixa() {
             <p className="text-gray-500 text-sm">Movimentos de dinheiro físico e avulsos</p>
           </div>
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1 bg-[#1f2937] border border-gray-700 rounded-xl px-1.5 py-1.5">
-              <button onClick={() => deslocarMesFx(-1)} title="Mês anterior"
-                className="p-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 transition-colors">
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <MonthInput
-                value={mesFx}
-                onChange={v => v && setMesFx(v)}
-                className="bg-[#111827] border border-gray-700 rounded-lg px-3 py-1.5 text-white text-sm font-bold capitalize min-w-[150px]"
-              />
-              <button onClick={() => deslocarMesFx(1)} title="Próximo mês"
-                className="p-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 transition-colors">
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
+            {isVendedor ? (
+              <div className="bg-[#1f2937] border border-gray-700 rounded-xl px-3 py-1.5 text-sm font-bold text-gray-300">
+                Hoje
+              </div>
+            ) : (
+              <div className="flex items-center gap-1 bg-[#1f2937] border border-gray-700 rounded-xl px-1.5 py-1.5">
+                <button onClick={() => deslocarMesFx(-1)} title="Mês anterior"
+                  className="p-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 transition-colors">
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <MonthInput
+                  value={mesFx}
+                  onChange={v => v && setMesFx(v)}
+                  className="bg-[#111827] border border-gray-700 rounded-lg px-3 py-1.5 text-white text-sm font-bold capitalize min-w-[150px]"
+                />
+                <button onClick={() => deslocarMesFx(1)} title="Próximo mês"
+                  className="p-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 transition-colors">
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
             <button
               onClick={abrirNovaMovimentacao}
               className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 shadow-lg shadow-blue-900/30"
@@ -458,15 +474,17 @@ export function FluxoCaixa() {
             </div>
           )}
 
-          <div className="bg-[#1f2937] border border-gray-700 rounded-xl px-5 py-3 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-purple-500/10">
-              <Wallet className="w-5 h-5 text-purple-400" />
+          {!isVendedor && (
+            <div className="bg-[#1f2937] border border-gray-700 rounded-xl px-5 py-3 flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-purple-500/10">
+                <Wallet className="w-5 h-5 text-purple-400" />
+              </div>
+              <div>
+                <p className="text-[9px] font-bold text-gray-500 uppercase whitespace-nowrap">Saldo Total em Caixa</p>
+                <p className={`text-xl font-black ${saldoTotalCaixa >= 0 ? 'text-purple-400' : 'text-red-400'}`}>{fmtBRL(saldoTotalCaixa)}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-[9px] font-bold text-gray-500 uppercase whitespace-nowrap">Saldo Total em Caixa</p>
-              <p className={`text-xl font-black ${saldoTotalCaixa >= 0 ? 'text-purple-400' : 'text-red-400'}`}>{fmtBRL(saldoTotalCaixa)}</p>
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Lista de movimentos — todo mundo com acesso a essa página vê e edita */}
@@ -505,7 +523,11 @@ export function FluxoCaixa() {
         {datas.length === 0 ? (
           <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-12 text-center space-y-3">
             <Wallet className="w-10 h-10 text-gray-700 mx-auto" />
-            <p className="text-gray-600">Nenhum movimento em {new Date(mesFx + '-01T00:00:00').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}.</p>
+            <p className="text-gray-600">
+              {isVendedor
+                ? 'Nenhum movimento hoje.'
+                : `Nenhum movimento em ${new Date(mesFx + '-01T00:00:00').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}.`}
+            </p>
             <button onClick={abrirNovaMovimentacao}
               className="text-blue-400 text-sm font-bold hover:text-blue-300 transition-colors">
               + Registrar primeira movimentação

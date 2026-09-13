@@ -11,13 +11,34 @@ import { loadBom, calcCustoBOM } from '../../hooks/useBom';
 import { useRole } from '../../hooks/useRole';
 import { Produto } from '../../types/produto';
 import { MoneyInput } from '../ui/MoneyInput';
-import { MedidaInput } from '../ui/MedidaInput';
 import { QtdInput } from '../ui/QtdInput';
 import { correspondeABusca } from '../../lib/buscaFlexivel';
 import { HelpTooltip } from '../ui/HelpTooltip';
 
 const fmtBRL = (v: number) =>
   Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+// Largura/Altura do Orçamento normal são digitadas livremente, já em metros,
+// com vírgula como separador decimal e sem casas fixas (ex: "0,055" para
+// 5,5 cm). Esta função é o único lugar que sabe interpretar esse texto —
+// todo o resto do arquivo usa parseMedida em vez de parseFloat direto nesses
+// dois campos, porque parseFloat("0,055") pararia no "," e devolveria 0.
+function parseMedida(v: string): number {
+  const n = parseFloat(v.replace(',', '.'));
+  return isFinite(n) ? n : 0;
+}
+
+// Filtra o que o usuário digita nos campos de Largura/Altura: só dígitos e
+// uma vírgula (ponto digitado também vira vírgula). Sem máscara, sem casas
+// decimais fixas — o campo fica exatamente do jeito que a pessoa digitou.
+function sanitizarMedidaDigitada(v: string): string {
+  let s = v.replace(/\./g, ',').replace(/[^\d,]/g, '');
+  const primeiraVirgula = s.indexOf(',');
+  if (primeiraVirgula !== -1) {
+    s = s.slice(0, primeiraVirgula + 1) + s.slice(primeiraVirgula + 1).replace(/,/g, '');
+  }
+  return s;
+}
 
 const IN_BASE =
   'bg-[#111827] border border-gray-700 rounded-lg px-2.5 py-2 text-white text-xs focus:outline-none focus:border-blue-500 transition-colors w-full';
@@ -52,18 +73,22 @@ function DimQtd({
     <div className="grid grid-cols-3 gap-3">
       <div>
         <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1.5">Largura (m)</label>
-        <MedidaInput
-          value={l ? Number(l) / 100 : 0}
-          onChange={vMetros => setL(vMetros > 0 ? String(Math.round(vMetros * 100 * 100) / 100) : '')}
+        <input
+          type="text"
+          inputMode="decimal"
+          value={l}
+          onChange={e => setL(sanitizarMedidaDigitada(e.target.value))}
           className={IN_BASE}
           placeholder="0,00"
         />
       </div>
       <div>
         <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1.5">Altura (m)</label>
-        <MedidaInput
-          value={a ? Number(a) / 100 : 0}
-          onChange={vMetros => setA(vMetros > 0 ? String(Math.round(vMetros * 100 * 100) / 100) : '')}
+        <input
+          type="text"
+          inputMode="decimal"
+          value={a}
+          onChange={e => setA(sanitizarMedidaDigitada(e.target.value))}
           className={IN_BASE}
           placeholder="0,00"
         />
@@ -138,8 +163,15 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando, mostrarCusto 
     (editando?.tipo_calculo === 'metro' ? (editando as any)?.produto_id : null) ?? editando?.material_id ?? ''
   );
   const [precoM2, setPrecoM2] = useState(String(editando?.preco_por_m2 ?? ''));
-  const [largura, setLargura] = useState(String(editando?.largura_cm ?? ''));
-  const [altura, setAltura] = useState(String(editando?.altura_cm ?? ''));
+  // largura/altura ficam em metros (texto digitado com vírgula), mas o banco
+  // guarda em cm — por isso a conversão /100 só acontece aqui, ao carregar um
+  // item existente pra edição.
+  const [largura, setLargura] = useState(
+    editando?.largura_cm != null ? String(editando.largura_cm / 100).replace('.', ',') : ''
+  );
+  const [altura, setAltura] = useState(
+    editando?.altura_cm != null ? String(editando.altura_cm / 100).replace('.', ',') : ''
+  );
   const [quantidade, setQuantidade] = useState(String(editando?.quantidade ?? 1));
   const [precoLivre, setPrecoLivre] = useState(String(editando?.preco_unitario ?? ''));
   const [acabId, setAcabId] = useState(editando?.acabamento_id ?? '');
@@ -258,13 +290,13 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando, mostrarCusto 
     let area: number | undefined;
 
     if (tipo === 'metro') {
-      const w = parseFloat(largura) / 100;
-      const h = parseFloat(altura) / 100;
+      const w = parseMedida(largura);
+      const h = parseMedida(altura);
       area = w * h;
       unitario = area * Number(matSel?.preco_venda ?? 0);
     } else if (tipo === 'metro_manual') {
-      const w = parseFloat(largura) / 100;
-      const h = parseFloat(altura) / 100;
+      const w = parseMedida(largura);
+      const h = parseMedida(altura);
       area = w * h;
       unitario = area * (parseFloat(precoM2) || 0);
     } else if (prodPorM2) {
@@ -355,8 +387,9 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando, mostrarCusto 
           : tipo === 'metro_manual' ? (parseFloat(precoM2) || 0)
             : prodPorM2 ? (parseFloat(precoLivre) || 0)
               : null,
-      largura_cm: ['metro', 'metro_manual'].includes(tipo) ? (parseFloat(largura) || null) : null,
-      altura_cm: ['metro', 'metro_manual'].includes(tipo) ? (parseFloat(altura) || null) : null,
+      // largura/altura são digitadas em metros — o banco guarda em cm, daí o × 100.
+      largura_cm: ['metro', 'metro_manual'].includes(tipo) ? (parseMedida(largura) * 100 || null) : null,
+      altura_cm: ['metro', 'metro_manual'].includes(tipo) ? (parseMedida(altura) * 100 || null) : null,
       area_m2: prodPorM2 ? (parseFloat(areaM2) || null) : (tipo === 'metro' ? (prev.area ?? null) : null),
       // Custo por m² do material (não é preço de venda) — só pra referência
       // interna de admin/dono, calculado a partir do BOM do produto.
@@ -883,7 +916,7 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando, mostrarCusto 
                 <p className="text-[10px] text-red-500 mt-0.5">• Selecione um material</p>
               )}
               {(['metro', 'metro_manual'] as TipoCalculo[]).includes(tipo) &&
-                (!parseFloat(largura) || !parseFloat(altura)) && (
+                (!parseMedida(largura) || !parseMedida(altura)) && (
                   <p className="text-[10px] text-red-500 mt-0.5">• Dimensões obrigatórias</p>
                 )}
               {prodPorM2 && !areaOk && (
