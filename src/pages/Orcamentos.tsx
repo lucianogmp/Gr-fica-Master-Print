@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { FileText, Zap, Banknote, Scissors, Plus, Edit2, Check, ArrowLeft, X, CornerDownRight, Ruler, Printer, Copy, MessageCircle, Eye, EyeOff, CheckSquare, Square, Layers } from 'lucide-react';
 import { Modal } from '../components/ui/Modal';
 import { useConfiguracoes } from '../hooks/useConfiguracoes';
+import { MENSAGEM_WHATSAPP_ORC_DEFAULT, preencherTemplateMensagem } from '../types/configuracoes';
 import { DocumentoImpressaoData } from '../components/impressao/DocumentoImpressao';
 import { imprimirDocumento } from '../components/impressao/imprimirDocumento';
 import { DEFAULT_LAYOUT_ORCAMENTO } from '../types/layoutImpressao';
@@ -261,48 +262,40 @@ export function Orcamentos() {
     const orc = dados ? dados.orcamento : (form as Orcamento);
     const itensRef = dados ? dados.itens : itens;
     const totalRef = dados ? Number(orc.total) : totalFinal;
-    // Antes usava .toFixed(2), o que arredondava/escondia medidas pequenas
-    // (ex: um adesivo de 5,5×5,5cm tem 0,003025 m² de área — com 2 casas
-    // fixas isso virava "0,00 m²"). Aqui só limpa ruído de ponto flutuante
-    // (arredondando numa casa bem folgada) e deixa o número aparecer com
-    // quantas casas decimais ele realmente tiver, sem zeros à direita.
+    // Área: mantém sem casas fixas (arredonda só ruído de ponto flutuante) —
+    // com 2 casas fixas, uma peça pequena (ex: adesivo 5,5×5,5cm = 0,003025 m²)
+    // virava "0,00 m²". Medidas lineares (largura/altura), por outro lado,
+    // sempre em metros com 2 casas fixas (padrão "X,XX" já usado no resto do
+    // sistema) — 1m = "1,00", 10m = "10,00", 5cm = "0,05".
     const fmtNum = (v: number) => String(Math.round(v * 1e6) / 1e6).replace('.', ',');
-    const linhas: string[] = [];
-
-    linhas.push(`*ORÇAMENTO${orc.numero ? ` Nº ${orc.numero}` : ''}*`);
-    if (orc.tipo?.trim()) linhas.push(`*${orc.tipo.trim()}*`);
-    linhas.push('');
-    linhas.push(`Cliente: ${orc.cliente_nome || '-'}`);
-    linhas.push('');
-    linhas.push('ITENS');
-    linhas.push('');
+    const fmtMedida = (v: number) => v.toFixed(2).replace('.', ',');
+    const linhasItens: string[] = [];
 
     itensRef.forEach((it, i) => {
       const qtd = Number(it.quantidade) || 1;
       const unit = Number(it.total) / qtd;
 
-      linhas.push(`• ${it.descricao}`);
+      linhasItens.push(`• ${it.descricao}`);
       if (it.largura_cm && it.altura_cm) {
-        linhas.push(`  Medidas: ${fmtNum(Number(it.largura_cm) / 100)} × ${fmtNum(Number(it.altura_cm) / 100)} m`);
+        linhasItens.push(`  Medidas: ${fmtMedida(Number(it.largura_cm) / 100)} × ${fmtMedida(Number(it.altura_cm) / 100)} m`);
       } else if (it.area_m2) {
-        linhas.push(`  Área: ${fmtNum(Number(it.area_m2))} m²`);
+        linhasItens.push(`  Área: ${fmtNum(Number(it.area_m2))} m²`);
       }
-      linhas.push(`  Quantidade: ${qtd} ${qtd === 1 ? 'unidade' : 'unidades'}`);
-      linhas.push(`  Valor unitário: ${fmtBRL(unit)}`);
-      linhas.push(`  Total: ${fmtBRL(it.total)}`);
-      if (i < itensRef.length - 1) linhas.push('');
+      linhasItens.push(`  Quantidade: ${qtd} ${qtd === 1 ? 'unidade' : 'unidades'}`);
+      linhasItens.push(`  Valor unitário: ${fmtBRL(unit)}`);
+      linhasItens.push(`  Total: ${fmtBRL(it.total)}`);
+      if (i < itensRef.length - 1) linhasItens.push('');
     });
 
-    linhas.push('');
-    linhas.push('───────────────');
-    linhas.push(`Total do Orçamento: ${fmtBRL(totalRef)}`);
-
-    if (orc.observacoes?.trim()) {
-      linhas.push('');
-      linhas.push(`Obs: ${orc.observacoes.trim()}`);
-    }
-
-    return linhas.join('\n');
+    const template = cfg?.mensagem_whatsapp_orcamento?.trim() || MENSAGEM_WHATSAPP_ORC_DEFAULT;
+    return preencherTemplateMensagem(template, {
+      numero: orc.numero ? ` Nº ${orc.numero}` : '',
+      tipo: orc.tipo?.trim() ? `*${orc.tipo.trim()}*` : '',
+      cliente: orc.cliente_nome || '-',
+      itens: linhasItens.join('\n'),
+      total: fmtBRL(totalRef),
+      observacoes: orc.observacoes?.trim() ? `Obs: ${orc.observacoes.trim()}` : '',
+    });
   }
 
   async function enviarWhatsAppTexto(dados?: SnapshotOrcamento) {
@@ -968,9 +961,9 @@ export function Orcamentos() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-5 items-stretch">
-          {/* Dados */}
-          <div className="xl:col-span-2 bg-[#1f2937] border border-gray-700 rounded-xl p-5">
+      <div className="space-y-5">
+          {/* Dados do Orçamento — largura total, igual à tela de Vendas */}
+          <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5">
             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Dados do Orçamento</h3>
             <div className="space-y-3">
               <div>
@@ -1020,127 +1013,28 @@ export function Orcamentos() {
             </div>
           </div>
 
-        {/* Resumo */}
-        <div>
-          <div className="bg-[#1f2937] border-t-2 border-blue-500 border-x border-b border-gray-700 rounded-xl p-5 sticky top-4">
-            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Resumo</h3>
-            <div className="space-y-1.5 mb-4 max-h-48 overflow-y-auto">
-              {itens.map((it, i) => (
-                <div key={i} className="flex justify-between text-xs text-gray-400 border-b border-gray-800 pb-1">
-                  <span className="truncate max-w-28">{it.descricao}</span>
-                  <span className="font-bold text-white ml-2 flex-shrink-0">{fmtBRL(it.total)}</span>
-                </div>
-              ))}
-            </div>
-            <div className="space-y-3 pt-2 border-t border-gray-700">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-400">Subtotal</span>
-                <span className="font-bold text-white">{fmtBRL(subtotal)}</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-400">Desconto (%)</span>
-                <PctInput
-                  value={Number(form.desconto ?? 0)}
-                  onChange={v => setF('desconto', v)}
-                  className="w-20 bg-[#111827] border border-gray-700 rounded-lg px-2 py-1 text-white text-sm text-right focus:outline-none focus:border-blue-500"
-                />
-              </div>
-              {descGlobal > 0 && (
-                <div className="flex justify-between text-xs text-red-400">
-                  <span>Desconto</span>
-                  <span>−{fmtBRL(subtotal * descGlobal / 100)}</span>
-                </div>
-              )}
-              <div className="pt-2 border-t border-gray-700">
-                <div className="flex justify-between items-start">
-                  <span className="font-bold text-white">Total</span>
-                  <div className="text-right">
-                    <p className="text-3xl font-black text-blue-400">{fmtBRL(totalFinal)}</p>
-                    {totalFinal > 0 && (
-                      <div className="flex items-center justify-end gap-2 mt-0.5">
-                        <button onClick={() => arredondarTotal('baixo')} title={`Arredondar para ${fmtBRL(proximoMultiploCinco(totalFinal, 'baixo'))}`}
-                          className="text-[10px] text-yellow-400 hover:text-yellow-300 underline">
-                          ↓ {fmtBRL(proximoMultiploCinco(totalFinal, 'baixo'))}
-                        </button>
-                        <button onClick={() => arredondarTotal('cima')} title={`Arredondar para ${fmtBRL(proximoMultiploCinco(totalFinal, 'cima'))}`}
-                          className="text-[10px] text-yellow-400 hover:text-yellow-300 underline">
-                          ↑ {fmtBRL(proximoMultiploCinco(totalFinal, 'cima'))}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Custo Total — soma o custo de cada item (calculado no editor
-                  de item, gravado em cada linha) — só admin/dono, nunca
-                  aparece em impressão/mensagem. Fica oculto por padrão; o
-                  botão só reaparece a caixa até você atualizar a página. */}
-              {isAdmin && custoTotalOrcamento > 0 && (
-                <div className="pt-2 border-t border-gray-800">
-                  <div className="flex justify-end mb-1.5">
-                    <button onClick={() => setMostrarCusto(v => !v)}
-                      className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400 hover:text-white transition-colors">
-                      {mostrarCusto ? <><EyeOff className="w-3.5 h-3.5" /> Ocultar custo</> : <><Eye className="w-3.5 h-3.5" /> Mostrar custo</>}
-                    </button>
-                  </div>
-                  {mostrarCusto && (
-                    <div className="flex justify-between items-center bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
-                      <span className="text-[10px] font-bold text-red-400 uppercase flex items-center gap-1">
-                        🔒 Custo Total (só você vê)
-                      </span>
-                      <div className="text-right">
-                        <p className="text-sm font-black text-red-300">{fmtBRL(custoTotalOrcamento)}</p>
-                        {totalFinal > 0 && (
-                          <p className="text-[9px] text-gray-500">
-                            Margem: {(((totalFinal - custoTotalOrcamento) / totalFinal) * 100).toFixed(1)}%
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-            <div className="mt-5 space-y-2">
-              <button onClick={handleSalvar} disabled={isSaving || !form.cliente_nome.trim()}
-                className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white py-3 rounded-xl font-bold text-sm transition-all">
-                {isSaving ? 'Salvando...' : 'Salvar Orçamento'}
-              </button>
-              {!isNovo && form.status === 'aprovado' && !jaConvertido && (
-                <button onClick={handleConverter} disabled={isConvertendo}
-                  className="w-full bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white py-3 rounded-xl font-bold text-sm transition-all">
-                  {isConvertendo ? 'Convertendo...' : 'Converter em Venda'}
-                </button>
-              )}
-              {!isNovo && !jaConvertido && (
-                <div className="pt-2">
-                  <p className="text-[10px] text-gray-500 uppercase font-bold mb-2">Status</p>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {Object.entries(STATUS_ORC).filter(([k]) => k !== 'convertido').map(([k, v]) => (
-                      <button key={k} onClick={() => { setF('status', k as any); atualizarStatus({ id: orcId!, status: k as StatusOrcamento }); }}
-                        className={`py-1.5 rounded-lg text-[10px] font-bold border transition-all ${form.status === k ? v.cor : 'border-gray-700 text-gray-500 hover:text-white hover:bg-gray-700/30'}`}>
-                        {v.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-          {/* Itens */}
+          {/* Itens — largura total, logo abaixo dos Dados */}
           <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Itens do Orçamento</h3>
-              {!showEditor && !jaConvertido && (
-                <button onClick={() => { setEditandoIdx(null); setTipoItemNovo(null); setShowEditor(true); }}
-                  className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5">
-                  <Plus className="w-3.5 h-3.5" /> Adicionar Item
-                </button>
-              )}
+              <div className="flex items-center gap-4">
+                {/* Fica disponível sempre pra quem é admin/dono — inclusive
+                    antes de ter qualquer item salvo, porque é o que controla
+                    se o editor de item (abaixo) mostra o campo de custo
+                    enquanto você ainda está montando o primeiro item. */}
+                {isAdmin && (
+                  <button onClick={() => setMostrarCusto(v => !v)}
+                    className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400 hover:text-white transition-colors">
+                    {mostrarCusto ? <><EyeOff className="w-3.5 h-3.5" /> Ocultar custo</> : <><Eye className="w-3.5 h-3.5" /> Mostrar custo</>}
+                  </button>
+                )}
+                {!showEditor && !jaConvertido && (
+                  <button onClick={() => { setEditandoIdx(null); setTipoItemNovo(null); setShowEditor(true); }}
+                    className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5">
+                    <Plus className="w-3.5 h-3.5" /> Adicionar Item
+                  </button>
+                )}
+              </div>
             </div>
 
             {showEditor && (() => {
@@ -1203,6 +1097,9 @@ export function Orcamentos() {
                       <th className="px-3 py-2 text-center">Categoria</th>
                       <th className="px-3 py-2 text-right w-14">Qtd</th>
                       <th className="px-3 py-2 text-right w-24">Unit.</th>
+                      {isAdmin && mostrarCusto && (
+                        <th className="px-3 py-2 text-right w-24 text-red-400">Custo Unit.</th>
+                      )}
                       <th className="px-3 py-2 text-right w-24">Total</th>
                       <th className="px-3 py-2 w-16"></th>
                     </tr>
@@ -1212,6 +1109,9 @@ export function Orcamentos() {
                       const produto = produtos.find(p => p.id === it.produto_id);
                       const categoria = categorias.find(c => c.id === produto?.categoria_id);
                       const nomeCategoria = categoria ? categoria.nome : '';
+                      const custoBase = Number((it as any).custo_unitario ?? 0);
+                      const area = (it as any).area_m2;
+                      const custoUnit = custoBase > 0 ? custoBase * (area != null ? Number(area) : 1) : 0;
                       return (
                       <tr key={i} className="border-b border-gray-800 hover:bg-gray-800/20">
                         <td className="px-3 py-2.5">
@@ -1234,6 +1134,11 @@ export function Orcamentos() {
                         </td>
                         <td className="px-3 py-2.5 text-right text-white">{it.quantidade}</td>
                         <td className="px-3 py-2.5 text-right text-gray-300">{fmtBRL(Number(it.total) / (Number(it.quantidade) || 1))}</td>
+                        {isAdmin && mostrarCusto && (
+                          <td className="px-3 py-2.5 text-right text-red-300">
+                            {custoUnit > 0 ? fmtBRL(custoUnit) : <span className="text-gray-600">—</span>}
+                          </td>
+                        )}
                         <td className="px-3 py-2.5 text-right font-black text-white">{fmtBRL(it.total)}</td>
                         <td className="px-3 py-2.5">
                           {!jaConvertido && (
@@ -1255,7 +1160,6 @@ export function Orcamentos() {
               </div>
             ) : !showEditor ? (
               <div className="text-center py-10 border-2 border-dashed border-gray-700 rounded-xl">
-                
                 <p className="text-sm text-gray-600">Nenhum item adicionado.</p>
                 <button onClick={() => setShowEditor(true)}
                   className="mt-3 text-blue-400 hover:text-blue-300 text-xs font-bold underline flex items-center gap-1 mx-auto">
@@ -1264,6 +1168,103 @@ export function Orcamentos() {
               </div>
             ) : null}
           </div>
+
+          {/* Resumo — tudo em uma linha só, igual o resumo financeiro de Vendas */}
+          <div className="bg-[#1f2937] border-t-2 border-blue-500 border-x border-b border-gray-700 rounded-xl px-5 py-4">
+            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Resumo</h3>
+
+            <div className="flex items-center gap-4 flex-wrap justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-gray-500 uppercase font-bold">Subtotal</span>
+                <span className="text-2xl font-black text-white">{fmtBRL(subtotal)}</span>
+              </div>
+
+              <div className="w-px h-7 bg-gray-700 flex-shrink-0" />
+
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-gray-500 uppercase font-bold">Desconto (%)</span>
+                <PctInput
+                  value={Number(form.desconto ?? 0)}
+                  onChange={v => setF('desconto', v)}
+                  className="w-20 bg-[#111827] border border-gray-700 rounded-lg px-2 py-1 text-white text-sm text-right focus:outline-none focus:border-blue-500"
+                />
+                {descGlobal > 0 && (
+                  <span className="text-[10px] text-red-400">−{fmtBRL(subtotal * descGlobal / 100)}</span>
+                )}
+              </div>
+
+              <div className="w-px h-7 bg-gray-700 flex-shrink-0" />
+
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-gray-500 uppercase font-bold">Total</span>
+                <span className="text-2xl font-black text-blue-400">{fmtBRL(totalFinal)}</span>
+                {totalFinal > 0 && (
+                  <div className="flex items-center gap-1.5">
+                    <button onClick={() => arredondarTotal('baixo')} title={`Arredondar para ${fmtBRL(proximoMultiploCinco(totalFinal, 'baixo'))}`}
+                      className="text-[10px] text-yellow-400 hover:text-yellow-300 underline">
+                      ↓ {fmtBRL(proximoMultiploCinco(totalFinal, 'baixo'))}
+                    </button>
+                    <button onClick={() => arredondarTotal('cima')} title={`Arredondar para ${fmtBRL(proximoMultiploCinco(totalFinal, 'cima'))}`}
+                      className="text-[10px] text-yellow-400 hover:text-yellow-300 underline">
+                      ↑ {fmtBRL(proximoMultiploCinco(totalFinal, 'cima'))}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {!isNovo && !jaConvertido && (
+                <>
+                  <div className="w-px h-7 bg-gray-700 flex-shrink-0" />
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-gray-500 uppercase font-bold">Status</span>
+                    <div className="flex items-center gap-1.5">
+                      {Object.entries(STATUS_ORC).filter(([k]) => k !== 'convertido').map(([k, v]) => (
+                        <button key={k} onClick={() => { setF('status', k as any); atualizarStatus({ id: orcId!, status: k as StatusOrcamento }); }}
+                          className={`px-3.5 py-2 rounded-lg text-xs font-bold border transition-all ${form.status === k ? v.cor : 'border-gray-700 text-gray-500 hover:text-white hover:bg-gray-700/30'}`}>
+                          {v.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {!isNovo && form.status === 'aprovado' && !jaConvertido && (
+                <button onClick={handleConverter} disabled={isConvertendo}
+                  className="bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all flex-shrink-0">
+                  {isConvertendo ? 'Convertendo...' : 'Converter em Venda'}
+                </button>
+              )}
+
+              <button onClick={handleSalvar} disabled={isSaving || !form.cliente_nome.trim()}
+                className="bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white px-6 py-2.5 rounded-xl font-bold text-sm transition-all flex-shrink-0">
+                {isSaving ? 'Salvando...' : 'Salvar Orçamento'}
+              </button>
+            </div>
+
+            {/* Custo Total — soma o custo de cada item (calculado no editor
+                de item, gravado em cada linha) — só admin/dono, nunca
+                aparece em impressão/mensagem. O toggle que liga/desliga
+                isso fica lá em cima, no cabeçalho de Itens do Orçamento. */}
+            {isAdmin && mostrarCusto && custoTotalOrcamento > 0 && (
+              <div className="mt-4 pt-4 border-t border-gray-800">
+                <div className="flex justify-between items-center bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 max-w-sm">
+                  <span className="text-[10px] font-bold text-red-400 uppercase flex items-center gap-1">
+                    🔒 Custo Total (só você vê)
+                  </span>
+                  <div className="text-right">
+                    <p className="text-sm font-black text-red-300">{fmtBRL(custoTotalOrcamento)}</p>
+                    {totalFinal > 0 && (
+                      <p className="text-[9px] text-gray-500">
+                        Margem: {(((totalFinal - custoTotalOrcamento) / totalFinal) * 100).toFixed(1)}%
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+      </div>
     </div>
     </>
   );

@@ -4,7 +4,12 @@ import { useConfiguracoes } from '../../hooks/useConfiguracoes';
 import { Configuracoes as ConfigType } from '../../types/configuracoes';
 import { EditorLayoutImpressao } from '../../components/configuracoes/EditorLayoutImpressao';
 import { DEFAULT_LAYOUT_VENDA, DEFAULT_LAYOUT_ORCAMENTO } from '../../types/layoutImpressao';
-import { Printer, Save, Check, Hash, Loader2 } from 'lucide-react';
+import {
+  MENSAGEM_WHATSAPP_ORC_DEFAULT,
+  TOKENS_MENSAGEM_ORC,
+  preencherTemplateMensagem,
+} from '../../types/configuracoes';
+import { Printer, Save, Check, Hash, Loader2, RotateCcw } from 'lucide-react';
 import { IN_N, Lbl } from './utils';
 import { QtdInput } from '../../components/ui/QtdInput';
 import { supabase } from '../../lib/supabase';
@@ -59,6 +64,75 @@ function NumeracaoCard({ tabela, label }: { tabela: 'vendas' | 'orcamentos'; lab
   );
 }
 
+const EXEMPLO_ITENS_TEXTO =
+`• Banner Lona 440g
+  Medidas: 2,00 × 1,00 m
+  Quantidade: 1 unidade
+  Valor unitário: R$ 180,00
+  Total: R$ 180,00
+
+• Adesivo Vinil Recorte
+  Medidas: 0,10 × 0,05 m
+  Quantidade: 4 unidades
+  Valor unitário: R$ 12,50
+  Total: R$ 50,00`;
+
+function MensagemWhatsAppEditor({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const template = value.trim() || MENSAGEM_WHATSAPP_ORC_DEFAULT;
+  const preview = preencherTemplateMensagem(template, {
+    numero: ' Nº 42',
+    tipo: '*Adesivos e Banners*',
+    cliente: 'João da Silva',
+    itens: EXEMPLO_ITENS_TEXTO,
+    total: 'R$ 230,00',
+    observacoes: 'Obs: Prazo de entrega de 3 dias úteis.',
+  });
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-bold text-gray-400 uppercase">Texto enviado por WhatsApp (Orçamentos)</p>
+          {value.trim() && (
+            <button onClick={() => onChange('')}
+              className="flex items-center gap-1 text-[11px] text-gray-500 hover:text-white transition-colors">
+              <RotateCcw className="w-3 h-3" /> Restaurar padrão
+            </button>
+          )}
+        </div>
+        <textarea
+          rows={16}
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          placeholder={MENSAGEM_WHATSAPP_ORC_DEFAULT}
+          className="w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-xs font-mono leading-relaxed resize-y focus:outline-none focus:border-blue-500"
+        />
+        <div>
+          <p className="text-[10px] font-bold text-gray-500 uppercase mb-1.5">Tokens disponíveis</p>
+          <div className="space-y-1">
+            {TOKENS_MENSAGEM_ORC.map(t => (
+              <p key={t.token} className="text-[11px] text-gray-400">
+                <code className="text-blue-300 bg-blue-500/10 px-1 rounded">{t.token}</code>
+                {' — '}{t.descricao}
+              </p>
+            ))}
+          </div>
+          <p className="text-[11px] text-gray-500 mt-2">
+            Deixe em branco pra usar o texto padrão do sistema. O formato de cada item dentro de {'{itens}'} é fixo.
+          </p>
+        </div>
+      </div>
+
+      <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-4">
+        <p className="text-xs font-bold text-gray-400 uppercase mb-2">Pré-visualização (dados de exemplo)</p>
+        <div className="bg-[#0b141a] border border-gray-700 rounded-xl p-3">
+          <pre className="whitespace-pre-wrap break-words text-[13px] text-[#e9edef] font-sans leading-relaxed">{preview}</pre>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function Impressao() {
   const { data: cfg, isLoading, salvar, isSaving } = useConfiguracoes();
   const [form, setForm]             = useState<Partial<ConfigType>>({});
@@ -94,12 +168,12 @@ export function Impressao() {
       </div>
 
       <div className="flex gap-2">
-        {['venda', 'orcamento'].map(t => (
+        {['venda', 'orcamento', 'mensagem'].map(t => (
           <button key={t} onClick={() => setSubAba(t)}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
               subAba === t ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'
             }`}>
-            {t === 'venda' ? 'Venda' : 'Orçamento'}
+            {t === 'venda' ? 'Venda' : t === 'orcamento' ? 'Orçamento' : 'Mensagem'}
           </button>
         ))}
       </div>
@@ -133,6 +207,13 @@ export function Impressao() {
             </div>
           </div>
         </>
+      )}
+
+      {subAba === 'mensagem' && (
+        <MensagemWhatsAppEditor
+          value={form.mensagem_whatsapp_orcamento ?? ''}
+          onChange={v => set('mensagem_whatsapp_orcamento', v)}
+        />
       )}
 
       {dirty && (

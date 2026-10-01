@@ -16,7 +16,7 @@ import { useClientes } from '../../hooks/useClientes';
 import { ItensEditor } from '../../components/vendas/ItensEditor';
 import { ClienteSelectorVenda } from '../../components/vendas/ClienteSelectorVenda';
 import { VendedorSelector } from '../../components/vendas/VendedorSelector';
-import { PainelFinanceiro } from '../../components/vendas/PainelFinanceiro';
+import { PainelFinanceiro, RascunhoParcela } from '../../components/vendas/PainelFinanceiro';
 import { useContasBancarias } from '../../hooks/useContasBancarias';
 import { GastosVenda } from '../../components/vendas/GastosVenda';
 import { DateInput } from '../../components/ui/DateInput';
@@ -76,7 +76,7 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
 
   const [form, setForm]   = useState({ ...NOVA_VENDA });
   const [itens, setItens] = useState<VendaItem[]>([]);
-  const [pagamentosRascunho, setPagamentosRascunho] = useState<PagamentoVenda[]>([]);
+  const [pagamentosRascunho, setPagamentosRascunho] = useState<RascunhoParcela[]>([]);
   const [gastosRascunho, setGastosRascunho] = useState<Lancamento[]>([]);
   // Enquanto os dados ainda estão sendo carregados (venda existente: form +
   // itens chegam em momentos diferentes), ignora as mudanças de estado pra
@@ -88,7 +88,7 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
     data: pagamentos = [],
     registrar: registrarPagamento,
     excluir: excluirPagamento,
-    isRegistrando,
+    isLoading: carregandoPagamentos,
   } = usePagamentosVenda(vendaId);
   const { data: contas = [] } = useContasBancarias();
   const { user } = useAuth();
@@ -177,6 +177,24 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
   function fechar() {
     limparAlteracoesPendentes();
     navigate(rotaVoltar);
+  }
+
+  // Reabrir uma parcela já travada (paga e salva): remove o pagamento de
+  // verdade (desfaz os efeitos financeiros — conta, taxa, lançamento, igual
+  // já acontece ao excluir) e devolve os mesmos dados como uma parcela
+  // editável, já marcada "Recebido" (só está sendo ajustada, não estornada).
+  // Só volta a valer de fato quando a venda for salva de novo.
+  async function handleReabrirPagamento(pagamento: PagamentoVenda) {
+    if (!vendaId) return;
+    const ok = await confirmar(
+      `Para editar este lançamento é necessário reabri-lo. Reabrir este financeiro (código ${pagamento.id.slice(0, 8)})?`,
+      'Reabrir lançamento'
+    );
+    if (!ok) return;
+    await excluirPagamento(pagamento.id, vendaId);
+    const { created_at: _createdAt, ...dadosPagamento } = pagamento;
+    setPagamentosRascunho(prev => [...prev, { ...dadosPagamento, status: 'recebido' }]);
+    marcarAlteracoesPendentes('Você tem alterações não salvas nessa venda. Sair mesmo assim?');
   }
 
   function setF(f: keyof typeof NOVA_VENDA, v: any) {
@@ -277,10 +295,17 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
       forma_pagamento: form.forma_pagamento,
     };
 
+    // Só parcelas marcadas como "Recebido" viram pagamento de verdade (com
+    // todos os efeitos financeiros — conta, taxa, lançamento). Parcela ainda
+    // "A receber" não é salva em lugar nenhum: da próxima vez que a venda for
+    // aberta, o valor que falta é recalculado sozinho e uma parcela nova
+    // aparece automaticamente pra cobrir a diferença.
+    const parcelasParaCommitar = pagamentosRascunho.filter(p => p.status === 'recebido');
+
     if (isNovo) {
       const vendaCriada = await criar({ venda: payload as any, itens });
-      for (const pag of pagamentosRascunho) {
-        const { id: _id, created_at: _createdAt, ...pagamento } = pag;
+      for (const pag of parcelasParaCommitar) {
+        const { id: _id, status: _status, ...pagamento } = pag;
         await registrarPagamento({
           ...pagamento,
           venda_id: vendaCriada.id,
@@ -295,7 +320,15 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
       }
     } else if (vendaId) {
       await atualizar({ id: vendaId, payload: payload as any, itens });
+      for (const pag of parcelasParaCommitar) {
+        const { id: _id, status: _status, ...pagamento } = pag;
+        await registrarPagamento({
+          ...pagamento,
+          venda_id: vendaId,
+        });
+      }
     }
+    setPagamentosRascunho([]);
     fechar();
   }
 
@@ -462,6 +495,33 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
             }} />
           </div>
 
+          {/* ── Linha 3: Resumo Financeiro (fica ANTES de Gastos — o resumo não
+              desconta o gasto da venda, ele é só o custo, calculado à parte) ── */}
+          <PainelFinanceiro
+            subtotal={subtotal}
+            desconto={form.desconto}
+            frete={form.frete}
+            taxaAdicional={form.taxa_adicional}
+            formaPagamento={form.forma_pagamento}
+            pagamentos={pagamentos}
+            rascunhos={pagamentosRascunho}
+            cfg={cfg}
+            vendaId={vendaId}
+            contas={contas}
+            onDescontoChange={v => setF('desconto', v)}
+            onFreteChange={v => setF('frete', v)}
+            onTaxaChange={v => setF('taxa_adicional', v)}
+            onRascunhosChange={novos => {
+              setPagamentosRascunho(novos);
+              if (!carregandoRef.current) {
+                marcarAlteracoesPendentes('Você tem alterações não salvas nessa venda. Sair mesmo assim?');
+              }
+            }}
+            onReabrirPagamento={handleReabrirPagamento}
+            carregandoPagamentos={carregandoPagamentos}
+            isSalvando={isSaving}
+          />
+
           {/* ── Linha 2.5: Gastos vinculados a essa venda (fornecedor, terceirização) ── */}
           <GastosVenda
             vendaId={vendaId}
@@ -479,44 +539,6 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
               setGastosRascunho(prev => prev.filter(g => g.id !== id));
               marcarAlteracoesPendentes('Você tem alterações não salvas nessa venda. Sair mesmo assim?');
             }}
-          />
-
-          {/* ── Linha 3: Resumo Financeiro ── */}
-          <PainelFinanceiro
-            subtotal={subtotal}
-            desconto={form.desconto}
-            frete={form.frete}
-            taxaAdicional={form.taxa_adicional}
-            parcelas={form.parcelas}
-            juros={form.juros}
-            formaPagamento={form.forma_pagamento}
-            valorPago={vendaId !== '__novo__' ? pagamentos.reduce((s, p) => s + p.valor, 0) : Number(form.valor_pago || 0)}
-            pagamentos={isNovo ? pagamentosRascunho : pagamentos}
-            cfg={cfg}
-            vendaId={vendaId}
-            contas={contas}
-            onDescontoChange={v => setF('desconto', v)}
-            onFreteChange={v => setF('frete', v)}
-            onTaxaChange={v => setF('taxa_adicional', v)}
-            onParcelasChange={v => setF('parcelas', v)}
-            onJurosChange={v => setF('juros', v)}
-            onFormaPagamentoChange={v => setF('forma_pagamento', v)}
-            onRegistrarPagamento={isNovo
-              ? async pag => {
-                setPagamentosRascunho(prev => [
-                  ...prev,
-                  { ...pag, id: crypto.randomUUID(), created_at: new Date().toISOString() },
-                ]);
-                marcarAlteracoesPendentes('Você tem alterações não salvas nessa venda. Sair mesmo assim?');
-              }
-              : registrarPagamento}
-            onExcluirPagamento={isNovo
-              ? id => {
-                setPagamentosRascunho(prev => prev.filter(p => p.id !== id));
-                marcarAlteracoesPendentes('Você tem alterações não salvas nessa venda. Sair mesmo assim?');
-              }
-              : excluirPagamento}
-            isRegistrando={isRegistrando}
           />
         </div>
       </div>

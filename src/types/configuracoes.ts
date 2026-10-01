@@ -47,6 +47,10 @@ export interface Configuracoes {
   orc_obs_padrao?: string | null;
   orc_garantia?: string | null;
   orc_rodape?: string | null;
+  /** Template da mensagem de WhatsApp enviada junto com o orçamento — vazio
+   * usa o padrão do sistema (MENSAGEM_WHATSAPP_ORC_DEFAULT). Usa tokens entre
+   * chaves: {numero} {tipo} {cliente} {itens} {total} {observacoes}. */
+  mensagem_whatsapp_orcamento?: string | null;
   // Vendas
   venda_prazo_entrega_dias?: number | null;
   venda_taxa_adicional_padrao?: number | null;
@@ -210,3 +214,54 @@ export const FORMAS_PAGAMENTO_DEFAULT: FormasPagamentoConfig[] = [
     dias_uteis_liquidacao: 0,
   },
 ];
+
+/**
+ * Template padrão da mensagem de WhatsApp do orçamento. O usuário pode
+ * personalizar isso em Configurações → Impressão → Mensagem, editando o
+ * texto ao redor dos tokens (sem precisar mexer na formatação dos itens,
+ * que é o token opaco {itens}).
+ */
+export const MENSAGEM_WHATSAPP_ORC_DEFAULT =
+`*ORÇAMENTO{numero}*
+{tipo}
+
+Cliente: {cliente}
+
+ITENS
+
+{itens}
+
+───────────────
+Total do Orçamento: {total}
+
+{observacoes}`;
+
+/** Tokens aceitos no template da mensagem — usado tanto pra montar a
+ * mensagem de verdade quanto pra exibir a lista de ajuda na tela de edição. */
+export const TOKENS_MENSAGEM_ORC: { token: string; descricao: string }[] = [
+  { token: '{numero}',      descricao: 'Número do orçamento (ex: " Nº 42" — some se não tiver número)' },
+  { token: '{tipo}',        descricao: 'Tipo/título do orçamento entre asteriscos (some se estiver vazio)' },
+  { token: '{cliente}',     descricao: 'Nome do cliente' },
+  { token: '{itens}',       descricao: 'Lista dos itens com medidas, quantidade e valores (formato fixo)' },
+  { token: '{total}',       descricao: 'Valor total do orçamento, já formatado em R$' },
+  { token: '{observacoes}', descricao: 'Linha "Obs: ..." (some se não tiver observação)' },
+];
+
+/**
+ * Substitui os tokens do template pelos valores reais e limpa o excesso de
+ * linhas em branco que sobra quando um token opcional (numero/tipo/observações)
+ * vem vazio — assim o usuário não precisa lidar com "if tem isso, mostra
+ * aquilo" no template, só escreve o texto ao redor dos tokens.
+ */
+export function preencherTemplateMensagem(template: string, tokens: Record<string, string>): string {
+  let texto = template;
+  for (const [chave, valor] of Object.entries(tokens)) {
+    texto = texto.split(`{${chave}}`).join(valor ?? '');
+  }
+  return texto
+    .split('\n')
+    .map(l => l.replace(/\s+$/, ''))
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}

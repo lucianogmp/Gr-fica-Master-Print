@@ -1,5 +1,5 @@
 // src/components/vendas/PainelFinanceiro.tsx
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { PagamentoVenda } from '../../types/venda';
 import { ContaBancaria } from '../../hooks/useContasBancarias';
 import {
@@ -10,7 +10,7 @@ import {
   getTaxaParcela,
   calcTotalComTaxa,
 } from '../../types/configuracoes';
-import { DollarSign, Plus, Trash2, CreditCard, Calendar, User, ChevronDown, ChevronUp } from 'lucide-react';
+import { DollarSign, Plus, Trash2, Lock, Unlock } from 'lucide-react';
 import { MoneyInput } from '../ui/MoneyInput';
 import { DateInput } from '../ui/DateInput';
 import { DarkSelect } from '../ui/DarkSelect';
@@ -19,9 +19,6 @@ import { supabase } from '../../lib/supabase';
 
 const fmtBRL = (v: number | null | undefined) =>
   Number(v ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-
-const fmtData = (d?: string | null) =>
-  d ? new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—';
 
 function parseFormas(raw: any): FormasPagamentoConfig[] {
   if (!raw) return FORMAS_PAGAMENTO_DEFAULT;
@@ -52,127 +49,85 @@ function normalizarForma(forma: Partial<FormasPagamentoConfig>): FormasPagamento
   };
 }
 
+/** Uma linha da tabela de parcelas ainda não persistida (rascunho). Só vira
+ * um pagamento de verdade (com todos os efeitos financeiros) quando a venda
+ * é salva E o status dela está 'recebido'. */
+export type RascunhoParcela = Omit<PagamentoVenda, 'created_at'> & {
+  status: 'a_receber' | 'recebido';
+};
+
 interface Props {
   subtotal: number;
   desconto: number;
   frete: number;
   taxaAdicional: number;
-  parcelas: number;
-  juros?: number;
   formaPagamento: string;
-  valorPago: number;
+  /** Pagamentos já persistidos no banco (travados — só editáveis via reabrir). */
   pagamentos: PagamentoVenda[];
+  /** Parcelas ainda não salvas — editáveis livremente, inclusive o toggle. */
+  rascunhos: RascunhoParcela[];
   cfg?: Configuracoes | null;
   vendaId?: string | null;
   contas?: ContaBancaria[];
   onDescontoChange: (v: number) => void;
   onFreteChange: (v: number) => void;
   onTaxaChange: (v: number) => void;
-  onParcelasChange: (v: number) => void;
-  onJurosChange?: (v: number) => void;
-  onFormaPagamentoChange: (v: string) => void;
-  onRegistrarPagamento: (pag: Omit<PagamentoVenda, 'id' | 'created_at'>) => Promise<void>;
-  onExcluirPagamento: (id: string, vendaId: string) => void;
-  isRegistrando?: boolean;
+  onRascunhosChange: (rascunhos: RascunhoParcela[]) => void;
+  onReabrirPagamento: (pagamento: PagamentoVenda) => void;
+  /** true enquanto os pagamentos já salvos ainda estão sendo carregados do
+   * banco (venda existente, primeira leitura) — evita que a auto-criação de
+   * parcela rode com base num "restante" ainda incompleto/zerado. */
+  carregandoPagamentos?: boolean;
+  isSalvando?: boolean;
 }
 
 const IN_SM = "bg-[#111827] border border-gray-700 rounded-md px-2.5 py-1 text-white text-xs text-right focus:outline-none focus:border-blue-500 [color-scheme:dark]";
-const IN = "bg-[#111827] border border-gray-700 rounded-lg px-2.5 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500 [color-scheme:dark] w-full";
+
+function novaParcelaBase(valor: number, formaPadrao: string): RascunhoParcela {
+  return {
+    id: crypto.randomUUID(),
+    venda_id: '',
+    valor: Math.max(0, Number(valor.toFixed(2))),
+    forma_pagamento: formaPadrao || 'PIX',
+    conta_id: '',
+    parcelas: null,
+    juros_pct: null,
+    data_pagamento: new Date().toISOString().slice(0, 10),
+    observacoes: null,
+    usuario_id: null,
+    usuario_nome: null,
+    status: 'a_receber',
+  };
+}
 
 export function PainelFinanceiro({
-  subtotal, desconto, frete, taxaAdicional, parcelas, formaPagamento,
-  valorPago, pagamentos, cfg, vendaId, contas = [],
-  onDescontoChange, onFreteChange, onTaxaChange, onParcelasChange,
-  onFormaPagamentoChange, onRegistrarPagamento, onExcluirPagamento, isRegistrando,
+  subtotal, desconto, frete, taxaAdicional, formaPagamento,
+  pagamentos, rascunhos, cfg, vendaId, contas = [],
+  onDescontoChange, onFreteChange, onTaxaChange,
+  onRascunhosChange, onReabrirPagamento, carregandoPagamentos, isSalvando,
 }: Props) {
-  const [showNovoPag, setShowNovoPag]     = useState(false);
-  const [showHistorico, setShowHistorico] = useState(false);
-  const [novoPag, setNovoPag] = useState<{ valor: number; forma: string; data: string; obs: string; parcelas: number; contaId: string }>({
-    valor: 0, forma: formaPagamento || 'PIX',
-    data: new Date().toISOString().slice(0, 10), obs: '', parcelas: 1, contaId: '',
-  });
-
-  const { isVendedor } = useRole();
-  const contasAtivas  = contas.filter(c => c.ativo);
-  // Dinheiro só pode ir pro caixa físico; qualquer outra forma (Pix, cartão,
-  // transferência...) nunca pode cair na conta Caixa — senão o dinheiro some
-  // do Resumo Financeiro sem aparecer em conta nenhuma de verdade, e o
-  // Fluxo de Caixa (que é só dinheiro físico) mostraria um pagamento que
-  // na real nunca passou pela gaveta do caixa.
-  const contasCompativeis = novoPag.forma === 'Dinheiro'
-    ? contasAtivas.filter(c => c.tipo === 'caixa')
-    : contasAtivas.filter(c => c.tipo !== 'caixa');
-  const contasDaForma = contasCompativeis.filter(c => (c.formas_aceitas ?? []).includes(novoPag.forma));
-  const opcoesConta   = contasDaForma.length > 0 ? contasDaForma : contasCompativeis;
-
-  // Vendedor não tem acesso à tabela de contas bancárias (tem agência,
-  // conta, saldo — informação financeira que não é dele). Sem isso, a
-  // conta ficava sempre vazia/bloqueada, pedindo pra escolher algo que
-  // ele nunca conseguiria ver. Pra ele, busca só o nome da conta padrão
-  // daquela forma de pagamento via RPC (sem expor a lista inteira) e usa
-  // isso direto — sem dropdown, sem escolha.
-  const [contaPadraoVendedor, setContaPadraoVendedor] = useState<{ id: string; nome: string } | null>(null);
-  useEffect(() => {
-    if (!isVendedor || !novoPag.forma) { setContaPadraoVendedor(null); return; }
-    let cancelado = false;
-    supabase.rpc('obter_conta_padrao_pagamento', { p_forma: novoPag.forma }).then(({ data }) => {
-      if (cancelado) return;
-      const registro = Array.isArray(data) ? data[0] : data;
-      const conta = registro ? { id: registro.conta_id, nome: registro.nome } : null;
-      setContaPadraoVendedor(conta);
-      setNovoPag(f => ({ ...f, contaId: conta?.id ?? '' }));
-    });
-    return () => { cancelado = true; };
-  }, [isVendedor, novoPag.forma]);
-
-  // Desconto pode ser digitado em R$ ou em % — a pessoa escolhe. Por baixo
-  // dos panos sempre fica salvo como % (mesma coluna de sempre, não bagunça
-  // vendas antigas); só a forma de digitar muda. O buffer local de R$ só
-  // resincroniza quando "desconto" muda por fora (venda carregando do
-  // banco) — nunca quando a mudança veio do próprio campo, senão o
-  // arredondamento %→R$→% ficaria brigando com o que a pessoa digitou.
   const [modoDesconto, setModoDesconto] = useState<'valor' | 'pct'>('valor');
   const [descontoValorLocal, setDescontoValorLocal] = useState(() => subtotal > 0 ? subtotal * (desconto / 100) : 0);
-  const ultimoDescontoEmitido = useRef(desconto);
 
   useEffect(() => {
-    if (desconto !== ultimoDescontoEmitido.current) {
-      ultimoDescontoEmitido.current = desconto;
-      setDescontoValorLocal(subtotal > 0 ? subtotal * (desconto / 100) : 0);
-    }
+    setDescontoValorLocal(subtotal > 0 ? subtotal * (desconto / 100) : 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [desconto, subtotal]);
 
   function mudarDescontoValor(v: number) {
     setDescontoValorLocal(v);
-    const pct = subtotal > 0 ? Math.min(100, (v / subtotal) * 100) : 0;
-    ultimoDescontoEmitido.current = pct;
-    onDescontoChange(pct);
+    onDescontoChange(subtotal > 0 ? Math.min(100, (v / subtotal) * 100) : 0);
   }
-
   function mudarDescontoPct(v: number) {
-    ultimoDescontoEmitido.current = v;
     onDescontoChange(v);
     setDescontoValorLocal(subtotal > 0 ? subtotal * (v / 100) : 0);
   }
 
-  const formas           = parseFormas(cfg?.formas_pagamento).filter(f => f.ativo);
-  const formaNovoPag     = formas.find(f => f.nome === novoPag.forma);
-  const permiteParc      = formaNovoPag?.permite_parcelamento;
-  const maxParcelas      = Math.max(1, formaNovoPag?.max_parcelas ?? 1);
-  const taxaPctNovoPag   = getTaxaParcela(formaNovoPag, novoPag.parcelas);
-  const valorNovoPag     = novoPag.valor || 0;
-  const taxaMaquininha   = calcTotalComTaxa(valorNovoPag, taxaPctNovoPag) - valorNovoPag;
-
-  // Valor líquido de cada pagamento = bruto - taxa maquininha
+  // Valor líquido já efetivamente recebido (pagamentos persistidos, travados)
   const valorLiquidoPago = pagamentos.reduce((s, p) => {
     const taxa = Number(p.juros_pct ?? 0);
-    const liq  = taxa > 0
-      ? Number(p.valor) * (1 - taxa / 100)
-      : Number(p.valor);
-    return s + liq;
+    return s + (taxa > 0 ? Number(p.valor) * (1 - taxa / 100) : Number(p.valor));
   }, 0);
-
-  // Taxa total absorvida pela maquininha (não é restante — é desconto definitivo)
   const taxaTotalAbsorvida = pagamentos.reduce((s, p) => {
     const taxa = Number(p.juros_pct ?? 0);
     return taxa > 0 ? s + Number(p.valor) * (taxa / 100) : s;
@@ -180,121 +135,104 @@ export function PainelFinanceiro({
 
   const descontoValor = subtotal * (desconto / 100);
   const totalBase     = subtotal - descontoValor + Number(frete || 0) + Number(taxaAdicional || 0);
-  // Total efetivo = total da venda menos taxa da maquininha absorvida
   const totalEfetivo  = totalBase - taxaTotalAbsorvida;
   const valorRestante = Math.max(0, totalEfetivo - valorLiquidoPago);
   const quitado       = totalEfetivo > 0 && valorRestante <= 0.01;
   const pctPago       = totalEfetivo > 0 ? Math.min(100, (valorLiquidoPago / totalEfetivo) * 100) : 0;
 
-  async function handleRegistrar() {
-    if (!vendaId || !novoPag.valor || !novoPag.contaId) return;
-    await onRegistrarPagamento({
-      venda_id:        vendaId,
-      valor:           novoPag.valor,
-      forma_pagamento: novoPag.forma,
-      conta_id:        novoPag.contaId,
-      parcelas:        permiteParc && novoPag.parcelas > 1 ? novoPag.parcelas : null,
-      juros_pct:       taxaPctNovoPag > 0 ? taxaPctNovoPag : null,
-      data_pagamento:  novoPag.data,
-      observacoes:     novoPag.obs || null,
-      usuario_id:      null,
-      usuario_nome:    null,
-    });
-    setNovoPag({ valor: 0, forma: formaPagamento || 'PIX', data: new Date().toISOString().slice(0, 10), obs: '', parcelas: 1, contaId: '' });
-    setShowNovoPag(false);
+  // ── Auto-gestão da(s) parcela(s) em aberto ──
+  // Sempre que sobrar valor não coberto por nenhum pagamento travado nem por
+  // nenhum rascunho já lançado, cria (ou ajusta) automaticamente UM rascunho
+  // "a receber" pra cobrir a diferença — é isso que faz a aba de pagamento
+  // já vir pronta assim que o primeiro item é adicionado, e que faz uma
+  // parcela nova aparecer sozinha quando o total sobe numa venda que já
+  // estava toda recebida/travada.
+  useEffect(() => {
+    // Enquanto os pagamentos já salvos dessa venda ainda estão sendo
+    // carregados do banco, "valorRestante" está calculado com uma lista
+    // vazia (ainda não chegou) — criar parcela com base nisso geraria uma
+    // parcela fantasma assim que os dados reais chegassem. Só roda depois
+    // que o carregamento inicial termina.
+    if (carregandoPagamentos) return;
+
+    const somaRascunhos = rascunhos.reduce((s, r) => s + Number(r.valor || 0), 0);
+    const diferenca = Math.round((valorRestante - somaRascunhos) * 100) / 100;
+
+    if (diferenca > 0.01 && rascunhos.length === 0) {
+      onRascunhosChange([novaParcelaBase(diferenca, formaPagamento)]);
+      return;
+    }
+    // Se a diferença mudou (ex: adicionou item novo) e existe exatamente um
+    // rascunho ainda "a receber" sem edição manual de forma/conta, ajusta o
+    // valor dele sozinho, sem mexer no que já foi digitado quando há mais de um.
+    if (rascunhos.length === 1 && rascunhos[0].status === 'a_receber' && Math.abs(diferenca) > 0.01) {
+      const unico = rascunhos[0];
+      onRascunhosChange([{ ...unico, valor: Math.max(0, Number((unico.valor + diferenca).toFixed(2))) }]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [valorRestante, carregandoPagamentos]);
+
+  function atualizarLinha(id: string, patch: Partial<RascunhoParcela>) {
+    onRascunhosChange(rascunhos.map(r => r.id === id ? { ...r, ...patch } : r));
   }
+  function removerLinha(id: string) {
+    onRascunhosChange(rascunhos.filter(r => r.id !== id));
+  }
+  function adicionarLinha() {
+    onRascunhosChange([...rascunhos, novaParcelaBase(0, formaPagamento)]);
+  }
+  function toggleStatus(id: string) {
+    onRascunhosChange(rascunhos.map(r => r.id === id
+      ? { ...r, status: r.status === 'a_receber' ? 'recebido' : 'a_receber' }
+      : r));
+  }
+
+  const formas = parseFormas(cfg?.formas_pagamento).filter(f => f.ativo);
+  const totalLinhas = pagamentos.length + rascunhos.length;
 
   return (
     <div className="bg-[#1f2937] border border-gray-700 border-t-2 border-t-green-500 rounded-xl overflow-hidden">
 
-      {/* ══ LINHA ÚNICA: título + campos + pagamento + total ══ */}
+      {/* ══ LINHA ÚNICA: título + campos + total ══ */}
       <div className="px-4 py-3 flex items-center gap-4 flex-wrap">
-
-        {/* Título */}
         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1 flex-shrink-0">
           <DollarSign className="w-3 h-3 text-green-400" /> Resumo Financeiro
         </span>
 
         <div className="w-px h-4 bg-gray-700 flex-shrink-0" />
 
-        {/* Subtotal */}
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <span className="text-[10px] text-gray-500 uppercase">Subtotal</span>
           <span className="text-xs font-bold text-white">{fmtBRL(subtotal)}</span>
         </div>
 
-        {/* Desconto — a pessoa escolhe se digita em R$ ou em %. Guardado
-            sempre como % no banco (coluna de sempre), só a forma de
-            digitar muda. */}
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <span className="text-[10px] text-gray-500 uppercase">Desconto</span>
           <div className="flex items-center bg-[#111827] border border-gray-700 rounded-md overflow-hidden text-[9px] font-bold">
-            <button type="button"
-              onClick={() => setModoDesconto('valor')}
-              className={`px-1.5 py-1 transition-colors ${modoDesconto === 'valor' ? 'bg-blue-500/30 text-blue-300' : 'text-gray-500 hover:text-gray-300'}`}
-            >
-              R$
-            </button>
-            <button type="button"
-              onClick={() => setModoDesconto('pct')}
-              className={`px-1.5 py-1 transition-colors ${modoDesconto === 'pct' ? 'bg-blue-500/30 text-blue-300' : 'text-gray-500 hover:text-gray-300'}`}
-            >
-              %
-            </button>
+            <button type="button" onClick={() => setModoDesconto('valor')}
+              className={`px-1.5 py-1 transition-colors ${modoDesconto === 'valor' ? 'bg-blue-500/30 text-blue-300' : 'text-gray-500 hover:text-gray-300'}`}>R$</button>
+            <button type="button" onClick={() => setModoDesconto('pct')}
+              className={`px-1.5 py-1 transition-colors ${modoDesconto === 'pct' ? 'bg-blue-500/30 text-blue-300' : 'text-gray-500 hover:text-gray-300'}`}>%</button>
           </div>
           {modoDesconto === 'valor' ? (
-            <MoneyInput
-              value={descontoValorLocal}
-              onChange={mudarDescontoValor}
-              className={IN_SM}
-              style={{ width: 88 }}
-              placeholder="0,00"
-            />
+            <MoneyInput value={descontoValorLocal} onChange={mudarDescontoValor} className={IN_SM} style={{ width: 88 }} placeholder="0,00" />
           ) : (
-            <PctInput
-              value={desconto}
-              onChange={mudarDescontoPct}
-              className={IN_SM}
-              style={{ width: 72 }}
-              placeholder="0"
-            />
-          )}
-          {desconto > 0 && (
-            <span className="text-[9px] text-gray-600">
-              ({modoDesconto === 'valor'
-                ? `${desconto.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`
-                : fmtBRL(subtotal * (desconto / 100))})
-            </span>
+            <MoneyInput value={desconto} onChange={mudarDescontoPct} className={IN_SM} style={{ width: 72 }} placeholder="0" />
           )}
         </div>
 
-        {/* Frete */}
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <span className="text-[10px] text-gray-500 uppercase">Frete (R$)</span>
-          <MoneyInput
-            value={frete}
-            onChange={onFreteChange}
-            className={IN_SM}
-            style={{ width: 88 }}
-            placeholder="0,00"
-          />
+          <MoneyInput value={frete} onChange={onFreteChange} className={IN_SM} style={{ width: 88 }} placeholder="0,00" />
         </div>
 
-        {/* Taxas */}
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <span className="text-[10px] text-gray-500 uppercase">Taxas (R$)</span>
-          <MoneyInput
-            value={taxaAdicional}
-            onChange={onTaxaChange}
-            className={IN_SM}
-            style={{ width: 88 }}
-            placeholder="0,00"
-          />
+          <MoneyInput value={taxaAdicional} onChange={onTaxaChange} className={IN_SM} style={{ width: 88 }} placeholder="0,00" />
         </div>
 
         <div className="w-px h-4 bg-gray-700 flex-shrink-0" />
 
-        {/* Pagamento */}
         <div className="flex items-center gap-2 flex-shrink-0">
           <span className="text-[10px] text-gray-500 uppercase">Recebido líquido</span>
           <span className="text-xs font-black text-green-400">{fmtBRL(valorLiquidoPago)}</span>
@@ -305,21 +243,8 @@ export function PainelFinanceiro({
           )}
         </div>
 
-        {/* Histórico */}
-        {pagamentos.length > 0 && (
-          <button
-            onClick={() => setShowHistorico(v => !v)}
-            className="flex items-center gap-1 text-[10px] font-bold text-gray-400 hover:text-white transition-colors flex-shrink-0"
-          >
-            Histórico ({pagamentos.length})
-            {showHistorico ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-          </button>
-        )}
-
-        {/* Spacer */}
         <div className="flex-1" />
 
-        {/* Total efetivo */}
         <span className="text-xl font-black text-green-400 flex-shrink-0">
           {fmtBRL(totalEfetivo)}
           {taxaTotalAbsorvida > 0 && (
@@ -327,162 +252,163 @@ export function PainelFinanceiro({
           )}
         </span>
 
-        {/* Botão Registrar */}
         {vendaId && (
-          <button
-            onClick={() => {
-              const abrindo = !showNovoPag;
-              setShowNovoPag(abrindo);
-              if (abrindo) setNovoPag(prev => ({ ...prev, valor: Number(valorRestante.toFixed(2)) }));
-            }}
-            className="flex items-center gap-1 text-[10px] font-bold px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white rounded-lg transition-all flex-shrink-0"
-          >
-            <Plus className="w-3 h-3" /> Registrar
+          <button onClick={adicionarLinha}
+            className="flex items-center gap-1 text-[10px] font-bold px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg transition-all flex-shrink-0">
+            <Plus className="w-3 h-3" /> Adicionar parcela
           </button>
         )}
       </div>
 
-      {/* Barra de progresso */}
       <div className="h-0.5 bg-gray-800">
         <div className="h-full bg-green-500 transition-all duration-500" style={{ width: `${pctPago}%` }} />
       </div>
 
-      {showHistorico && pagamentos.length > 0 && (
+      {/* ══ Tabela de parcelas — sempre visível, sem precisar clicar em nada ══ */}
+      {totalLinhas > 0 && (
         <div className="border-t border-gray-700/60 divide-y divide-gray-800">
-          {pagamentos.map(p => {
-            const taxa    = Number(p.juros_pct ?? 0);
-            const bruto   = Number(p.valor);
-            const liq     = taxa > 0 ? bruto * (1 - taxa / 100) : bruto;
-            const taxaVal = bruto - liq;
-            return (
-              <div key={p.id} className="flex items-center gap-3 px-4 py-2 hover:bg-gray-800/20 transition-colors">
-                <div className="w-6 h-6 rounded-md bg-green-500/20 border border-green-500/30 flex items-center justify-center flex-shrink-0">
-                  <CreditCard className="w-3 h-3 text-green-400" />
-                </div>
-                <div className="flex-shrink-0">
-                  <span className="text-sm font-black text-green-400">{fmtBRL(liq)}</span>
-                  {taxa > 0 && (
-                    <span className="ml-1.5 text-[10px] text-gray-500">
-                      (bruto {fmtBRL(bruto)} − taxa {taxa}% = <span className="text-red-400">−{fmtBRL(taxaVal)}</span>)
-                    </span>
-                  )}
-                </div>
-                <span className="text-[10px] font-bold bg-blue-500/20 text-blue-400 border border-blue-500/30 px-1.5 py-0.5 rounded-full flex-shrink-0">
-                  {p.forma_pagamento}{p.parcelas && p.parcelas > 1 ? ` (${p.parcelas}x)` : ''}
-                </span>
-                <span className="text-[10px] text-gray-500 flex items-center gap-1 flex-shrink-0">
-                  <Calendar className="w-3 h-3" /> {fmtData(p.data_pagamento)}
-                </span>
-                {p.usuario_nome && (
-                  <span className="text-[10px] text-gray-500 flex items-center gap-1 flex-shrink-0">
-                    <User className="w-3 h-3" /> {p.usuario_nome}
-                  </span>
-                )}
-                {p.observacoes && <span className="text-[10px] text-gray-500 truncate">{p.observacoes}</span>}
-                <div className="flex-1" />
-                {vendaId && (
-                  <button onClick={() => onExcluirPagamento(p.id, vendaId)} className="text-gray-600 hover:text-red-400 transition-colors flex-shrink-0">
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-            );
-          })}
+          <div className="grid grid-cols-[1.75rem_1fr_1fr_1fr_1fr_1fr_1.75rem] gap-2 px-4 py-1.5 text-[9px] font-bold text-gray-500 uppercase">
+            <span>#</span><span>Valor Total</span><span>Data de Pagamento</span><span>Forma de Pagamento</span><span>Conta</span><span>Status</span><span />
+          </div>
+
+          {pagamentos.map((p, i) => (
+            <LinhaTravada key={p.id} indice={i + 1} total={totalLinhas} pagamento={p}
+              contas={contas} onReabrir={() => onReabrirPagamento(p)} />
+          ))}
+
+          {rascunhos.map((r, i) => (
+            <LinhaRascunho key={r.id} indice={pagamentos.length + i + 1} total={totalLinhas}
+              linha={r} contas={contas} formas={formas}
+              onChange={patch => atualizarLinha(r.id, patch)}
+              onRemover={() => removerLinha(r.id)}
+              onToggle={() => toggleStatus(r.id)}
+            />
+          ))}
         </div>
       )}
 
-      {/* ══ Form novo pagamento ══ */}
-      {showNovoPag && vendaId && (
-        <div className="border-t border-gray-700 px-4 py-4 space-y-3">
-          <p className="text-[10px] font-bold text-green-400 uppercase">Novo Pagamento</p>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-            <div>
-              <label className="text-[10px] text-gray-500 uppercase block mb-1">Valor (R$) *</label>
-              <MoneyInput value={novoPag.valor}
-                onChange={v => setNovoPag(f => ({ ...f, valor: v }))}
-                className={IN} placeholder="0,00" autoFocus />
-            </div>
-            <div>
-              <label className="text-[10px] text-gray-500 uppercase block mb-1">Data</label>
-              <DateInput value={novoPag.data}
-                onChange={v => setNovoPag(f => ({ ...f, data: v }))}
-                className={IN} />
-            </div>
-            <div>
-              <label className="text-[10px] text-gray-500 uppercase block mb-1">Forma</label>
-              <DarkSelect
-                value={novoPag.forma}
-                onChange={v => {
-                  const compat = v === 'Dinheiro'
-                    ? contasAtivas.filter(c => c.tipo === 'caixa')
-                    : contasAtivas.filter(c => c.tipo !== 'caixa');
-                  const opcoes = compat.filter(c => (c.formas_aceitas ?? []).includes(v));
-                  const auto = (opcoes.length === 1 ? opcoes[0] : compat.length === 1 ? compat[0] : null)?.id ?? '';
-                  setNovoPag(f => ({ ...f, forma: v, parcelas: 1, contaId: auto }));
-                }}
-                allowEmpty={false}
-                options={formas.map(f => f.nome)}
-              />
-            </div>
-            <div>
-              <label className="text-[10px] text-gray-500 uppercase block mb-1">Conta *</label>
-              {isVendedor ? (
-                <div className="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-xs text-gray-400">
-                  {contaPadraoVendedor?.nome ?? 'Carregando...'}
-                </div>
-              ) : opcoesConta.length === 0 ? (
-                <span className="text-[10px] text-yellow-400">Cadastre uma conta em Configurações</span>
-              ) : (
-                <DarkSelect
-                  value={novoPag.contaId}
-                  onChange={v => setNovoPag(f => ({ ...f, contaId: v }))}
-                  allowEmpty
-                  options={opcoesConta.map(c => ({ value: c.id, label: c.nome }))}
-                />
-              )}
-            </div>
-            {permiteParc && maxParcelas > 1 ? (
-              <div>
-                <label className="text-[10px] text-gray-500 uppercase block mb-1">Parcelas</label>
-                <DarkSelect
-                  value={String(novoPag.parcelas)}
-                  onChange={v => setNovoPag(f => ({ ...f, parcelas: parseInt(v) }))}
-                  allowEmpty={false}
-                  options={Array.from({ length: maxParcelas }, (_, i) => {
-                    const parcelas = i + 1;
-                    const taxa = getTaxaParcela(formaNovoPag, parcelas);
-                    return {
-                      value: String(parcelas),
-                      label: `${parcelas}x${taxa > 0 ? ` (+${taxa.toLocaleString('pt-BR')}%)` : ' sem juros'}`,
-                    };
-                  })}
-                />
-              </div>
-            ) : (
-              <div>
-                <label className="text-[10px] text-gray-500 uppercase block mb-1">Observações</label>
-                <input value={novoPag.obs}
-                  onChange={e => setNovoPag(f => ({ ...f, obs: e.target.value }))}
-                  className={IN} placeholder="Opcional" />
-              </div>
-            )}
-          </div>
-          {taxaPctNovoPag > 0 && (
-            <div className="flex justify-between items-center text-[10px] bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
-              <span className="text-gray-400">Taxa maquininha ({taxaPctNovoPag.toLocaleString('pt-BR')}%)</span>
-              <span className="text-red-400 font-bold">- {fmtBRL(taxaMaquininha)}</span>
-            </div>
+      {isSalvando && (
+        <div className="px-4 py-2 text-[10px] text-blue-300 bg-blue-500/10 border-t border-blue-500/20">
+          Salvando parcelas marcadas como recebido...
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Linha já persistida no banco — travada. Só o cadeado é clicável.
+// ─────────────────────────────────────────────────────────────────────────
+function LinhaTravada({ indice, total, pagamento, contas, onReabrir }: {
+  indice: number; total: number; pagamento: PagamentoVenda; contas: ContaBancaria[]; onReabrir: () => void;
+}) {
+  const conta = contas.find(c => c.id === pagamento.conta_id);
+  return (
+    <div className="grid grid-cols-[1.75rem_1fr_1fr_1fr_1fr_1fr_1.75rem] gap-2 px-4 py-2 items-center opacity-80">
+      <span className="text-[10px] text-gray-500">{indice}/{total}</span>
+      <span className="text-xs font-bold text-white">{fmtBRL(pagamento.valor)}</span>
+      <span className="text-xs text-gray-400">{new Date(pagamento.data_pagamento).toLocaleDateString('pt-BR')}</span>
+      <span className="text-xs text-gray-400">{pagamento.forma_pagamento}{pagamento.parcelas && pagamento.parcelas > 1 ? ` (${pagamento.parcelas}x)` : ''}</span>
+      <span className="text-xs text-gray-400 truncate">{conta?.nome ?? '—'}</span>
+      <button onClick={onReabrir}
+        className="flex items-center justify-center gap-1 text-[10px] font-bold px-2 py-1 bg-blue-600/90 text-white rounded-md cursor-pointer hover:bg-blue-500 transition-colors">
+        <Lock className="w-3 h-3" /> Recebido
+      </button>
+      <span />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Linha rascunho — totalmente editável até virar "Recebido" + a venda ser salva.
+// ─────────────────────────────────────────────────────────────────────────
+function LinhaRascunho({ indice, total, linha, contas, formas, onChange, onRemover, onToggle }: {
+  indice: number; total: number; linha: RascunhoParcela; contas: ContaBancaria[];
+  formas: FormasPagamentoConfig[];
+  onChange: (patch: Partial<RascunhoParcela>) => void;
+  onRemover: () => void;
+  onToggle: () => void;
+}) {
+  const { isVendedor } = useRole();
+  const contasAtivas = contas.filter(c => c.ativo);
+  const contasCompativeis = linha.forma_pagamento === 'Dinheiro'
+    ? contasAtivas.filter(c => c.tipo === 'caixa')
+    : contasAtivas.filter(c => c.tipo !== 'caixa');
+  const contasDaForma = contasCompativeis.filter(c => (c.formas_aceitas ?? []).includes(linha.forma_pagamento));
+  const opcoesConta = contasDaForma.length > 0 ? contasDaForma : contasCompativeis;
+
+  const [contaPadraoVendedor, setContaPadraoVendedor] = useState<{ id: string; nome: string } | null>(null);
+  useEffect(() => {
+    if (!isVendedor || !linha.forma_pagamento) { setContaPadraoVendedor(null); return; }
+    let cancelado = false;
+    supabase.rpc('obter_conta_padrao_pagamento', { p_forma: linha.forma_pagamento }).then(({ data }) => {
+      if (cancelado) return;
+      const registro = Array.isArray(data) ? data[0] : data;
+      const conta = registro ? { id: registro.conta_id, nome: registro.nome } : null;
+      setContaPadraoVendedor(conta);
+      if (conta?.id && conta.id !== linha.conta_id) onChange({ conta_id: conta.id });
+    });
+    return () => { cancelado = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isVendedor, linha.forma_pagamento]);
+
+  const formaSelecionada = formas.find(f => f.nome === linha.forma_pagamento);
+  const permiteParc = formaSelecionada?.permite_parcelamento;
+  const maxParcelas = Math.max(1, formaSelecionada?.max_parcelas ?? 1);
+  const taxaPct = getTaxaParcela(formaSelecionada, linha.parcelas || 1);
+  const recebido = linha.status === 'recebido';
+
+  return (
+    <div className={`grid grid-cols-[1.75rem_1fr_1fr_1fr_1fr_1fr_1.75rem] gap-2 px-4 py-2 items-center ${recebido ? 'bg-blue-500/5' : ''}`}>
+      <span className="text-[10px] text-gray-500">{indice}/{total}</span>
+      <MoneyInput value={linha.valor} onChange={v => onChange({ valor: v })}
+        className="bg-[#111827] border border-gray-700 rounded-md px-2 py-1 text-white text-xs focus:outline-none focus:border-blue-500 [color-scheme:dark] w-full" placeholder="0,00" />
+      <DateInput value={linha.data_pagamento} onChange={v => onChange({ data_pagamento: v })}
+        className="bg-[#111827] border border-gray-700 rounded-md px-2 py-1 text-white text-xs focus:outline-none focus:border-blue-500 [color-scheme:dark] w-full" />
+      <DarkSelect size="sm" value={linha.forma_pagamento}
+        onChange={v => {
+          const compat = v === 'Dinheiro' ? contasAtivas.filter(c => c.tipo === 'caixa') : contasAtivas.filter(c => c.tipo !== 'caixa');
+          const opcoes = compat.filter(c => (c.formas_aceitas ?? []).includes(v));
+          const auto = (opcoes.length === 1 ? opcoes[0] : compat.length === 1 ? compat[0] : null)?.id ?? '';
+          onChange({ forma_pagamento: v, parcelas: null, conta_id: auto });
+        }}
+        allowEmpty={false} options={formas.map(f => f.nome)} />
+      {isVendedor ? (
+        <span className="text-xs text-gray-400 truncate">{contaPadraoVendedor?.nome ?? 'Carregando...'}</span>
+      ) : opcoesConta.length === 0 ? (
+        <span className="text-[10px] text-yellow-400">Cadastre uma conta</span>
+      ) : (
+        <DarkSelect size="sm" value={linha.conta_id} onChange={v => onChange({ conta_id: v })}
+          allowEmpty options={opcoesConta.map(c => ({ value: c.id, label: c.nome }))} />
+      )}
+      <button onClick={onToggle}
+        className={`relative flex items-center rounded-full text-[10px] font-bold px-1 py-1 transition-colors w-full justify-center gap-1 ${
+          recebido ? 'bg-blue-600 text-white' : 'bg-[#111827] border border-gray-700 text-gray-400 hover:border-blue-500 hover:text-blue-300'
+        }`}
+      >
+        {recebido ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
+        {recebido ? 'Recebido' : 'A receber'}
+      </button>
+      <button onClick={onRemover} className="text-gray-600 hover:text-red-400 transition-colors flex justify-center">
+        <Trash2 className="w-3.5 h-3.5" />
+      </button>
+      {permiteParc && maxParcelas > 1 && (
+        <div className="col-span-7 -mt-1 flex items-center gap-2 pl-[2.2rem]">
+          <span className="text-[9px] text-gray-500 uppercase">Parcelas do cartão</span>
+          <DarkSelect size="sm" value={String(linha.parcelas || 1)}
+            onChange={v => onChange({ parcelas: parseInt(v), juros_pct: getTaxaParcela(formaSelecionada, parseInt(v)) || null })}
+            allowEmpty={false}
+            options={Array.from({ length: maxParcelas }, (_, idx) => {
+              const n = idx + 1;
+              const t = getTaxaParcela(formaSelecionada, n);
+              return { value: String(n), label: `${n}x${t > 0 ? ` (+${t.toLocaleString('pt-BR')}%)` : ' sem juros'}` };
+            })}
+            className="w-40" />
+          {taxaPct > 0 && (
+            <span className="text-[10px] text-red-400">
+              taxa maquininha: -{fmtBRL(calcTotalComTaxa(linha.valor, taxaPct) - linha.valor)}
+            </span>
           )}
-          <div className="flex gap-2 justify-end">
-            <button onClick={() => setShowNovoPag(false)}
-              className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-xs font-bold">
-              Cancelar
-            </button>
-            <button onClick={handleRegistrar} disabled={isRegistrando || !novoPag.valor || !novoPag.contaId}
-              className="px-4 py-1.5 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white rounded-lg text-xs font-bold">
-              {isRegistrando ? 'Salvando...' : 'Confirmar'}
-            </button>
-          </div>
         </div>
       )}
     </div>

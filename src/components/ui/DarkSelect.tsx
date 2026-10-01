@@ -159,11 +159,20 @@ export function DarkSelect({
     if (!rect) return;
     const gap = 4;
     const margin = 12;
-    const preferredHeight = 280;
+    const itemHeight = 45; // ~altura real de cada OptionButton (padding 12px + texto)
+    const lista = searchable ? opcoesExibidas : flatOptions;
+    const qtdItens = (allowEmpty ? 1 : 0) + (groups?.length
+      ? groups.reduce((s, g) => s + g.options.length, 0)
+      : lista.length);
+    // Altura que o menu realmente precisa (não um valor fixo) — evita reservar
+    // espaço de sobra e, com isso, abrir pra cima muito além do necessário
+    // quando o campo está perto do fim da tela mas tem poucas opções.
+    const alturaNecessaria = Math.max(itemHeight, qtdItens * itemHeight + 8);
+    const preferredHeight = Math.min(280, alturaNecessaria);
     const below = window.innerHeight - rect.bottom - margin;
     const above = rect.top - margin;
-    const openUp = below < 160 && above > below;
-    const maxHeight = Math.max(120, Math.min(preferredHeight, openUp ? above - gap : below - gap));
+    const openUp = below < preferredHeight && above > below;
+    const maxHeight = Math.max(Math.min(itemHeight + 8, preferredHeight), Math.min(preferredHeight, openUp ? above - gap : below - gap));
 
     setCoords({
       top: openUp ? rect.top - gap - maxHeight : rect.bottom + gap,
