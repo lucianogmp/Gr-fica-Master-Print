@@ -129,7 +129,7 @@ export function Orcamentos() {
     }
   }
 
-  useMemo(() => {
+  useEffect(() => {
     if (itensCarregados && !isNovo) setItens(itensCarregados);
   }, [itensCarregados, isNovo]);
 
