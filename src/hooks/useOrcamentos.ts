@@ -117,12 +117,24 @@ export function useOrcamentos() {
 
   const converterEmVenda = useMutation({
     mutationFn: async ({ orc, itens }: { orc: Orcamento; itens: OrcamentoItem[] }) => {
+      // "Sem cliente" no Orçamento é cliente_id nulo + nome placeholder
+      // ('Cliente não identificado'), não uma coluna própria — ver
+      // SEM_CLIENTE_LABEL em Orcamentos.tsx. Já em Venda é o campo
+      // consumidor_final (coluna NOT NULL com DEFAULT true no banco!),
+      // com seu próprio placeholder ('Cliente sem cadastro'). Sem mapear
+      // isso explicitamente aqui, toda venda criada por conversão caía no
+      // default do banco (true) e nascia marcada "Cliente sem cadastro"
+      // mesmo quando o orçamento tinha um cliente real vinculado — o nome
+      // aparecia certo no topo da tela, mas o checkbox vinha marcado errado.
+      const orcSemCliente = !orc.cliente_id;
+
       // 1. Cria a venda
       const { data: venda, error: vErr } = await supabase
         .from('vendas')
         .insert({
-          cliente_nome: orc.cliente_nome,
-          cliente_id:   orc.cliente_id ?? null,
+          cliente_nome:     orcSemCliente ? 'Cliente sem cadastro' : orc.cliente_nome,
+          cliente_id:       orc.cliente_id ?? null,
+          consumidor_final: orcSemCliente,
           status:       'aprovado',
           desconto:     orc.desconto ?? 0,
           observacoes:  orc.observacoes,
