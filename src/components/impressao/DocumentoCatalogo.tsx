@@ -102,7 +102,6 @@ export function DocumentoCatalogo({ layout, empresa, documento: doc, style }: Do
         background: '#ffffff',
         color: '#111827',
         padding: 32,
-        paddingBottom: 88,
         width: '210mm',
         minHeight: '297mm',
         margin: '0 auto',
@@ -168,8 +167,15 @@ export function DocumentoCatalogo({ layout, empresa, documento: doc, style }: Do
         </div>
       ))}
 
-      {/* Rodapé — mesmo padrão visual de DocumentoImpressao.tsx */}
-      <div style={{ position: 'fixed', left: 32, right: 32, bottom: 24 }}>
+      {/* Rodapé — mesmo visual do usado em Venda/Orçamento, mas SEM
+          position:'fixed'. Lá funciona porque o documento é curto (cabe
+          numa página); aqui o catálogo pode ter muitas categorias e
+          ocupar várias páginas, e um rodapé fixo fica preso à base da
+          janela/viewport em vez de repetir em cada página impressa —
+          na tela isso aparece flutuando por cima do meio da lista ao
+          rolar. Em fluxo normal, o rodapé sai certinho depois do
+          último produto, sem sobrepor nada. */}
+      <div style={{ marginTop: 32 }}>
         <div style={{ position: 'relative', height: 32, display: 'flex', alignItems: 'center' }}>
           <div
             style={{
