@@ -3,7 +3,8 @@ import { useState, useEffect } from 'react';
 import { useConfiguracoes } from '../../hooks/useConfiguracoes';
 import { Configuracoes as ConfigType } from '../../types/configuracoes';
 import { EditorLayoutImpressao } from '../../components/configuracoes/EditorLayoutImpressao';
-import { DEFAULT_LAYOUT_VENDA, DEFAULT_LAYOUT_ORCAMENTO } from '../../types/layoutImpressao';
+import { EditorLayoutCatalogo } from '../../components/configuracoes/EditorLayoutCatalogo';
+import { DEFAULT_LAYOUT_VENDA, DEFAULT_LAYOUT_ORCAMENTO, DEFAULT_LAYOUT_CATALOGO } from '../../types/layoutImpressao';
 import {
   MENSAGEM_WHATSAPP_ORC_DEFAULT,
   TOKENS_MENSAGEM_ORC,
@@ -168,12 +169,12 @@ export function Impressao() {
       </div>
 
       <div className="flex gap-2">
-        {['venda', 'orcamento', 'mensagem'].map(t => (
+        {['venda', 'orcamento', 'catalogo', 'mensagem'].map(t => (
           <button key={t} onClick={() => setSubAba(t)}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
               subAba === t ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'
             }`}>
-            {t === 'venda' ? 'Venda' : t === 'orcamento' ? 'Orçamento' : 'Mensagem'}
+            {t === 'venda' ? 'Venda' : t === 'orcamento' ? 'Orçamento' : t === 'catalogo' ? 'Catálogo' : 'Mensagem'}
           </button>
         ))}
       </div>
@@ -207,6 +208,12 @@ export function Impressao() {
             </div>
           </div>
         </>
+      )}
+
+      {subAba === 'catalogo' && (
+        <EditorLayoutCatalogo
+          value={form.layout_impressao_catalogo ?? DEFAULT_LAYOUT_CATALOGO}
+          onChange={v => set('layout_impressao_catalogo', v)} empresa={form} />
       )}
 
       {subAba === 'mensagem' && (

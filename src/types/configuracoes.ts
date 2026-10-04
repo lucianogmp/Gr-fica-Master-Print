@@ -1,5 +1,5 @@
 // src/types/configuracoes.ts
-import { LayoutImpressaoConfig } from './layoutImpressao';
+import { LayoutImpressaoConfig, LayoutCatalogoConfig } from './layoutImpressao';
 
 // Taxa por número de parcelas
 export interface TaxaParcela {
@@ -68,6 +68,7 @@ export interface Configuracoes {
   mp_webhook_url?: string | null;
   layout_impressao_venda?: LayoutImpressaoConfig | null;
   layout_impressao_orcamento?: LayoutImpressaoConfig | null;
+  layout_impressao_catalogo?: LayoutCatalogoConfig | null;
   // Serralheria / Orçamento de Placas (Gestão de Custos → Serralheria)
   mao_obra_serralheria_pct?: number | null;
   mao_obra_instalacao_esticar?: number | null;

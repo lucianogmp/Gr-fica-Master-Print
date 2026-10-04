@@ -71,3 +71,43 @@ export const DEFAULT_LAYOUT_ORCAMENTO: LayoutImpressaoConfig = {
   mostrarAssinatura: false,
   textoRodape: '',
 };
+
+// =============================================================================
+// Catálogo de Produtos (Produtos → Tabela de Preços → Imprimir Catálogo)
+// Configuração editável separada da de Venda/Orçamento acima — o catálogo não
+// tem cliente, número de documento ou itens de uma transação, é uma listagem
+// de produtos ativos agrupável por categoria.
+// Fica salva em configuracoes.layout_impressao_catalogo (coluna jsonb).
+// =============================================================================
+
+export interface LayoutCatalogoConfig {
+  tituloDocumento: string;
+  mostrarLogo: boolean;
+  corDestaque: string;
+  mostrarDadosEmpresa: boolean;
+  mostrarCnpj: boolean;
+  mostrarContato: boolean;
+  textoCabecalhoExtra: string;
+  /** Agrupa os produtos em seções por categoria em vez de uma lista única */
+  agruparPorCategoria: boolean;
+  mostrarSku: boolean;
+  mostrarDescricao: boolean;
+  mostrarUnidade: boolean;
+  /** Vazio = usa o rodapé padrão da Empresa (empresa_rodape) */
+  textoRodape: string;
+}
+
+export const DEFAULT_LAYOUT_CATALOGO: LayoutCatalogoConfig = {
+  tituloDocumento: 'CATÁLOGO DE PRODUTOS',
+  mostrarLogo: true,
+  corDestaque: '#3b82f6',
+  mostrarDadosEmpresa: true,
+  mostrarCnpj: false,
+  mostrarContato: true,
+  textoCabecalhoExtra: '',
+  agruparPorCategoria: true,
+  mostrarSku: false,
+  mostrarDescricao: true,
+  mostrarUnidade: true,
+  textoRodape: '',
+};

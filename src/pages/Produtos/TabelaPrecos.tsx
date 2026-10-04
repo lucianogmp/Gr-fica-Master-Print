@@ -1,22 +1,52 @@
 // src/pages/Produtos/TabelaPrecos.tsx
 import { useProdutos } from '../../hooks/useProdutos';
-import { DollarSign } from 'lucide-react';
+import { useCategorias } from '../../hooks/useCategorias';
+import { useConfiguracoes } from '../../hooks/useConfiguracoes';
+import { DollarSign, Printer } from 'lucide-react';
+import { imprimirCatalogo } from '../../components/impressao/imprimirCatalogo';
+import { DEFAULT_LAYOUT_CATALOGO } from '../../types/layoutImpressao';
 
 const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 export function TabelaPrecos() {
   const { data: produtos = [], isLoading } = useProdutos();
+  const { data: categorias = [] } = useCategorias();
+  const { data: cfg } = useConfiguracoes();
   const ativos = produtos.filter(p => p.status === 'ativo');
+
+  function handleImprimirCatalogo() {
+    const categoriaPorId = new Map(categorias.map(c => [c.id, c.nome]));
+    imprimirCatalogo(
+      cfg?.layout_impressao_catalogo ?? DEFAULT_LAYOUT_CATALOGO,
+      cfg ?? {},
+      {
+        itens: ativos.map(p => ({
+          nome: p.nome,
+          sku: p.sku,
+          descricao: p.descricao,
+          unidade: p.unidade_medida,
+          precoVenda: Number(p.preco_venda),
+          categoriaNome: p.categoria_id ? categoriaPorId.get(p.categoria_id) ?? null : null,
+        })),
+      },
+    );
+  }
 
   if (isLoading) return <div className="p-8 text-blue-500 animate-pulse font-bold">Carregando...</div>;
 
   return (
     <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-black text-white flex items-center gap-2">
-          <DollarSign className="w-6 h-6 text-green-400" /> Tabela de Preços
-        </h1>
-        <p className="text-gray-500 text-sm">{ativos.length} produto(s) ativo(s)</p>
+      <div className="flex justify-between items-start flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl font-black text-white flex items-center gap-2">
+            <DollarSign className="w-6 h-6 text-green-400" /> Tabela de Preços
+          </h1>
+          <p className="text-gray-500 text-sm">{ativos.length} produto(s) ativo(s)</p>
+        </div>
+        <button onClick={handleImprimirCatalogo} disabled={ativos.length === 0}
+          className="bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 flex-shrink-0">
+          <Printer className="w-4 h-4" /> Imprimir Catálogo
+        </button>
       </div>
 
       <div className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">
