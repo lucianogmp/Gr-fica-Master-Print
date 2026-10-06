@@ -99,13 +99,12 @@ export function HelpTooltip({ texto, className }: HelpTooltipProps) {
             left: pos.left,
             width: 240,
             zIndex: 9999,
-            backgroundColor: '#1f2937',
-            border: '1px solid #374151',
             borderRadius: 8,
             padding: '8px 10px',
-            boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
           }}
-          className="text-[11px] text-gray-300 leading-relaxed"
+          // bg-[#1f2937]/border-gray-700 em classe, não inline — mesma
+          // classe que theme.css sobrescreve pro tema claro.
+          className="bg-[#1f2937] border border-gray-700 shadow-lg text-[11px] text-gray-300 leading-relaxed"
         >
           {texto}
         </div>,

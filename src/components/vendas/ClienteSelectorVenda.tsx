@@ -251,49 +251,37 @@ export function ClienteSelectorVenda({ value, clienteId, onChange, hideLabel }: 
   // Portal: renderiza direto no document.body, com position:fixed baseado na
   // posição real do input na tela. Assim o dropdown nunca fica "atrás" de
   // outros campos do formulário, não importa onde este componente é usado.
+  // Cor/fundo/borda em classe Tailwind, não inline: o dropdown vive num
+  // portal (document.body) e as sobrescritas de tema claro em theme.css só
+  // interceptam classes CSS, nunca `style`. Mesmas classes já cobertas
+  // usadas em DarkSelect/ConfirmModal.
   const dropdownLista = aberto && opcoes.length > 0 && dropRect ? createPortal(
     <div
       style={{
-        position: 'fixed',
-        top: dropRect.bottom + 4,
-        left: dropRect.left,
-        width: dropRect.width,
-        zIndex: 99999,
-        backgroundColor: '#0f1824',
-        border: '1px solid #374151',
-        borderRadius: 12,
-        boxShadow: '0 20px 60px rgba(0,0,0,0.85)',
-        overflow: 'hidden',
-        maxHeight: 320,
-        overflowY: 'auto',
+        position: 'fixed', top: dropRect.bottom + 4, left: dropRect.left, width: dropRect.width, zIndex: 99999,
+        borderRadius: 12, overflow: 'hidden', maxHeight: 320, overflowY: 'auto',
       }}
+      className="bg-[#1a2332] border border-gray-700 shadow-2xl"
     >
       {opcoes.map((c, idx) => (
         <button
           key={c.id}
           onMouseDown={e => { e.preventDefault(); selecionar(c); }}
           style={{
-            width: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '10px 16px',
-            backgroundColor: 'transparent',
-            borderBottom: idx < opcoes.length - 1 ? '1px solid #1f2937' : 'none',
-            cursor: 'pointer',
-            textAlign: 'left',
+            width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '10px 16px', cursor: 'pointer', textAlign: 'left',
           }}
-          className="hover:bg-blue-900/20 transition-colors"
+          className={`bg-transparent hover:bg-blue-900/20 transition-colors ${idx < opcoes.length - 1 ? 'border-b border-gray-700/50' : ''}`}
         >
           <div>
-            <p style={{ color: '#fff', fontSize: 14, fontWeight: 600, margin: 0 }}>
+            <p className="text-white" style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>
               {c.nome}
             </p>
-            <p style={{ color: '#9ca3af', fontSize: 11, margin: '2px 0 0' }}>
+            <p className="text-gray-400" style={{ fontSize: 11, margin: '2px 0 0' }}>
               {[c.telefone, c.email, c.cpf_cnpj].filter(Boolean).join(' · ') || 'Sem contato'}
             </p>
           </div>
-          <ArrowRight style={{ width: 14, height: 14, color: '#6b7280', flexShrink: 0 }} />
+          <ArrowRight className="text-gray-500" style={{ width: 14, height: 14, flexShrink: 0 }} />
         </button>
       ))}
     </div>,
@@ -301,11 +289,13 @@ export function ClienteSelectorVenda({ value, clienteId, onChange, hideLabel }: 
   ) : null;
 
   const dropdownCarregando = aberto && carregando && dropRect ? createPortal(
-    <div style={{
-      position: 'fixed', top: dropRect.bottom + 4, left: dropRect.left, width: dropRect.width, zIndex: 99999,
-      backgroundColor: '#0f1824', border: '1px solid #374151', borderRadius: 12,
-      padding: '12px 16px', color: '#9ca3af', fontSize: 12,
-    }}>
+    <div
+      style={{
+        position: 'fixed', top: dropRect.bottom + 4, left: dropRect.left, width: dropRect.width, zIndex: 99999,
+        borderRadius: 12, padding: '12px 16px', fontSize: 12,
+      }}
+      className="bg-[#1a2332] border border-gray-700 text-gray-400"
+    >
       Buscando...
     </div>,
     document.body

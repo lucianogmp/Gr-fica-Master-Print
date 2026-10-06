@@ -144,6 +144,10 @@ export function ItensEditor({ itens, onChange }: ItensEditorProps) {
 
   // Portal: renderiza no document.body, position:fixed relativo à viewport
   // getBoundingClientRect() retorna coords relativas à viewport — correto para fixed
+  // Cor/fundo/borda em classe Tailwind, não inline: o dropdown vive num
+  // portal (document.body) e as sobrescritas de tema claro em theme.css só
+  // interceptam classes CSS, nunca `style`. Mesmas classes já cobertas
+  // usadas em DarkSelect/ConfirmModal.
   const dropdown = mostrarSugestoes && dropRect ? createPortal(
     <div
       style={{
@@ -152,14 +156,12 @@ export function ItensEditor({ itens, onChange }: ItensEditorProps) {
         left: dropRect.left,
         width: dropRect.width,
         zIndex: 99999,
-        backgroundColor: '#0f1824',
-        border: '1px solid #374151',
         borderRadius: 12,
-        boxShadow: '0 20px 60px rgba(0,0,0,0.92)',
         overflow: 'hidden',
         maxHeight: 320,
         overflowY: 'auto',
       }}
+      className="bg-[#1a2332] border border-gray-700 shadow-2xl"
     >
       {produtosFiltrados.length === 0 ? (
         <p className="px-4 py-3 text-xs text-gray-500">Nenhum produto encontrado.</p>
@@ -174,14 +176,9 @@ export function ItensEditor({ itens, onChange }: ItensEditorProps) {
             style={{
               width: '100%', display: 'flex', alignItems: 'center',
               justifyContent: 'space-between', padding: '10px 14px',
-              borderBottom: '1px solid #1f2937',
               cursor: 'pointer', textAlign: 'left',
-              // backgroundColor NÃO fica fixo aqui — travava a classe hover
-              // (estilo inline sempre vence classe CSS normal). Só fixa
-              // quando está ativo por teclado, senão deixa a classe cuidar.
-              ...(ativoPorTeclado ? { backgroundColor: 'rgba(30, 58, 138, 0.3)' } : {}),
             }}
-            className={`transition-colors duration-150 ${ativoPorTeclado ? '' : 'bg-transparent hover:bg-blue-900/20'}`}
+            className={`transition-colors duration-150 border-b border-gray-700/50 ${ativoPorTeclado ? 'bg-blue-900/30' : 'bg-transparent hover:bg-blue-900/20'}`}
           >
             <div className="min-w-0">
               <p className="text-white text-xs font-bold truncate flex items-center gap-1.5">

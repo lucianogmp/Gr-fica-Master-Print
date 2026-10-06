@@ -90,55 +90,40 @@ export function ClienteSelector({ value, onChange }: Props) {
             autoComplete="off"
           />
 
-          {/* Dropdown — estilos inline para vencer o glassmorphism do index.css */}
+          {/* Dropdown — cor/fundo/borda em classe Tailwind, não inline: as
+              sobrescritas de tema claro em theme.css só interceptam
+              classes CSS, nunca `style` (e mutação direta via
+              onMouseEnter/Leave, menos ainda). Mesmas classes cobertas
+              usadas em DarkSelect/ConfirmModal. */}
           {aberto && opcoes.length > 0 && (
             <div
               style={{
-                position: 'absolute',
-                top: '100%',
-                left: 0,
-                right: 0,
-                marginTop: '4px',
-                zIndex: 9999,
-                backgroundColor: '#0f1824',
-                border: '1px solid #374151',
-                borderRadius: '12px',
-                boxShadow: '0 20px 60px rgba(0,0,0,0.8)',
-                overflow: 'hidden',
-                backdropFilter: 'none',
-                WebkitBackdropFilter: 'none',
+                position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px', zIndex: 9999,
+                borderRadius: '12px', overflow: 'hidden',
               }}
+              className="bg-[#1a2332] border border-gray-700 shadow-2xl"
             >
               {opcoes.map((c, idx) => (
                 <button
                   key={c.id}
                   onMouseDown={e => { e.preventDefault(); selecionar(c); }}
                   style={{
-                    width: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '12px 16px',
-                    backgroundColor: 'transparent',
-                    borderBottom: idx < opcoes.length - 1 ? '1px solid #1f2937' : 'none',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    transition: 'background-color 0.15s',
+                    width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '12px 16px', cursor: 'pointer', textAlign: 'left',
                   }}
-                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#1a2535')}
-                  onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+                  className={`bg-transparent hover:bg-gray-700 transition-colors duration-150 ${idx < opcoes.length - 1 ? 'border-b border-gray-700/50' : ''}`}
                 >
                   <div>
-                    <p style={{ color: '#ffffff', fontSize: '14px', fontWeight: 600, margin: 0 }}>
+                    <p className="text-white" style={{ fontSize: '14px', fontWeight: 600, margin: 0 }}>
                       {c.nome}
                     </p>
                     {c.telefone && (
-                      <p style={{ color: '#9ca3af', fontSize: '12px', margin: '2px 0 0 0' }}>
+                      <p className="text-gray-400" style={{ fontSize: '12px', margin: '2px 0 0 0' }}>
                         {c.telefone}
                       </p>
                     )}
                   </div>
-                  <ArrowRight style={{ width: 14, height: 14, color: '#6b7280', flexShrink: 0 }} />
+                  <ArrowRight className="text-gray-500" style={{ width: 14, height: 14, flexShrink: 0 }} />
                 </button>
               ))}
             </div>

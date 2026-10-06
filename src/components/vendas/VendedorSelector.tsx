@@ -128,6 +128,10 @@ export function VendedorSelector({ value, vendedorId, onChange, hideLabel }: Pro
         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500 pointer-events-none" />
       </div>
 
+      {/* Cor/fundo/borda em classe Tailwind, não inline: o dropdown vive num
+          portal (document.body) e as sobrescritas de tema claro em
+          theme.css só interceptam classes CSS, nunca `style`. Mesmas
+          classes já cobertas usadas em DarkSelect/ConfirmModal. */}
       {aberto && opcoesFiltradas.length > 0 && pos && createPortal(
         <div
           ref={dropdownRef}
@@ -137,14 +141,12 @@ export function VendedorSelector({ value, vendedorId, onChange, hideLabel }: Pro
             left: pos.left,
             width: pos.width,
             zIndex: 9999,
-            backgroundColor: '#0f1824',
-            border: '1px solid #374151',
             borderRadius: 12,
-            boxShadow: '0 20px 60px rgba(0,0,0,0.8)',
             overflow: 'hidden',
             maxHeight: 280,
             overflowY: 'auto',
           }}
+          className="bg-[#1a2332] border border-gray-700 shadow-2xl"
         >
           {opcoesFiltradas.map((v, idx) => (
             <button
@@ -157,14 +159,14 @@ export function VendedorSelector({ value, vendedorId, onChange, hideLabel }: Pro
                 flexDirection: 'column',
                 alignItems: 'flex-start',
                 padding: '10px 16px',
-                borderBottom: idx < opcoesFiltradas.length - 1 ? '1px solid #1f2937' : 'none',
                 cursor: 'pointer',
-                ...(idx === indiceAtivo ? { backgroundColor: 'rgba(30, 58, 138, 0.3)' } : {}),
               }}
-              className={`transition-colors duration-150 ${idx === indiceAtivo ? '' : 'bg-transparent hover:bg-blue-900/20'}`}
+              className={`transition-colors duration-150 ${idx < opcoesFiltradas.length - 1 ? 'border-b border-gray-700/50' : ''} ${
+                idx === indiceAtivo ? 'bg-blue-900/30' : 'bg-transparent hover:bg-blue-900/20'
+              }`}
             >
-              <span style={{ color: '#fff', fontSize: 14, fontWeight: 600 }}>{v.nome}</span>
-              <span style={{ color: '#9ca3af', fontSize: 11 }}>{v.email}</span>
+              <span className="text-white" style={{ fontSize: 14, fontWeight: 600 }}>{v.nome}</span>
+              <span className="text-gray-400" style={{ fontSize: 11 }}>{v.email}</span>
             </button>
           ))}
         </div>,

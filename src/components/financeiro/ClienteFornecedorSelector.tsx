@@ -109,15 +109,21 @@ export function ClienteFornecedorSelector({ tipo, value, onChange }: Props) {
   const IN = 'w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500';
 
   const dropdown = aberto && dropRect ? createPortal(
-    <div style={{
-      position: 'fixed', top: dropRect.bottom + 4, left: dropRect.left, width: dropRect.width, zIndex: 99999,
-      backgroundColor: '#0f1824', border: '1px solid #374151', borderRadius: 12,
-      boxShadow: '0 20px 60px rgba(0,0,0,0.85)', overflow: 'hidden', maxHeight: 280, overflowY: 'auto',
-    }}>
+    // Cor/fundo/borda em classe Tailwind, não inline — o dropdown vive num
+    // portal (document.body) e as sobrescritas de tema claro em theme.css
+    // só interceptam classes CSS, nunca `style`. Mesmas classes já cobertas
+    // usadas em DarkSelect/ConfirmModal.
+    <div
+      style={{
+        position: 'fixed', top: dropRect.bottom + 4, left: dropRect.left, width: dropRect.width, zIndex: 99999,
+        borderRadius: 12, overflow: 'hidden', maxHeight: 280, overflowY: 'auto',
+      }}
+      className="bg-[#1a2332] border border-gray-700 shadow-2xl"
+    >
       {carregando ? (
-        <div style={{ padding: '10px 16px', color: '#9ca3af', fontSize: 12 }}>Buscando...</div>
+        <div className="text-gray-400" style={{ padding: '10px 16px', fontSize: 12 }}>Buscando...</div>
       ) : opcoes.length === 0 ? (
-        <div style={{ padding: '10px 16px', color: '#6b7280', fontSize: 12 }}>
+        <div className="text-gray-500" style={{ padding: '10px 16px', fontSize: 12 }}>
           Nenhum {rotulo.toLowerCase()} encontrado.
         </div>
       ) : opcoes.map((r, idx) => (
@@ -126,20 +132,19 @@ export function ClienteFornecedorSelector({ tipo, value, onChange }: Props) {
           onMouseDown={e => { e.preventDefault(); selecionar(r); }}
           style={{
             width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '10px 16px', backgroundColor: 'transparent',
-            borderBottom: idx < opcoes.length - 1 ? '1px solid #1f2937' : 'none', cursor: 'pointer', textAlign: 'left',
+            padding: '10px 16px', cursor: 'pointer', textAlign: 'left',
           }}
-          className="hover:bg-blue-900/20 transition-colors"
+          className={`bg-transparent hover:bg-blue-900/20 transition-colors ${idx < opcoes.length - 1 ? 'border-b border-gray-700/50' : ''}`}
         >
           <div>
-            <p style={{ color: '#fff', fontSize: 14, fontWeight: 600, margin: 0 }}>{r.nome}</p>
+            <p className="text-white" style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>{r.nome}</p>
             {(r.telefone || r.email) && (
-              <p style={{ color: '#9ca3af', fontSize: 11, margin: '2px 0 0' }}>
+              <p className="text-gray-400" style={{ fontSize: 11, margin: '2px 0 0' }}>
                 {[r.telefone, r.email].filter(Boolean).join(' · ')}
               </p>
             )}
           </div>
-          <ArrowRight style={{ width: 14, height: 14, color: '#6b7280', flexShrink: 0 }} />
+          <ArrowRight className="text-gray-500" style={{ width: 14, height: 14, flexShrink: 0 }} />
         </button>
       ))}
     </div>,

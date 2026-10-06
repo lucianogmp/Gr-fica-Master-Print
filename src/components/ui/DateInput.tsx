@@ -203,14 +203,14 @@ export function DateInput({
           style={{
             top: pos.top, left: pos.left, width: pos.width,
             position: 'fixed', zIndex: 9999,
-            backgroundColor: '#1f2937', // inline de propósito — classe Tailwind
-            // arbitrária pode falhar de gerar dependendo do build, deixando o
-            // painel transparente com o conteúdo de trás "vazando" por cima.
-            border: '1px solid #374151',
             borderRadius: 12,
-            boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
           }}
-          className="p-3"
+          // bg-[#1f2937]/border-gray-700 em classe, não inline — já usada em
+          // 60+ lugares do app (compila normal) e é a mesma classe que
+          // theme.css sobrescreve pro tema claro. Com cor fixa via `style`,
+          // esse calendário continuava escuro mesmo com o resto do sistema
+          // em tema claro.
+          className="bg-[#1f2937] border border-gray-700 shadow-2xl p-3"
         >
           {/* Cabeçalho: mês/ano (clicável pra abrir a grade de anos) + navegação */}
           <div className="flex items-center justify-between mb-2">

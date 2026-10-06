@@ -37,19 +37,25 @@ const TRIGGER_MD =
 const TRIGGER_SM =
   'w-full bg-[#111827] border border-gray-700 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500 transition-colors text-left flex items-center justify-between gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed';
 
+// Posição/estrutura ficam inline (valores dinâmicos calculados por
+// recalcularPosicao). Cor, fundo e borda SEMPRE em classe Tailwind — nunca
+// inline — porque o menu vive num portal (document.body) e as sobrescritas
+// de tema claro em theme.css só interceptam classes CSS, nunca `style`
+// inline. Um dropdown colorido via style fica escuro pra sempre, mesmo
+// com o resto do sistema em tema claro.
 const DROPDOWN_BASE: React.CSSProperties = {
   position: 'fixed',
   zIndex: 9999,
-  backgroundColor: '#0f1824',
-  border: '1px solid #374151',
   borderRadius: 12,
-  boxShadow: '0 20px 60px rgba(0, 0, 0, 0.8)',
   overflow: 'hidden',
   maxHeight: 280,
   overflowY: 'auto',
-  backdropFilter: 'none',
-  WebkitBackdropFilter: 'none',
 };
+
+// bg-[#1a2332] e border-gray-700 já são sobrescritos pelo tema claro em
+// theme.css (mesmo par de classes usado em ConfirmModal) — garante que o
+// menu acompanha o tema do resto do sistema.
+const DROPDOWN_CLASSNAME = 'bg-[#1a2332] border border-gray-700 shadow-2xl';
 
 const ITEM: React.CSSProperties = {
   width: '100%',
@@ -59,15 +65,11 @@ const ITEM: React.CSSProperties = {
   cursor: 'pointer',
   textAlign: 'left',
   border: 'none',
-  // backgroundColor de propósito NÃO fica aqui — precisa ficar livre pra
-  // classe hover:bg-[...] funcionar (estilo inline sempre vence classe CSS
-  // normal, então backgroundColor fixo aqui travava o hover em qualquer
-  // botão que usasse ...ITEM, mesmo os sem seleção).
 };
 
+const GROUP_LABEL_CLASSNAME = 'text-gray-500';
 const GROUP_LABEL: React.CSSProperties = {
   padding: '8px 16px 4px',
-  color: '#6b7280',
   fontSize: 10,
   fontWeight: 700,
   textTransform: 'uppercase',
@@ -102,19 +104,14 @@ function OptionButton({
         onSelect(option.value);
       }}
       onMouseEnter={onHover}
-      style={{
-        ...ITEM,
-        borderBottom: isLast ? 'none' : '1px solid #1f2937',
-        // Só fixa a cor via inline quando SELECIONADO/ATIVO — senão o estilo
-        // inline (sempre presente) vence a classe hover:bg-[...] do
-        // Tailwind, e o hover nunca aparece visualmente ao passar o mouse.
-        ...(destacado ? { backgroundColor: '#1a2535' } : {}),
-      }}
-      className={`transition-colors duration-150 ${destacado ? '' : 'bg-transparent hover:bg-[#1a2535]'}`}
+      style={{ ...ITEM, borderBottom: isLast ? 'none' : undefined }}
+      className={`transition-colors duration-150 ${isLast ? '' : 'border-b border-gray-700/50'} ${
+        destacado ? 'bg-gray-700' : 'bg-transparent hover:bg-gray-700'
+      }`}
     >
       <span
+        className="text-white"
         style={{
-          color: '#ffffff',
           fontSize: 14,
           fontWeight: selected ? 600 : 400,
         }}
@@ -263,7 +260,7 @@ export function DarkSelect({
     if (groups?.length) {
       return groups.map((group, gi) => (
         <div key={group.label}>
-          <div style={GROUP_LABEL}>{group.label}</div>
+          <div style={GROUP_LABEL} className={GROUP_LABEL_CLASSNAME}>{group.label}</div>
           {group.options.map((o, idx) => (
             <OptionButton
               key={o.value}
@@ -281,7 +278,7 @@ export function DarkSelect({
     const offset = allowEmpty ? 1 : 0;
 
     if (searchable && lista.length === 0) {
-      return <p className="px-4 py-3 text-xs" style={{ color: '#6b7280' }}>Nenhuma opção encontrada.</p>;
+      return <p className="px-4 py-3 text-xs text-gray-500">Nenhuma opção encontrada.</p>;
     }
 
     return lista.map((o, idx) => (
@@ -335,7 +332,11 @@ export function DarkSelect({
       </div>
 
       {aberto && !disabled && coords && createPortal(
-        <div ref={dropdownRef} style={{ ...DROPDOWN_BASE, top: coords.top, left: coords.left, width: coords.width, maxHeight: coords.maxHeight }}>
+        <div
+          ref={dropdownRef}
+          style={{ ...DROPDOWN_BASE, top: coords.top, left: coords.left, width: coords.width, maxHeight: coords.maxHeight }}
+          className={DROPDOWN_CLASSNAME}
+        >
           {allowEmpty && (
             <button
               type="button"
@@ -344,14 +345,12 @@ export function DarkSelect({
                 selecionar('');
               }}
               onMouseEnter={() => searchable && setIndiceAtivo(0)}
-              style={{
-                ...ITEM,
-                borderBottom: '1px solid #1f2937',
-                ...(searchable && indiceAtivo === 0 ? { backgroundColor: '#1a2535' } : {}),
-              }}
-              className={`transition-colors duration-150 ${searchable && indiceAtivo === 0 ? '' : 'bg-transparent hover:bg-[#1a2535]'}`}
+              style={ITEM}
+              className={`transition-colors duration-150 border-b border-gray-700/50 ${
+                searchable && indiceAtivo === 0 ? 'bg-gray-700' : 'bg-transparent hover:bg-gray-700'
+              }`}
             >
-              <span style={{ color: '#9ca3af', fontSize: 14 }}>{placeholder}</span>
+              <span className="text-gray-400" style={{ fontSize: 14 }}>{placeholder}</span>
             </button>
           )}
           {renderOptions()}
