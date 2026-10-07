@@ -46,6 +46,8 @@
   border-color: var(--glass-border) !important;
 }
 
+:root[data-theme="light"] .bg-gray-600,
+:root[data-theme="light"] .bg-gray-600\/40,
 :root[data-theme="light"] .bg-gray-700,
 :root[data-theme="light"] .bg-gray-800,
 :root[data-theme="light"] .bg-gray-800\/30,
@@ -133,16 +135,33 @@
   color: #ffffff !important;
 }
 
+:root[data-theme="light"] .border-gray-500,
+:root[data-theme="light"] .border-gray-500\/25,
+:root[data-theme="light"] .border-gray-500\/30,
+:root[data-theme="light"] .border-gray-600,
+:root[data-theme="light"] .border-gray-600\/30,
 :root[data-theme="light"] .border-gray-700,
 :root[data-theme="light"] .border-gray-700\/50,
-:root[data-theme="light"] .border-gray-700\/60 {
+:root[data-theme="light"] .border-gray-700\/60,
+:root[data-theme="light"] .border-gray-700\/70,
+:root[data-theme="light"] .border-gray-800,
+:root[data-theme="light"] .border-gray-800\/50,
+:root[data-theme="light"] .border-gray-800\/60 {
   border-color: var(--glass-border) !important;
+}
+
+:root[data-theme="light"] .bg-gray-900,
+:root[data-theme="light"] .bg-gray-900\/50 {
+  background-color: rgba(248, 250, 252, 0.94) !important;
+  border-color: var(--glass-border) !important;
+  color: var(--text-secondary) !important;
 }
 
 :root[data-theme="light"] .hover\:bg-gray-700:hover {
   background-color: rgba(37, 99, 235, 0.08) !important;
 }
 
+:root[data-theme="light"] .hover\:bg-gray-500:hover,
 :root[data-theme="light"] .hover\:bg-gray-600:hover,
 :root[data-theme="light"] .hover\:bg-gray-800\/20:hover,
 :root[data-theme="light"] .hover\:bg-gray-800\/30:hover,
