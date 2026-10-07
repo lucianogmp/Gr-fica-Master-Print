@@ -38,13 +38,17 @@ export interface MovimentoEstoque {
   };
 }
 
-export function statusEstoque(mp: MateriaPrima): { key: StatusEstoque; label: string; cor: string } {
+// `cor` fica em hex fixo porque também monta o fundo/borda translúcidos do
+// selo (`cor + '15'`/`cor + '40'`) — concatenar um alfa num var() não
+// funciona. `corTexto` usa a variável de tema (ver index.css) só pro texto,
+// que senão fica claro/pastel demais pra ler no tema claro.
+export function statusEstoque(mp: MateriaPrima): { key: StatusEstoque; label: string; cor: string; corTexto: string } {
   if (mp.controla_estoque === false) {
-    return { key: 'sem_controle', label: 'Sem controle', cor: '#6b7280' };
+    return { key: 'sem_controle', label: 'Sem controle', cor: '#6b7280', corTexto: 'var(--chart-slate)' };
   }
   const saldo = Number(mp.saldo);
   const min   = Number(mp.estoque_minimo || 0);
-  if (saldo <= 0)              return { key: 'zerado', label: 'Zerado', cor: '#ef4444' };
-  if (min > 0 && saldo <= min) return { key: 'baixo',  label: 'Baixo',  cor: '#f59e0b' };
-  return                               { key: 'ok',     label: 'OK',     cor: '#10b981' };
+  if (saldo <= 0)              return { key: 'zerado', label: 'Zerado', cor: '#ef4444', corTexto: 'var(--chart-red)' };
+  if (min > 0 && saldo <= min) return { key: 'baixo',  label: 'Baixo',  cor: '#f59e0b', corTexto: 'var(--chart-amber)' };
+  return                               { key: 'ok',     label: 'OK',     cor: '#10b981', corTexto: 'var(--chart-emerald)' };
 }

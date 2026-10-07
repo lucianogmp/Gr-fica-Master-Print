@@ -49,10 +49,16 @@
 :root[data-theme="light"] .bg-gray-600,
 :root[data-theme="light"] .bg-gray-600\/40,
 :root[data-theme="light"] .bg-gray-700,
+:root[data-theme="light"] .bg-gray-700\/30,
+:root[data-theme="light"] .bg-gray-700\/50,
+:root[data-theme="light"] .bg-gray-700\/60,
 :root[data-theme="light"] .bg-gray-800,
+:root[data-theme="light"] .bg-gray-800\/20,
 :root[data-theme="light"] .bg-gray-800\/30,
 :root[data-theme="light"] .bg-gray-800\/40,
-:root[data-theme="light"] .bg-gray-800\/50 {
+:root[data-theme="light"] .bg-gray-800\/50,
+:root[data-theme="light"] .bg-gray-800\/60,
+:root[data-theme="light"] .bg-gray-800\/80 {
   background-color: rgba(248, 250, 252, 0.94) !important;
   border-color: var(--glass-border) !important;
   color: var(--text-secondary) !important;
@@ -162,10 +168,16 @@
 }
 
 :root[data-theme="light"] .hover\:bg-gray-500:hover,
+:root[data-theme="light"] .hover\:bg-gray-500\/25:hover,
 :root[data-theme="light"] .hover\:bg-gray-600:hover,
+:root[data-theme="light"] .hover\:bg-gray-700\/30:hover,
+:root[data-theme="light"] .hover\:bg-gray-700\/50:hover,
+:root[data-theme="light"] .hover\:bg-gray-700\/60:hover,
+:root[data-theme="light"] .hover\:bg-gray-800:hover,
 :root[data-theme="light"] .hover\:bg-gray-800\/20:hover,
 :root[data-theme="light"] .hover\:bg-gray-800\/30:hover,
-:root[data-theme="light"] .hover\:bg-gray-700\/30:hover {
+:root[data-theme="light"] .hover\:bg-gray-800\/60:hover,
+:root[data-theme="light"] .hover\:bg-gray-800\/80:hover {
   background-color: rgba(37, 99, 235, 0.08) !important;
 }
 
@@ -173,3 +185,95 @@
 :root[data-theme="light"] .theme-toggle:hover {
   color: #2563eb !important;
 }
+
+:root[data-theme="light"] .hover\:text-gray-200:hover,
+:root[data-theme="light"] .hover\:text-gray-300:hover {
+  color: var(--text-primary) !important;
+}
+
+/* ---------------------------------------------------------------------
+   Texto colorido de "destaque" (status, valores, links, ícones de ação).
+   As tonalidades pastel (200/300) e intermediárias (400/500) foram
+   pensadas pra contraste sobre fundo escuro — em telas claras, sobre o
+   fundo branco/vidro, ficam claras demais pra ler (exatamente o problema
+   "ótimo no escuro, ruim no claro"). Aqui elas são escurecidas só no tema
+   claro, pra manter contraste de texto em qualquer um dos dois.
+   Exceção: os cartões de resumo da importação (ImportarDadosPage) usam
+   fundo sólido escuro (bg-*-950) de propósito, como um "terminal" que não
+   muda com o tema — por isso são excluídos abaixo com :not() e com a
+   variante "dentro de" (descendente), já que o texto pastel ali continua
+   sobre fundo escuro nos dois temas. */
+:root[data-theme="light"] .text-blue-300:not(.bg-blue-950),
+:root[data-theme="light"] .text-blue-400:not(.bg-blue-950),
+:root[data-theme="light"] .text-blue-500:not(.bg-blue-950) {
+  color: #1d4ed8 !important;
+}
+
+:root[data-theme="light"] .text-red-200:not(.bg-red-950),
+:root[data-theme="light"] .text-red-300:not(.bg-red-950),
+:root[data-theme="light"] .text-red-400:not(.bg-red-950),
+:root[data-theme="light"] .text-red-500:not(.bg-red-950) {
+  color: #b91c1c !important;
+}
+
+:root[data-theme="light"] .text-green-200:not(.bg-green-950),
+:root[data-theme="light"] .text-green-300:not(.bg-green-950),
+:root[data-theme="light"] .text-green-400:not(.bg-green-950),
+:root[data-theme="light"] .text-green-500:not(.bg-green-950) {
+  color: #15803d !important;
+}
+
+:root[data-theme="light"] .text-yellow-300:not(.bg-yellow-950),
+:root[data-theme="light"] .text-yellow-400:not(.bg-yellow-950),
+:root[data-theme="light"] .text-yellow-500:not(.bg-yellow-950),
+:root[data-theme="light"] .text-yellow-600:not(.bg-yellow-950) {
+  color: #a16207 !important;
+}
+
+:root[data-theme="light"] .text-purple-200:not(.bg-purple-950),
+:root[data-theme="light"] .text-purple-400:not(.bg-purple-950) {
+  color: #7e22ce !important;
+}
+
+:root[data-theme="light"] .text-orange-300:not(.bg-orange-950),
+:root[data-theme="light"] .text-orange-400:not(.bg-orange-950),
+:root[data-theme="light"] .text-orange-600:not(.bg-orange-950) {
+  color: #c2410c !important;
+}
+
+:root[data-theme="light"] .text-amber-300:not(.bg-amber-950),
+:root[data-theme="light"] .text-amber-400:not(.bg-amber-950) {
+  color: #b45309 !important;
+}
+
+:root[data-theme="light"] .text-pink-400 {
+  color: #be185d !important;
+}
+
+:root[data-theme="light"] .text-emerald-400,
+:root[data-theme="light"] .text-emerald-500 {
+  color: #047857 !important;
+}
+
+:root[data-theme="light"] .hover\:text-blue-300:hover { color: #1e40af !important; }
+:root[data-theme="light"] .hover\:text-red-300:hover { color: #991b1b !important; }
+:root[data-theme="light"] .hover\:text-green-400:hover { color: #15803d !important; }
+:root[data-theme="light"] .hover\:text-yellow-300:hover { color: #92400e !important; }
+:root[data-theme="light"] .hover\:text-orange-300:hover { color: #9a3412 !important; }
+
+/* Cartões de resumo da importação (bg-*-950): mantêm o texto pastel
+   original mesmo no tema claro, porque o fundo escuro deles também não
+   muda — ver explicação acima. Cobre tanto o caso "mesma tag" (classe de
+   fundo e de texto no mesmo elemento) quanto "texto dentro do cartão". */
+:root[data-theme="light"] .bg-red-950.text-red-200,
+:root[data-theme="light"] .bg-red-950 .text-red-200,
+:root[data-theme="light"] .bg-red-950.text-red-300,
+:root[data-theme="light"] .bg-red-950 .text-red-300 { color: #fca5a5 !important; }
+
+:root[data-theme="light"] .bg-green-950.text-green-200,
+:root[data-theme="light"] .bg-green-950 .text-green-200,
+:root[data-theme="light"] .bg-green-950.text-green-300,
+:root[data-theme="light"] .bg-green-950 .text-green-300 { color: #86efac !important; }
+
+:root[data-theme="light"] .bg-amber-950.text-amber-300,
+:root[data-theme="light"] .bg-amber-950 .text-amber-300 { color: #fcd34d !important; }

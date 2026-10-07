@@ -20,10 +20,10 @@ export function DashboardIndicators({ data, className = '' }: { data: any; class
       </h3>
       <div className="grid grid-cols-2 xl:grid-cols-3 gap-2">
         {[
-          { label: 'Ticket Médio',       valor: fmtBRL(data?.ticketMedio), sub: `${(data?.top5Clientes?.length ?? 0)} clientes`, cor: '#3b82f6', icon: Ticket },
-          { label: 'Margem de Lucro',    valor: `${(data?.margemContrib ?? 0).toFixed(1)}%`, sub: '', cor: '#10b981', icon: TrendingUp },
-          { label: 'Inadimplência',      valor: `${(data?.inadimplencia ?? 0).toFixed(1)}%`, sub: '', cor: '#ef4444', icon: AlertTriangle },
-          { label: 'Crescimento Mensal', valor: fmtPct(data?.pctReceita ?? 0), sub: '', cor: data?.pctReceita && data.pctReceita >= 0 ? '#10b981' : '#ef4444', icon: TrendingDown },
+          { label: 'Ticket Médio',       valor: fmtBRL(data?.ticketMedio), sub: `${(data?.top5Clientes?.length ?? 0)} clientes`, cor: 'var(--chart-blue)', icon: Ticket },
+          { label: 'Margem de Lucro',    valor: `${(data?.margemContrib ?? 0).toFixed(1)}%`, sub: '', cor: 'var(--chart-emerald)', icon: TrendingUp },
+          { label: 'Inadimplência',      valor: `${(data?.inadimplencia ?? 0).toFixed(1)}%`, sub: '', cor: 'var(--chart-red)', icon: AlertTriangle },
+          { label: 'Crescimento Mensal', valor: fmtPct(data?.pctReceita ?? 0), sub: '', cor: data?.pctReceita && data.pctReceita >= 0 ? 'var(--chart-emerald)' : 'var(--chart-red)', icon: TrendingDown },
         ].map(ind => {
           const Icon = ind.icon;
           return (

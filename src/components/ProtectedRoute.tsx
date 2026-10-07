@@ -50,7 +50,11 @@ export function ProtectedRoute({ children, rota }: ProtectedRouteProps) {
             <h2 className="text-lg font-black text-white mb-2">Acesso negado</h2>
             <p className="text-gray-400 text-sm">
               Seu perfil{' '}
-              <span className="font-bold" style={{ color: ROLES[role!]?.cor ?? '#fff' }}>
+              {/* ROLES[...].cor já é uma classe Tailwind (ex: "text-yellow-400"),
+                  não um hex — precisa ir em className, não em style={{color}}
+                  (que só aceita um valor CSS válido e silenciosamente não
+                  aplicava nada antes desta correção). */}
+              <span className={`font-bold ${ROLES[role!]?.cor ?? 'text-white'}`}>
                 {ROLES[role!]?.label ?? role}
               </span>{' '}
               não tem permissão para acessar esta área.

@@ -139,7 +139,7 @@ export function Estoque() {
                     <td className="px-5 py-3 text-center">
                       <span
                         className="px-2 py-1 rounded-full text-[10px] font-bold border"
-                        style={{ color: st.cor, borderColor: st.cor + '40', backgroundColor: st.cor + '15' }}
+                        style={{ color: st.corTexto, borderColor: st.cor + '40', backgroundColor: st.cor + '15' }}
                       >
                         {st.label}
                       </span>

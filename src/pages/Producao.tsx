@@ -189,7 +189,7 @@ export function Producao() {
                         <div className="flex items-center justify-between mb-1.5">
                           <span
                             className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded"
-                            style={{ color: prio?.cor, backgroundColor: prio?.cor + '20' }}
+                            style={{ color: prio?.corTexto, backgroundColor: prio?.cor + '20' }}
                           >
                             {prio?.label ?? ordem.prioridade}
                           </span>

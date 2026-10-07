@@ -30,9 +30,13 @@ export const ETAPAS: { key: Etapa; label: string; cor: string; bg: string }[] = 
   { key: 'entregue',   label: 'Entregue',   cor: '#86efac', bg: '#14532d' },
 ];
 
-export const PRIORIDADES: { key: Prioridade; label: string; cor: string }[] = [
-  { key: 'baixa',   label: 'Baixa',   cor: '#64748b' },
-  { key: 'normal',  label: 'Normal',  cor: '#3b82f6' },
-  { key: 'alta',    label: 'Alta',    cor: '#f59e0b' },
-  { key: 'urgente', label: 'Urgente', cor: '#ef4444' },
+// `cor` continua em hex fixo porque também monta o fundo translúcido do
+// selo (`cor + '20'`) — concatenar um alfa num var() não funciona. Já
+// `corTexto` usa a variável de tema (ver index.css) só pro texto do selo,
+// que senão fica claro/pastel demais pra ler no tema claro.
+export const PRIORIDADES: { key: Prioridade; label: string; cor: string; corTexto: string }[] = [
+  { key: 'baixa',   label: 'Baixa',   cor: '#64748b', corTexto: 'var(--chart-slate)' },
+  { key: 'normal',  label: 'Normal',  cor: '#3b82f6', corTexto: 'var(--chart-blue)' },
+  { key: 'alta',    label: 'Alta',    cor: '#f59e0b', corTexto: 'var(--chart-amber)' },
+  { key: 'urgente', label: 'Urgente', cor: '#ef4444', corTexto: 'var(--chart-red)' },
 ];

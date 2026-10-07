@@ -33,6 +33,17 @@
   --shadow-strong: rgba(0, 0, 0, 0.55);
   --shadow-card: rgba(0, 0, 0, 0.4);
   --active-link-text: #ffffff;
+  /* Cores de destaque usadas em estilo inline (gráficos, KPIs, indicadores)
+     — não dá pra sobrescrever style={{color}} via CSS, então os componentes
+     que usam cor dinâmica (DashboardKpis, DashboardIndicators, etc.) devem
+     ler essas variáveis em vez de ter o hex fixo no código. Tons saturados
+     no escuro, mais escuros/sóbrios no claro pra manter contraste de texto. */
+  --chart-emerald: #10b981;
+  --chart-red: #ef4444;
+  --chart-blue: #3b82f6;
+  --chart-purple: #a855f7;
+  --chart-amber: #f59e0b;
+  --chart-slate: #94a3b8;
 }
 
 :root[data-theme="light"] {
@@ -63,6 +74,12 @@
   --shadow-strong: rgba(15, 23, 42, 0.16);
   --shadow-card: rgba(15, 23, 42, 0.12);
   --active-link-text: #ffffff;
+  --chart-emerald: #15803d;
+  --chart-red: #b91c1c;
+  --chart-blue: #1d4ed8;
+  --chart-purple: #7e22ce;
+  --chart-amber: #b45309;
+  --chart-slate: #475569;
 }
 
 /* ─── Tipografia Global ─── */
