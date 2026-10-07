@@ -36,6 +36,16 @@
   box-shadow: 0 8px 32px 0 var(--shadow-card) !important;
 }
 
+/* Campos de busca/input mais escuros que o input padrão (#111827) — mesmo
+   grupo de cima, mas com fundo sólido (sem glass) porque em geral ficam
+   dentro de um card que já tem o glass-bg; usados em ItensEditor,
+   ItemOrcEditor, PlacaOrcEditor, AbaVendas, ModalMov. */
+:root[data-theme="light"] .bg-\[\#0d1117\],
+:root[data-theme="light"] .bg-\[\#0d1420\] {
+  background: var(--input-bg) !important;
+  border-color: var(--glass-border) !important;
+}
+
 :root[data-theme="light"] .bg-gray-700,
 :root[data-theme="light"] .bg-gray-800,
 :root[data-theme="light"] .bg-gray-800\/30,

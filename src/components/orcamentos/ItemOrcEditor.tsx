@@ -492,7 +492,7 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando, mostrarCusto 
                 }
               }}
               placeholder="Buscar produto por nome... (setas + Enter pra selecionar)"
-              className="flex-1 bg-transparent text-white text-sm placeholder-gray-600 focus:outline-none [color-scheme:dark]"
+              className="flex-1 bg-transparent text-white text-sm placeholder-gray-600 focus:outline-none"
             />
           </div>
 

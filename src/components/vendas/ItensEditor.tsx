@@ -17,7 +17,7 @@ const fmtBRL = (v: number) => Number(v).toLocaleString('pt-BR', { style: 'curren
 const IN = [
   'bg-[#111827]', 'border border-gray-700', 'rounded-lg', 'px-2', 'py-1.5',
   'text-white', 'text-xs', 'focus:outline-none', 'focus:border-blue-500',
-  'transition-colors', 'w-full', '[color-scheme:dark]',
+  'transition-colors', 'w-full',
 ].join(' ');
 
 // Remove as setinhas nativas de incremento do input number — elas comem espaço
@@ -216,7 +216,7 @@ export function ItensEditor({ itens, onChange }: ItensEditorProps) {
             onFocus={() => { atualizarRect(); if (buscaProduto.length > 0) setMostrar(true); }}
             onKeyDown={handleBuscaKeyDown}
             placeholder="Buscar produto por nome ou SKU... (setas + Enter pra selecionar)"
-            className="flex-1 bg-transparent text-white text-xs placeholder-gray-600 focus:outline-none [color-scheme:dark]"
+            className="flex-1 bg-transparent text-white text-xs placeholder-gray-600 focus:outline-none"
           />
         </div>
         {dropdown}

@@ -81,7 +81,7 @@ interface Props {
   isSalvando?: boolean;
 }
 
-const IN_SM = "bg-[#111827] border border-gray-700 rounded-md px-2.5 py-1 text-white text-xs text-right focus:outline-none focus:border-blue-500 [color-scheme:dark]";
+const IN_SM = "bg-[#111827] border border-gray-700 rounded-md px-2.5 py-1 text-white text-xs text-right focus:outline-none focus:border-blue-500";
 
 function novaParcelaBase(valor: number, formaPadrao: string): RascunhoParcela {
   return {
@@ -362,9 +362,9 @@ function LinhaRascunho({ indice, total, linha, contas, formas, onChange, onRemov
     <div className={`grid grid-cols-[1.75rem_1fr_1fr_1fr_1fr_1fr_1.75rem] gap-2 px-4 py-2 items-center ${recebido ? 'bg-blue-500/5' : ''}`}>
       <span className="text-[10px] text-gray-500">{indice}/{total}</span>
       <MoneyInput value={linha.valor} onChange={v => onChange({ valor: v })}
-        className="bg-[#111827] border border-gray-700 rounded-md px-2 py-1 text-white text-xs focus:outline-none focus:border-blue-500 [color-scheme:dark] w-full" placeholder="0,00" />
+        className="bg-[#111827] border border-gray-700 rounded-md px-2 py-1 text-white text-xs focus:outline-none focus:border-blue-500 w-full" placeholder="0,00" />
       <DateInput value={linha.data_pagamento} onChange={v => onChange({ data_pagamento: v })}
-        className="bg-[#111827] border border-gray-700 rounded-md px-2 py-1 text-white text-xs focus:outline-none focus:border-blue-500 [color-scheme:dark] w-full" />
+        className="bg-[#111827] border border-gray-700 rounded-md px-2 py-1 text-white text-xs focus:outline-none focus:border-blue-500 w-full" />
       <DarkSelect size="sm" value={linha.forma_pagamento}
         onChange={v => {
           const compat = v === 'Dinheiro' ? contasAtivas.filter(c => c.tipo === 'caixa') : contasAtivas.filter(c => c.tipo !== 'caixa');
