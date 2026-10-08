@@ -36,6 +36,16 @@
   box-shadow: 0 8px 32px 0 var(--shadow-card) !important;
 }
 
+/* Degradês "esconde-card-cortado" das colunas do Kanban de Produção (topo
+   e rodapé da lista rolável) — usam from-[#1a2332] pra sumir suavemente
+   na mesma cor do fundo da coluna. Sem isso, no tema claro o fundo da
+   coluna vira claro (regra acima) mas o degradê continua começando num
+   azul-marinho escuro sólido, aparecendo como uma sombra escura logo
+   abaixo do título e no final da lista. */
+:root[data-theme="light"] .from-\[\#1a2332\] {
+  --tw-gradient-from: var(--glass-bg) !important;
+}
+
 /* Campos de busca/input mais escuros que o input padrão (#111827) — mesmo
    grupo de cima, mas com fundo sólido (sem glass) porque em geral ficam
    dentro de um card que já tem o glass-bg; usados em ItensEditor,
