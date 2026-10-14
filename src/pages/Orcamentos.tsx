@@ -7,6 +7,7 @@ import { useConfiguracoes } from '../hooks/useConfiguracoes';
 import { MENSAGEM_WHATSAPP_ORC_DEFAULT, preencherTemplateMensagem } from '../types/configuracoes';
 import { DocumentoImpressaoData } from '../components/impressao/DocumentoImpressao';
 import { imprimirDocumento } from '../components/impressao/imprimirDocumento';
+import { imprimirCustos } from '../components/impressao/imprimirCustos';
 import { DEFAULT_LAYOUT_ORCAMENTO } from '../types/layoutImpressao';
 import { marcarAlteracoesPendentes, limparAlteracoesPendentes } from '../lib/unsavedChangesGuard';
 import { OrdenarMenu, aplicarOrdenacao, Ordenacao } from '../components/ui/OrdenarMenu';
@@ -184,6 +185,23 @@ export function Orcamentos() {
       observacoes: orc.observacoes,
     };
     imprimirDocumento(layoutOrcamento, cfg ?? {}, doc);
+  }
+
+  // PDF interno com custos detalhados (material, estrutura, acabamentos,
+  // instalação, total de custos e lucro). Só admin — nunca vai pro cliente.
+  function imprimirComCustos(dados?: SnapshotOrcamento) {
+    if (!isAdmin) return;
+    const orc = dados ? dados.orcamento : (form as Orcamento);
+    const itensRef = dados ? dados.itens : itens;
+    imprimirCustos(cfg ?? {}, {
+      numero: orc.numero ?? null,
+      data: orc.created_at ?? null,
+      clienteNome: orc.cliente_nome ?? '',
+      titulo: orc.tipo ?? null,
+      itens: itensRef,
+      descontoPct: Number(orc.desconto ?? 0),
+      observacoes: orc.observacoes,
+    });
   }
 
   // Seleção múltipla na lista — pra imprimir vários de uma vez, excluir em
@@ -884,8 +902,14 @@ export function Orcamentos() {
           </button>
           <button onClick={() => imprimir(posSalvar)}
             className="w-full flex items-center gap-2 justify-center bg-gray-700 hover:bg-gray-600 text-gray-200 px-4 py-3 rounded-xl font-bold text-sm transition-all">
-            <Printer className="w-4 h-4" /> Imprimir
+            <Printer className="w-4 h-4" /> PDF sem custos (cliente)
           </button>
+          {isAdmin && (
+            <button onClick={() => imprimirComCustos(posSalvar)}
+              className="w-full flex items-center gap-2 justify-center bg-red-700 hover:bg-red-600 text-white px-4 py-3 rounded-xl font-bold text-sm transition-all">
+              <Printer className="w-4 h-4" /> PDF com custos (interno)
+            </button>
+          )}
           <button onClick={() => enviarWhatsAppTexto(posSalvar)}
             className="w-full flex items-center gap-2 justify-center bg-green-700 hover:bg-green-600 text-white px-4 py-3 rounded-xl font-bold text-sm transition-all">
             <MessageCircle className="w-4 h-4" /> Enviar Orçamento
@@ -1230,6 +1254,19 @@ export function Orcamentos() {
                 <button onClick={handleConverter} disabled={isConvertendo}
                   className="bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all flex-shrink-0">
                   {isConvertendo ? 'Convertendo...' : 'Converter em Venda'}
+                </button>
+              )}
+
+              {itens.length > 0 && (
+                <button onClick={() => imprimir()}
+                  className="flex items-center gap-1.5 bg-gray-700 hover:bg-gray-600 text-gray-200 px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex-shrink-0">
+                  <Printer className="w-4 h-4" /> PDF sem custos
+                </button>
+              )}
+              {isAdmin && itens.length > 0 && (
+                <button onClick={() => imprimirComCustos()}
+                  className="flex items-center gap-1.5 bg-red-700 hover:bg-red-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex-shrink-0">
+                  <Printer className="w-4 h-4" /> PDF com custos
                 </button>
               )}
 
