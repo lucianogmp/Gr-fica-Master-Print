@@ -17,7 +17,7 @@ import { useAcabamentos } from '../hooks/useAcabamentos';
 import { useMateriasPrimas } from '../hooks/useEstoque';
 import { useProdutos } from '../hooks/useProdutos';
 import { useCategorias } from '../hooks/useCategorias';
-import { Orcamento, OrcamentoItem, StatusOrcamento, STATUS_ORC } from '../types/orcamento';
+import { Orcamento, OrcamentoItem, StatusOrcamento, STATUS_ORC, agregarCustoDetalhadoOrcamento } from '../types/orcamento';
 import { formatarDescricaoImpressaoPlaca } from '../lib/placaCalc';
 import { correspondeABuscaEmCampos } from '../lib/buscaFlexivel';
 import { formatarEnderecoCliente } from '../types/cliente';
@@ -137,16 +137,13 @@ export function Orcamentos() {
   const descGlobal = Number(form.desconto ?? 0);
   const totalFinal = subtotal * (1 - descGlobal / 100);
 
-  // Custo total do orçamento — soma o custo de cada item (gravado em cada
+  // Custo total do orçamento, separado por categoria (material, estrutura,
+  // acabamentos, instalação) — soma o custo de cada item (gravado em cada
   // linha pelo editor de item). Itens sem custo cadastrado (m² manual, ou
   // material/produto sem receita/BOM montada) simplesmente não somam nada.
-  const custoTotalOrcamento = itens.reduce((s, i) => {
-    const custo = Number((i as any).custo_unitario ?? 0);
-    if (custo <= 0) return s;
-    const qtd = Number(i.quantidade ?? 0);
-    const area = (i as any).area_m2;
-    return s + custo * (area != null ? Number(area) * qtd : qtd);
-  }, 0);
+  const resumoCusto = useMemo(() => agregarCustoDetalhadoOrcamento(itens), [itens]);
+  const custoTotalOrcamento = resumoCusto.total;
+  const [verCustoDetalhado, setVerCustoDetalhado] = useState(false);
 
   const { data: cfg } = useConfiguracoes();
   const layoutOrcamento = { ...DEFAULT_LAYOUT_ORCAMENTO, ...(cfg?.layout_impressao_orcamento ?? {}) };
@@ -1248,18 +1245,47 @@ export function Orcamentos() {
                 isso fica lá em cima, no cabeçalho de Itens do Orçamento. */}
             {isAdmin && mostrarCusto && custoTotalOrcamento > 0 && (
               <div className="mt-4 pt-4 border-t border-gray-800">
-                <div className="flex justify-between items-center bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 max-w-sm">
-                  <span className="text-[10px] font-bold text-red-400 uppercase flex items-center gap-1">
-                    🔒 Custo Total (só você vê)
-                  </span>
-                  <div className="text-right">
-                    <p className="text-sm font-black text-red-300">{fmtBRL(custoTotalOrcamento)}</p>
-                    {totalFinal > 0 && (
-                      <p className="text-[9px] text-gray-500">
-                        Margem: {(((totalFinal - custoTotalOrcamento) / totalFinal) * 100).toFixed(1)}%
-                      </p>
-                    )}
+                <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 max-w-sm">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] font-bold text-red-400 uppercase flex items-center gap-1">
+                      🔒 Custo Total (só você vê)
+                    </span>
+                    <div className="text-right">
+                      <p className="text-sm font-black text-red-300">{fmtBRL(custoTotalOrcamento)}</p>
+                      {totalFinal > 0 && (
+                        <p className="text-[9px] text-gray-500">
+                          Margem: {(((totalFinal - custoTotalOrcamento) / totalFinal) * 100).toFixed(1)}%
+                        </p>
+                      )}
+                    </div>
                   </div>
+
+                  <button onClick={() => setVerCustoDetalhado(v => !v)}
+                    className="text-[9px] font-bold text-red-400/70 hover:text-red-300 underline mt-1.5">
+                    {verCustoDetalhado ? 'Esconder detalhamento' : 'Ver detalhamento por categoria'}
+                  </button>
+
+                  {verCustoDetalhado && (
+                    <div className="mt-2 pt-2 border-t border-red-500/20 space-y-1">
+                      {[
+                        { label: 'Material / impressão',      valor: resumoCusto.material },
+                        { label: 'Estrutura / serralheria',    valor: resumoCusto.estrutura },
+                        { label: 'Acabamentos',                valor: resumoCusto.acabamentos },
+                        { label: 'Instalação',                 valor: resumoCusto.instalacao },
+                        { label: 'Outros itens (m²/folha/produto)', valor: resumoCusto.outros },
+                      ].filter(l => l.valor > 0).map(l => (
+                        <div key={l.label} className="flex justify-between items-baseline text-[10px]">
+                          <span className="text-gray-400">{l.label}</span>
+                          <span className="text-gray-300 font-bold">
+                            {fmtBRL(l.valor)}
+                            <span className="text-gray-600 font-normal ml-1">
+                              ({((l.valor / custoTotalOrcamento) * 100).toFixed(0)}%)
+                            </span>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             )}

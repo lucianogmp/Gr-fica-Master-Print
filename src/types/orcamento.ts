@@ -103,6 +103,48 @@ export function calcItemTotal(item: Partial<OrcamentoItem>): {
   return { unitario: unit, total: unit * qtd };
 }
 
+/** Custo do orçamento inteiro, separado por categoria — item 20b da
+ *  especificação: não só o total, mas "o que tá sendo cobrado" em cada
+ *  frente (material, estrutura/serralheria, acabamentos, instalação).
+ *  Itens de Placa já guardam esse detalhamento em `detalhe_placa`
+ *  (congelado no momento em que o item foi salvo); itens genéricos (m²
+ *  manual, folha, produto avulso) não têm essa divisão, então o custo
+ *  deles cai todo em `outros` — mesma regra que `custoTotalOrcamento` já
+ *  usava antes desta função existir. */
+export interface ResumoCustoOrcamento {
+  material: number;
+  estrutura: number;
+  acabamentos: number;
+  instalacao: number;
+  outros: number;
+  total: number;
+}
+
+export function agregarCustoDetalhadoOrcamento(itens: OrcamentoItem[]): ResumoCustoOrcamento {
+  let material = 0, estrutura = 0, acabamentos = 0, instalacao = 0, outros = 0;
+
+  for (const i of itens) {
+    const d = i.detalhe_placa;
+    if (d) {
+      material    += Number(d.material?.custo_total ?? 0);
+      estrutura   += Number(d.serralheria?.custo_total ?? 0);
+      acabamentos += (d.acabamentos ?? []).reduce((s, a) => s + Number(a.custo_total ?? 0), 0);
+      instalacao  += Number(d.instalacao?.custo ?? 0);
+      continue;
+    }
+    const custo = Number(i.custo_unitario ?? 0);
+    if (custo <= 0) continue;
+    const qtd  = Number(i.quantidade ?? 0);
+    const area = i.area_m2;
+    outros += custo * (area != null ? Number(area) * qtd : qtd);
+  }
+
+  return {
+    material, estrutura, acabamentos, instalacao, outros,
+    total: material + estrutura + acabamentos + instalacao + outros,
+  };
+}
+
 // Mantém compatibilidade com código legado
 export interface Material {
   id: string;
