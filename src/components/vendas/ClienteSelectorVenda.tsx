@@ -251,17 +251,16 @@ export function ClienteSelectorVenda({ value, clienteId, onChange, hideLabel }: 
   // Portal: renderiza direto no document.body, com position:fixed baseado na
   // posição real do input na tela. Assim o dropdown nunca fica "atrás" de
   // outros campos do formulário, não importa onde este componente é usado.
-  // Cor/fundo/borda em classe Tailwind, não inline: o dropdown vive num
-  // portal (document.body) e as sobrescritas de tema claro em theme.css só
-  // interceptam classes CSS, nunca `style`. Mesmas classes já cobertas
-  // usadas em DarkSelect/ConfirmModal.
+  // floating-panel (index.css) dá fundo 100% opaco — NUNCA bg-[#1a2332]
+  // aqui (glassmorphism translúcido dos cards, deixa o conteúdo por baixo
+  // vazando através do dropdown).
   const dropdownLista = aberto && opcoes.length > 0 && dropRect ? createPortal(
     <div
       style={{
         position: 'fixed', top: dropRect.bottom + 4, left: dropRect.left, width: dropRect.width, zIndex: 99999,
-        borderRadius: 12, overflow: 'hidden', maxHeight: 320, overflowY: 'auto',
+        overflow: 'hidden', maxHeight: 320, overflowY: 'auto',
       }}
-      className="bg-[#1a2332] border border-gray-700 shadow-2xl"
+      className="floating-panel"
     >
       {opcoes.map((c, idx) => (
         <button
@@ -292,9 +291,9 @@ export function ClienteSelectorVenda({ value, clienteId, onChange, hideLabel }: 
     <div
       style={{
         position: 'fixed', top: dropRect.bottom + 4, left: dropRect.left, width: dropRect.width, zIndex: 99999,
-        borderRadius: 12, padding: '12px 16px', fontSize: 12,
+        padding: '12px 16px', fontSize: 12,
       }}
-      className="bg-[#1a2332] border border-gray-700 text-gray-400"
+      className="floating-panel text-gray-400"
     >
       Buscando...
     </div>,

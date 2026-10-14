@@ -102,9 +102,9 @@ export function HelpTooltip({ texto, className }: HelpTooltipProps) {
             borderRadius: 8,
             padding: '8px 10px',
           }}
-          // bg-[#1f2937]/border-gray-700 em classe, não inline — mesma
-          // classe que theme.css sobrescreve pro tema claro.
-          className="bg-[#1f2937] border border-gray-700 shadow-lg text-[11px] text-gray-300 leading-relaxed"
+          // floating-panel (index.css) dá fundo 100% opaco, nunca o
+          // glassmorphism translúcido dos cards — ver comentário lá.
+          className="floating-panel text-[11px] text-gray-300 leading-relaxed"
         >
           {texto}
         </div>,

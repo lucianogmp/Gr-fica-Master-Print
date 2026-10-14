@@ -6,6 +6,11 @@
 /* ─── Variáveis Globais de Efeitos & Cores HSL Premium ─── */
 :root {
   --font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  /* Fundo SÓLIDO (nunca translúcido) pros painéis flutuantes — dropdowns,
+     calendário, tooltip — que flutuam em portal (document.body) por cima
+     de qualquer conteúdo da página. Ver uso em `.floating-panel` mais
+     abaixo. */
+  --floating-panel-bg: #1a2332;
   --glass-bg: rgba(13, 13, 25, 0.55);
   --glass-border: rgba(255, 255, 255, 0.08);
   --glass-border-hover: rgba(255, 255, 255, 0.16);
@@ -47,6 +52,7 @@
 }
 
 :root[data-theme="light"] {
+  --floating-panel-bg: #ffffff;
   --glass-bg: rgba(255, 255, 255, 0.78);
   --glass-border: rgba(15, 23, 42, 0.12);
   --glass-border-hover: rgba(37, 99, 235, 0.32);
@@ -185,6 +191,24 @@ p.text-gray-500, p.text-muted {
   border: 1px solid var(--glass-border) !important;
   box-shadow: 0 8px 32px 0 var(--shadow-card) !important;
   border-radius: 1rem !important;
+}
+
+/* ─── Painéis flutuantes (dropdown/calendário/tooltip em portal) ───
+   Essa regra existe por causa de um bug real: DarkSelect, DateInput,
+   MonthInput, HelpTooltip e os seletores de cliente/vendedor renderizam
+   seu menu via createPortal(document.body), flutuando livremente por
+   cima de QUALQUER conteúdo da página (inclusive tabelas). Antes dessa
+   classe, eles reaproveitavam bg-[#1a2332]/bg-[#1f2937] — as mesmas
+   classes dos cards comuns — e herdavam o glassmorphism acima
+   (translúcido + blur). Um card translúcido sobre o fundo gradiente da
+   página fica bonito; o MESMO menu flutuando sobre uma tabela deixa o
+   conteúdo de baixo "vazando" através dele, ilegível. `.floating-panel`
+   usa fundo 100% opaco (--floating-panel-bg) em vez do glass. */
+.floating-panel {
+  background: var(--floating-panel-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 8px 32px 0 var(--shadow-card);
+  border-radius: 12px;
 }
 
 /* Sobrescreve o background principal */

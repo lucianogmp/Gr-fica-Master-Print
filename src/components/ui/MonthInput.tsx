@@ -133,13 +133,11 @@ export function MonthInput({ value, onChange, className, placeholder = 'mês/aaa
           style={{
             top: pos.top, left: pos.left, width: pos.width,
             position: 'fixed', zIndex: 9999,
-            borderRadius: 12,
           }}
-          // bg-[#1f2937]/border-gray-700 em classe, não inline — já usada em
-          // 60+ lugares do app e é a mesma classe que theme.css sobrescreve
-          // pro tema claro. Com cor fixa via `style`, esse painel continuava
-          // escuro mesmo com o resto do sistema em tema claro.
-          className="bg-[#1f2937] border border-gray-700 shadow-2xl p-3"
+          // floating-panel (index.css) dá fundo 100% opaco — NUNCA
+          // bg-[#1f2937] aqui (glassmorphism translúcido dos cards, deixa
+          // o conteúdo por baixo vazando através do painel).
+          className="floating-panel p-3"
         >
           {/* Cabeçalho: navegação de ano */}
           <div className="flex items-center justify-between mb-2">

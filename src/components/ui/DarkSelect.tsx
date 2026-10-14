@@ -38,24 +38,24 @@ const TRIGGER_SM =
   'w-full bg-[#111827] border border-gray-700 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500 transition-colors text-left flex items-center justify-between gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed';
 
 // Posição/estrutura ficam inline (valores dinâmicos calculados por
-// recalcularPosicao). Cor, fundo e borda SEMPRE em classe Tailwind — nunca
+// recalcularPosicao). Cor, fundo e borda SEMPRE em classe CSS — nunca
 // inline — porque o menu vive num portal (document.body) e as sobrescritas
-// de tema claro em theme.css só interceptam classes CSS, nunca `style`
-// inline. Um dropdown colorido via style fica escuro pra sempre, mesmo
-// com o resto do sistema em tema claro.
+// de tema claro só interceptam classes CSS, nunca `style` inline. Um
+// dropdown colorido via style fica escuro pra sempre, mesmo com o resto
+// do sistema em tema claro.
 const DROPDOWN_BASE: React.CSSProperties = {
   position: 'fixed',
   zIndex: 9999,
-  borderRadius: 12,
   overflow: 'hidden',
   maxHeight: 280,
   overflowY: 'auto',
 };
 
-// bg-[#1a2332] e border-gray-700 já são sobrescritos pelo tema claro em
-// theme.css (mesmo par de classes usado em ConfirmModal) — garante que o
-// menu acompanha o tema do resto do sistema.
-const DROPDOWN_CLASSNAME = 'bg-[#1a2332] border border-gray-700 shadow-2xl';
+// `.floating-panel` (index.css) dá fundo 100% opaco que acompanha o tema —
+// NUNCA reaproveitar bg-[#1a2332]/bg-[#1f2937] aqui: são as mesmas classes
+// dos cards comuns, que têm glassmorphism translúcido (bonito num card
+// sobre o fundo da página, ilegível num menu flutuando sobre uma tabela).
+const DROPDOWN_CLASSNAME = 'floating-panel';
 
 const ITEM: React.CSSProperties = {
   width: '100%',

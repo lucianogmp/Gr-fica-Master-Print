@@ -141,12 +141,13 @@ export function VendedorSelector({ value, vendedorId, onChange, hideLabel }: Pro
             left: pos.left,
             width: pos.width,
             zIndex: 9999,
-            borderRadius: 12,
             overflow: 'hidden',
             maxHeight: 280,
             overflowY: 'auto',
           }}
-          className="bg-[#1a2332] border border-gray-700 shadow-2xl"
+          // floating-panel (index.css) dá fundo 100% opaco — NUNCA
+          // bg-[#1a2332] aqui (glassmorphism translúcido dos cards).
+          className="floating-panel"
         >
           {opcoesFiltradas.map((v, idx) => (
             <button

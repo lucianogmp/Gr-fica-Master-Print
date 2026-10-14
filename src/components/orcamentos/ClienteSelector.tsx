@@ -90,18 +90,16 @@ export function ClienteSelector({ value, onChange }: Props) {
             autoComplete="off"
           />
 
-          {/* Dropdown — cor/fundo/borda em classe Tailwind, não inline: as
-              sobrescritas de tema claro em theme.css só interceptam
-              classes CSS, nunca `style` (e mutação direta via
-              onMouseEnter/Leave, menos ainda). Mesmas classes cobertas
-              usadas em DarkSelect/ConfirmModal. */}
+          {/* Dropdown — floating-panel (index.css) dá fundo 100% opaco,
+              nunca o glassmorphism translúcido dos cards comuns (deixa o
+              conteúdo por baixo vazando através do menu). */}
           {aberto && opcoes.length > 0 && (
             <div
               style={{
                 position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px', zIndex: 9999,
-                borderRadius: '12px', overflow: 'hidden',
+                overflow: 'hidden',
               }}
-              className="bg-[#1a2332] border border-gray-700 shadow-2xl"
+              className="floating-panel"
             >
               {opcoes.map((c, idx) => (
                 <button

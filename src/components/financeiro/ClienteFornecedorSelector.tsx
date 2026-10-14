@@ -109,16 +109,15 @@ export function ClienteFornecedorSelector({ tipo, value, onChange }: Props) {
   const IN = 'w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500';
 
   const dropdown = aberto && dropRect ? createPortal(
-    // Cor/fundo/borda em classe Tailwind, não inline — o dropdown vive num
-    // portal (document.body) e as sobrescritas de tema claro em theme.css
-    // só interceptam classes CSS, nunca `style`. Mesmas classes já cobertas
-    // usadas em DarkSelect/ConfirmModal.
+    // floating-panel (index.css) dá fundo 100% opaco — NUNCA bg-[#1a2332]
+    // aqui (glassmorphism translúcido dos cards, deixa o conteúdo por
+    // baixo vazando através do dropdown).
     <div
       style={{
         position: 'fixed', top: dropRect.bottom + 4, left: dropRect.left, width: dropRect.width, zIndex: 99999,
-        borderRadius: 12, overflow: 'hidden', maxHeight: 280, overflowY: 'auto',
+        overflow: 'hidden', maxHeight: 280, overflowY: 'auto',
       }}
-      className="bg-[#1a2332] border border-gray-700 shadow-2xl"
+      className="floating-panel"
     >
       {carregando ? (
         <div className="text-gray-400" style={{ padding: '10px 16px', fontSize: 12 }}>Buscando...</div>

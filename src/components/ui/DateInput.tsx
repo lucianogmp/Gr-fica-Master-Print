@@ -203,14 +203,11 @@ export function DateInput({
           style={{
             top: pos.top, left: pos.left, width: pos.width,
             position: 'fixed', zIndex: 9999,
-            borderRadius: 12,
           }}
-          // bg-[#1f2937]/border-gray-700 em classe, não inline — já usada em
-          // 60+ lugares do app (compila normal) e é a mesma classe que
-          // theme.css sobrescreve pro tema claro. Com cor fixa via `style`,
-          // esse calendário continuava escuro mesmo com o resto do sistema
-          // em tema claro.
-          className="bg-[#1f2937] border border-gray-700 shadow-2xl p-3"
+          // floating-panel (index.css) dá fundo 100% opaco — NUNCA
+          // bg-[#1f2937] aqui (glassmorphism translúcido dos cards, deixa
+          // o conteúdo por baixo vazando através do calendário).
+          className="floating-panel p-3"
         >
           {/* Cabeçalho: mês/ano (clicável pra abrir a grade de anos) + navegação */}
           <div className="flex items-center justify-between mb-2">

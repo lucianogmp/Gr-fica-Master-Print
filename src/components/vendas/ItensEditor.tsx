@@ -144,10 +144,9 @@ export function ItensEditor({ itens, onChange }: ItensEditorProps) {
 
   // Portal: renderiza no document.body, position:fixed relativo à viewport
   // getBoundingClientRect() retorna coords relativas à viewport — correto para fixed
-  // Cor/fundo/borda em classe Tailwind, não inline: o dropdown vive num
-  // portal (document.body) e as sobrescritas de tema claro em theme.css só
-  // interceptam classes CSS, nunca `style`. Mesmas classes já cobertas
-  // usadas em DarkSelect/ConfirmModal.
+  // floating-panel (index.css) dá fundo 100% opaco — NUNCA bg-[#1a2332]
+  // aqui (glassmorphism translúcido dos cards, deixa o conteúdo por baixo
+  // vazando através do dropdown).
   const dropdown = mostrarSugestoes && dropRect ? createPortal(
     <div
       style={{
@@ -156,12 +155,11 @@ export function ItensEditor({ itens, onChange }: ItensEditorProps) {
         left: dropRect.left,
         width: dropRect.width,
         zIndex: 99999,
-        borderRadius: 12,
         overflow: 'hidden',
         maxHeight: 320,
         overflowY: 'auto',
       }}
-      className="bg-[#1a2332] border border-gray-700 shadow-2xl"
+      className="floating-panel"
     >
       {produtosFiltrados.length === 0 ? (
         <p className="px-4 py-3 text-xs text-gray-500">Nenhum produto encontrado.</p>
