@@ -334,6 +334,13 @@ export function DocumentoCustos({ empresa, documento: doc, style }: Props) {
                   : `Quantidade ${fmtNum(Number(it.quantidade))}`}
               </p>
             </div>
+            {!secoes && it.tipo_calculo === 'placa' && (
+              <div style={{ border: `1px solid #fcd34d`, background: '#fffbeb', color: '#92400e', padding: '6px 10px', fontSize: 10, fontWeight: 700 }}>
+                ⚠ Detalhamento indisponível: este item de placa foi salvo antes do sistema gravar o cálculo detalhado
+                (material, serralheria, acabamentos e instalação). Refaça o item e salve o orçamento de novo para
+                o relatório trazer tudo separado.
+              </div>
+            )}
             {secoes ? (
               <div style={{ border: `1px solid ${BORDA}`, borderTop: 'none', padding: '4px 10px 2px' }}>
                 {secoes.map(sec => (
