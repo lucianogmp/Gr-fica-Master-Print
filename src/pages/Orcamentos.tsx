@@ -7,7 +7,7 @@ import { useConfiguracoes } from '../hooks/useConfiguracoes';
 import { MENSAGEM_WHATSAPP_ORC_DEFAULT, preencherTemplateMensagem } from '../types/configuracoes';
 import { DocumentoImpressaoData } from '../components/impressao/DocumentoImpressao';
 import { imprimirDocumento } from '../components/impressao/imprimirDocumento';
-import { imprimirCustos } from '../components/impressao/imprimirCustos';
+import { baixarPdfOrcamento, baixarPdfCustos } from '../components/impressao/baixarPdf';
 import { DEFAULT_LAYOUT_ORCAMENTO } from '../types/layoutImpressao';
 import { marcarAlteracoesPendentes, limparAlteracoesPendentes } from '../lib/unsavedChangesGuard';
 import { OrdenarMenu, aplicarOrdenacao, Ordenacao } from '../components/ui/OrdenarMenu';
@@ -184,7 +184,15 @@ export function Orcamentos() {
       total: Number(orc.total ?? totalFinal),
       observacoes: orc.observacoes,
     };
-    imprimirDocumento(layoutOrcamento, cfg ?? {}, doc);
+    comAvisoPdf(baixarPdfOrcamento(layoutOrcamento, cfg ?? {}, doc));
+  }
+
+  // Mostra "Gerando PDF..." enquanto o download é preparado.
+  function comAvisoPdf(tarefa: Promise<void>) {
+    const id = toast.loading('Gerando PDF...');
+    tarefa
+      .then(() => toast.success('PDF baixado!', { id }))
+      .catch((e) => { console.error(e); toast.error('Não foi possível gerar o PDF.', { id }); });
   }
 
   // PDF interno com custos detalhados (material, estrutura, acabamentos,
@@ -193,7 +201,7 @@ export function Orcamentos() {
     if (!podeVerCustos) return;
     const orc = dados ? dados.orcamento : (form as Orcamento);
     const itensRef = dados ? dados.itens : itens;
-    imprimirCustos(cfg ?? {}, {
+    comAvisoPdf(baixarPdfCustos(cfg ?? {}, {
       numero: orc.numero ?? null,
       data: orc.created_at ?? null,
       clienteNome: orc.cliente_nome ?? '',
@@ -201,7 +209,7 @@ export function Orcamentos() {
       itens: itensRef,
       descontoPct: Number(orc.desconto ?? 0),
       observacoes: orc.observacoes,
-    });
+    }));
   }
 
   // Seleção múltipla na lista — pra imprimir vários de uma vez, excluir em
