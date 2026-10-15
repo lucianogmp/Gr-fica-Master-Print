@@ -50,6 +50,17 @@ const INSTALACAO_LABEL: Record<TipoInstalacaoPlaca, string> = {
   completa: 'Instalação completa',
 };
 
+const unidadeAcab = (t?: string) => (t === 'metro_linear' ? 'm' : t === 'm2' ? 'm²' : 'un.');
+
+const regraAcab = (t?: string, f?: number | null) => {
+  const fator = Number(f ?? 0);
+  if (!fator) return '';
+  if (t === 'perimetro') return ` (1 a cada ${fmtNum(100 / fator, 0)} cm do perímetro)`;
+  if (t === 'metro_linear') return ` (${fmtNum(fator)} m por metro de perímetro)`;
+  if (t === 'm2') return ` (${fmtNum(fator)} por m²)`;
+  return '';
+};
+
 const COR = '#111827';
 const ALERTA = '#b91c1c';
 const BORDA = '#e5e7eb';
@@ -106,10 +117,19 @@ function linhasDoItem(it: OrcamentoItem): { linhas: LinhaCusto[]; custo: number 
       for (const a of d.acabamentos) {
         linhas.push({
           categoria: 'Acabamento',
-          detalhe: `${a.nome} · ${fmtNum(a.qtd_usada)} un. × ${fmtBRL(a.custo_unitario)}`,
+          detalhe: `${a.nome} · ${fmtNum(a.qtd_usada)} ${unidadeAcab(a.tipo_calculo)} × ${fmtBRL(a.custo_unitario)}/${unidadeAcab(a.tipo_calculo)}${regraAcab(a.tipo_calculo, a.fator_calculo)}`,
           valor: a.custo_total,
         });
       }
+    }
+
+    if (d.acabamentos.length > 1) {
+      linhas.push({
+        categoria: 'Subtotal acabamentos',
+        detalhe: `${d.acabamentos.length} acabamentos`,
+        valor: d.acabamentos.reduce((t, a) => t + Number(a.custo_total), 0),
+        destaque: true,
+      });
     }
 
     linhas.push({
@@ -152,7 +172,7 @@ export function DocumentoCustos({ empresa, documento: doc, style }: Props) {
   // nome (ex: "Parafuso: 56 un." somando todos os itens) — só pro resumo geral.
   let estruturaMetalon = 0;
   let estruturaMaoObra = 0;
-  const acabPorNome = new Map<string, { qtd: number; custo: number }>();
+  const acabPorNome = new Map<string, { qtd: number; custo: number; un: string }>();
   for (const it of doc.itens) {
     const d = it.detalhe_placa;
     if (!d) continue;
@@ -161,8 +181,8 @@ export function DocumentoCustos({ empresa, documento: doc, style }: Props) {
       estruturaMetalon += Number(d.serralheria.custo_total) - Number(d.serralheria.mao_obra_custo);
     }
     for (const a of d.acabamentos) {
-      const atual = acabPorNome.get(a.nome) ?? { qtd: 0, custo: 0 };
-      acabPorNome.set(a.nome, { qtd: atual.qtd + Number(a.qtd_usada), custo: atual.custo + Number(a.custo_total) });
+      const atual = acabPorNome.get(a.nome) ?? { qtd: 0, custo: 0, un: unidadeAcab(a.tipo_calculo) };
+      acabPorNome.set(a.nome, { qtd: atual.qtd + Number(a.qtd_usada), custo: atual.custo + Number(a.custo_total), un: atual.un });
     }
   }
 
@@ -244,10 +264,10 @@ export function DocumentoCustos({ empresa, documento: doc, style }: Props) {
               </thead>
               <tbody>
                 {linhas.map((l, i) => (
-                  <tr key={i}>
-                    <td style={{ ...td, fontWeight: 600, whiteSpace: 'nowrap' }}>{l.categoria}</td>
+                  <tr key={i} style={l.destaque ? { background: '#f9fafb' } : undefined}>
+                    <td style={{ ...td, fontWeight: l.destaque ? 800 : 600, whiteSpace: 'nowrap' }}>{l.categoria}</td>
                     <td style={{ ...td, color: '#4b5563' }}>{l.detalhe}</td>
-                    <td style={tdR}>{fmtBRL(l.valor)}</td>
+                    <td style={{ ...tdR, fontWeight: l.destaque ? 800 : 400 }}>{fmtBRL(l.valor)}</td>
                   </tr>
                 ))}
                 <tr>
@@ -271,6 +291,42 @@ export function DocumentoCustos({ empresa, documento: doc, style }: Props) {
           </div>
         );
       })}
+
+      {/* Custo × preço por item */}
+      {doc.itens.length > 1 && (
+        <div style={{ breakInside: 'avoid', pageBreakInside: 'avoid', marginBottom: 18 }}>
+          <p style={{ fontSize: 13, fontWeight: 900, margin: '0 0 6px', borderBottom: `2px solid ${COR}`, paddingBottom: 4 }}>
+            Custo × preço por item
+          </p>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                <th style={th}>Item</th>
+                <th style={thR}>Custo</th>
+                <th style={thR}>Preço</th>
+                <th style={thR}>Lucro</th>
+                <th style={thR}>Margem</th>
+              </tr>
+            </thead>
+            <tbody>
+              {doc.itens.map((it, idx) => {
+                const { custo } = linhasDoItem(it);
+                const preco = Number(it.total);
+                const l = preco - custo;
+                return (
+                  <tr key={it.id ?? idx}>
+                    <td style={td}>{idx + 1}. {it.descricao}</td>
+                    <td style={tdR}>{fmtBRL(custo)}</td>
+                    <td style={tdR}>{fmtBRL(preco)}</td>
+                    <td style={{ ...tdR, color: l >= 0 ? '#15803d' : ALERTA }}>{fmtBRL(l)}</td>
+                    <td style={tdR}>{fmtPct(preco > 0 ? (l / preco) * 100 : 0)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* Resumo geral */}
       <div style={{ breakInside: 'avoid', pageBreakInside: 'avoid', marginTop: 8 }}>
@@ -314,11 +370,19 @@ export function DocumentoCustos({ empresa, documento: doc, style }: Props) {
             {Array.from(acabPorNome.entries()).map(([nome, a]) => (
               <tr key={nome}>
                 <td style={{ ...td, fontWeight: 600 }}>Acabamento</td>
-                <td style={{ ...td, color: '#4b5563' }}>{nome} · {fmtNum(a.qtd)} un.</td>
+                <td style={{ ...td, color: '#4b5563' }}>{nome} · {fmtNum(a.qtd)} {a.un} no total</td>
                 <td style={tdR}>{fmtBRL(a.custo)}</td>
                 <td style={tdR}>{pct(a.custo)}</td>
               </tr>
             ))}
+            {acabPorNome.size > 1 && (
+              <tr style={{ background: '#f9fafb' }}>
+                <td style={{ ...td, fontWeight: 800 }}>Subtotal acabamentos</td>
+                <td style={td}></td>
+                <td style={{ ...tdR, fontWeight: 800 }}>{fmtBRL(resumo.acabamentos)}</td>
+                <td style={{ ...tdR, fontWeight: 800 }}>{pct(resumo.acabamentos)}</td>
+              </tr>
+            )}
             {resumo.instalacao > 0 && (
               <tr>
                 <td style={{ ...td, fontWeight: 600 }}>Instalação</td>
