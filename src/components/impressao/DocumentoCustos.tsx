@@ -66,12 +66,21 @@ const COR = '#111827';
 const ALERTA = '#b91c1c';
 const BORDA = '#e5e7eb';
 
+const GRADE = `1px solid #d1d5db`;
+const thG: CSSProperties = {
+  textAlign: 'left', padding: '5px 8px', fontSize: 10, fontWeight: 700, color: '#374151',
+  background: '#f9fafb', border: GRADE, lineHeight: 1.45,
+};
+const thGR: CSSProperties = { ...thG, textAlign: 'right' };
+const tdG: CSSProperties = { padding: '5px 8px', fontSize: 11, border: GRADE, verticalAlign: 'middle', lineHeight: 1.45 };
+const tdGR: CSSProperties = { ...tdG, textAlign: 'right', whiteSpace: 'nowrap' };
+
 const th: CSSProperties = {
   textAlign: 'left', padding: '5px 8px', fontSize: 10, fontWeight: 700,
-  color: '#6b7280', textTransform: 'uppercase', borderBottom: `1px solid ${BORDA}`,
+  color: '#374151', textTransform: 'uppercase', background: '#f9fafb', border: GRADE,
 };
 const thR: CSSProperties = { ...th, textAlign: 'right' };
-const td: CSSProperties = { padding: '5px 8px', fontSize: 11, borderBottom: `1px solid #f3f4f6` };
+const td: CSSProperties = { padding: '4px 8px', fontSize: 11, border: GRADE, lineHeight: 1.45 };
 const tdR: CSSProperties = { ...td, textAlign: 'right', whiteSpace: 'nowrap' };
 
 interface LinhaCusto {
@@ -156,24 +165,41 @@ function linhasDoItem(it: OrcamentoItem): { linhas: LinhaCusto[]; custo: number 
 }
 
 
-interface LinhaSecao { l: string; v: string; destaque?: boolean }
-interface SecaoCusto { titulo: string; linhas: LinhaSecao[] }
+interface LinhaSecao {
+  /** descrição (coluna 1) */
+  l: string;
+  /** observação pequena embaixo da descrição (ex: regra do acabamento) */
+  nota?: string;
+  /** quantidade / medida (coluna 2) */
+  qtd?: string;
+  /** valor unitário (coluna 3) */
+  unit?: string;
+  /** custo da linha (coluna 4) */
+  v?: string;
+  /** linha de total da seção */
+  destaque?: boolean;
+}
+interface SecaoCusto { titulo: string; cabecalho: [string, string, string, string]; linhas: LinhaSecao[] }
 
 const fmtM = (v: number) => `${Number(v ?? 0).toFixed(2).replace('.', ',')} m`;
 
-/** Mesmo desenho do "Cálculo detalhado" do editor de placa: seções → linhas rótulo/valor. */
+/** Mesmo conteúdo do "Cálculo detalhado" do editor de placa, em tabelas por seção. */
 function secoesDoItem(it: OrcamentoItem): SecaoCusto[] | null {
   const d = it.detalhe_placa;
   if (!d) return null;
   const secoes: SecaoCusto[] = [];
-  const qtd = Number(d.quantidade) || 1;
 
   secoes.push({
     titulo: 'Material',
+    cabecalho: ['Descrição', 'Quantidade', 'Custo unitário', 'Custo'],
     linhas: [
-      { l: d.material.nome || '—', v: `${fmtNum(d.area_total_m2)} m² × ${fmtBRL(d.material.custo_m2)}` },
-      { l: 'Dimensões', v: `${fmtM(d.largura)} × ${fmtM(d.altura)} · ${fmtNum(qtd, 0)} un.` },
-      { l: 'Custo do material', v: fmtBRL(d.material.custo_total), destaque: true },
+      {
+        l: d.material.nome || '—',
+        qtd: `${fmtNum(d.area_total_m2)} m²`,
+        unit: `${fmtBRL(d.material.custo_m2)}/m²`,
+        v: fmtBRL(d.material.custo_total),
+      },
+      { l: 'Total do material', v: fmtBRL(d.material.custo_total), destaque: true },
     ],
   });
 
@@ -184,52 +210,59 @@ function secoesDoItem(it: OrcamentoItem): SecaoCusto[] | null {
     const ajustado = Math.abs(Number(s.qtd_usada) - Number(s.qtd_calculada)) > 0.001;
     secoes.push({
       titulo: `Serralheria — ${s.metalon_nome || '—'}`,
+      cabecalho: ['Descrição', 'Medida / quantidade', 'Custo unitário', 'Custo'],
       linhas: [
-        { l: 'Largura', v: fmtM(d.largura) },
-        { l: 'Altura', v: fmtM(d.altura) },
-        { l: 'Perímetro', v: fmtM(calc.perimetro) },
-        { l: 'Travessas verticais', v: `${calc.travessasV} × ${fmtM(d.altura)}` },
-        { l: 'Travessas horizontais', v: `${calc.travessasH} × ${fmtM(d.largura)}` },
-        { l: 'Total calculado', v: fmtM(s.qtd_calculada) },
-        { l: ajustado ? 'Total utilizado (ajustado manualmente)' : 'Total utilizado', v: fmtM(s.qtd_usada), destaque: true },
-        { l: 'Custo do metalon', v: `${fmtM(s.qtd_usada)} × ${fmtBRL(s.custo_metro)}/m = ${fmtBRL(custoMetalon)}` },
-        { l: `Mão de obra (${fmtNum(s.mao_obra_pct, 1)}%)`, v: fmtBRL(s.mao_obra_custo) },
-        { l: 'Custo serralheria', v: fmtBRL(s.custo_total), destaque: true },
+        { l: 'Largura', qtd: fmtM(d.largura) },
+        { l: 'Altura', qtd: fmtM(d.altura) },
+        { l: 'Perímetro', qtd: fmtM(calc.perimetro) },
+        { l: 'Travessas verticais', qtd: `${calc.travessasV} × ${fmtM(d.altura)}` },
+        { l: 'Travessas horizontais', qtd: `${calc.travessasH} × ${fmtM(d.largura)}` },
+        { l: 'Total de metalon calculado', qtd: fmtM(s.qtd_calculada) },
+        { l: ajustado ? 'Total de metalon utilizado (ajustado manualmente)' : 'Total de metalon utilizado', qtd: fmtM(s.qtd_usada) },
+        { l: `Metalon ${s.metalon_nome || ''}`.trim(), qtd: fmtM(s.qtd_usada), unit: `${fmtBRL(s.custo_metro)}/m`, v: fmtBRL(custoMetalon) },
+        { l: 'Mão de obra da serralheria', qtd: `${fmtNum(s.mao_obra_pct, 1)}%`, unit: `sobre ${fmtBRL(custoMetalon)}`, v: fmtBRL(s.mao_obra_custo) },
+        { l: 'Total da serralheria', v: fmtBRL(s.custo_total), destaque: true },
       ],
     });
   } else {
     secoes.push({
       titulo: 'Serralheria',
+      cabecalho: ['Descrição', 'Medida / quantidade', 'Custo unitário', 'Custo'],
       linhas: [{ l: 'Sem armação (cliente já possui)', v: fmtBRL(0) }],
     });
   }
 
   if (d.acabamentos.length > 0) {
     const linhas: LinhaSecao[] = d.acabamentos.map(a => ({
-      l: `${a.nome}${regraAcab(a.tipo_calculo, a.fator_calculo)}`,
-      v: `${fmtNum(a.qtd_usada)} ${unidadeAcab(a.tipo_calculo)} × ${fmtBRL(a.custo_unitario)} = ${fmtBRL(a.custo_total)}`,
+      l: a.nome,
+      nota: regraAcab(a.tipo_calculo, a.fator_calculo).replace(/^ \(|\)$/g, '') || undefined,
+      qtd: `${fmtNum(a.qtd_usada)} ${unidadeAcab(a.tipo_calculo)}`,
+      unit: `${fmtBRL(a.custo_unitario)}/${unidadeAcab(a.tipo_calculo)}`,
+      v: fmtBRL(a.custo_total),
     }));
     linhas.push({
-      l: 'Custo acabamentos',
+      l: 'Total dos acabamentos',
       v: fmtBRL(d.acabamentos.reduce((t, a) => t + Number(a.custo_total), 0)),
       destaque: true,
     });
-    secoes.push({ titulo: 'Acabamentos', linhas });
+    secoes.push({ titulo: 'Acabamentos', cabecalho: ['Descrição', 'Quantidade', 'Custo unitário', 'Custo'], linhas });
   } else {
-    secoes.push({ titulo: 'Acabamentos', linhas: [{ l: 'Nenhum acabamento', v: fmtBRL(0) }] });
+    secoes.push({
+      titulo: 'Acabamentos',
+      cabecalho: ['Descrição', 'Quantidade', 'Custo unitário', 'Custo'],
+      linhas: [{ l: 'Nenhum acabamento', v: fmtBRL(0) }],
+    });
   }
 
   secoes.push({
     titulo: 'Instalação',
+    cabecalho: ['Descrição', 'Quantidade', 'Custo unitário', 'Custo'],
     linhas: [
-      { l: INSTALACAO_LABEL[d.instalacao.tipo] ?? '—', v: '' },
-      { l: 'Mão de obra', v: fmtBRL(d.instalacao.custo), destaque: true },
+      { l: INSTALACAO_LABEL[d.instalacao.tipo] ?? '—', qtd: '1 serviço', unit: fmtBRL(d.instalacao.custo), v: fmtBRL(d.instalacao.custo) },
+      { l: 'Total da instalação', v: fmtBRL(d.instalacao.custo), destaque: true },
     ],
   });
 
-  const totais: LinhaSecao[] = [];
-  if (qtd > 1) totais.push({ l: `Custo por unidade (${fmtNum(qtd, 0)} un.)`, v: fmtBRL(Number(d.custo_total) / qtd) });
-  secoes.push({ titulo: 'Custo do item', linhas: totais });
   return secoes;
 }
 
@@ -342,23 +375,50 @@ export function DocumentoCustos({ empresa, documento: doc, style }: Props) {
               </div>
             )}
             {secoes ? (
-              <div style={{ border: `1px solid ${BORDA}`, borderTop: 'none', padding: '4px 10px 2px' }}>
+              <div style={{ border: `1px solid ${BORDA}`, borderTop: 'none', padding: '8px 10px 2px' }}>
                 {secoes.map(sec => (
-                  <div key={sec.titulo} style={{ marginBottom: 6 }}>
-                    <p style={{ margin: '8px 0 3px', fontSize: 9, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.6 }}>
+                  <div key={sec.titulo} style={{ marginBottom: 10, breakInside: 'avoid', pageBreakInside: 'avoid' }}>
+                    <div style={{ background: '#e5e7eb', padding: '5px 8px', fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.4 }}>
                       {sec.titulo}
-                    </p>
-                    {sec.linhas.map((ln, i) => (
-                      <div key={i} style={{
-                        display: 'flex', justifyContent: 'space-between', gap: 12, padding: '2px 0',
-                        fontSize: 11, fontWeight: ln.destaque ? 800 : 400,
-                        color: ln.destaque ? COR : '#4b5563',
-                        borderTop: ln.destaque ? `1px solid #f3f4f6` : undefined,
-                      }}>
-                        <span>{ln.l}</span>
-                        <span style={{ whiteSpace: 'nowrap', textAlign: 'right' }}>{ln.v}</span>
-                      </div>
-                    ))}
+                    </div>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+                      <colgroup>
+                        <col style={{ width: '40%' }} />
+                        <col style={{ width: '20%' }} />
+                        <col style={{ width: '20%' }} />
+                        <col style={{ width: '20%' }} />
+                      </colgroup>
+                      <thead>
+                        <tr>
+                          <th style={thG}>{sec.cabecalho[0]}</th>
+                          <th style={thGR}>{sec.cabecalho[1]}</th>
+                          <th style={thGR}>{sec.cabecalho[2]}</th>
+                          <th style={thGR}>{sec.cabecalho[3]}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sec.linhas.map((ln, k) => {
+                          const bg = ln.destaque ? '#f3f4f6' : k % 2 === 1 ? '#fafafa' : '#ffffff';
+                          const peso = ln.destaque ? 800 : 400;
+                          return ln.destaque ? (
+                            <tr key={k} style={{ background: bg }}>
+                              <td colSpan={3} style={{ ...tdG, fontWeight: peso }}>{ln.l}</td>
+                              <td style={{ ...tdGR, fontWeight: peso }}>{ln.v}</td>
+                            </tr>
+                          ) : (
+                            <tr key={k} style={{ background: bg }}>
+                              <td style={tdG}>
+                                {ln.l}
+                                {ln.nota && <div style={{ fontSize: 9, color: '#6b7280' }}>{ln.nota}</div>}
+                              </td>
+                              <td style={tdGR}>{ln.qtd ?? ''}</td>
+                              <td style={tdGR}>{ln.unit ?? ''}</td>
+                              <td style={{ ...tdGR, fontWeight: 600 }}>{ln.v ?? ''}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
                 ))}
               </div>
