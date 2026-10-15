@@ -89,6 +89,9 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   '/configuracoes/backup':             ['dono'],
   '/configuracoes/sistema':            ['dono'],
 
+  // ── Permissão especial (não é tela): ver custos e gerar PDF de custos nos orçamentos ──
+  '/orcamentos/custos':   ['dono', 'admin'],
+
   // ── Legado (mantém compatibilidade) ──
   '/orcamentos':  ['dono', 'admin', 'vendedor'],
   '/clientes':    ['dono', 'admin', 'vendedor'],   // redirect → /crm/clientes

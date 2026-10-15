@@ -37,6 +37,15 @@ function serializarItens(itens: OrcamentoItem[]) {
     produto_id:            (i as any).produto_id   ?? null,
     custo_unitario:        (i as any).custo_unitario ?? null,
     area_m2:               (i as any).area_m2      ?? null,
+    // Orçamento de Placa: sem esses campos o snapshot (detalhe_placa) era
+    // descartado ao salvar, e o PDF de custos/estoque perdiam todo o detalhe.
+    possui_armacao:        i.possui_armacao        ?? null,
+    metalon_tipo_id:       i.metalon_tipo_id       ?? null,
+    metalon_qtd_calculada: i.metalon_qtd_calculada ?? null,
+    metalon_qtd_usada:     i.metalon_qtd_usada     ?? null,
+    espacamento_travessa_m: i.espacamento_travessa_m ?? null,
+    tipo_instalacao:       i.tipo_instalacao       ?? null,
+    detalhe_placa:         i.detalhe_placa         ?? null,
   }));
 }
 

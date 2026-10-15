@@ -128,7 +128,7 @@ interface Props {
 export function ItemOrcEditor({ onAdicionar, onCancelar, editando, mostrarCusto = false }: Props) {
   const { data: acabamentos = [] } = useAcabamentos();
   const { data: produtos = [] } = useProdutos();
-  const { isAdmin } = useRole();
+  const { podeVerCustos } = useRole();
 
   // Aba "m² Material": produtos marcados como por_metro_quadrado (antes
   // vinha de uma tabela solta sem custo nenhum — agora são Produtos de
@@ -253,7 +253,7 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando, mostrarCusto 
   const { data: bomMatSel = [] } = useQuery({
     queryKey: ['bom-item-orc', matSel?.id],
     queryFn: () => loadBom(matSel!.id),
-    enabled: !!matSel?.id && isAdmin,
+    enabled: !!matSel?.id && podeVerCustos,
   });
   const custoPorM2MatSel = matSel
     ? calcCustoBOM(bomMatSel)
@@ -267,7 +267,7 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando, mostrarCusto 
   const { data: bomProdSel = [] } = useQuery({
     queryKey: ['bom-item-orc', prodSel?.id],
     queryFn: () => loadBom(prodSel!.id),
-    enabled: !!prodSel?.id && isAdmin,
+    enabled: !!prodSel?.id && podeVerCustos,
   });
   const custoPorUnidadeProdSel = prodSel
     ? calcCustoBOM(bomProdSel)
@@ -572,7 +572,7 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando, mostrarCusto 
                 </button>
               </div>
 
-              {isAdmin && mostrarCusto && custoItemTotal != null && (
+              {podeVerCustos && mostrarCusto && custoItemTotal != null && (
                 <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 flex items-center justify-between">
                   <span className="text-[10px] font-bold text-red-400 uppercase flex items-center gap-1">
                     🔒 Custo (só você vê — não sai na impressão)
@@ -730,7 +730,7 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando, mostrarCusto 
               { label: 'Unitário', value: fmtBRL(prev.unitario) },
             ]} />
           )}
-          {isAdmin && mostrarCusto && matSel && prev.area && prev.area > 0 && (
+          {podeVerCustos && mostrarCusto && matSel && prev.area && prev.area > 0 && (
             <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 flex items-center justify-between">
               <span className="text-[10px] font-bold text-red-400 uppercase flex items-center gap-1">
                 🔒 Custo (só você vê — não sai na impressão)

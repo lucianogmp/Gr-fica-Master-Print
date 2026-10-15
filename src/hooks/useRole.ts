@@ -37,6 +37,10 @@ export function useRole() {
     isFinanceiro: role === 'financeiro',
     isProducao:   role === 'producao',
     pode,
+    // Ver custos/margens nos orçamentos e gerar o PDF de custos. Padrão:
+    // dono e admin. Liberável por usuário em Configurações > Usuários >
+    // Permissões (rota '/orcamentos/custos'). Vendedor só com liberação.
+    podeVerCustos: pode('/orcamentos/custos'),
     // semRole: true significa que o usuário está autenticado mas sem perfil
     // configurado — vai mostrar aviso em ProtectedRoute
     semRole: !role,

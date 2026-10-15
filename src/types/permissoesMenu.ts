@@ -15,7 +15,8 @@ export const PERMISSOES_MENU: GrupoPermissao[] = [
     { rota: '/producao', label: 'Produção (Kanban)' },
   ]},
   { grupo: 'Orçamentos', itens: [
-    { rota: '/orcamentos', label: 'Orçamentos' },
+    { rota: '/orcamentos',        label: 'Orçamentos' },
+    { rota: '/orcamentos/custos', label: 'Ver custos e gerar PDF de custos' },
   ]},
   { grupo: 'Vendas', itens: [
     { rota: '/vendas',           label: 'Vendas (geral)' },

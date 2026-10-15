@@ -67,7 +67,7 @@ export function Orcamentos() {
   const { data: produtos = [] } = useProdutos();
   const { data: categorias = [] } = useCategorias();
   const { data: clientes = [] } = useClientes();
-  const { isAdmin } = useRole();
+  const { podeVerCustos } = useRole();
   // Custo fica oculto por padrão, mesmo pra admin/dono — só aparece se
   // clicar no botão de mostrar. Não salva em lugar nenhum (nem localStorage);
   // ao atualizar a página ou reabrir a tela, volta a ficar oculto.
@@ -190,7 +190,7 @@ export function Orcamentos() {
   // PDF interno com custos detalhados (material, estrutura, acabamentos,
   // instalação, total de custos e lucro). Só admin — nunca vai pro cliente.
   function imprimirComCustos(dados?: SnapshotOrcamento) {
-    if (!isAdmin) return;
+    if (!podeVerCustos) return;
     const orc = dados ? dados.orcamento : (form as Orcamento);
     const itensRef = dados ? dados.itens : itens;
     imprimirCustos(cfg ?? {}, {
@@ -904,7 +904,7 @@ export function Orcamentos() {
             className="w-full flex items-center gap-2 justify-center bg-gray-700 hover:bg-gray-600 text-gray-200 px-4 py-3 rounded-xl font-bold text-sm transition-all">
             <Printer className="w-4 h-4" /> PDF sem custos (cliente)
           </button>
-          {isAdmin && (
+          {podeVerCustos && (
             <button onClick={() => imprimirComCustos(posSalvar)}
               className="w-full flex items-center gap-2 justify-center bg-red-700 hover:bg-red-600 text-white px-4 py-3 rounded-xl font-bold text-sm transition-all">
               <Printer className="w-4 h-4" /> PDF com custos (interno)
@@ -1043,7 +1043,7 @@ export function Orcamentos() {
                     antes de ter qualquer item salvo, porque é o que controla
                     se o editor de item (abaixo) mostra o campo de custo
                     enquanto você ainda está montando o primeiro item. */}
-                {isAdmin && (
+                {podeVerCustos && (
                   <button onClick={() => setMostrarCusto(v => !v)}
                     className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400 hover:text-white transition-colors">
                     {mostrarCusto ? <><EyeOff className="w-3.5 h-3.5" /> Ocultar custo</> : <><Eye className="w-3.5 h-3.5" /> Mostrar custo</>}
@@ -1118,7 +1118,7 @@ export function Orcamentos() {
                       <th className="px-3 py-2 text-center">Categoria</th>
                       <th className="px-3 py-2 text-right w-14">Qtd</th>
                       <th className="px-3 py-2 text-right w-24">Unit.</th>
-                      {isAdmin && mostrarCusto && (
+                      {podeVerCustos && mostrarCusto && (
                         <th className="px-3 py-2 text-right w-24 text-red-400">Custo Unit.</th>
                       )}
                       <th className="px-3 py-2 text-right w-24">Total</th>
@@ -1155,7 +1155,7 @@ export function Orcamentos() {
                         </td>
                         <td className="px-3 py-2.5 text-right text-white">{it.quantidade}</td>
                         <td className="px-3 py-2.5 text-right text-gray-300">{fmtBRL(Number(it.total) / (Number(it.quantidade) || 1))}</td>
-                        {isAdmin && mostrarCusto && (
+                        {podeVerCustos && mostrarCusto && (
                           <td className="px-3 py-2.5 text-right text-red-300">
                             {custoUnit > 0 ? fmtBRL(custoUnit) : <span className="text-gray-600">—</span>}
                           </td>
@@ -1263,7 +1263,7 @@ export function Orcamentos() {
                   <Printer className="w-4 h-4" /> PDF sem custos
                 </button>
               )}
-              {isAdmin && itens.length > 0 && (
+              {podeVerCustos && itens.length > 0 && (
                 <button onClick={() => imprimirComCustos()}
                   className="flex items-center gap-1.5 bg-red-700 hover:bg-red-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex-shrink-0">
                   <Printer className="w-4 h-4" /> PDF com custos
@@ -1280,7 +1280,7 @@ export function Orcamentos() {
                 de item, gravado em cada linha) — só admin/dono, nunca
                 aparece em impressão/mensagem. O toggle que liga/desliga
                 isso fica lá em cima, no cabeçalho de Itens do Orçamento. */}
-            {isAdmin && mostrarCusto && custoTotalOrcamento > 0 && (
+            {podeVerCustos && mostrarCusto && custoTotalOrcamento > 0 && (
               <div className="mt-4 pt-4 border-t border-gray-800">
                 <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 max-w-sm">
                   <div className="flex justify-between items-center">

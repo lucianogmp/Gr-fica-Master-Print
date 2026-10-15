@@ -13,6 +13,7 @@ import type { CSSProperties } from 'react';
 import type { Configuracoes } from '../../types/configuracoes';
 import type { OrcamentoItem } from '../../types/orcamento';
 import { agregarCustoDetalhadoOrcamento } from '../../types/orcamento';
+import { calcMetalonQuantidade } from '../../lib/placaCalc';
 import type { TipoInstalacaoPlaca } from '../../lib/placaCalc';
 
 export interface DocumentoCustosData {
@@ -154,6 +155,84 @@ function linhasDoItem(it: OrcamentoItem): { linhas: LinhaCusto[]; custo: number 
   return { linhas: [{ categoria: 'Custo do item', detalhe, valor: custo }], custo };
 }
 
+
+interface LinhaSecao { l: string; v: string; destaque?: boolean }
+interface SecaoCusto { titulo: string; linhas: LinhaSecao[] }
+
+const fmtM = (v: number) => `${Number(v ?? 0).toFixed(2).replace('.', ',')} m`;
+
+/** Mesmo desenho do "Cálculo detalhado" do editor de placa: seções → linhas rótulo/valor. */
+function secoesDoItem(it: OrcamentoItem): SecaoCusto[] | null {
+  const d = it.detalhe_placa;
+  if (!d) return null;
+  const secoes: SecaoCusto[] = [];
+  const qtd = Number(d.quantidade) || 1;
+
+  secoes.push({
+    titulo: 'Material',
+    linhas: [
+      { l: d.material.nome || '—', v: `${fmtNum(d.area_total_m2)} m² × ${fmtBRL(d.material.custo_m2)}` },
+      { l: 'Dimensões', v: `${fmtM(d.largura)} × ${fmtM(d.altura)} · ${fmtNum(qtd, 0)} un.` },
+      { l: 'Custo do material', v: fmtBRL(d.material.custo_total), destaque: true },
+    ],
+  });
+
+  if (d.possui_armacao && d.serralheria) {
+    const s = d.serralheria;
+    const calc = calcMetalonQuantidade(Number(d.largura), Number(d.altura), Number(s.espacamento_travessa_m) || 1);
+    const custoMetalon = Number(s.custo_total) - Number(s.mao_obra_custo);
+    const ajustado = Math.abs(Number(s.qtd_usada) - Number(s.qtd_calculada)) > 0.001;
+    secoes.push({
+      titulo: `Serralheria — ${s.metalon_nome || '—'}`,
+      linhas: [
+        { l: 'Largura', v: fmtM(d.largura) },
+        { l: 'Altura', v: fmtM(d.altura) },
+        { l: 'Perímetro', v: fmtM(calc.perimetro) },
+        { l: 'Travessas verticais', v: `${calc.travessasV} × ${fmtM(d.altura)}` },
+        { l: 'Travessas horizontais', v: `${calc.travessasH} × ${fmtM(d.largura)}` },
+        { l: 'Total calculado', v: fmtM(s.qtd_calculada) },
+        { l: ajustado ? 'Total utilizado (ajustado manualmente)' : 'Total utilizado', v: fmtM(s.qtd_usada), destaque: true },
+        { l: 'Custo do metalon', v: `${fmtM(s.qtd_usada)} × ${fmtBRL(s.custo_metro)}/m = ${fmtBRL(custoMetalon)}` },
+        { l: `Mão de obra (${fmtNum(s.mao_obra_pct, 1)}%)`, v: fmtBRL(s.mao_obra_custo) },
+        { l: 'Custo serralheria', v: fmtBRL(s.custo_total), destaque: true },
+      ],
+    });
+  } else {
+    secoes.push({
+      titulo: 'Serralheria',
+      linhas: [{ l: 'Sem armação (cliente já possui)', v: fmtBRL(0) }],
+    });
+  }
+
+  if (d.acabamentos.length > 0) {
+    const linhas: LinhaSecao[] = d.acabamentos.map(a => ({
+      l: `${a.nome}${regraAcab(a.tipo_calculo, a.fator_calculo)}`,
+      v: `${fmtNum(a.qtd_usada)} ${unidadeAcab(a.tipo_calculo)} × ${fmtBRL(a.custo_unitario)} = ${fmtBRL(a.custo_total)}`,
+    }));
+    linhas.push({
+      l: 'Custo acabamentos',
+      v: fmtBRL(d.acabamentos.reduce((t, a) => t + Number(a.custo_total), 0)),
+      destaque: true,
+    });
+    secoes.push({ titulo: 'Acabamentos', linhas });
+  } else {
+    secoes.push({ titulo: 'Acabamentos', linhas: [{ l: 'Nenhum acabamento', v: fmtBRL(0) }] });
+  }
+
+  secoes.push({
+    titulo: 'Instalação',
+    linhas: [
+      { l: INSTALACAO_LABEL[d.instalacao.tipo] ?? '—', v: '' },
+      { l: 'Mão de obra', v: fmtBRL(d.instalacao.custo), destaque: true },
+    ],
+  });
+
+  const totais: LinhaSecao[] = [];
+  if (qtd > 1) totais.push({ l: `Custo por unidade (${fmtNum(qtd, 0)} un.)`, v: fmtBRL(Number(d.custo_total) / qtd) });
+  secoes.push({ titulo: 'Custo do item', linhas: totais });
+  return secoes;
+}
+
 interface Props {
   empresa: Partial<Configuracoes>;
   documento: DocumentoCustosData;
@@ -238,6 +317,7 @@ export function DocumentoCustos({ empresa, documento: doc, style }: Props) {
       )}
       {doc.itens.map((it, idx) => {
         const { linhas, custo } = linhasDoItem(it);
+        const secoes = secoesDoItem(it);
         const precoItem = Number(it.total);
         const lucroItem = precoItem - custo;
         const margemItem = precoItem > 0 ? (lucroItem / precoItem) * 100 : 0;
@@ -254,20 +334,35 @@ export function DocumentoCustos({ empresa, documento: doc, style }: Props) {
                   : `Quantidade ${fmtNum(Number(it.quantidade))}`}
               </p>
             </div>
+            {secoes ? (
+              <div style={{ border: `1px solid ${BORDA}`, borderTop: 'none', padding: '4px 10px 2px' }}>
+                {secoes.map(sec => (
+                  <div key={sec.titulo} style={{ marginBottom: 6 }}>
+                    <p style={{ margin: '8px 0 3px', fontSize: 9, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.6 }}>
+                      {sec.titulo}
+                    </p>
+                    {sec.linhas.map((ln, i) => (
+                      <div key={i} style={{
+                        display: 'flex', justifyContent: 'space-between', gap: 12, padding: '2px 0',
+                        fontSize: 11, fontWeight: ln.destaque ? 800 : 400,
+                        color: ln.destaque ? COR : '#4b5563',
+                        borderTop: ln.destaque ? `1px solid #f3f4f6` : undefined,
+                      }}>
+                        <span>{ln.l}</span>
+                        <span style={{ whiteSpace: 'nowrap', textAlign: 'right' }}>{ln.v}</span>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            ) : null}
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr>
-                  <th style={th}>Categoria</th>
-                  <th style={th}>Detalhe do cálculo</th>
-                  <th style={thR}>Custo</th>
-                </tr>
-              </thead>
               <tbody>
-                {linhas.map((l, i) => (
-                  <tr key={i} style={l.destaque ? { background: '#f9fafb' } : undefined}>
-                    <td style={{ ...td, fontWeight: l.destaque ? 800 : 600, whiteSpace: 'nowrap' }}>{l.categoria}</td>
+                {!secoes && linhas.map((l, i) => (
+                  <tr key={i}>
+                    <td style={{ ...td, fontWeight: 600, whiteSpace: 'nowrap' }}>{l.categoria}</td>
                     <td style={{ ...td, color: '#4b5563' }}>{l.detalhe}</td>
-                    <td style={{ ...tdR, fontWeight: l.destaque ? 800 : 400 }}>{fmtBRL(l.valor)}</td>
+                    <td style={tdR}>{fmtBRL(l.valor)}</td>
                   </tr>
                 ))}
                 <tr>

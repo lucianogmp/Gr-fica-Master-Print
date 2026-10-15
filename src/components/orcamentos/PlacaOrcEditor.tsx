@@ -51,8 +51,8 @@ interface Props {
 }
 
 export function PlacaOrcEditor({ editando, onAdicionar, onCancelar, mostrarCusto = false }: Props) {
-  const { isAdmin } = useRole();
-  const podeVerCusto = isAdmin && mostrarCusto;
+  const { podeVerCustos } = useRole();
+  const podeVerCusto = podeVerCustos && mostrarCusto;
 
   const { data: produtos = [] } = useProdutos();
   const materiais = useMemo(
