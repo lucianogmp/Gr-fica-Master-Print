@@ -80,26 +80,39 @@ export function PlacaOrcEditor({ editando, onAdicionar, onCancelar, mostrarCusto
 
   const [largura, setLargura]       = useState(snap?.largura ?? (Number(editando?.largura_cm ?? 0) / 100 || 1));
   const [altura, setAltura]         = useState(snap?.altura ?? (Number(editando?.altura_cm ?? 0) / 100 || 1));
-  const [quantidade, setQuantidade] = useState(editando?.quantidade ?? 1);
+  // numeric do Postgres chega como string — sempre Number() ao reabrir um item salvo
+  const [quantidade, setQuantidade] = useState(Number(snap?.quantidade ?? editando?.quantidade ?? 1) || 1);
 
-  const [materialId, setMaterialId] = useState<string | null>(editando?.produto_id ?? null);
+  const [materialId, setMaterialId] = useState<string | null>(snap?.material?.id ?? editando?.produto_id ?? null);
 
-  const [possuiArmacao, setPossuiArmacao] = useState(editando?.possui_armacao ?? true);
-  const [metalonId, setMetalonId] = useState<string | null>(editando?.metalon_tipo_id ?? null);
-  const [espacamentoMax, setEspacamentoMax] = useState(editando?.espacamento_travessa_m ?? espacamentoPadrao);
-  const [metalonQtdManual, setMetalonQtdManual] = useState<number | null>(editando?.metalon_qtd_usada ?? null);
+  const [possuiArmacao, setPossuiArmacao] = useState<boolean>(snap?.possui_armacao ?? editando?.possui_armacao ?? true);
+  const [metalonId, setMetalonId] = useState<string | null>(snap?.serralheria?.metalon_tipo_id ?? editando?.metalon_tipo_id ?? null);
+  const [espacamentoMax, setEspacamentoMax] = useState<number>(
+    Number(snap?.serralheria?.espacamento_travessa_m ?? editando?.espacamento_travessa_m ?? espacamentoPadrao) || espacamentoPadrao,
+  );
+  // Só vira "manual" se o usuário tinha ajustado o total — senão continua automático
+  // (mudar as medidas depois recalcula normalmente).
+  const [metalonQtdManual, setMetalonQtdManual] = useState<number | null>(() => {
+    const usada = snap?.serralheria?.qtd_usada ?? editando?.metalon_qtd_usada;
+    const calc = snap?.serralheria?.qtd_calculada ?? editando?.metalon_qtd_calculada;
+    if (usada == null) return null;
+    return calc != null && Math.abs(Number(usada) - Number(calc)) < 0.001 ? null : Number(usada);
+  });
 
   const [acabSelecionados, setAcabSelecionados] = useState<Record<string, { usar: boolean; qtdManual: number | null }>>(
     () => {
       const inicial: Record<string, { usar: boolean; qtdManual: number | null }> = {};
       snap?.acabamentos?.forEach(a => {
-        if (a.acabamento_id) inicial[a.acabamento_id] = { usar: true, qtdManual: a.qtd_usada };
+        if (a.acabamento_id) {
+          const ajustado = Math.abs(Number(a.qtd_usada) - Number(a.qtd_calculada)) > 0.001;
+          inicial[a.acabamento_id] = { usar: true, qtdManual: ajustado ? Number(a.qtd_usada) : null };
+        }
       });
       return inicial;
     },
   );
 
-  const [tipoInstalacao, setTipoInstalacao] = useState<TipoInstalacaoPlaca>(editando?.tipo_instalacao ?? 'completa');
+  const [tipoInstalacao, setTipoInstalacao] = useState<TipoInstalacaoPlaca>(snap?.instalacao?.tipo ?? editando?.tipo_instalacao ?? 'completa');
   const [descricao, setDescricao] = useState(editando?.descricao ?? '');
 
   const [margem, setMargem] = useState(snap?.margem_pct ?? 40);
@@ -121,14 +134,21 @@ export function PlacaOrcEditor({ editando, onAdicionar, onCancelar, mostrarCusto
   const { data: bomMaterial = [] } = useQuery({
     queryKey: ['bom-item-placa', material?.id],
     queryFn: () => loadBom(material!.id),
-    enabled: !!material?.id && podeVerCusto,
+    // depende da PERMISSÃO, não do botão "mostrar custo": com o botão desligado o
+    // custo vinha 0 e era gravado zerado no detalhamento ao salvar.
+    enabled: !!material?.id && podeVerCustos,
   });
-  const custoM2Material = material
+  const custoM2Calculado = material
     ? calcCustoBOM(bomMaterial)
       + Number((material as any).custo_mao_obra ?? 0)
       + Number((material as any).custo_acabamento ?? 0)
       + Number((material as any).custo_operacional ?? 0)
     : 0;
+  // Sem permissão de custos não dá pra recalcular: mantém o custo já salvo
+  // (se o material não mudou) em vez de gravar zero por cima.
+  const custoM2Material = !podeVerCustos && snap && snap.material?.id === material?.id
+    ? Number(snap.material.custo_m2)
+    : custoM2Calculado;
 
   const area = largura * altura * quantidade;
   const perimetroSimples = (largura + altura) * 2;
