@@ -2,8 +2,9 @@
 //
 // Gera o PDF do orçamento e BAIXA direto no aparelho — sem abrir janela de
 // impressão. Renderiza o mesmo documento usado na impressão (componentes
-// com estilo inline) fora da tela e converte para PDF A4 com html2canvas + jsPDF
-// (html2canvas + jsPDF carregados sob demanda, só quando alguém clica em baixar).
+// com estilo inline) fora da tela e converte para PDF A4 com TEXTO REAL (editável,
+// selecionável, abre no Word) usando jsPDF + domParaPdf — nada de "foto" da tela.
+// (jsPDF carregado sob demanda, só quando alguém clica em baixar).
 
 import type { ReactElement } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -12,6 +13,8 @@ import { DocumentoImpressao, DocumentoImpressaoData } from './DocumentoImpressao
 import { DocumentoCustos, DocumentoCustosData } from './DocumentoCustos';
 import { LayoutImpressaoConfig } from '../../types/layoutImpressao';
 import type { Configuracoes } from '../../types/configuracoes';
+import { coletarItens, blocosDeTexto, desenharPagina } from './domParaPdf';
+const A4_ALTURA_MM = 297;
 
 const LARGURA_A4_PX = 794; // 210 mm a 96 dpi
 
@@ -60,28 +63,41 @@ async function gerarEBaixar(conteudo: ReactElement, nomeArquivo: string) {
     host.querySelectorAll('img').forEach(i => i.setAttribute('crossorigin', 'anonymous'));
     await esperarImagens(host);
 
-    const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import('html2canvas'), import('jspdf')]);
+    const { jsPDF } = await import('jspdf');
     const alvo = (host.firstElementChild as HTMLElement) ?? host;
 
-    const ESCALA = 2;
-    const canvas = await html2canvas(alvo, {
-      scale: ESCALA, useCORS: true, backgroundColor: '#ffffff',
-      windowWidth: LARGURA_A4_PX, width: LARGURA_A4_PX,
-    });
+    // Lê o documento renderizado (posição, fonte, cor, bordas, fundos) — vira texto/formas no PDF.
+    const { itens, fixos } = await coletarItens(alvo);
 
-    // ---- paginação A4 (margem de 8 mm em cima/embaixo) ----
-    const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+    // ---- paginação A4 (margem de 6 mm em cima/embaixo) ----
+    const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait', compress: true });
+    pdf.setProperties({ title: nomeArquivo.replace(/\.pdf$/i, '') });
     const MARGEM_MM = 6;
     const pxPorMm = LARGURA_A4_PX / 210;
-    const alturaPaginaPx = (297 - MARGEM_MM * 2) * pxPorMm;
-    const totalPx = canvas.height / ESCALA;
+    // Elementos position:fixed (barra de rodapé) ficam na base de TODA página, como na impressão;
+    // o conteúdo para um pouco antes deles pra não passar por cima.
+    const topoFixosPx = fixos.reduce((m, f) => Math.max(m, f.bottomPx + f.alturaPx), 0);
+    const alturaPaginaPx = fixos.length
+      ? A4_ALTURA_MM * pxPorMm - MARGEM_MM * pxPorMm - (topoFixosPx + 12)
+      : (A4_ALTURA_MM - MARGEM_MM * 2) * pxPorMm;
+    // Fim do documento = fim do último conteúdo desenhado (a altura mínima de 1 folha A4 do
+    // documento não pode gerar uma página em branco sobrando).
+    // (ignora o fundo branco da própria página, que ocupa o documento inteiro)
+    const fimConteudoPx = itens
+      .filter(i => !(i.k === 'rect' && i.top <= 1 && i.left <= 1))
+      .reduce((m, i) => Math.max(m, i.bottom), 0);
+    const totalPx = Math.min(
+      Math.max(alvo.scrollHeight, alvo.getBoundingClientRect().height),
+      fimConteudoPx + 24,
+    );
 
-    // blocos que não devem ser cortados no meio (itens, seções, linhas de tabela)
+    // blocos que não devem ser cortados no meio (itens, seções, linhas de tabela e de texto)
     const origem = alvo.getBoundingClientRect().top;
     const blocos = Array.from(alvo.querySelectorAll<HTMLElement>('[style*="break-inside"], tr')).map(el => {
       const r = el.getBoundingClientRect();
       return { topo: r.top - origem, base: r.bottom - origem };
     });
+    blocos.push(...blocosDeTexto(itens));
     // título que não pode ficar sozinho no fim da página: junta com o 1º bloco que vem depois
     alvo.querySelectorAll<HTMLElement>('[data-keep-next]').forEach(el => {
       const prox = el.nextElementSibling?.querySelector<HTMLElement>('[style*="break-inside"]');
@@ -100,19 +116,16 @@ async function gerarEBaixar(conteudo: ReactElement, nomeArquivo: string) {
           .map(b => b.topo);
         if (contendo.length) fim = Math.min(...contendo); // bloco mais externo que cabe numa página
       }
-      const alturaFatiaPx = fim - y;
-
-      const fatia = document.createElement('canvas');
-      fatia.width = canvas.width;
-      fatia.height = Math.ceil(alturaFatiaPx * ESCALA);
-      const ctx = fatia.getContext('2d')!;
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, fatia.width, fatia.height);
-      ctx.drawImage(canvas, 0, y * ESCALA, canvas.width, fatia.height, 0, 0, canvas.width, fatia.height);
 
       if (!primeira) pdf.addPage();
       primeira = false;
-      pdf.addImage(fatia.toDataURL('image/jpeg', 0.95), 'JPEG', 0, MARGEM_MM, 210, alturaFatiaPx / pxPorMm);
+      desenharPagina(itens, { pdf, pxPorMm, margemMm: MARGEM_MM, y0: y, y1: fim });
+      for (const f of fixos) {
+        const topoMm = A4_ALTURA_MM - (f.bottomPx + f.alturaPx) / pxPorMm;
+        desenharPagina(f.itens, {
+          pdf, pxPorMm, margemMm: topoMm, y0: 0, y1: f.alturaPx + 1, dxMm: f.esquerdaPx / pxPorMm,
+        });
+      }
       y = fim;
     }
 
