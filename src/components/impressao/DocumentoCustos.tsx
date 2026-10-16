@@ -119,6 +119,13 @@ function linhasDoItem(it: OrcamentoItem): { linhas: LinhaCusto[]; custo: number 
       });
     } else {
       linhas.push({ categoria: 'Estrutura', detalhe: 'Sem armação (cliente já possui)', valor: 0 });
+      if (d.adaptacao_armacao && Number(d.adaptacao_armacao.custo) > 0) {
+        linhas.push({
+          categoria: 'Estrutura — adaptação',
+          detalhe: d.adaptacao_armacao.descricao || 'Material para adaptar a armação do cliente',
+          valor: d.adaptacao_armacao.custo,
+        });
+      }
     }
 
     if (d.acabamentos.length === 0) {
@@ -228,7 +235,12 @@ function secoesDoItem(it: OrcamentoItem): SecaoCusto[] | null {
     secoes.push({
       titulo: 'Serralheria',
       cabecalho: ['Descrição', 'Medida / quantidade', 'Custo unitário', 'Custo'],
-      linhas: [{ l: 'Sem armação (cliente já possui)', v: fmtBRL(0) }],
+      linhas: [
+        { l: 'Sem armação (cliente já possui)', v: fmtBRL(0) },
+        ...(d.adaptacao_armacao && Number(d.adaptacao_armacao.custo) > 0
+          ? [{ l: `Adaptação da armação${d.adaptacao_armacao.descricao ? ` — ${d.adaptacao_armacao.descricao}` : ''}`, v: fmtBRL(d.adaptacao_armacao.custo), destaque: true }]
+          : []),
+      ],
     });
   }
 
@@ -284,10 +296,12 @@ export function DocumentoCustos({ empresa, documento: doc, style }: Props) {
   // nome (ex: "Parafuso: 56 un." somando todos os itens) — só pro resumo geral.
   let estruturaMetalon = 0;
   let estruturaMaoObra = 0;
+  let estruturaAdaptacao = 0;
   const acabPorNome = new Map<string, { qtd: number; custo: number; un: string }>();
   for (const it of doc.itens) {
     const d = it.detalhe_placa;
     if (!d) continue;
+    estruturaAdaptacao += Number(d.adaptacao_armacao?.custo ?? 0);
     if (d.serralheria) {
       estruturaMaoObra += Number(d.serralheria.mao_obra_custo);
       estruturaMetalon += Number(d.serralheria.custo_total) - Number(d.serralheria.mao_obra_custo);
@@ -527,6 +541,14 @@ export function DocumentoCustos({ empresa, documento: doc, style }: Props) {
                   <td style={tdR}>{fmtBRL(estruturaMaoObra)}</td>
                   <td style={tdR}>{pct(estruturaMaoObra)}</td>
                 </tr>
+                {estruturaAdaptacao > 0 && (
+                  <tr>
+                    <td style={{ ...td, fontWeight: 600 }}>Estrutura — adaptação da armação do cliente</td>
+                    <td style={td}></td>
+                    <td style={tdR}>{fmtBRL(estruturaAdaptacao)}</td>
+                    <td style={tdR}>{pct(estruturaAdaptacao)}</td>
+                  </tr>
+                )}
               </>
             )}
             {Array.from(acabPorNome.entries()).map(([nome, a]) => (

@@ -86,6 +86,8 @@ export function PlacaOrcEditor({ editando, onAdicionar, onCancelar, mostrarCusto
   const [materialId, setMaterialId] = useState<string | null>(snap?.material?.id ?? editando?.produto_id ?? null);
 
   const [possuiArmacao, setPossuiArmacao] = useState<boolean>(snap?.possui_armacao ?? editando?.possui_armacao ?? true);
+  const [adaptacaoCusto, setAdaptacaoCusto] = useState<number>(Number(snap?.adaptacao_armacao?.custo ?? 0) || 0);
+  const [adaptacaoDescricao, setAdaptacaoDescricao] = useState<string>(snap?.adaptacao_armacao?.descricao ?? '');
   const [metalonId, setMetalonId] = useState<string | null>(snap?.serralheria?.metalon_tipo_id ?? editando?.metalon_tipo_id ?? null);
   const [espacamentoMax, setEspacamentoMax] = useState<number>(
     Number(snap?.serralheria?.espacamento_travessa_m ?? editando?.espacamento_travessa_m ?? espacamentoPadrao) || espacamentoPadrao,
@@ -189,7 +191,10 @@ export function PlacaOrcEditor({ editando, onAdicionar, onCancelar, mostrarCusto
     : tipoInstalacao === 'esticar' ? maoObraInstalacaoEsticar
     : maoObraInstalacaoCompleta;
 
-  const custoTotal = custoMaterial + (possuiArmacao ? custoSerralheria : 0) + custoAcabamentos + custoInstalacao;
+  // Armação do cliente que precisa de conserto/adaptação: custo do material comprado entra no custo (e a margem incide).
+  const custoAdaptacao = !possuiArmacao ? Math.max(0, adaptacaoCusto) : 0;
+
+  const custoTotal = custoMaterial + (possuiArmacao ? custoSerralheria : 0) + custoAdaptacao + custoAcabamentos + custoInstalacao;
   const precoSugerido = custoTotal * (1 + margem / 100);
   const precoFinal = precoFinalManual ?? precoSugerido;
   const lucro = precoFinal - custoTotal;
@@ -232,6 +237,9 @@ export function PlacaOrcEditor({ editando, onAdicionar, onCancelar, mostrarCusto
         mao_obra_custo: custoMaoObraSerr,
         custo_total: custoSerralheria,
       } : null,
+      adaptacao_armacao: custoAdaptacao > 0
+        ? { descricao: adaptacaoDescricao.trim(), custo: custoAdaptacao }
+        : null,
       acabamentos: acabDetalhado,
       instalacao: { tipo: tipoInstalacao, custo: custoInstalacao },
       custo_total: custoTotal,
@@ -384,6 +392,29 @@ export function PlacaOrcEditor({ editando, onAdicionar, onCancelar, mostrarCusto
                       }`}>Não, cliente já tem</button>
                   </div>
                 </div>
+
+                {!possuiArmacao && (
+                  <div className="pt-1 border-t border-gray-800 space-y-3">
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-300">A armação do cliente precisa de alteração?</h4>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Se for preciso comprar material para adaptar ou consertar a armação, informe o custo. Deixe em branco se não houver.
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-[180px_minmax(0,1fr)] gap-3">
+                      <div>
+                        <label className={LABEL}>Custo do material</label>
+                        <MoneyInput className={IN} value={adaptacaoCusto} onChange={setAdaptacaoCusto} />
+                      </div>
+                      <div>
+                        <label className={LABEL}>O que será alterado (opcional)</label>
+                        <input type="text" className={IN} value={adaptacaoDescricao}
+                          onChange={e => setAdaptacaoDescricao(e.target.value)}
+                          placeholder="Ex: trocar barras enferrujadas, reforçar travessa" />
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {possuiArmacao && (
                   <div className="pt-1 border-t border-gray-800 space-y-4">
@@ -561,6 +592,7 @@ export function PlacaOrcEditor({ editando, onAdicionar, onCancelar, mostrarCusto
                 <div className="space-y-2 text-sm">
                   <Linha label="Material/impressão" valor={custoMaterial} />
                   {possuiArmacao && <Linha label="Serralheria" valor={custoSerralheria} />}
+                  {custoAdaptacao > 0 && <Linha label="Adaptação da armação" valor={custoAdaptacao} />}
                   {custoAcabamentos > 0 && <Linha label="Acabamentos" valor={custoAcabamentos} />}
                   <Linha label="Instalação" valor={custoInstalacao} />
                 </div>
@@ -626,6 +658,13 @@ export function PlacaOrcEditor({ editando, onAdicionar, onCancelar, mostrarCusto
                     <Detalhe l={`Mão de obra (${maoObraSerralheriaPct}%)`} v={fmtBRL(custoMaoObraSerr)} />
                     <Detalhe l="Custo serralheria" v={fmtBRL(custoSerralheria)} destaque />
                   </>}
+                </div>
+              )}
+              {custoAdaptacao > 0 && (
+                <div>
+                  <div className="text-xs text-gray-500 mb-1.5 uppercase tracking-wide">Adaptação da armação do cliente</div>
+                  {adaptacaoDescricao.trim() && <Detalhe l="Alteração" v={adaptacaoDescricao.trim()} />}
+                  {podeVerCusto && <Detalhe l="Custo do material" v={fmtBRL(custoAdaptacao)} destaque />}
                 </div>
               )}
               {acabDetalhado.length > 0 && (

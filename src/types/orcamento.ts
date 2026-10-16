@@ -127,7 +127,7 @@ export function agregarCustoDetalhadoOrcamento(itens: OrcamentoItem[]): ResumoCu
     const d = i.detalhe_placa;
     if (d) {
       material    += Number(d.material?.custo_total ?? 0);
-      estrutura   += Number(d.serralheria?.custo_total ?? 0);
+      estrutura   += Number(d.serralheria?.custo_total ?? 0) + Number(d.adaptacao_armacao?.custo ?? 0);
       acabamentos += (d.acabamentos ?? []).reduce((s, a) => s + Number(a.custo_total ?? 0), 0);
       instalacao  += Number(d.instalacao?.custo ?? 0);
       continue;

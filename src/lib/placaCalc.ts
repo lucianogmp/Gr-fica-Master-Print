@@ -136,6 +136,8 @@ export interface DetalhePlaca {
   material: DetalhePlacaMaterial;
   possui_armacao: boolean;
   serralheria: DetalhePlacaSerralheria | null;
+  /** Custo extra (material) para adaptar/consertar a armação que o cliente já possui. Opcional: itens antigos não têm. */
+  adaptacao_armacao?: { descricao: string; custo: number } | null;
   acabamentos: DetalhePlacaAcabamento[];
   instalacao: DetalhePlacaInstalacao;
   custo_total: number;
