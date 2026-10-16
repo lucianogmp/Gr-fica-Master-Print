@@ -68,11 +68,11 @@ const BORDA = '#e5e7eb';
 
 const GRADE = `1px solid #d1d5db`;
 const thG: CSSProperties = {
-  textAlign: 'left', padding: '5px 8px', fontSize: 10, fontWeight: 700, color: '#374151',
+  textAlign: 'left', padding: '3px 8px', fontSize: 10, fontWeight: 700, color: '#374151',
   background: '#f9fafb', border: GRADE, lineHeight: 1.45,
 };
 const thGR: CSSProperties = { ...thG, textAlign: 'right' };
-const tdG: CSSProperties = { padding: '5px 8px', fontSize: 11, border: GRADE, verticalAlign: 'middle', lineHeight: 1.45 };
+const tdG: CSSProperties = { padding: '3px 8px', fontSize: 11, border: GRADE, verticalAlign: 'middle', lineHeight: 1.45 };
 const tdGR: CSSProperties = { ...tdG, textAlign: 'right', whiteSpace: 'nowrap' };
 
 const th: CSSProperties = {
@@ -356,8 +356,8 @@ export function DocumentoCustos({ empresa, documento: doc, style }: Props) {
         const margemItem = precoItem > 0 ? (lucroItem / precoItem) * 100 : 0;
         const d = it.detalhe_placa;
         return (
-          <div key={it.id ?? idx} style={{ marginBottom: 18, breakInside: 'avoid', pageBreakInside: 'avoid' }}>
-            <div style={{ background: '#f3f4f6', padding: '7px 10px', borderRadius: '6px 6px 0 0' }}>
+          <div key={it.id ?? idx} style={{ marginBottom: 10 }}>
+            <div data-keep-next style={{ background: '#f3f4f6', padding: '6px 10px', borderRadius: '6px 6px 0 0' }}>
               <p style={{ margin: 0, fontSize: 12, fontWeight: 800 }}>
                 Item {idx + 1} — {it.descricao}
               </p>
@@ -375,9 +375,9 @@ export function DocumentoCustos({ empresa, documento: doc, style }: Props) {
               </div>
             )}
             {secoes ? (
-              <div style={{ border: `1px solid ${BORDA}`, borderTop: 'none', padding: '8px 10px 2px' }}>
+              <div style={{ border: `1px solid ${BORDA}`, borderTop: 'none', padding: '6px 10px 0' }}>
                 {secoes.map(sec => (
-                  <div key={sec.titulo} style={{ marginBottom: 10, breakInside: 'avoid', pageBreakInside: 'avoid' }}>
+                  <div key={sec.titulo} style={{ marginBottom: 6, breakInside: 'avoid', pageBreakInside: 'avoid' }}>
                     <div style={{ background: '#e5e7eb', padding: '5px 8px', fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.4 }}>
                       {sec.titulo}
                     </div>

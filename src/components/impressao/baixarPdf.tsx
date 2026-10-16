@@ -71,7 +71,7 @@ async function gerarEBaixar(conteudo: ReactElement, nomeArquivo: string) {
 
     // ---- paginação A4 (margem de 8 mm em cima/embaixo) ----
     const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
-    const MARGEM_MM = 8;
+    const MARGEM_MM = 6;
     const pxPorMm = LARGURA_A4_PX / 210;
     const alturaPaginaPx = (297 - MARGEM_MM * 2) * pxPorMm;
     const totalPx = canvas.height / ESCALA;
@@ -81,6 +81,12 @@ async function gerarEBaixar(conteudo: ReactElement, nomeArquivo: string) {
     const blocos = Array.from(alvo.querySelectorAll<HTMLElement>('[style*="break-inside"], tr')).map(el => {
       const r = el.getBoundingClientRect();
       return { topo: r.top - origem, base: r.bottom - origem };
+    });
+    // título que não pode ficar sozinho no fim da página: junta com o 1º bloco que vem depois
+    alvo.querySelectorAll<HTMLElement>('[data-keep-next]').forEach(el => {
+      const prox = el.nextElementSibling?.querySelector<HTMLElement>('[style*="break-inside"]');
+      if (!prox) return;
+      blocos.push({ topo: el.getBoundingClientRect().top - origem, base: prox.getBoundingClientRect().bottom - origem });
     });
 
     let y = 0;
