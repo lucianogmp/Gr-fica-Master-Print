@@ -409,22 +409,29 @@ export function PlacaOrcEditor({ editando, onAdicionar, onCancelar, mostrarCusto
                     )}
 
                     <div className="bg-[#111827] border border-gray-800 rounded-lg p-4 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-gray-400">Espaçamento máximo do reforço (travessa)</span>
-                        <div className="flex items-center gap-1.5">
-                          <MedidaInput value={espacamentoMax} onChange={setEspacamentoMax}
-                            className="w-20 bg-[#0d1420] border border-gray-700 rounded px-2 py-1 text-sm text-right text-white" />
-                          <span className="text-xs text-gray-500">m</span>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                          <label className={LABEL}>Espaçamento máx. da travessa</label>
+                          <div className="flex items-center gap-1.5">
+                            <MedidaInput value={espacamentoMax} onChange={setEspacamentoMax}
+                              className="w-full bg-[#0d1420] border border-gray-700 rounded px-2 py-1.5 text-sm text-right text-white" />
+                            <span className="text-xs text-gray-500">m</span>
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-400">Metalon calculado</span>
-                        <span className="text-gray-300">{fmtM(metalonCalc.total)}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-400">Quantidade utilizada</span>
-                        <MedidaInput value={metalonQtdUsada} onChange={setMetalonQtdManual}
-                          className="w-24 bg-[#0d1420] border border-gray-700 rounded px-2 py-1 text-sm text-right font-semibold text-white" />
+                        <div>
+                          <label className={LABEL}>Metalon calculado</label>
+                          <div className="bg-[#0d1420] border border-gray-800 rounded px-2 py-1.5 text-sm text-right text-gray-300">
+                            {fmtM(metalonCalc.total)}
+                          </div>
+                        </div>
+                        <div>
+                          <label className={LABEL}>Quantidade utilizada</label>
+                          <div className="flex items-center gap-1.5">
+                            <MedidaInput value={metalonQtdUsada} onChange={setMetalonQtdManual}
+                              className="w-full bg-[#0d1420] border border-gray-700 rounded px-2 py-1.5 text-sm text-right font-semibold text-white" />
+                            <span className="text-xs text-gray-500">m</span>
+                          </div>
+                        </div>
                       </div>
                       <button onClick={() => setVerCalculo(true)}
                         className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 pt-1">
@@ -437,19 +444,20 @@ export function PlacaOrcEditor({ editando, onAdicionar, onCancelar, mostrarCusto
             )}
 
             {step.key === 'acab' && (
-              <div className="space-y-2.5">
-                <h3 className="text-sm font-semibold text-gray-300 mb-1">Quais acabamentos vai usar?</h3>
+              <div>
+                <h3 className="text-sm font-semibold text-gray-300 mb-2.5">Quais acabamentos vai usar?</h3>
                 {acabamentosAtivos.length === 0 && (
                   <p className="text-xs text-gray-500">Nenhum acabamento cadastrado ainda.</p>
                 )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5">
                 {acabamentosAtivos.map(a => {
                   const sel = acabSelecionados[a.id];
                   const tipoCalc = a.tipo_calculo ?? 'manual';
                   const qtdCalc = calcAcabamentoQuantidade(tipoCalc, a.fator_calculo, { area, perimetro: perimetroSimples });
                   const usado = !!sel?.usar;
                   return (
-                    <div key={a.id} className={`rounded-lg border p-3.5 transition-colors ${usado ? 'border-blue-500/50 bg-blue-500/5' : 'border-gray-800 bg-[#111827]'}`}>
-                      <div className="flex items-center justify-between">
+                    <div key={a.id} className={`rounded-lg border p-3 transition-colors ${usado ? 'border-blue-500/50 bg-blue-500/5' : 'border-gray-800 bg-[#111827]'}`}>
+                      <div className="flex items-center justify-between gap-2">
                         <button onClick={() => toggleAcab(a.id)} className="flex items-center gap-2.5 text-left flex-1">
                           <div className={`w-4 h-4 rounded flex items-center justify-center border shrink-0 ${usado ? 'bg-blue-500 border-blue-500' : 'border-gray-600'}`}>
                             {usado && <Check size={11} />}
@@ -468,37 +476,40 @@ export function PlacaOrcEditor({ editando, onAdicionar, onCancelar, mostrarCusto
                           <div className="flex items-center gap-1.5">
                             <QtdInput value={String(sel!.qtdManual ?? qtdCalc)}
                               onChange={v => setAcabQtd(a.id, v === '' ? 0 : parseFloat(v))}
-                              className="w-16 bg-[#0d1420] border border-gray-700 rounded px-2 py-1 text-sm text-right text-white" />
-                            <span className="text-xs text-gray-500 w-8">un.</span>
+                              className="w-14 bg-[#0d1420] border border-gray-700 rounded px-2 py-1 text-sm text-right text-white" />
+                            <span className="text-xs text-gray-500">un.</span>
                           </div>
                         )}
                       </div>
                     </div>
                   );
                 })}
+                </div>
               </div>
             )}
 
             {step.key === 'inst' && (
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-gray-300 mb-1">Como vai ser a instalação?</h3>
-                {INSTALACAO_OPCOES.map(op => (
-                  <button key={op.id} onClick={() => setTipoInstalacao(op.id)}
-                    className={`w-full text-left p-3.5 rounded-lg border transition-colors ${
-                      tipoInstalacao === op.id ? 'border-blue-500 bg-blue-500/10' : 'border-gray-800 bg-[#111827]'
-                    }`}>
-                    <div className="text-sm font-medium text-white">{op.nome}</div>
-                    <div className="text-xs text-gray-500 mt-0.5">{op.desc}</div>
-                  </button>
-                ))}
+              <div>
+                <h3 className="text-sm font-semibold text-gray-300 mb-2.5">Como vai ser a instalação?</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  {INSTALACAO_OPCOES.map(op => (
+                    <button key={op.id} onClick={() => setTipoInstalacao(op.id)}
+                      className={`text-left p-3 rounded-lg border transition-colors ${
+                        tipoInstalacao === op.id ? 'border-blue-500 bg-blue-500/10' : 'border-gray-800 bg-[#111827]'
+                      }`}>
+                      <div className="text-sm font-medium text-white">{op.nome}</div>
+                      <div className="text-xs text-gray-500 mt-0.5">{op.desc}</div>
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 
             {step.key === 'resumo' && (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <h3 className="text-sm font-semibold text-gray-300">Confira e ajuste o preço</h3>
                 {podeVerCusto ? (
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-3 max-w-md">
                     <div>
                       <label className={LABEL}>Margem desejada (%)</label>
                       <PctInput className={IN} value={margem} onChange={setMargem} center={false} />
@@ -509,7 +520,7 @@ export function PlacaOrcEditor({ editando, onAdicionar, onCancelar, mostrarCusto
                     </div>
                   </div>
                 ) : (
-                  <div>
+                  <div className="max-w-[220px]">
                     <label className={LABEL}>Preço final</label>
                     <MoneyInput className={IN} value={precoFinal} onChange={setPrecoFinalManual} />
                   </div>
