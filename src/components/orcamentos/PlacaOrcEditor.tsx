@@ -414,13 +414,13 @@ export function PlacaOrcEditor({ editando, onAdicionar, onCancelar, mostrarCusto
                           <label className={LABEL}>Espaçamento máx. da travessa</label>
                           <div className="flex items-center gap-1.5">
                             <MedidaInput value={espacamentoMax} onChange={setEspacamentoMax}
-                              className="w-full bg-[#0d1420] border border-gray-700 rounded px-2 py-1.5 text-sm text-right text-white" />
+                              className="w-full h-11 bg-[#0d1420] border border-gray-700 rounded-lg px-3 text-sm text-right text-white" />
                             <span className="text-xs text-gray-500">m</span>
                           </div>
                         </div>
                         <div>
                           <label className={LABEL}>Metalon calculado</label>
-                          <div className="bg-[#0d1420] border border-gray-800 rounded px-2 py-1.5 text-sm text-right text-gray-300">
+                          <div className="h-11 flex items-center justify-end bg-[#0d1420] border border-gray-800 rounded-lg px-3 text-sm text-gray-300">
                             {fmtM(metalonCalc.total)}
                           </div>
                         </div>
@@ -428,7 +428,7 @@ export function PlacaOrcEditor({ editando, onAdicionar, onCancelar, mostrarCusto
                           <label className={LABEL}>Quantidade utilizada</label>
                           <div className="flex items-center gap-1.5">
                             <MedidaInput value={metalonQtdUsada} onChange={setMetalonQtdManual}
-                              className="w-full bg-[#0d1420] border border-gray-700 rounded px-2 py-1.5 text-sm text-right font-semibold text-white" />
+                              className="w-full h-11 bg-[#0d1420] border border-gray-700 rounded-lg px-3 text-sm text-right font-semibold text-white" />
                             <span className="text-xs text-gray-500">m</span>
                           </div>
                         </div>
