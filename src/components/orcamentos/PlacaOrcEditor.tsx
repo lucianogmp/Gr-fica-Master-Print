@@ -473,10 +473,10 @@ export function PlacaOrcEditor({ editando, onAdicionar, onCancelar, mostrarCusto
                           </div>
                         </button>
                         {usado && (
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1.5 shrink-0">
                             <QtdInput value={String(sel!.qtdManual ?? qtdCalc)}
                               onChange={v => setAcabQtd(a.id, v === '' ? 0 : parseFloat(v))}
-                              className="w-14 bg-[#0d1420] border border-gray-700 rounded px-2 py-1 text-sm text-right text-white" />
+                              className="w-24 h-10 shrink-0 bg-[#0d1420] border border-gray-700 rounded-lg px-3 text-sm text-right text-white" />
                             <span className="text-xs text-gray-500">un.</span>
                           </div>
                         )}
