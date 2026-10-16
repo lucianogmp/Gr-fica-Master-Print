@@ -119,13 +119,13 @@ function linhasDoItem(it: OrcamentoItem): { linhas: LinhaCusto[]; custo: number 
       });
     } else {
       linhas.push({ categoria: 'Estrutura', detalhe: 'Sem armação (cliente já possui)', valor: 0 });
-      if (d.adaptacao_armacao && Number(d.adaptacao_armacao.custo) > 0) {
-        linhas.push({
-          categoria: 'Estrutura — adaptação',
-          detalhe: d.adaptacao_armacao.descricao || 'Material para adaptar a armação do cliente',
-          valor: d.adaptacao_armacao.custo,
-        });
-      }
+    }
+    if (d.adaptacao_armacao && Number(d.adaptacao_armacao.custo) > 0) {
+      linhas.push({
+        categoria: 'Estrutura — gasto extra',
+        detalhe: d.adaptacao_armacao.descricao || 'Material extra / adaptação da estrutura',
+        valor: d.adaptacao_armacao.custo,
+      });
     }
 
     if (d.acabamentos.length === 0) {
@@ -235,11 +235,16 @@ function secoesDoItem(it: OrcamentoItem): SecaoCusto[] | null {
     secoes.push({
       titulo: 'Serralheria',
       cabecalho: ['Descrição', 'Medida / quantidade', 'Custo unitário', 'Custo'],
+      linhas: [{ l: 'Sem armação (cliente já possui)', v: fmtBRL(0) }],
+    });
+  }
+
+  if (d.adaptacao_armacao && Number(d.adaptacao_armacao.custo) > 0) {
+    secoes.push({
+      titulo: 'Estrutura — gasto extra',
+      cabecalho: ['Descrição', 'Medida / quantidade', 'Custo unitário', 'Custo'],
       linhas: [
-        { l: 'Sem armação (cliente já possui)', v: fmtBRL(0) },
-        ...(d.adaptacao_armacao && Number(d.adaptacao_armacao.custo) > 0
-          ? [{ l: `Adaptação da armação${d.adaptacao_armacao.descricao ? ` — ${d.adaptacao_armacao.descricao}` : ''}`, v: fmtBRL(d.adaptacao_armacao.custo), destaque: true }]
-          : []),
+        { l: d.adaptacao_armacao.descricao || 'Material extra / adaptação da estrutura', v: fmtBRL(d.adaptacao_armacao.custo), destaque: true },
       ],
     });
   }
@@ -543,7 +548,7 @@ export function DocumentoCustos({ empresa, documento: doc, style }: Props) {
                 </tr>
                 {estruturaAdaptacao > 0 && (
                   <tr>
-                    <td style={{ ...td, fontWeight: 600 }}>Estrutura — adaptação da armação do cliente</td>
+                    <td style={{ ...td, fontWeight: 600 }}>Estrutura — gasto extra / adaptação</td>
                     <td style={td}></td>
                     <td style={tdR}>{fmtBRL(estruturaAdaptacao)}</td>
                     <td style={tdR}>{pct(estruturaAdaptacao)}</td>
