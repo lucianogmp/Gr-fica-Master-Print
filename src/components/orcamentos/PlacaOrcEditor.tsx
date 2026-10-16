@@ -377,7 +377,7 @@ export function PlacaOrcEditor({ editando, onAdicionar, onCancelar, mostrarCusto
                     <button onClick={() => setPossuiArmacao(true)}
                       className={`flex-1 py-2.5 rounded-lg text-sm font-medium border transition-colors ${
                         possuiArmacao ? 'border-blue-500 bg-blue-500/10 text-blue-400' : 'border-gray-800 text-gray-500'
-                      }`}>Sim, tem armação</button>
+                      }`}>Sim, vai ter armação</button>
                     <button onClick={() => setPossuiArmacao(false)}
                       className={`flex-1 py-2.5 rounded-lg text-sm font-medium border transition-colors ${
                         !possuiArmacao ? 'border-blue-500 bg-blue-500/10 text-blue-400' : 'border-gray-800 text-gray-500'
