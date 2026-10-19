@@ -27,7 +27,10 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 1, 
-      refetchOnWindowFocus: false, 
+      // rede de segurança junto com o Realtime (useRealtimeSync): ao voltar pra aba ou reconectar,
+      // refaz só o que já passou do staleTime — não dispara tudo de novo a cada clique.
+      refetchOnWindowFocus: true,
+      refetchOnReconnect: true,
       staleTime: 1000 * 60 * 5, 
     },
   },

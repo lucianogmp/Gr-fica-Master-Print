@@ -9,6 +9,7 @@ import { EstoqueAlertBanner } from './EstoqueAlertBanner';
 import { BackupAlertBanner } from './BackupAlertBanner';
 import { useTheme } from '../hooks/useTheme';
 import { useConfiguracoes } from '../hooks/useConfiguracoes';
+import { useRealtimeSync } from '../hooks/useRealtimeSync';
 import { podeSairSemSalvar } from '../lib/unsavedChangesGuard';
 import toast from 'react-hot-toast';
 import {
@@ -212,6 +213,7 @@ export function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
+  useRealtimeSync(!!user); // telas se atualizam sozinhas quando algo muda no banco (sem F5)
   const { role, pode } = useRole();
   const { isDark, toggleTheme } = useTheme();
   const { data: cfg } = useConfiguracoes();
