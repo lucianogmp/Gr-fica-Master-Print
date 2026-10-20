@@ -341,7 +341,10 @@ export function Orcamentos() {
     // (12-13 dígitos) são respeitados; DDD + número (10-11 dígitos) ganham o 55.
     const comCodigoPais = foneDigits.length <= 11 ? `55${foneDigits}` : foneDigits;
     const texto = montarMensagemWhatsApp(dados);
-    window.open(`https://wa.me/${comCodigoPais}?text=${encodeURIComponent(texto)}`, '_blank');
+    // Link DIRETO da API (api.whatsapp.com/send) em vez do curto wa.me: no computador, o wa.me
+    // redireciona por uma etapa do WhatsApp que troca os emojis por "�". O texto continua
+    // percent-encoded em UTF-8 (encodeURIComponent), então acentos, quebras de linha e emojis seguem intactos.
+    window.open(`https://api.whatsapp.com/send?phone=${comCodigoPais}&text=${encodeURIComponent(texto)}`, '_blank');
   }
 
   // Copia o mesmo texto do WhatsApp pro clipboard, sem abrir conversa nenhuma —

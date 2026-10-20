@@ -28,8 +28,16 @@ export function useConfiguracoes() {
         .select('*')
         .limit(1)
         .single();
+      if (data) return data;
       if (error && error.code !== 'PGRST116') throw error;
-      return data ?? null;
+
+      // A tabela só é legível por dono/admin (guarda tokens sensíveis): pra vendedor e demais usuários
+      // ela volta vazia. Em vez de ficar sem nada (mensagem padrão do WhatsApp, documento sem dados
+      // da empresa, sem logo...), lê só os campos NÃO sensíveis pela função `obter_config_comercial`.
+      const { data: comercial } = await supabase.rpc('obter_config_comercial');
+      return comercial && Object.keys(comercial as object).length > 0
+        ? (comercial as Configuracoes)
+        : null;
     },
     staleTime: 1000 * 60 * 5,
   });
