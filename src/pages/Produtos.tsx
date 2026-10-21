@@ -67,7 +67,7 @@ function stringifyMaquinas(arr: string[]): string {
 // ── Modal nova matéria-prima ───────────────────────────────────────────────
 function ModalNovaMateriaPrima({ open, onClose, onCriada }: {
   open: boolean; onClose: () => void;
-  onCriada: (id: string, nome: string) => void;
+  onCriada: (mp: { id: string; nome: string; unidade: string; custo_unitario: number }) => void;
 }) {
   const VAZIO = { nome: '', categoria: '', unidade: 'un', custo_unitario: 0 as number, estoque_minimo: '', saldo_inicial: '' };
   const [form, setForm]     = useState(VAZIO);
@@ -93,7 +93,12 @@ function ModalNovaMateriaPrima({ open, onClose, onCriada }: {
         estoque_minimo: parseFloat(form.estoque_minimo) || 0,
         saldo_inicial: parseFloat(form.saldo_inicial) || 0,
       } as any);
-      onCriada(data.id, data.nome);
+      onCriada({
+        id: data.id,
+        nome: data.nome,
+        unidade: (data as any).unidade ?? form.unidade,
+        custo_unitario: Number((data as any).custo_unitario ?? form.custo_unitario ?? 0),
+      });
       setForm(VAZIO);
       onClose();
     } catch (e: any) { toast.error(e.message); }
@@ -374,15 +379,17 @@ export function Produtos() {
   const terceirizado = !!(form as any).terceirizado;
 
   // Depreciação das máquinas proporcional ao tempo de produção
-  const totalDeprMaquinas = useMemo(() =>
+  // Terceirizado: o "tempo" é o prazo do fornecedor (ex.: 48 h), não uso da sua gráfica — não tem
+  // máquina nem rateio de custos fixos. O custo é só o que você paga ao fornecedor.
+  const totalDeprMaquinas = useMemo(() => terceirizado ? 0 :
     maquinas.reduce((soma, nome) => {
       const d = deprs.find(x => x.nome === nome);
       if (!d || !tempoHoras) return soma;
       return soma + (tempoHoras / 160) * (Number(d.valor) / (Number(d.vida_util_anos) * 12));
     }, 0)
-  , [maquinas, deprs, tempoHoras]);
+  , [maquinas, deprs, tempoHoras, terceirizado]);
 
-  const overhead = gcData.porHora * tempoHoras + totalDeprMaquinas;
+  const overhead = terceirizado ? 0 : gcData.porHora * tempoHoras + totalDeprMaquinas;
 
   const custos: CustosProduto = {
     custoBOM:   calcCustoBOM(bom),
@@ -819,7 +826,19 @@ export function Produtos() {
       <ModalNovaCategoria open={modalCat} onClose={() => setModalCat(false)}
         onCriada={(id) => setF('categoria_id', id)} />
       <ModalNovaMateriaPrima open={modalMP} onClose={() => setModalMP(false)}
-        onCriada={(_id, _nome) => {}} />
+        onCriada={(mp) => {
+          // já entra na lista de matérias-primas do produto, com quantidade 1 (ajuste na tabela abaixo)
+          setBom(prev => prev.some(b => b.materia_id === mp.id) ? prev : [
+            ...prev,
+            {
+              produto_id: '',
+              materia_id: mp.id,
+              quantidade: 1,
+              materias_primas: { id: mp.id, nome: mp.nome, unidade: mp.unidade, custo_unitario: mp.custo_unitario },
+            },
+          ]);
+          toast.success(`"${mp.nome}" criada e adicionada ao produto — ajuste a quantidade na lista.`);
+        }} />
 
       <div className="p-6 space-y-6">
         {/* Header */}
