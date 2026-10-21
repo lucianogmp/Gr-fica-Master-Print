@@ -5,7 +5,11 @@ export interface GcData {
   depr: number;
   fixos: number;
   total: number;
+  /** Rateio por hora de TUDO (depreciação das máquinas + custos fixos) — usado nos KPIs da Gestão de Custos. */
   porHora: number;
+  /** Rateio por hora só dos CUSTOS FIXOS (aluguel, salários...). É o que entra no custo do produto: a
+   * depreciação entra à parte, só das máquinas que o produto usa (evita contar a depreciação em dobro). */
+  porHoraFixos: number;
 }
 
 export function useGestaoCustos() {
@@ -32,6 +36,7 @@ export function useGestaoCustos() {
         fixos:   totalFixos,
         total,
         porHora: total > 0 ? total / 30 / 8 : 0,
+        porHoraFixos: totalFixos > 0 ? totalFixos / 30 / 8 : 0,
       };
     },
     staleTime: 1000 * 60 * 10,

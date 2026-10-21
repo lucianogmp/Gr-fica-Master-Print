@@ -18,6 +18,8 @@ export interface Produto {
   custo_acabamento: number;
   custo_operacional: number;
   tempo_producao: string | null;
+  /** Prazo de entrega em dias úteis — só informativo, NÃO entra no custo. */
+  prazo_entrega_dias?: number | null;
   icone_svg?: string | null;
   maquina?: string | null;
   setor?: string | null;

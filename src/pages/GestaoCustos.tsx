@@ -28,7 +28,7 @@ export function GestaoCustos() {
   const [formFixo, setFormFixo] = useState<{ nome: string; categoria: string; valor_mensal: number; ativo: boolean; observacoes: string }>({ nome: '', categoria: '', valor_mensal: 0, ativo: true, observacoes: '' });
   const [formDepr, setFormDepr] = useState<{ nome: string; categoria: string; valor: number; vida_util_anos: string; data_aquisicao: string; observacoes: string }>({ nome: '', categoria: '', valor: 0, vida_util_anos: '', data_aquisicao: '', observacoes: '' });
 
-  const gcData = gc ?? { depr: 0, fixos: 0, total: 0, porHora: 0 };
+  const gcData = gc ?? { depr: 0, fixos: 0, total: 0, porHora: 0, porHoraFixos: 0 };
 
   async function salvarFixo() {
     if (!formFixo.nome || !formFixo.valor_mensal) return;

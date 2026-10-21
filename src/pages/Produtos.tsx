@@ -47,7 +47,7 @@ const NOVO: Omit<Produto, 'id' | 'created_at' | 'updated_at' | 'empresa_id'> = {
   nome: '', sku: '', descricao: '', categoria_id: null,
   status: 'rascunho', preco_venda: 0,
   custo_mao_obra: 0, custo_acabamento: 0, custo_operacional: 0,
-  tempo_producao: '', maquina: '', setor: '', acabamento: '', checklist: '',
+  tempo_producao: '', prazo_entrega_dias: null, maquina: '', setor: '', acabamento: '', checklist: '',
   unidade_medida: 'unidade',
   terceirizado: false,
 };
@@ -373,7 +373,7 @@ export function Produtos() {
   const [salvandoCatLista, setSalvandoCatLista] = useState(false);
 
   const isNovo      = produtoId === '__novo__';
-  const gcData      = gc ?? { depr: 0, fixos: 0, total: 0, porHora: 0 };
+  const gcData      = gc ?? { depr: 0, fixos: 0, total: 0, porHora: 0, porHoraFixos: 0 };
   const tempoHoras  = parseFloat((form as any).tempo_producao ?? '') || 0;
   const porM2       = (form as any).unidade_medida === 'm2';
   const terceirizado = !!(form as any).terceirizado;
@@ -389,7 +389,9 @@ export function Produtos() {
     }, 0)
   , [maquinas, deprs, tempoHoras, terceirizado]);
 
-  const overhead = terceirizado ? 0 : gcData.porHora * tempoHoras + totalDeprMaquinas;
+  // Custos fixos por hora × tempo real de trabalho + depreciação SÓ das máquinas escolhidas.
+  // (gcData.porHora incluiria a depreciação de todas as máquinas, e ela já entra em totalDeprMaquinas)
+  const overhead = terceirizado ? 0 : gcData.porHoraFixos * tempoHoras + totalDeprMaquinas;
 
   const custos: CustosProduto = {
     custoBOM:   calcCustoBOM(bom),
@@ -913,9 +915,21 @@ export function Produtos() {
                 <div>
                   <label className="text-xs font-bold text-gray-400 uppercase mb-1.5 flex items-center gap-1.5">
                     Tempo de Produção
-                    <HelpTooltip texto="Quanto tempo leva pra produzir 1 unidade desse produto. Usado pra calcular o overhead (rateio de energia/depreciação de máquina/custos fixos) no custo final — não afeta o preço de venda diretamente." />
+                    <HelpTooltip texto="Só o tempo em que você ou a máquina estão realmente trabalhando pra fazer 1 unidade (ex.: 20 min). É o que gera o overhead no custo: custos fixos por hora × esse tempo + depreciação das máquinas escolhidas. NÃO coloque prazo de entrega nem tempo de espera aqui — pra isso use o campo 'Prazo de entrega'." />
                   </label>
                   <TempoProducaoInput valor={(form as any).tempo_producao ?? ''} onChange={v => setF('tempo_producao', v)} />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-400 uppercase mb-1.5 flex items-center gap-1.5">
+                    Prazo de entrega
+                    <HelpTooltip texto="Em quantos dias úteis você entrega esse produto ao cliente (ex.: 2). É só informativo — NÃO entra no custo nem no preço. Deixe em branco se não tiver prazo fixo." />
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <InteiroInput value={(form as any).prazo_entrega_dias ?? ''} placeholder="0"
+                      onChange={v => setF('prazo_entrega_dias', v > 0 ? v : null)}
+                      className={IN + ' text-center'} />
+                    <span className="text-xs text-gray-500 whitespace-nowrap">dias úteis</span>
+                  </div>
                 </div>
                 <div>
                   <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Setor</label>

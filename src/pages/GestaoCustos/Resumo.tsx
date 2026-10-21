@@ -28,7 +28,7 @@ export function Resumo() {
   const { data: fixos = [] } = useCustosFixos();
   const { data: deprs = [] } = useDepreciacao();
 
-  const gcData = gc ?? { depr: 0, fixos: 0, total: 0, porHora: 0 };
+  const gcData = gc ?? { depr: 0, fixos: 0, total: 0, porHora: 0, porHoraFixos: 0 };
 
   const isLoading = !gc;
   if (isLoading) return <div className="p-8 text-blue-500 animate-pulse font-bold">Carregando...</div>;
