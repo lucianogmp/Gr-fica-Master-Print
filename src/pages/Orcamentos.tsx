@@ -1261,6 +1261,7 @@ export function Orcamentos() {
                 </>
               )}
 
+              <div className="flex items-center gap-2 flex-wrap">
               {!isNovo && form.status === 'aprovado' && !jaConvertido && (
                 <button onClick={handleConverter} disabled={isConvertendo}
                   className="bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all flex-shrink-0">
@@ -1285,6 +1286,7 @@ export function Orcamentos() {
                 className="bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white px-6 py-2.5 rounded-xl font-bold text-sm transition-all flex-shrink-0">
                 {isSaving ? 'Salvando...' : 'Salvar Orçamento'}
               </button>
+              </div>
             </div>
 
             {/* Custo Total — soma o custo de cada item (calculado no editor
