@@ -913,7 +913,7 @@ export function Orcamentos() {
           </button>
           <button onClick={() => imprimir(posSalvar)}
             className="w-full flex items-center gap-2 justify-center bg-gray-700 hover:bg-gray-600 text-gray-200 px-4 py-3 rounded-xl font-bold text-sm transition-all">
-            <Printer className="w-4 h-4" /> PDF sem custos (cliente)
+            <Printer className="w-4 h-4" /> PDF
           </button>
           {podeVerCustos && (
             <button onClick={() => imprimirComCustos(posSalvar)}
@@ -1271,7 +1271,7 @@ export function Orcamentos() {
               {itens.length > 0 && (
                 <button onClick={() => imprimir()}
                   className="flex items-center gap-1.5 bg-gray-700 hover:bg-gray-600 text-gray-200 px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex-shrink-0">
-                  <Printer className="w-4 h-4" /> PDF sem custos
+                  <Printer className="w-4 h-4" /> PDF
                 </button>
               )}
               {podeVerCustos && itens.length > 0 && (
