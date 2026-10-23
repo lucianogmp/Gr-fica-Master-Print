@@ -1035,6 +1035,26 @@ export function Produtos() {
               </div>
             </div>
 
+            {/* ── Loja virtual ── */}
+            <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-xs font-bold text-white">Aparece no site (loja virtual)?</p>
+                  <p className="text-[10px] text-gray-400">
+                    Ligado: o produto aparece no site da loja. Fotos, descrição, medidas e envio são cadastrados só lá.
+                    Produtos por m² aparecem sem preço (pedido fechado pelo WhatsApp).
+                  </p>
+                </div>
+                <button type="button" onClick={() => setF('publicar_no_catalogo', !(form as any).publicar_no_catalogo)}
+                  className={`flex-shrink-0 w-11 h-6 rounded-full relative transition-all ${
+                    (form as any).publicar_no_catalogo ? 'bg-green-600' : 'bg-gray-700'
+                  }`}>
+                  <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all`}
+                    style={{ left: (form as any).publicar_no_catalogo ? 22 : 2 }} />
+                </button>
+              </div>
+            </div>
+
             {/* ── Máquinas (produto próprio) ── */}
             {!terceirizado && (
               <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5">
