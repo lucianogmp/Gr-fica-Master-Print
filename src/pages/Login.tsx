@@ -12,6 +12,15 @@ export function Login() {
   const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
+  async function esqueci() {
+    if (!email.trim()) { toast.error('Digite seu e-mail acima e clique de novo em "Esqueci minha senha".'); return; }
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: `${window.location.origin}/redefinir-senha`,
+    });
+    if (error) toast.error('Não foi possível enviar agora. Tente de novo em alguns minutos.');
+    else toast.success('Se este e-mail tiver cadastro, enviamos um link para criar nova senha.');
+  }
+
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
@@ -84,6 +93,9 @@ export function Login() {
               className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl transition-all mt-2 shadow-lg shadow-blue-900/30"
             >
               {loading ? 'Entrando...' : 'Entrar'}
+            </button>
+            <button type="button" onClick={esqueci} className="w-full text-xs text-gray-400 hover:text-blue-400 transition-colors pt-1">
+              Esqueci minha senha
             </button>
           </form>
         </div>

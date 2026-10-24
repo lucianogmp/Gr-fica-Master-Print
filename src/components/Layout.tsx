@@ -11,6 +11,7 @@ import { useTheme } from '../hooks/useTheme';
 import { useConfiguracoes } from '../hooks/useConfiguracoes';
 import { useRealtimeSync } from '../hooks/useRealtimeSync';
 import { podeSairSemSalvar } from '../lib/unsavedChangesGuard';
+import { TrocarSenhaModal } from './TrocarSenhaModal';
 import toast from 'react-hot-toast';
 import {
   LayoutDashboard, ShoppingCart, Users, Landmark, FileText,
@@ -218,6 +219,7 @@ export function Layout() {
   const { isDark, toggleTheme } = useTheme();
   const { data: cfg } = useConfiguracoes();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [trocarSenhaAberto, setTrocarSenhaAberto] = useState(false);
 
   // Barra lateral recolhida (só ícones) — padrão é recolhida, pra ganhar
   // espaço vertical em telas como orçamento/venda; a escolha do usuário fica
@@ -506,6 +508,14 @@ export function Layout() {
             </div>
           )}
           <button
+            onClick={() => setTrocarSenhaAberto(true)}
+            title={collapsed ? 'Trocar minha senha' : undefined}
+            className="w-full text-xs text-gray-400 hover:text-white hover:bg-gray-700/60 py-2 rounded-lg transition-all font-medium mb-1"
+          >
+            <span className={collapsed ? 'md:hidden' : ''}>Trocar minha senha</span>
+            <span className={collapsed ? 'md:inline hidden' : 'hidden'}>🔑</span>
+          </button>
+          <button
             onClick={handleLogout}
             title={collapsed ? 'Sair da conta' : undefined}
             className="w-full text-xs text-gray-400 hover:text-red-400 hover:bg-red-500/10 py-2 rounded-lg transition-all font-medium"
@@ -515,6 +525,8 @@ export function Layout() {
           </button>
         </div>
       </aside>
+
+      <TrocarSenhaModal open={trocarSenhaAberto} onClose={() => setTrocarSenhaAberto(false)} email={user?.email ?? ''} />
 
       {/* Área Principal */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">

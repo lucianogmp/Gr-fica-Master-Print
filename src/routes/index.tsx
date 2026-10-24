@@ -7,6 +7,7 @@ import { useAuth }        from '../hooks/useAuth';
 import { useRole }        from '../hooks/useRole';
 import { Login }          from '../pages/Login';
 import { AceitarConvite } from '../pages/AceitarConvite';
+import { RedefinirSenha } from '../pages/RedefinirSenha';
 
 // ─── Pages existentes ────────────────────────────────────────────────────────
 const Dashboard     = lazy(() => import('../pages/Dashboard').then(m => ({ default: m.Dashboard })));
@@ -137,6 +138,7 @@ export function AppRoutes() {
       <Routes>
         <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
         <Route path="/aceitar-convite" element={<AceitarConvite />} />
+        <Route path="/redefinir-senha" element={<RedefinirSenha />} />
 
         <Route path="/" element={user ? <Layout /> : <Navigate to="/login" replace />}>
 
