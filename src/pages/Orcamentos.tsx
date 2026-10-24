@@ -13,6 +13,7 @@ import { marcarAlteracoesPendentes, limparAlteracoesPendentes } from '../lib/uns
 import { OrdenarMenu, aplicarOrdenacao, Ordenacao } from '../components/ui/OrdenarMenu';
 import { FiltrosAvancados, aplicarFiltrosAvancados, FiltrosAvancadosValor } from '../components/ui/FiltrosAvancados';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { useOrcamentos, useOrcamentoItens } from '../hooks/useOrcamentos';
 import { useAcabamentos } from '../hooks/useAcabamentos';
 import { useMateriasPrimas } from '../hooks/useEstoque';
@@ -35,7 +36,7 @@ import { DarkSelect } from '../components/ui/DarkSelect';
 import { useConfirm } from '../components/ui/ConfirmModal';
 
 type View = 'lista' | 'detalhe' | 'acabamentos' | 'folhas';
-type Filtro = 'todos' | StatusOrcamento;
+type Filtro = 'todos' | 'loja' | StatusOrcamento;
 
 // Guarda os dados exatos do orçamento recém-salvo, pro popup de "o que fazer
 // agora" (Salvar PDF / Imprimir / Enviar Orçamento / Ver Orçamento) continuar
@@ -62,6 +63,7 @@ const NOVO_ORC: Omit<Orcamento, 'id' | 'created_at' | 'updated_at'> = {
 
 export function Orcamentos() {
   const { data: orcamentos = [], isLoading, criar, atualizar, atualizarStatus, converterEmVenda, deletar, isSaving, isConvertendo } = useOrcamentos();
+  const qc = useQueryClient();
   const { data: acabamentos = [], criar: criarAcab, atualizar: atualizarAcab, deletar: deletarAcab } = useAcabamentos();
   const { data: materiasPrimas = [] } = useMateriasPrimas();
   const { data: produtos = [] } = useProdutos();
@@ -368,6 +370,11 @@ export function Orcamentos() {
 
   async function abrirDetalhe(o: Orcamento | null, tipoInicial?: 'placa') {
     if (o) {
+      // Pedido da loja virtual: ao abrir pela primeira vez, apaga o ponto vermelho.
+      if (o.origem === 'loja' && !o.loja_visto_em) {
+        supabase.from('orcamentos').update({ loja_visto_em: new Date().toISOString() }).eq('id', o.id)
+          .then(() => qc.invalidateQueries({ queryKey: ['orcamentos'] }));
+      }
       setOrcId(o.id);
       setForm({ ...NOVO_ORC, ...o });
       setShowEditor(false);
@@ -506,6 +513,8 @@ export function Orcamentos() {
   const totalOrc    = orcamentos.filter(o => o.status !== 'convertido').length;
   const aprovados   = orcamentos.filter(o => o.status === 'aprovado').length;
   const convertidos = orcamentos.filter(o => o.status === 'convertido').length;
+  // Pedidos novos vindos do site que ninguém abriu ainda (bolinha vermelha no filtro).
+  const novosLoja   = orcamentos.filter(o => o.origem === 'loja' && !o.loja_visto_em && o.status !== 'convertido').length;
   const valorTotal  = orcamentos.filter(o => o.status !== 'recusado' && o.status !== 'convertido').reduce((s, o) => s + Number(o.total ?? 0), 0);
 
   const [ordenacao, setOrdenacao] = useState<Ordenacao | null>({ campo: 'data', direcao: 'desc' });
@@ -513,6 +522,7 @@ export function Orcamentos() {
   const filtrados = useMemo(() => {
     const base = orcamentos
       .filter(o => {
+        if (filtro === 'loja') return o.origem === 'loja' && o.status !== 'convertido';
         // Convertidos só aparecem se o filtro for explicitamente 'convertido'
         if (o.status === 'convertido' && filtro !== 'convertido') return false;
         return filtro === 'todos' || o.status === filtro;
@@ -772,10 +782,15 @@ export function Orcamentos() {
 
       <div className="flex gap-2 flex-wrap items-center">
         <div className="flex gap-1 bg-[#1f2937] border border-gray-700 rounded-xl p-1 flex-wrap">
-          {(['todos','rascunho','enviado','aprovado','recusado','convertido'] as Filtro[]).map(f => (
+          {(['todos','loja','rascunho','enviado','aprovado','recusado','convertido'] as Filtro[]).map(f => (
             <button key={f} onClick={() => setFiltro(f)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${filtro === f ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'}`}>
-              {f === 'todos' ? 'Todos' : STATUS_ORC[f as StatusOrcamento]?.label ?? f}
+              className={`relative px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${filtro === f ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'}`}>
+              {f === 'todos' ? 'Todos' : f === 'loja' ? 'Loja virtual' : STATUS_ORC[f as StatusOrcamento]?.label ?? f}
+              {f === 'loja' && novosLoja > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center shadow-lg shadow-red-500/40 animate-pulse">
+                  {novosLoja}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -830,7 +845,17 @@ export function Orcamentos() {
                     </button>
                   </td>
                   <td className="px-5 py-3 text-gray-500 font-mono text-xs">{o.numero ? `#${o.numero}` : '—'}</td>
-                  <td className="px-5 py-3 font-medium text-white">{o.cliente_nome || '—'}</td>
+                  <td className="px-5 py-3 font-medium text-white">
+                    <span className="inline-flex items-center gap-2">
+                      {o.origem === 'loja' && !o.loja_visto_em && (
+                        <span title="Pedido novo da loja virtual" className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-lg shadow-red-500/50 animate-pulse flex-shrink-0" />
+                      )}
+                      {o.cliente_nome || '—'}
+                      {o.origem === 'loja' && (
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide bg-amber-500/15 text-amber-400 border border-amber-500/30">Loja virtual</span>
+                      )}
+                    </span>
+                  </td>
                   <td className="px-5 py-3 text-gray-400 text-xs">{fmtData(o.created_at)}</td>
                   <td className="px-5 py-3 text-right font-bold text-white">{fmtBRL(o.total)}</td>
                   <td className="px-5 py-3 text-center">
