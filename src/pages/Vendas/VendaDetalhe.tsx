@@ -16,7 +16,7 @@ import { useClientes } from '../../hooks/useClientes';
 import { ItensEditor } from '../../components/vendas/ItensEditor';
 import { ClienteSelectorVenda } from '../../components/vendas/ClienteSelectorVenda';
 import { VendedorSelector } from '../../components/vendas/VendedorSelector';
-import { PainelFinanceiro, RascunhoParcela } from '../../components/vendas/PainelFinanceiro';
+import { PainelFinanceiro, RascunhoParcela, resolverTaxaRascunho } from '../../components/vendas/PainelFinanceiro';
 import { useContasBancarias } from '../../hooks/useContasBancarias';
 import { GastosVenda } from '../../components/vendas/GastosVenda';
 import { DateInput } from '../../components/ui/DateInput';
@@ -78,6 +78,11 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
   const [itens, setItens] = useState<VendaItem[]>([]);
   const [pagamentosRascunho, setPagamentosRascunho] = useState<RascunhoParcela[]>([]);
   const [gastosRascunho, setGastosRascunho] = useState<Lancamento[]>([]);
+  // Trava contra clique repetido em Salvar: enquanto a venda e os pagamentos
+  // estão sendo gravados, um segundo clique não pode gravar tudo de novo
+  // (era o que duplicava/quadruplicava as parcelas).
+  const salvandoRef = useRef(false);
+  const [salvandoTudo, setSalvandoTudo] = useState(false);
   // Enquanto os dados ainda estão sendo carregados (venda existente: form +
   // itens chegam em momentos diferentes), ignora as mudanças de estado pra
   // não marcar "alterações pendentes" por causa do próprio carregamento.
@@ -273,6 +278,18 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
   };
 
   async function handleSalvar() {
+    if (salvandoRef.current) return;
+    salvandoRef.current = true;
+    setSalvandoTudo(true);
+    try {
+      await salvarVenda();
+    } finally {
+      salvandoRef.current = false;
+      setSalvandoTudo(false);
+    }
+  }
+
+  async function salvarVenda() {
     const payload = {
       cliente_nome:    form.cliente_nome,
       cliente_id:      form.cliente_id,
@@ -300,12 +317,17 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
     // "A receber" não é salva em lugar nenhum: da próxima vez que a venda for
     // aberta, o valor que falta é recalculado sozinho e uma parcela nova
     // aparece automaticamente pra cobrir a diferença.
-    const parcelasParaCommitar = pagamentosRascunho.filter(p => p.status === 'recebido');
+    // O id da parcela segue junto: se o mesmo pagamento chegar duas vezes ao
+    // banco, ele é reconhecido e não é lançado de novo. A taxa da maquininha é
+    // garantida aqui também (parcela sem taxa gravada usa a da configuração).
+    const parcelasParaCommitar = pagamentosRascunho
+      .filter(p => p.status === 'recebido')
+      .map(p => ({ ...p, juros_pct: resolverTaxaRascunho(p, cfg) || null }));
 
     if (isNovo) {
       const vendaCriada = await criar({ venda: payload as any, itens });
       for (const pag of parcelasParaCommitar) {
-        const { id: _id, status: _status, ...pagamento } = pag;
+        const { status: _status, ...pagamento } = pag;
         await registrarPagamento({
           ...pagamento,
           venda_id: vendaCriada.id,
@@ -321,7 +343,7 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
     } else if (vendaId) {
       await atualizar({ id: vendaId, payload: payload as any, itens });
       for (const pag of parcelasParaCommitar) {
-        const { id: _id, status: _status, ...pagamento } = pag;
+        const { status: _status, ...pagamento } = pag;
         await registrarPagamento({
           ...pagamento,
           venda_id: vendaId,
@@ -363,10 +385,10 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
             )}
             <button
               onClick={handleSalvar}
-              disabled={isSaving || !form.cliente_nome.trim()}
+              disabled={isSaving || salvandoTudo || !form.cliente_nome.trim()}
               className="bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white px-6 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2"
             >
-              <Save className="w-4 h-4" /> {isSaving ? 'Salvando...' : 'Salvar'}
+              <Save className="w-4 h-4" /> {(isSaving || salvandoTudo) ? 'Salvando...' : 'Salvar'}
             </button>
           </div>
         </div>

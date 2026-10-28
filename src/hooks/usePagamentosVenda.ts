@@ -27,16 +27,16 @@ async function recalcularFinanceiroVenda(vendaId: string) {
   const totalOriginal = Number(venda?.valor_original ?? venda?.valor_total ?? venda?.total ?? 0);
 
   // 2. Calcula taxa total absorvida pela maquininha em todos os pagamentos
-  const taxaTotal = (pagamentos ?? []).reduce((s, p) => {
+  // (taxa de cada pagamento arredondada em centavos — igual ao valor líquido
+  // que entra na conta —, pra os totais não divergirem de centavos)
+  const taxaDe = (p: { valor: any; juros_pct: any }) => {
     const taxa = Number(p.juros_pct ?? 0);
-    return taxa > 0 ? s + (Number(p.valor) * taxa / 100) : s;
-  }, 0);
+    return taxa > 0 ? Math.round(Number(p.valor) * taxa) / 100 : 0;
+  };
+  const taxaTotal = (pagamentos ?? []).reduce((s, p) => s + taxaDe(p), 0);
 
   // 3. Valor líquido real recebido (bruto de cada pagamento - taxa)
-  const totalPagoLiq = (pagamentos ?? []).reduce((s, p) => {
-    const taxa = Number(p.juros_pct ?? 0);
-    return s + (taxa > 0 ? Number(p.valor) * (1 - taxa / 100) : Number(p.valor));
-  }, 0);
+  const totalPagoLiq = (pagamentos ?? []).reduce((s, p) => s + Number(p.valor) - taxaDe(p), 0);
 
   // 4. Valor efetivo = original menos todas as taxas absorvidas
   const totalEfetivo = parseFloat((totalOriginal - taxaTotal).toFixed(2));
@@ -137,9 +137,20 @@ export function usePagamentosVenda(vendaId: string | null) {
   });
 
   const registrar = useMutation({
-    mutationFn: async (pag: Omit<PagamentoVenda, 'id' | 'created_at'>) => {
+    mutationFn: async (pag: Omit<PagamentoVenda, 'id' | 'created_at'> & { id?: string }) => {
       if (!pag.conta_id) {
         throw new Error('Selecione a conta financeira que recebeu esse pagamento.');
+      }
+
+      // Trava contra duplicidade: se essa parcela (mesmo id) já foi gravada —
+      // por clique repetido em Salvar, por exemplo — não grava nem lança no caixa de novo.
+      if (pag.id) {
+        const { data: jaExiste } = await supabase
+          .from('pagamentos_venda')
+          .select('*')
+          .eq('id', pag.id)
+          .maybeSingle();
+        if (jaExiste) return jaExiste as PagamentoVenda;
       }
       // Busca dados da venda
       const { data: venda } = await supabase
@@ -151,7 +162,7 @@ export function usePagamentosVenda(vendaId: string | null) {
       const taxaPct    = Number(pag.juros_pct ?? 0);
       const valorBruto = Number(pag.valor);
       const valorLiq   = taxaPct > 0
-        ? parseFloat((valorBruto * (1 - taxaPct / 100)).toFixed(2))
+        ? parseFloat((valorBruto - Math.round(valorBruto * taxaPct) / 100).toFixed(2))
         : valorBruto;
 
       // 1. Salva o pagamento
@@ -169,28 +180,12 @@ export function usePagamentosVenda(vendaId: string | null) {
         taxaPct > 0 ? `taxa maquininha ${taxaPct}%` : null,
       ].filter(Boolean).join(' · ');
 
-      // 2. Se há taxa da maquininha, aplica como desconto nos itens da venda
-      if (taxaPct > 0) {
-        const { data: itens } = await supabase
-          .from('venda_itens')
-          .select('id,desconto,preco_unitario,quantidade')
-          .eq('venda_id', pag.venda_id);
-
-        if (itens && itens.length > 0) {
-          for (const item of itens) {
-            const descontoAtual = Number(item.desconto ?? 0);
-            // Combina desconto existente com taxa: D_novo = 1 - (1-D_atual/100)*(1-taxa/100)
-            const novoDesconto  = parseFloat(
-              (100 - (1 - descontoAtual / 100) * (1 - taxaPct / 100) * 100).toFixed(4)
-            );
-            const novoTotal = Number(item.preco_unitario) * Number(item.quantidade) * (1 - novoDesconto / 100);
-            await supabase
-              .from('venda_itens')
-              .update({ desconto: novoDesconto, total: parseFloat(novoTotal.toFixed(2)) })
-              .eq('id', item.id);
-          }
-        }
-      }
+      // 2. A taxa da maquininha NÃO mexe mais nos itens da venda. Antes cada
+      // pagamento aplicava a taxa cheia como desconto em todos os itens (e
+      // excluir/reabrir o pagamento não desfazia), então o valor era descontado
+      // várias vezes e a taxa ainda era subtraída de novo no total. Agora os
+      // itens ficam como o cliente combinou, e a taxa aparece em valor_total
+      // (recalcularFinanceiroVenda), no lançamento e no caixa.
 
       // 3. Registra entrada na conta financeira escolhida — antes só entrava em
       // dinheiro; agora toda forma de pagamento move o saldo da conta certa.
@@ -249,7 +244,7 @@ export function usePagamentosVenda(vendaId: string | null) {
 
   return {
     ...query,
-    registrar: async (pag: Omit<PagamentoVenda, 'id' | 'created_at'>) => {
+    registrar: async (pag: Omit<PagamentoVenda, 'id' | 'created_at'> & { id?: string }) => {
       await registrar.mutateAsync(pag);
     },
     excluir: (id: string, vendaId: string) => {

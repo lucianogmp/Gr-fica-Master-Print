@@ -10,7 +10,7 @@ const IN_BASE =
   'bg-[#111827] border border-gray-700 rounded-lg px-2.5 py-2 text-white text-xs focus:outline-none focus:border-blue-500 transition-colors w-full';
 
 export function PctInput({
-  value, onChange, className, placeholder, center = true, autoFocus, style,
+  value, onChange, className, placeholder, center = true, autoFocus, style, casasDecimais = 2,
 }: {
   /** Porcentagem como número (0 a 100). */
   value: number;
@@ -20,19 +20,29 @@ export function PctInput({
   center?: boolean;
   autoFocus?: boolean;
   style?: React.CSSProperties;
+  /** Casas decimais (padrão 2, igual a antes). Taxas de maquininha usam 4. */
+  casasDecimais?: number;
 }) {
-  const LIMITE_CENTESIMOS = 10000; // 100,00%
+  const FATOR = Math.pow(10, casasDecimais);
+  const LIMITE_CENTESIMOS = 100 * FATOR; // 100%
 
   function paraTexto(centesimos: number): string {
-    const inteiro = Math.floor(Math.max(0, centesimos) / 100);
-    const frac = Math.max(0, centesimos) % 100;
-    if (frac === 0) return String(inteiro);
-    const fracTxt = frac % 10 === 0 ? String(frac / 10) : String(frac).padStart(2, '0');
-    return `${inteiro},${fracTxt}`;
+    const c = Math.max(0, centesimos);
+    const inteiro = Math.floor(c / FATOR);
+    const frac = c % FATOR;
+    // Comportamento original (2 casas): esconde os zeros à direita.
+    if (casasDecimais === 2) {
+      if (frac === 0) return String(inteiro);
+      const fracTxt = frac % 10 === 0 ? String(frac / 10) : String(frac).padStart(2, '0');
+      return `${inteiro},${fracTxt}`;
+    }
+    // Mais casas: mostra sempre todas, pra máscara ficar previsível (ex: 1,3700).
+    if (casasDecimais <= 0) return String(inteiro);
+    return `${inteiro},${String(frac).padStart(casasDecimais, '0')}`;
   }
   function paraCentesimos(n: number): number {
     if (!isFinite(n) || isNaN(n)) return 0;
-    return Math.round(n * 100);
+    return Math.round(n * FATOR);
   }
 
   const [centesimos, setCentesimos] = useState<number>(() => paraCentesimos(value));
@@ -50,7 +60,7 @@ export function PctInput({
     const limitado = Math.min(Math.max(0, novoCentesimos), LIMITE_CENTESIMOS);
     setCentesimos(limitado);
     ultimoValorEmitido.current = limitado;
-    onChange(limitado / 100);
+    onChange(Number((limitado / FATOR).toFixed(casasDecimais)));
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {

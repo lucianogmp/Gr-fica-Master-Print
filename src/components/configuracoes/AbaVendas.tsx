@@ -120,7 +120,7 @@ function TabelaTaxasEditor({
         {/* Header */}
         <div
           className="grid text-[9px] font-bold text-gray-500 uppercase bg-gray-800/60 border-b border-gray-700 px-3 py-2"
-          style={{ gridTemplateColumns: '80px 110px 1fr 110px' }}
+          style={{ gridTemplateColumns: '70px 150px 1fr 120px' }}
         >
           <span>Parcelas</span>
           <span className="text-right">Taxa (%)</span>
@@ -137,7 +137,7 @@ function TabelaTaxasEditor({
               <div
                 key={t.parcelas}
                 className="grid items-center px-3 py-2 hover:bg-gray-800/20 transition-colors"
-                style={{ gridTemplateColumns: '80px 110px 1fr 110px' }}
+                style={{ gridTemplateColumns: '70px 150px 1fr 120px' }}
               >
                 {/* Nº parcelas */}
                 <div className="flex items-center gap-2">
@@ -154,9 +154,10 @@ function TabelaTaxasEditor({
                   <PctInput
                     value={taxa}
                     onChange={v => setTaxa(t.parcelas, v)}
-                    placeholder="0,00"
+                    placeholder="0,0000"
+                    casasDecimais={4}
                     className={IN_SM}
-                    style={{ maxWidth: 80 }}
+                    style={{ maxWidth: 110 }}
                   />
                   <span className="text-[10px] text-gray-500 flex-shrink-0">%</span>
                 </div>
@@ -166,7 +167,7 @@ function TabelaTaxasEditor({
                   <span className={`text-[10px] ${isZero ? 'text-green-400' : 'text-yellow-400'}`}>
                     {isZero
                       ? (t.parcelas === 1 ? 'Sem acréscimo' : 'Sem juros')
-                      : `+${taxa.toLocaleString('pt-BR')}% sobre o total`}
+                      : `+${taxa.toLocaleString('pt-BR', { maximumFractionDigits: 4 })}% sobre o total`}
                   </span>
                 </div>
 
@@ -260,7 +261,7 @@ function FormaCard({
             value={String(formaNorm.dias_uteis_liquidacao ?? 0)}
             onChange={v => onChange({ ...formaNorm, dias_uteis_liquidacao: Math.max(0, Math.round(parseFloat(v) || 0)) })}
             className="bg-[#0d1117] border border-gray-700 rounded-lg px-2 py-1 text-white text-xs text-center focus:outline-none focus:border-blue-500"
-            style={{ width: 44 }}
+            style={{ width: 60 }}
           />
           <span className="text-[10px] text-gray-500 whitespace-nowrap">dia(s) útil(eis)</span>
         </div>
@@ -287,9 +288,10 @@ function FormaCard({
             <span className="text-[10px] text-gray-500 whitespace-nowrap">Taxa</span>
             <PctInput
               value={formaNorm.tabela_taxas[0]?.taxa_pct ?? 0}
+              casasDecimais={4}
               onChange={v => onChange({ ...formaNorm, tabela_taxas: [{ parcelas: 1, taxa_pct: v }] })}
               className="bg-[#0d1117] border border-gray-700 rounded-lg px-2 py-1 text-white text-xs text-center focus:outline-none focus:border-blue-500"
-              style={{ width: 52 }}
+              style={{ width: 84 }}
             />
             <span className="text-[10px] text-gray-500 whitespace-nowrap">%</span>
           </div>

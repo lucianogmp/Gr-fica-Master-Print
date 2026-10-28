@@ -1,5 +1,5 @@
 // src/components/vendas/PainelFinanceiro.tsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { PagamentoVenda } from '../../types/venda';
 import { ContaBancaria } from '../../hooks/useContasBancarias';
 import {
@@ -8,7 +8,6 @@ import {
   FORMAS_PAGAMENTO_DEFAULT,
   gerarTabelaTaxas,
   getTaxaParcela,
-  calcTotalComTaxa,
 } from '../../types/configuracoes';
 import { DollarSign, Plus, Trash2, Lock, Unlock } from 'lucide-react';
 import { MoneyInput } from '../ui/MoneyInput';
@@ -83,15 +82,35 @@ interface Props {
 
 const IN_SM = "bg-[#111827] border border-gray-700 rounded-md px-2.5 py-1 text-white text-xs text-right focus:outline-none focus:border-blue-500";
 
-function novaParcelaBase(valor: number, formaPadrao: string): RascunhoParcela {
+const fmtPct = (v: number) => v.toLocaleString('pt-BR', { maximumFractionDigits: 4 });
+
+/** Formas que parcelam começam em 1x; as demais (débito, pix...) não têm nº de parcelas. */
+function parcelasIniciais(forma?: FormasPagamentoConfig): number | null {
+  return forma?.permite_parcelamento && (forma.max_parcelas ?? 1) > 1 ? 1 : null;
+}
+
+/** Taxa da maquininha que vale para uma linha de pagamento: a que já está gravada
+ * na linha ou, se não houver (linha antiga/rascunho sem taxa), a da configuração. */
+export function resolverTaxaRascunho(r: Pick<PagamentoVenda, 'forma_pagamento' | 'parcelas' | 'juros_pct'>, cfg?: Configuracoes | null): number {
+  const gravada = Number(r.juros_pct ?? 0);
+  if (gravada > 0) return gravada;
+  const forma = parseFormas(cfg?.formas_pagamento).find(f => f.nome === r.forma_pagamento);
+  return getTaxaParcela(forma, r.parcelas || 1);
+}
+
+function novaParcelaBase(valor: number, formaPadrao: string, formas: FormasPagamentoConfig[] = []): RascunhoParcela {
+  const nome  = formaPadrao || 'PIX';
+  const forma = formas.find(f => f.nome === nome);
+  const parc  = parcelasIniciais(forma);
+  const taxa  = getTaxaParcela(forma, parc ?? 1);
   return {
     id: crypto.randomUUID(),
     venda_id: '',
     valor: Math.max(0, Number(valor.toFixed(2))),
-    forma_pagamento: formaPadrao || 'PIX',
+    forma_pagamento: nome,
     conta_id: '',
-    parcelas: null,
-    juros_pct: null,
+    parcelas: parc,
+    juros_pct: taxa > 0 ? taxa : null,
     data_pagamento: new Date().toISOString().slice(0, 10),
     observacoes: null,
     usuario_id: null,
@@ -133,12 +152,31 @@ export function PainelFinanceiro({
     return taxa > 0 ? s + Number(p.valor) * (taxa / 100) : s;
   }, 0);
 
+  const formas = parseFormas(cfg?.formas_pagamento).filter(f => f.ativo);
+
+  // Mesma ideia da linha de cima, mas pras parcelas ainda não salvas: assim que
+  // a pessoa escolhe débito/crédito, o total já aparece com a taxa descontada.
+  const taxaPrevista = rascunhos.reduce(
+    (s, r) => s + Number(r.valor || 0) * resolverTaxaRascunho(r, cfg) / 100, 0);
+
   const descontoValor = subtotal * (desconto / 100);
   const totalBase     = subtotal - descontoValor + Number(frete || 0) + Number(taxaAdicional || 0);
   const totalEfetivo  = totalBase - taxaTotalAbsorvida;
+  // valorRestante fica de fora das taxas previstas de propósito: ele alimenta a
+  // criação automática de parcela, e incluir a taxa aqui faria o valor oscilar.
   const valorRestante = Math.max(0, totalEfetivo - valorLiquidoPago);
+  const totalComTaxas = totalEfetivo - taxaPrevista;
   const quitado       = totalEfetivo > 0 && valorRestante <= 0.01;
   const pctPago       = totalEfetivo > 0 ? Math.min(100, (valorLiquidoPago / totalEfetivo) * 100) : 0;
+
+  // Sempre a versão mais recente das parcelas, mesmo quando duas linhas
+  // alteram o estado no mesmo instante (evita uma sobrescrever a outra).
+  const rascunhosRef = useRef(rascunhos);
+  rascunhosRef.current = rascunhos;
+  function emitirRascunhos(novos: RascunhoParcela[]) {
+    rascunhosRef.current = novos;
+    onRascunhosChange(novos);
+  }
 
   // ── Auto-gestão da(s) parcela(s) em aberto ──
   // Sempre que sobrar valor não coberto por nenhum pagamento travado nem por
@@ -155,39 +193,47 @@ export function PainelFinanceiro({
     // que o carregamento inicial termina.
     if (carregandoPagamentos) return;
 
-    const somaRascunhos = rascunhos.reduce((s, r) => s + Number(r.valor || 0), 0);
+    const atuais = rascunhosRef.current;
+    const somaRascunhos = atuais.reduce((s, r) => s + Number(r.valor || 0), 0);
     const diferenca = Math.round((valorRestante - somaRascunhos) * 100) / 100;
 
-    if (diferenca > 0.01 && rascunhos.length === 0) {
-      onRascunhosChange([novaParcelaBase(diferenca, formaPagamento)]);
+    if (diferenca > 0.01 && atuais.length === 0) {
+      emitirRascunhos([novaParcelaBase(diferenca, formaPagamento, formas)]);
       return;
     }
     // Se a diferença mudou (ex: adicionou item novo) e existe exatamente um
     // rascunho ainda "a receber" sem edição manual de forma/conta, ajusta o
     // valor dele sozinho, sem mexer no que já foi digitado quando há mais de um.
-    if (rascunhos.length === 1 && rascunhos[0].status === 'a_receber' && Math.abs(diferenca) > 0.01) {
-      const unico = rascunhos[0];
-      onRascunhosChange([{ ...unico, valor: Math.max(0, Number((unico.valor + diferenca).toFixed(2))) }]);
+    if (atuais.length === 1 && atuais[0].status === 'a_receber' && Math.abs(diferenca) > 0.01) {
+      const unico = atuais[0];
+      emitirRascunhos([{ ...unico, valor: Math.max(0, Number((unico.valor + diferenca).toFixed(2))) }]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [valorRestante, carregandoPagamentos]);
 
   function atualizarLinha(id: string, patch: Partial<RascunhoParcela>) {
-    onRascunhosChange(rascunhos.map(r => r.id === id ? { ...r, ...patch } : r));
+    emitirRascunhos(rascunhosRef.current.map(r => r.id === id ? { ...r, ...patch } : r));
   }
   function removerLinha(id: string) {
-    onRascunhosChange(rascunhos.filter(r => r.id !== id));
+    emitirRascunhos(rascunhosRef.current.filter(r => r.id !== id));
   }
+  // A parcela nova já nasce com o que ainda falta pagar (total - o que já foi
+  // pago - o que já está nas outras parcelas), na mesma forma de pagamento da
+  // última linha. Se já existe uma linha zerada, não cria outra (clique repetido).
   function adicionarLinha() {
-    onRascunhosChange([...rascunhos, novaParcelaBase(0, formaPagamento)]);
+    const atuais = rascunhosRef.current;
+    if (atuais.some(r => Number(r.valor || 0) <= 0.01)) return;
+    const somaRascunhos = atuais.reduce((s, r) => s + Number(r.valor || 0), 0);
+    const falta = Math.max(0, Math.round((valorRestante - somaRascunhos) * 100) / 100);
+    const formaBase = atuais.length > 0 ? atuais[atuais.length - 1].forma_pagamento : formaPagamento;
+    emitirRascunhos([...atuais, novaParcelaBase(falta, formaBase, formas)]);
   }
   function toggleStatus(id: string) {
-    onRascunhosChange(rascunhos.map(r => r.id === id
+    emitirRascunhos(rascunhosRef.current.map(r => r.id === id
       ? { ...r, status: r.status === 'a_receber' ? 'recebido' : 'a_receber' }
       : r));
   }
 
-  const formas = parseFormas(cfg?.formas_pagamento).filter(f => f.ativo);
   const totalLinhas = pagamentos.length + rascunhos.length;
 
   return (
@@ -245,9 +291,9 @@ export function PainelFinanceiro({
 
         <div className="flex-1" />
 
-        <span className="text-xl font-black text-green-400 flex-shrink-0">
-          {fmtBRL(totalEfetivo)}
-          {taxaTotalAbsorvida > 0 && (
+        <span className="text-xl font-black text-green-400 flex-shrink-0" title={taxaPrevista > 0 ? 'Total já descontando a taxa da maquininha das parcelas' : undefined}>
+          {fmtBRL(totalComTaxas)}
+          {(taxaTotalAbsorvida + taxaPrevista) > 0.004 && (
             <span className="ml-1 text-[10px] font-normal text-gray-500 line-through">{fmtBRL(totalBase)}</span>
           )}
         </span>
@@ -355,7 +401,10 @@ function LinhaRascunho({ indice, total, linha, contas, formas, onChange, onRemov
   const formaSelecionada = formas.find(f => f.nome === linha.forma_pagamento);
   const permiteParc = formaSelecionada?.permite_parcelamento;
   const maxParcelas = Math.max(1, formaSelecionada?.max_parcelas ?? 1);
-  const taxaPct = getTaxaParcela(formaSelecionada, linha.parcelas || 1);
+  const taxaPct = Number(linha.juros_pct ?? 0) > 0
+    ? Number(linha.juros_pct)
+    : getTaxaParcela(formaSelecionada, linha.parcelas || 1);
+  const taxaValor = Number(linha.valor || 0) * taxaPct / 100;
   const recebido = linha.status === 'recebido';
 
   return (
@@ -370,7 +419,12 @@ function LinhaRascunho({ indice, total, linha, contas, formas, onChange, onRemov
           const compat = v === 'Dinheiro' ? contasAtivas.filter(c => c.tipo === 'caixa') : contasAtivas.filter(c => c.tipo !== 'caixa');
           const opcoes = compat.filter(c => (c.formas_aceitas ?? []).includes(v));
           const auto = (opcoes.length === 1 ? opcoes[0] : compat.length === 1 ? compat[0] : null)?.id ?? '';
-          onChange({ forma_pagamento: v, parcelas: null, conta_id: auto });
+          // A taxa da forma escolhida entra sozinha (débito, crédito à vista...),
+          // sem depender de mexer no número de parcelas.
+          const novaForma = formas.find(f => f.nome === v);
+          const parc = parcelasIniciais(novaForma);
+          const taxa = getTaxaParcela(novaForma, parc ?? 1);
+          onChange({ forma_pagamento: v, parcelas: parc, juros_pct: taxa > 0 ? taxa : null, conta_id: auto });
         }}
         allowEmpty={false} options={formas.map(f => f.nome)} />
       {isVendedor ? (
@@ -401,14 +455,22 @@ function LinhaRascunho({ indice, total, linha, contas, formas, onChange, onRemov
             options={Array.from({ length: maxParcelas }, (_, idx) => {
               const n = idx + 1;
               const t = getTaxaParcela(formaSelecionada, n);
-              return { value: String(n), label: `${n}x${t > 0 ? ` (+${t.toLocaleString('pt-BR')}%)` : ' sem juros'}` };
+              return { value: String(n), label: `${n}x${t > 0 ? ` (taxa ${fmtPct(t)}%)` : ' sem taxa'}` };
             })}
-            className="w-40" />
+            className="w-44" />
           {taxaPct > 0 && (
             <span className="text-[10px] text-red-400">
-              taxa maquininha: -{fmtBRL(calcTotalComTaxa(linha.valor, taxaPct) - linha.valor)}
+              taxa maquininha {fmtPct(taxaPct)}%: -{fmtBRL(taxaValor)} · líquido {fmtBRL(Number(linha.valor || 0) - taxaValor)}
             </span>
           )}
+        </div>
+      )}
+      {/* Formas que não parcelam (ex: débito) também têm taxa — aparece direto aqui */}
+      {!(permiteParc && maxParcelas > 1) && taxaPct > 0 && (
+        <div className="col-span-7 -mt-1 pl-[2.2rem]">
+          <span className="text-[10px] text-red-400">
+            taxa maquininha {fmtPct(taxaPct)}%: -{fmtBRL(taxaValor)} · líquido {fmtBRL(Number(linha.valor || 0) - taxaValor)}
+          </span>
         </div>
       )}
     </div>
