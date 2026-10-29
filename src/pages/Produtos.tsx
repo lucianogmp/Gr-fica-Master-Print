@@ -3,10 +3,12 @@ import { useProdutos } from '../hooks/useProdutos';
 import { useCategorias } from '../hooks/useCategorias';
 import { useMateriasPrimas } from '../hooks/useEstoque';
 import { useGestaoCustos } from '../hooks/useGestaoCustos';
-import { useDepreciacao } from '../hooks/useGestaoBase';
+import { useCustosEquipamentos } from '../hooks/useEquipamentos';
 import { useAcabamentos } from '../hooks/useAcabamentos';
 import { loadBom, saveBom, calcCustoBOM } from '../hooks/useBom';
 import { Produto, BomItem, CustosProduto } from '../types/produto';
+import type { MaquinaTempo } from '../types/equipamento';
+import type { CustoEquipamento } from '../lib/custoEquipamento';
 import { BomEditor } from '../components/produtos/BomEditor';
 import { PrecPanel } from '../components/produtos/PrecPanel';
 import { KpiCard } from '../components/ui/KpiCard';
@@ -254,27 +256,47 @@ function ModalNovaCategoria({ open, onClose, onCriada }: {
   );
 }
 
+/** Lê produtos.maquinas_tempo (jsonb) para um mapa nome → horas, acompanhando o nome atual do equipamento. */
+function temposDoProduto(raw: any, equipamentos: { id: string; nome: string }[]): Record<string, number> {
+  if (!Array.isArray(raw)) return {};
+  const mapa: Record<string, number> = {};
+  for (const t of raw as MaquinaTempo[]) {
+    const horas = Number(t?.horas);
+    if (!isFinite(horas) || horas <= 0) continue;
+    const nome = equipamentos.find(e => e.id === t.equipamento_id)?.nome ?? t.nome;
+    if (nome) mapa[nome] = horas;
+  }
+  return mapa;
+}
+
 // ── Editor de máquinas ─────────────────────────────────────────────────────
-function MaquinasEditor({ maquinas, disponiveis, tempoHoras, onChange }: {
+// Cada máquina tem o seu custo por hora (depreciação, manutenção, energia, consumíveis por hora...)
+// calculado em Gestão de Custos → Equipamentos. Aqui só se informa QUANTO TEMPO o produto usa cada
+// uma; sem tempo próprio, a máquina usa o tempo de produção do produto (comportamento antigo).
+function MaquinasEditor({ maquinas, disponiveis, custos, tempoHoras, tempos, onChange, onTempoChange }: {
   maquinas: string[];
-  disponiveis: { id: string; nome: string; valor: number; vida_util_anos: number }[];
+  disponiveis: { id: string; nome: string; valor: number; vida_util_anos: number; ativo?: boolean | null }[];
+  custos: Record<string, CustoEquipamento>;
   tempoHoras: number;
+  tempos: Record<string, number>;
   onChange: (maquinas: string[]) => void;
+  onTempoChange: (nome: string, horas: number | null) => void;
 }) {
   const [selecionando, setSelecionando] = useState('');
-  const opcoes = disponiveis.filter(d => !maquinas.includes(d.nome));
+  const opcoes = disponiveis.filter(d => !maquinas.includes(d.nome) && d.ativo !== false);
   function adicionar() {
     if (!selecionando) return;
     onChange([...maquinas, selecionando]);
     setSelecionando('');
   }
-  function remover(nome: string) { onChange(maquinas.filter(m => m !== nome)); }
-  function deprProduto(nome: string): number {
+  function remover(nome: string) { onChange(maquinas.filter(m => m !== nome)); onTempoChange(nome, null); }
+  const horasDe = (nome: string) => tempos[nome] ?? tempoHoras;
+  function custoProduto(nome: string): number {
     const d = disponiveis.find(x => x.nome === nome);
-    if (!d || !tempoHoras) return 0;
-    return (tempoHoras / 160) * (Number(d.valor) / (Number(d.vida_util_anos) * 12));
+    return d ? horasDe(nome) * (custos[d.id]?.hora.total ?? 0) : 0;
   }
-  const totalDepr = maquinas.reduce((s, n) => s + deprProduto(n), 0);
+  const total = maquinas.reduce((s, n) => s + custoProduto(n), 0);
+  const fmtH = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 4 });
   return (
     <div className="space-y-3">
       <div className="flex gap-2">
@@ -283,10 +305,7 @@ function MaquinasEditor({ maquinas, disponiveis, tempoHoras, onChange }: {
           onChange={setSelecionando}
           placeholder={opcoes.length === 0 ? 'Todas as máquinas já adicionadas' : 'Selecionar máquina...'}
           className="flex-1"
-          options={opcoes.map(d => {
-            const deprMes = Number(d.valor) / (Number(d.vida_util_anos) * 12);
-            return { value: d.nome, label: `${d.nome} — depr. ${fmtBRL(deprMes)}/mês` };
-          })}
+          options={opcoes.map(d => ({ value: d.nome, label: `${d.nome} — ${fmtH(custos[d.id]?.hora.total ?? 0)}/h` }))}
         />
         <button onClick={adicionar} disabled={!selecionando}
           className="flex-shrink-0 px-4 py-2.5 bg-yellow-600/30 hover:bg-yellow-600/50 disabled:opacity-30 border border-yellow-500/40 text-yellow-300 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5">
@@ -297,26 +316,39 @@ function MaquinasEditor({ maquinas, disponiveis, tempoHoras, onChange }: {
         <div className="border border-gray-700 rounded-xl overflow-hidden">
           <div className="bg-gray-800/40 px-4 py-2 border-b border-gray-700 flex items-center justify-between">
             <span className="text-[10px] font-bold text-gray-500 uppercase">{maquinas.length} máquina(s)</span>
-            {tempoHoras > 0 && <span className="text-[10px] font-bold text-yellow-400">Depr. total: {fmtBRL(totalDepr)}</span>}
+            <span className="text-[10px] font-bold text-yellow-400">Custo das máquinas: {fmtBRL(total)}</span>
           </div>
           {maquinas.map((nome, i) => {
             const d = disponiveis.find(x => x.nome === nome);
-            const deprMes  = d ? Number(d.valor) / (Number(d.vida_util_anos) * 12) : 0;
-            const deprProd = deprProduto(nome);
+            const c = d ? custos[d.id] : undefined;
+            const proprio = tempos[nome] != null;
+            const minutos = proprio ? Math.round(tempos[nome] * 60) : 0;
             return (
-              <div key={nome} className={`flex items-center justify-between px-4 py-3 ${i < maquinas.length - 1 ? 'border-b border-gray-800' : ''}`}>
-                <div className="flex-1 min-w-0">
+              <div key={nome} className={`flex items-center justify-between gap-3 px-4 py-3 flex-wrap ${i < maquinas.length - 1 ? 'border-b border-gray-800' : ''}`}>
+                <div className="flex-1 min-w-[160px]">
                   <p className="text-sm font-bold text-white truncate">{nome}</p>
-                  {d ? (
+                  {d && c ? (
                     <p className="text-[10px] text-gray-500">
-                      {fmtBRL(Number(d.valor))} · {d.vida_util_anos}a · depr. {fmtBRL(deprMes)}/mês
-                      {tempoHoras > 0 && <span className="text-yellow-400 ml-1">→ {fmtBRL(deprProd)} neste produto</span>}
+                      {fmtH(c.hora.total)}/h
+                      {horasDe(nome) > 0 && <span className="text-yellow-400 ml-1">→ {fmtBRL(custoProduto(nome))} neste produto</span>}
                     </p>
                   ) : (
-                    <p className="text-[10px] text-red-400">Máquina não encontrada na depreciação</p>
+                    <p className="text-[10px] text-red-400">Máquina não encontrada em Equipamentos</p>
                   )}
                 </div>
-                <button onClick={() => remover(nome)} className="flex-shrink-0 ml-3 text-gray-600 hover:text-red-400 transition-colors">
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <span className="text-[10px] text-gray-500 uppercase">Usa</span>
+                  <InteiroInput value={minutos} onChange={m => onTempoChange(nome, m > 0 ? m / 60 : null)} max={9999}
+                    className="bg-[#111827] border border-gray-700 rounded-md px-2 py-1 text-white text-xs text-center focus:outline-none focus:border-blue-500"
+                    placeholder="0" />
+                  <span className="text-[10px] text-gray-500">min</span>
+                  {!proprio && (
+                    <span className="text-[10px] text-gray-600" title="Sem tempo próprio, usa o Tempo de Produção do produto">
+                      (= produto{tempoHoras > 0 ? `: ${Math.round(tempoHoras * 60)} min` : ''})
+                    </span>
+                  )}
+                </div>
+                <button onClick={() => remover(nome)} className="flex-shrink-0 text-gray-600 hover:text-red-400 transition-colors">
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -326,7 +358,7 @@ function MaquinasEditor({ maquinas, disponiveis, tempoHoras, onChange }: {
       )}
       {maquinas.length === 0 && (
         <p className="text-[10px] text-gray-600">
-          {disponiveis.length === 0 ? 'Nenhum equipamento em Gestão de Custos → Depreciação.' : 'Nenhuma máquina adicionada.'}
+          {disponiveis.length === 0 ? 'Nenhum equipamento em Gestão de Custos → Equipamentos.' : 'Nenhuma máquina adicionada.'}
         </p>
       )}
     </div>
@@ -339,7 +371,7 @@ export function Produtos() {
   const { data: categorias  = [], criar: criarCat, atualizar: atualizarCat, deletar: deletarCat } = useCategorias();
   const { data: materias    = [] } = useMateriasPrimas();
   const { data: gc }               = useGestaoCustos();
-  const { data: deprs       = [] } = useDepreciacao();
+  const { equipamentos: deprs, custos: custosEquip } = useCustosEquipamentos();
   const { data: acabamentos = [], criar: criarAcab, atualizar: atualizarAcab, deletar: deletarAcab } = useAcabamentos();
   const { confirmar, ConfirmModal } = useConfirm();
 
@@ -347,6 +379,8 @@ export function Produtos() {
   const [produtoId, setProdutoId] = useState<string | null>(null);
   const [form, setForm]         = useState({ ...NOVO });
   const [maquinas, setMaquinas] = useState<string[]>([]);
+  // tempo (em horas) que ESTE produto usa de cada máquina; sem entrada = usa o tempo de produção do produto
+  const [maquinasTempo, setMaquinasTempo] = useState<Record<string, number>>({});
   const [bom, setBom]           = useState<BomItem[]>([]);
   const [bomLoading, setBomLoading] = useState(false);
   const [busca, setBusca]       = useState('');
@@ -378,20 +412,23 @@ export function Produtos() {
   const porM2       = (form as any).unidade_medida === 'm2';
   const terceirizado = !!(form as any).terceirizado;
 
-  // Depreciação das máquinas proporcional ao tempo de produção
+  // Custo das máquinas = tempo de uso de cada uma × custo por hora dela (Gestão de Custos → Equipamentos:
+  // depreciação + manutenção + energia + consumíveis por hora + outros). Consumíveis "cobrados por
+  // consumo" ficam de fora (já estão no BOM). Sem tempo próprio, a máquina usa o tempo do produto.
   // Terceirizado: o "tempo" é o prazo do fornecedor (ex.: 48 h), não uso da sua gráfica — não tem
   // máquina nem rateio de custos fixos. O custo é só o que você paga ao fornecedor.
-  const totalDeprMaquinas = useMemo(() => terceirizado ? 0 :
+  const totalMaquinas = useMemo(() => terceirizado ? 0 :
     maquinas.reduce((soma, nome) => {
       const d = deprs.find(x => x.nome === nome);
-      if (!d || !tempoHoras) return soma;
-      return soma + (tempoHoras / 160) * (Number(d.valor) / (Number(d.vida_util_anos) * 12));
+      if (!d) return soma;
+      const horas = maquinasTempo[nome] ?? tempoHoras;
+      return soma + horas * (custosEquip[d.id]?.hora.total ?? 0);
     }, 0)
-  , [maquinas, deprs, tempoHoras, terceirizado]);
+  , [maquinas, maquinasTempo, deprs, custosEquip, tempoHoras, terceirizado]);
 
-  // Custos fixos por hora × tempo real de trabalho + depreciação SÓ das máquinas escolhidas.
-  // (gcData.porHora incluiria a depreciação de todas as máquinas, e ela já entra em totalDeprMaquinas)
-  const overhead = terceirizado ? 0 : gcData.porHoraFixos * tempoHoras + totalDeprMaquinas;
+  // Custos fixos por hora × tempo real de trabalho + custo das máquinas escolhidas.
+  // (O custo por hora das máquinas NÃO inclui custos fixos, e os custos fixos não incluem as máquinas — sem dupla contagem.)
+  const overhead = terceirizado ? 0 : gcData.porHoraFixos * tempoHoras + totalMaquinas;
 
   const custos: CustosProduto = {
     custoBOM:   calcCustoBOM(bom),
@@ -412,12 +449,14 @@ export function Produtos() {
       setProdutoId(p.id);
       setForm({ ...NOVO, ...p });
       setMaquinas(parseMaquinas((p as any).maquina));
+      setMaquinasTempo(temposDoProduto((p as any).maquinas_tempo, deprs));
       setBomLoading(true);
       try { setBom(await loadBom(p.id)); } finally { setBomLoading(false); }
     } else {
       setProdutoId('__novo__');
       setForm({ ...NOVO });
       setMaquinas([]);
+      setMaquinasTempo({});
       setBom([]);
     }
     setView('detalhe');
@@ -425,7 +464,7 @@ export function Produtos() {
 
   function fecharDetalhe() {
     setView('lista'); setProdutoId(null);
-    setForm({ ...NOVO }); setMaquinas([]); setBom([]);
+    setForm({ ...NOVO }); setMaquinas([]); setMaquinasTempo({}); setBom([]);
   }
 
   function setF(field: string, val: any) { setForm(f => ({ ...f, [field]: val })); }
@@ -459,6 +498,7 @@ export function Produtos() {
       setProdutoId(novoId);
       setForm({ ...NOVO, ...dadosClone, id: novoId });
       setMaquinas(parseMaquinas(dadosClone.maquina));
+      setMaquinasTempo(temposDoProduto(dadosClone.maquinas_tempo, deprs));
       setBom(bomOriginal);
       setView('detalhe');
     } catch (e: any) {
@@ -469,7 +509,14 @@ export function Produtos() {
   }
 
   async function handleSalvar() {
-    const payload = { ...form, maquina: stringifyMaquinas(maquinas) };
+    const temposSalvar: MaquinaTempo[] = maquinas
+      .filter(n => maquinasTempo[n] != null)
+      .map(n => ({ equipamento_id: deprs.find(d => d.nome === n)?.id ?? '', nome: n, horas: maquinasTempo[n] }));
+    const payload = {
+      ...form,
+      maquina: stringifyMaquinas(maquinas),
+      maquinas_tempo: temposSalvar.length > 0 ? temposSalvar : null,
+    };
     const { id: _id, created_at: _c, updated_at: _u, empresa_id: _e, ...clean } =
       { id: '', created_at: '', updated_at: '', empresa_id: '', ...payload };
     try {
@@ -1062,13 +1109,18 @@ export function Produtos() {
                   <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
                     <Factory className="w-3.5 h-3.5" /> Máquinas Utilizadas
                   </h3>
-                  {maquinas.length > 0 && tempoHoras > 0 && (
+                  {maquinas.length > 0 && (
                     <span className="text-[10px] font-bold text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 px-2 py-1 rounded-lg">
-                      Depr. total: {fmtBRL(totalDeprMaquinas)}
+                      Custo das máquinas: {fmtBRL(totalMaquinas)}
                     </span>
                   )}
                 </div>
-                <MaquinasEditor maquinas={maquinas} disponiveis={deprs} tempoHoras={tempoHoras} onChange={setMaquinas} />
+                <MaquinasEditor maquinas={maquinas} disponiveis={deprs} custos={custosEquip} tempoHoras={tempoHoras}
+                  tempos={maquinasTempo} onChange={setMaquinas}
+                  onTempoChange={(nome, horas) => setMaquinasTempo(t => {
+                    const { [nome]: _removido, ...resto } = t;
+                    return horas == null ? resto : { ...resto, [nome]: horas };
+                  })} />
               </div>
             )}
 
@@ -1141,31 +1193,31 @@ export function Produtos() {
 
           {/* ── Painel de Precificação ── */}
           <div className="xl:col-span-1">
-            {/* Resumo de depreciação das máquinas */}
+            {/* Resumo do custo das máquinas */}
             {maquinas.length > 0 && (
               <div className="bg-[#1f2937] border border-yellow-500/20 rounded-xl p-4 mb-4">
                 <p className="text-[10px] font-bold text-yellow-400 uppercase mb-2 flex items-center gap-1.5">
-                  <Factory className="w-3.5 h-3.5" /> Depreciação das Máquinas
+                  <Factory className="w-3.5 h-3.5" /> Custo das Máquinas
                 </p>
                 <div className="space-y-1.5">
                   {maquinas.map(nome => {
                     const d = deprs.find(x => x.nome === nome);
                     if (!d) return null;
-                    const deprMes  = Number(d.valor) / (Number(d.vida_util_anos) * 12);
-                    const deprProd = tempoHoras > 0 ? (tempoHoras / 160) * deprMes : 0;
+                    const horaMaq = custosEquip[d.id]?.hora.total ?? 0;
+                    const horas   = maquinasTempo[nome] ?? tempoHoras;
                     return (
                       <div key={nome} className="flex justify-between text-xs">
                         <span className="text-gray-400 truncate max-w-28">{nome}</span>
                         <span className="text-yellow-300 font-bold ml-1 flex-shrink-0">
-                          {tempoHoras > 0 ? fmtBRL(deprProd) : fmtBRL(deprMes) + '/mês'}
+                          {horas > 0 ? fmtBRL(horas * horaMaq) : fmtBRL(horaMaq) + '/h'}
                         </span>
                       </div>
                     );
                   })}
-                  {maquinas.length > 1 && tempoHoras > 0 && (
+                  {maquinas.length > 1 && (
                     <div className="flex justify-between text-xs border-t border-gray-700 pt-1.5 mt-1">
                       <span className="text-gray-300 font-bold">Total</span>
-                      <span className="text-yellow-400 font-black">{fmtBRL(totalDeprMaquinas)}</span>
+                      <span className="text-yellow-400 font-black">{fmtBRL(totalMaquinas)}</span>
                     </div>
                   )}
                 </div>

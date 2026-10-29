@@ -17,14 +17,20 @@ export function useGestaoCustos() {
     queryKey: ['gestao-custos-resumo'],
     queryFn: async (): Promise<GcData> => {
       const [deprRes, fixosRes] = await Promise.all([
-        supabase.from('depreciacao').select('valor, vida_util_anos'),
+        supabase.from('depreciacao').select('valor, vida_util_anos, valor_residual, ativo'),
         supabase.from('custos_fixos').select('valor_mensal, ativo'),
       ]);
 
-      const totalDepr = (deprRes.data ?? []).reduce((s, e) => {
-        const meses = Number(e.vida_util_anos || 1) * 12;
-        return s + (meses > 0 ? Number(e.valor || 0) / meses : 0);
-      }, 0);
+      // Depreciação = (valor − valor residual) ÷ meses de vida útil. Equipamento
+      // inativo (vendido/parado) deixa de depreciar. Sem residual cadastrado
+      // (padrão 0) o resultado é exatamente o de antes.
+      const totalDepr = (deprRes.data ?? [])
+        .filter(e => e.ativo !== false)
+        .reduce((s, e) => {
+          const meses = Number(e.vida_util_anos || 1) * 12;
+          const base = Math.max(0, Number(e.valor || 0) - Number(e.valor_residual || 0));
+          return s + (meses > 0 ? base / meses : 0);
+        }, 0);
 
       const totalFixos = (fixosRes.data ?? [])
         .filter(c => c.ativo !== false)

@@ -42,7 +42,7 @@ export function PrecPanel({ custos, preco, onPrecoChange, gc, tempo, porMetroQua
             valor={overhead}
             highlight={overhead > 0}
             dim={overhead === 0}
-            ajuda="Custos fixos da gráfica (aluguel, salários etc.) rateados por hora × o 'Tempo de Produção' do produto, mais a depreciação só das máquinas que ele usa. Produto terceirizado não tem overhead. Energia e custos variáveis não entram."
+            ajuda="Custos fixos da gráfica (aluguel, salários etc.) rateados por hora × o 'Tempo de Produção' do produto, mais o custo de cada máquina que ele usa (tempo de uso × custo por hora do equipamento: depreciação, manutenção, energia e consumíveis por hora). Produto terceirizado não tem overhead. Consumíveis cobrados por consumo ficam no BOM, sem contar duas vezes."
           />
           <div className="pt-2 border-t border-gray-700">
             <div className="flex justify-between items-center">
@@ -82,7 +82,7 @@ export function PrecPanel({ custos, preco, onPrecoChange, gc, tempo, porMetroQua
           <p className="text-xs text-gray-600 text-center py-2">Preencha os custos para ver sugestões.</p>
         )}
         {gc.total > 0 && (
-          <p className="text-[10px] text-gray-600 mt-2">Overhead: {fmtBRL(gc.porHoraFixos)}/h de custos fixos ({fmtBRL(gc.fixos)}/mês) + depreciação das máquinas usadas</p>
+          <p className="text-[10px] text-gray-600 mt-2">Overhead: {fmtBRL(gc.porHoraFixos)}/h de custos fixos ({fmtBRL(gc.fixos)}/mês) + custo das máquinas usadas (tempo × custo/hora)</p>
         )}
       </div>
 

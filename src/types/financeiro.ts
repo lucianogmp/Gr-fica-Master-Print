@@ -58,6 +58,18 @@ export interface Depreciacao {
   vida_util_anos: number;
   data_aquisicao?: string | null;
   observacoes?: string | null;
+  // ── Ampliação do cadastro de equipamentos (todos com padrão que mantém o cálculo antigo) ──
+  /** Valor estimado ao fim da vida útil (padrão 0). */
+  valor_residual?: number | null;
+  /** Horas PRODUTIVAS por mês (padrão 160, a base que o sistema já usava). */
+  horas_mes?: number | null;
+  ativo?: boolean | null;
+  potencia_kw?: number | null;
+  preco_kwh?: number | null;
+  /** Custo de energia por hora informado na mão (tem prioridade sobre kW × kWh). */
+  energia_hora_manual?: number | null;
+  /** Lubrificantes, materiais auxiliares e outros custos recorrentes (R$/mês). */
+  outros_custos_mes?: number | null;
   created_at?: string;
   updated_at?: string;
 }

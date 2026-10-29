@@ -77,7 +77,7 @@ export function useDashboardData(mes: string) {
         supabase.from('custos_fixos').select('valor_mensal,ativo'),
 
         // Depreciação
-        supabase.from('depreciacao').select('valor,vida_util_anos'),
+        supabase.from('depreciacao').select('valor,vida_util_anos,valor_residual,ativo'),
 
         // Contas a receber (pendentes)
         supabase.from('lancamentos')
@@ -241,7 +241,9 @@ export function useDashboardData(mes: string) {
 
       const custoFixoTotal =
         fixos.filter(f => f.ativo !== false).reduce((s, f) => s + Number(f.valor_mensal), 0) +
-        deprs.reduce((s, d) => s + (Number(d.valor) / (Number(d.vida_util_anos) * 12)), 0);
+        // mesma regra da Gestão de Custos: (valor − residual) ÷ vida útil, só equipamentos ativos
+        deprs.filter((d: any) => d.ativo !== false)
+          .reduce((s, d: any) => s + (Math.max(0, Number(d.valor) - Number(d.valor_residual ?? 0)) / (Number(d.vida_util_anos) * 12)), 0);
       const margem  = receitaMes > 0 ? (lucroMes / receitaMes) * 100 : 0;
       const pontoEq = margem > 0 ? custoFixoTotal / (margem / 100) : 0;
 

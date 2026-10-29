@@ -22,6 +22,8 @@ export interface Produto {
   prazo_entrega_dias?: number | null;
   icone_svg?: string | null;
   maquina?: string | null;
+  /** Tempo (horas) de uso de cada máquina neste produto; null = usa o tempo de produção do produto. */
+  maquinas_tempo?: { equipamento_id: string; nome: string; horas: number }[] | null;
   setor?: string | null;
   acabamento?: string | null;
   checklist?: string | null;

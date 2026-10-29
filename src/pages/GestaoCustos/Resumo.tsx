@@ -118,8 +118,8 @@ export function Resumo() {
             <TrendingDown className="w-4 h-4" /> Ativos em Depreciação
           </h3>
           <div className="space-y-2">
-            {deprs.sort((a, b) => Number(b.valor) - Number(a.valor)).map(d => {
-              const deprMes = Number(d.valor) / (Number(d.vida_util_anos) * 12);
+            {deprs.filter(d => d.ativo !== false).sort((a, b) => Number(b.valor) - Number(a.valor)).map(d => {
+              const deprMes = Math.max(0, Number(d.valor) - Number(d.valor_residual ?? 0)) / (Number(d.vida_util_anos) * 12);
               return (
                 <div key={d.id} className="flex items-center justify-between py-1.5 border-b border-gray-800 last:border-0">
                   <div>

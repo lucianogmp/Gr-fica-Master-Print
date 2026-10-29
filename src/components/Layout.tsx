@@ -150,7 +150,7 @@ const ALL_MENU: MenuItem[] = [
     children: [
       { path: '/custos/fixos',      label: 'Custos Fixos',     icon: DollarSignIcon },
       { path: '/custos/variaveis',  label: 'Custos Variáveis', icon: GitCompare },
-      { path: '/custos/depreciacao', label: 'Depreciação',     icon: TrendingDown },
+      { path: '/custos/depreciacao', label: 'Equipamentos',    icon: TrendingDown },
       { path: '/custos/resumo',     label: 'Resumo',           icon: PieChart },
       { path: '/custos/serralheria', label: 'Serralheria',     icon: Wrench },
     ],
