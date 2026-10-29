@@ -14,6 +14,7 @@ import { ConsumiveisTab } from './equipamentos/ConsumiveisTab';
 import { ManutencoesTab } from './equipamentos/ManutencoesTab';
 import { CustoHoraTab } from './equipamentos/CustoHoraTab';
 import { RelatorioTab } from './equipamentos/RelatorioTab';
+import { calcCustoPorUnidade, tecnologiaDe } from '../../lib/tecnologias';
 import { fmtBRL, fmtHora, fmtData } from './equipamentos/ui';
 
 type Aba = 'custo' | 'dados' | 'consumiveis' | 'manutencoes' | 'relatorio';
@@ -142,13 +143,14 @@ export function Depreciacao() {
                   <th className="px-4 py-2 text-center">Horas/mês</th>
                   <th className="px-4 py-2 text-left" style={{ minWidth: 170 }}>Custo/hora</th>
                   <th className="px-4 py-2 text-right">Custo/mês</th>
+                  <th className="px-4 py-2 text-right">Custo/página ou m²</th>
                   <th className="px-4 py-2 text-left">Últ. manutenção</th>
                   <th className="px-4 py-2 text-center">Ações</th>
                 </tr>
               </thead>
               <tbody>
                 {lista.length === 0 && (
-                  <tr><td colSpan={8} className="px-4 py-12 text-center text-gray-600">Nenhum equipamento cadastrado.</td></tr>
+                  <tr><td colSpan={9} className="px-4 py-12 text-center text-gray-600">Nenhum equipamento cadastrado.</td></tr>
                 )}
                 {lista.map(eq => {
                   const c = custos[eq.id];
@@ -174,6 +176,16 @@ export function Depreciacao() {
                         </div>
                       </td>
                       <td className="px-4 py-2.5 text-right text-gray-300">{fmtBRL(c?.mensal.total ?? 0)}</td>
+                      <td className="px-4 py-2.5 text-right">
+                        {(() => {
+                          const cu = c ? calcCustoPorUnidade(eq, c.mensal.total, c.consumiveis) : null;
+                          if (!cu) return <span className="text-gray-600">—</span>;
+                          return <span className="font-bold text-blue-300" title={cu.estimada ? 'Produção mensal estimada' : undefined}>
+                            {cu.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+                            <span className="text-[10px] text-gray-500 font-normal"> /{tecnologiaDe(eq.tecnologia)?.unidadeProducao === 'm²' ? 'm²' : 'pág'}{cu.estimada ? '*' : ''}</span>
+                          </span>;
+                        })()}
+                      </td>
                       <td className="px-4 py-2.5 text-gray-400">{fmtData(c?.ultimaManutencao)}</td>
                       <td className="px-4 py-2.5" onClick={e => e.stopPropagation()}>
                         <div className="flex gap-1.5 justify-center">

@@ -3,6 +3,7 @@
 import { Info } from 'lucide-react';
 import { CustoEquipamento } from '../../../lib/custoEquipamento';
 import type { Equipamento } from '../../../types/equipamento';
+import { calcCustoPorUnidade } from '../../../lib/tecnologias';
 import { fmtBRL, fmtHora } from './ui';
 
 export function CustoHoraTab({ equipamento, custo }: { equipamento: Equipamento; custo: CustoEquipamento }) {
@@ -39,6 +40,8 @@ export function CustoHoraTab({ equipamento, custo }: { equipamento: Equipamento;
   ];
 
   const foraDoCusto = c.consumiveis.filter(x => x.foraDoCustoHora);
+  const cu = calcCustoPorUnidade(equipamento, c.mensal.total, c.consumiveis);
+  const fmtU = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 4 });
 
   return (
     <div className="space-y-3">
@@ -60,6 +63,44 @@ export function CustoHoraTab({ equipamento, custo }: { equipamento: Equipamento;
           <p className="text-xl font-black text-gray-200">{fmtBRL(c.hora.total / 2)}</p>
         </div>
       </div>
+
+      {cu && (
+        <div className="border border-blue-500/30 rounded-xl overflow-hidden">
+          <div className="bg-blue-500/10 px-3 py-2 flex items-center justify-between gap-3 flex-wrap">
+            <p className="text-[10px] font-bold text-blue-300 uppercase">Custo por {cu.unidade} (relatório)</p>
+            <div className="flex items-center gap-3">
+              {cu.totalPB != null && (
+                <span className="text-[11px] text-gray-400">P&amp;B: <strong className="text-blue-200">{fmtU(cu.totalPB)}</strong></span>
+              )}
+              <span className="text-[11px] text-gray-400">{cu.totalPB != null ? 'Colorida' : 'Total'}: <strong className="text-lg font-black text-blue-300">{fmtU(cu.total)}</strong></span>
+            </div>
+          </div>
+          <table className="w-full text-xs">
+            <tbody>
+              <tr className="border-b border-gray-800">
+                <td className="px-3 py-1.5 text-gray-300">Máquina (depr. + manutenção + energia + outros)</td>
+                <td className="px-3 py-1.5 text-[10px] text-gray-500">{fmtBRL(c.mensal.total)}/mês ÷ {cu.producaoMes.toLocaleString('pt-BR')} {cu.unidade === 'página' ? 'páginas' : 'm²'}/mês</td>
+                <td className="px-3 py-1.5 text-right font-bold text-white">{fmtU(cu.maquina)}</td>
+              </tr>
+              {cu.consumiveis.map(x => (
+                <tr key={x.nome} className="border-b border-gray-800">
+                  <td className="px-3 py-1.5 text-gray-300">{x.nome}</td>
+                  <td className="px-3 py-1.5 text-[10px] text-gray-500">preço ÷ rendimento</td>
+                  <td className="px-3 py-1.5 text-right font-bold text-white">{fmtU(x.custo)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="px-3 py-2 space-y-1 text-[10px] text-gray-500">
+            {cu.estimada && (
+              <p className="text-yellow-400">Produção mensal estimada ({cu.producaoMes.toLocaleString('pt-BR')}). Informe a sua em "Dados gerais" pra o custo da máquina por {cu.unidade} ficar real.</p>
+            )}
+            {cu.incompletos.length > 0 && <p>Faltam preço/rendimento de: <strong className="text-gray-300">{cu.incompletos.join(', ')}</strong> — ainda não entram na conta.</p>}
+            {cu.outraUnidade.length > 0 && <p>Em outra unidade (não somados): {cu.outraUnidade.join(', ')}. Use "{cu.unidade}" como unidade pra entrarem.</p>}
+            <p>Só relatório: não altera o preço dos produtos nem o orçamento. Muda sozinho quando você registra manutenção, peça ou novo preço de consumível.</p>
+          </div>
+        </div>
+      )}
 
       <div className="border border-gray-700 rounded-xl overflow-hidden">
         <div className="overflow-x-auto">

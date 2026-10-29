@@ -70,6 +70,10 @@ export interface Depreciacao {
   energia_hora_manual?: number | null;
   /** Lubrificantes, materiais auxiliares e outros custos recorrentes (R$/mês). */
   outros_custos_mes?: number | null;
+  /** Tecnologia da máquina (ver lib/tecnologias.ts): define consumíveis sugeridos e a unidade do custo. */
+  tecnologia?: string | null;
+  /** Páginas (ou m²) produzidas por mês — base do custo por página/m². Vazio = estimativa da tecnologia. */
+  producao_mes?: number | null;
   created_at?: string;
   updated_at?: string;
 }

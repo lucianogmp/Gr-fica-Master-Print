@@ -22,7 +22,7 @@ export const BASE_CALCULO_LABEL: Record<BaseCalculoConsumivel, string> = {
 };
 
 export const UNIDADES_CONSUMO = [
-  'unidade', 'litro', 'ml', 'kg', 'grama', 'metro', 'folha', 'página', 'corte', 'frasco', 'rolo',
+  'unidade', 'litro', 'ml', 'kg', 'grama', 'metro', 'm²', 'folha', 'página', 'corte', 'frasco', 'rolo',
 ];
 
 export interface Consumivel {

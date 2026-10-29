@@ -34,6 +34,7 @@ export interface Componentes {
 export interface ConsumivelCalculado {
   id: string;
   nome: string;
+  unidade: string;
   base: Consumivel['base_calculo'];
   /** Custo por hora que entra no custo da máquina (0 se cobrado por consumo). */
   porHora: number;
@@ -126,6 +127,7 @@ export function calcConsumivel(c: Consumivel, horasMes: number): ConsumivelCalcu
   return {
     id: c.id,
     nome: c.nome,
+    unidade: c.unidade,
     base: c.base_calculo,
     porHora: round(porHora),
     custoPorUso: custoPorUso != null ? round(custoPorUso, 6) : null,

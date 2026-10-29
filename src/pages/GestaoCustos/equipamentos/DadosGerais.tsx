@@ -12,12 +12,15 @@ import { InteiroInput } from '../../../components/ui/InteiroInput';
 import { DateInput } from '../../../components/ui/DateInput';
 import { AutoTextarea } from '../../../components/ui/AutoTextarea';
 import { HelpTooltip } from '../../../components/ui/HelpTooltip';
-import { IN, LABEL, BTN_SALVAR, BTN_CANCELAR, fmtBRL, fmtHora, TIPOS_EQUIPAMENTO } from './ui';
+import { DarkSelect } from '../../../components/ui/DarkSelect';
+import { TECNOLOGIAS, tecnologiaDe } from '../../../lib/tecnologias';
+import { IN, LABEL, BTN_SALVAR, BTN_CANCELAR, fmtBRL, fmtHora } from './ui';
 
 function paraForm(e?: Equipamento | null) {
   return {
     nome:                e?.nome ?? '',
-    categoria:           e?.categoria ?? '',
+    tecnologia:          e?.tecnologia ?? '',
+    producao_mes:        Number(e?.producao_mes ?? 0),
     data_aquisicao:      e?.data_aquisicao ?? '',
     valor:               Number(e?.valor ?? 0),
     vida_util_anos:      e ? String(e.vida_util_anos) : '',
@@ -44,6 +47,7 @@ export function DadosGerais({ equipamento, onSalvo, onCancelar }: {
     setF(p => ({ ...p, [k]: v }));
 
   const vida = parseFloat(f.vida_util_anos) || 0;
+  const tec = tecnologiaDe(f.tecnologia);
 
   // Prévia usando as mesmas regras do cálculo oficial (sem consumíveis/manutenções).
   const previa = calcularCustoEquipamento({
@@ -65,7 +69,10 @@ export function DadosGerais({ equipamento, onSalvo, onCancelar }: {
     try {
       const payload = {
         nome:                f.nome.trim(),
-        categoria:           f.categoria.trim() || null,
+        tecnologia:          f.tecnologia || null,
+        producao_mes:        f.producao_mes > 0 ? f.producao_mes : null,
+        // o rótulo da tecnologia vira o "tipo" exibido; sem tecnologia, mantém o tipo que já existia
+        ...(f.tecnologia ? { categoria: tecnologiaDe(f.tecnologia)?.label ?? null } : {}),
         data_aquisicao:      f.data_aquisicao || null,
         valor:               f.valor,
         vida_util_anos:      vida,
@@ -93,13 +100,13 @@ export function DadosGerais({ equipamento, onSalvo, onCancelar }: {
           <input required value={f.nome} onChange={e => set('nome', e.target.value)}
             className={IN + ' w-full'} placeholder="Ex: Plotter de recorte Foison" />
         </div>
-        <div style={{ width: 210 }}>
-          <label className={LABEL}>Tipo</label>
-          <input list="tipos-equipamento" value={f.categoria} onChange={e => set('categoria', e.target.value)}
-            className={IN + ' w-full'} placeholder="Escolha ou digite" />
-          <datalist id="tipos-equipamento">
-            {TIPOS_EQUIPAMENTO.map(t => <option key={t} value={t} />)}
-          </datalist>
+        <div style={{ width: 250 }}>
+          <label className={LABEL + ' flex items-center gap-1'}>
+            Tecnologia
+            <HelpTooltip texto="Diz ao sistema que tipo de máquina é: ele sugere os consumíveis certos e mede o custo na unidade certa (por página nas impressoras laser e jato de tinta, por m² nas plotters de impressão, por hora nas demais)." />
+          </label>
+          <DarkSelect size="sm" value={f.tecnologia} onChange={v => set('tecnologia', v)} placeholder="Escolha a tecnologia"
+            options={TECNOLOGIAS.map(t => ({ value: t.key, label: t.exemplos ? `${t.label} — ${t.exemplos}` : t.label }))} />
         </div>
         <div style={{ width: 130 }}>
           <label className={LABEL}>Data da compra</label>
@@ -140,6 +147,16 @@ export function DadosGerais({ equipamento, onSalvo, onCancelar }: {
           </label>
           <InteiroInput value={f.horas_mes} onChange={v => set('horas_mes', v)} max={744} className={IN + ' text-center'} />
         </div>
+        {tec && tec.unidadeProducao !== 'hora' && (
+          <div>
+            <label className={LABEL + ' flex items-center gap-1'}>
+              {tec.unidadeProducao === 'página' ? 'Páginas' : 'm²'}/mês
+              <HelpTooltip texto={`Quantas ${tec.unidadeProducao === 'página' ? 'páginas' : 'm²'} essa máquina produz por mês. É a base do custo por ${tec.unidadeProducao}. Vazio = o sistema usa uma estimativa (${(tec.producaoPadrao ?? 0).toLocaleString('pt-BR')}/mês) e avisa que é estimada.`} />
+            </label>
+            <InteiroInput value={f.producao_mes} onChange={v => set('producao_mes', v)} max={9999999} className={IN + ' text-center'}
+              placeholder={String(tec.producaoPadrao ?? '')} />
+          </div>
+        )}
         <div className="flex gap-2">
           <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg px-3 py-1.5">
             <p className="text-[9px] text-gray-500 uppercase font-bold">Depr./mês</p>

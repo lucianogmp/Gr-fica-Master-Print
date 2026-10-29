@@ -12,6 +12,7 @@ import { InteiroInput } from '../../../components/ui/InteiroInput';
 import { DarkSelect } from '../../../components/ui/DarkSelect';
 import { AutoTextarea } from '../../../components/ui/AutoTextarea';
 import { HelpTooltip } from '../../../components/ui/HelpTooltip';
+import { tecnologiaDe } from '../../../lib/tecnologias';
 import { IN, LABEL, BTN_SALVAR, BTN_CANCELAR, fmtBRL, fmtHora } from './ui';
 
 const VAZIO = {
@@ -24,6 +25,16 @@ export function ConsumiveisTab({ equipamento, custo }: { equipamento: Equipament
   const { data: todos = [], criar, atualizar, deletar, isSaving } = useConsumiveis();
   const { confirmar, ConfirmModal } = useConfirm();
   const itens = todos.filter(c => c.equipamento_id === equipamento.id);
+  const tec = tecnologiaDe(equipamento.tecnologia);
+  const faltando = (tec?.sugeridos ?? []).filter(sg => !itens.some(i => i.nome.toLowerCase() === sg.nome.toLowerCase()));
+  async function adicionarSugeridos() {
+    for (const sg of faltando) {
+      await criar({
+        equipamento_id: equipamento.id, nome: sg.nome, unidade: sg.unidade, base_calculo: sg.base_calculo,
+        preco_compra: 0, quantidade_adquirida: 1, ativo: true,
+      } as any);
+    }
+  }
 
   const [aberto, setAberto] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -89,6 +100,22 @@ export function ConsumiveisTab({ equipamento, custo }: { equipamento: Equipament
             </button>
           )}
         </div>
+
+        {tec && faltando.length > 0 && !aberto && (
+          <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg px-3 py-2 flex items-center justify-between gap-3 flex-wrap">
+            <p className="text-[11px] text-gray-300">
+              <strong className="text-blue-300">{tec.label}</strong> costuma ter: {faltando.map(f => f.nome).join(', ')}.
+              <span className="text-gray-500"> Entram sem preço — você completa preço e rendimento depois, e pode remover o que não usa.</span>
+            </p>
+            <button onClick={adicionarSugeridos} disabled={isSaving}
+              className="bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white px-3 py-1.5 rounded-lg font-bold text-xs whitespace-nowrap">
+              Adicionar {faltando.length} sugerido(s)
+            </button>
+          </div>
+        )}
+        {!tec && (
+          <p className="text-[10px] text-gray-600">Escolha a tecnologia em "Dados gerais" pra receber a lista de consumíveis sugeridos.</p>
+        )}
 
         {aberto && (
           <form onSubmit={salvar} className="bg-[#111827] border border-gray-700 rounded-xl p-3 space-y-3">
