@@ -241,16 +241,26 @@ export function ItensEditor({ itens, onChange, onEditarProduto }: ItensEditorPro
       {/* ── Tabela de itens (a busca fica SEMPRE abaixo dos itens já adicionados) ── */}
       {itens.length > 0 && (
         <div className="overflow-x-auto rounded-lg border border-gray-700">
-          <table className="w-full" style={{ minWidth: 640 }}>
+          {/* table-fixed + larguras iguais: Qtd., Preço e Desconto ficam do mesmo tamanho e não cortam o número */}
+          <table className="w-full table-fixed" style={{ minWidth: 780 }}>
+            <colgroup>
+              <col />
+              <col style={{ width: 48 }} />
+              <col style={{ width: 112 }} />
+              <col style={{ width: 112 }} />
+              <col style={{ width: 112 }} />
+              <col style={{ width: 112 }} />
+              <col style={{ width: 56 }} />
+            </colgroup>
             <thead>
               <tr className="text-[9px] font-bold text-gray-400 uppercase bg-gray-800/50 border-b border-gray-700">
                 <th className="px-2 py-1 text-left">Descrição</th>
-                <th className="px-1 py-1 text-center" style={{ width: 52 }}>Un.</th>
-                <th className="px-1 py-1 text-center" style={{ width: 84 }}>Qtd.</th>
-                <th className="px-1 py-1 text-center" style={{ width: 104 }}>Preço unit.</th>
-                <th className="px-1 py-1 text-center" style={{ width: 92 }}>Desc. R$</th>
-                <th className="px-2 py-1 text-right" style={{ width: 104 }}>Total</th>
-                <th className="px-1 py-1" style={{ width: 52 }}></th>
+                <th className="px-1 py-1 text-center">Un.</th>
+                <th className="px-1 py-1 text-center">Qtd.</th>
+                <th className="px-1 py-1 text-center">Preço unit.</th>
+                <th className="px-1 py-1 text-center">Desc. R$</th>
+                <th className="px-2 py-1 text-right">Total</th>
+                <th className="px-1 py-1"></th>
               </tr>
             </thead>
             <tbody>
@@ -278,15 +288,15 @@ export function ItensEditor({ itens, onChange, onEditarProduto }: ItensEditorPro
                     <QtdInput id={`item-qtd-${i}`} value={String(it.quantidade ?? '')}
                       onChange={v => atualizarItem(i, 'quantidade', parseFloat(v) || 0)}
                       onEnter={() => buscaInputRef.current?.focus()}
-                      className={IN_NUM + ' text-center'} />
+                      className={IN_NUM + ' text-right px-2 min-w-0'} />
                   </td>
                   <td className="px-1 py-1">
                     <MoneyInput value={it.preco_unitario}
-                      onChange={v => atualizarItem(i, 'preco_unitario', v)} className={IN + ' text-right'} />
+                      onChange={v => atualizarItem(i, 'preco_unitario', v)} className={IN + ' text-right px-2 min-w-0'} />
                   </td>
                   <td className="px-1 py-1">
                     <MoneyInput value={descontoEmReais(it as any)}
-                      onChange={v => atualizarItem(i, 'desconto_valor' as any, v)} className={IN + ' text-right'} placeholder="0,00" />
+                      onChange={v => atualizarItem(i, 'desconto_valor' as any, v)} className={IN + ' text-right px-2 min-w-0'} placeholder="0,00" />
                   </td>
                   <td className="px-2 py-1 text-right font-bold text-white text-xs whitespace-nowrap">
                     {fmtBRL(it.total)}
