@@ -2,7 +2,9 @@
 // Extraído de Vendas.tsx original — tela de criar/editar uma venda.
 // Usado por: Vendas/Nova.tsx (criar) e reaproveitado via navegação /vendas/nova/:id (editar)
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useProdutos } from '../../hooks/useProdutos';
+import { guardarRascunhoVenda, lerRascunhoVenda, limparRascunhoVenda } from '../../lib/rascunhoVenda';
 import { useVendas, useVendaItens } from '../../hooks/useVendas';
 import { usePagamentosVenda } from '../../hooks/usePagamentosVenda';
 import { useLancamentos } from '../../hooks/useLancamentos';
@@ -13,7 +15,7 @@ import { formatarDescricaoImpressaoPlaca } from '../../lib/placaCalc';
 import { Lancamento } from '../../types/financeiro';
 import { formatarEnderecoCliente } from '../../types/cliente';
 import { useClientes } from '../../hooks/useClientes';
-import { ItensEditor } from '../../components/vendas/ItensEditor';
+import { ItensEditor, normalizarItem } from '../../components/vendas/ItensEditor';
 import { ClienteSelectorVenda } from '../../components/vendas/ClienteSelectorVenda';
 import { VendedorSelector } from '../../components/vendas/VendedorSelector';
 import { PainelFinanceiro, RascunhoParcela, resolverTaxaRascunho } from '../../components/vendas/PainelFinanceiro';
@@ -63,6 +65,8 @@ type VendaDetalheProps = {
 
 export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheProps) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { data: produtosCatalogo = [], isFetching: carregandoProdutos } = useProdutos();
 
   const { data: vendas = [], criar, atualizar, atualizarStatus, isSaving } = useVendas();
   const { data: clientes = [] } = useClientes();
@@ -73,6 +77,11 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
 
   const isNovo = !vendaIdProp || vendaIdProp === '__novo__';
   const vendaId = isNovo ? '__novo__' : vendaIdProp;
+
+  // Voltando do cadastro de produto (lápis do item): traz de volta o que estava sendo digitado.
+  const [retorno] = useState(() => lerRascunhoVenda(vendaIdProp && vendaIdProp !== '__novo__' ? vendaIdProp : '__novo__'));
+  const restauradoRef = useRef(!!retorno);
+  const edicaoAplicadaRef = useRef(false);
 
   const [form, setForm]   = useState({ ...NOVA_VENDA });
   const [itens, setItens] = useState<VendaItem[]>([]);
@@ -118,13 +127,16 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
   }, []);
 
   useEffect(() => {
+    if (restauradoRef.current) return;
     if (isNovo) { carregandoRef.current = false; return; }
-    if (itensCarregados !== undefined) setItens(itensCarregados);
+    // O total gravado no banco é só quantidade × preço; recalcula com o desconto de cada item.
+    if (itensCarregados !== undefined) setItens(itensCarregados.map(it => normalizarItem(it)));
     if (itensCarregados !== undefined) carregandoRef.current = false;
   }, [itensCarregados, isNovo, vendaId]);
 
   // Carrega dados da venda existente
   useEffect(() => {
+    if (restauradoRef.current) return;
     if (isNovo) {
       setForm({ ...NOVA_VENDA, data_venda: new Date().toISOString().split('T')[0] });
       setItens([]);
@@ -160,6 +172,7 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
 
   // Sugestão de data de entrega e valores padrão ao criar nova venda
   useEffect(() => {
+    if (restauradoRef.current) return;
     if (isNovo && cfg?.venda_prazo_entrega_dias) {
       const d = new Date();
       d.setDate(d.getDate() + cfg.venda_prazo_entrega_dias);
@@ -168,6 +181,7 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
   }, [isNovo, cfg?.venda_prazo_entrega_dias]);
 
   useEffect(() => {
+    if (restauradoRef.current) return;
     if (isNovo && cfg) {
       setForm(f => ({
         ...f,
@@ -179,6 +193,58 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
     }
   }, [isNovo, cfg]);
 
+  // Aplica o rascunho guardado antes de abrir o produto (roda por último na montagem, pra valer sobre os demais).
+  useEffect(() => {
+    if (!retorno) return;
+    setForm(retorno.form);
+    setItens(retorno.itens);
+    setPagamentosRascunho(retorno.pagamentosRascunho ?? []);
+    setGastosRascunho(retorno.gastosRascunho ?? []);
+    carregandoRef.current = false;
+    marcarAlteracoesPendentes('Você tem alterações não salvas nessa venda. Sair mesmo assim?');
+    if (!retorno.edicao) limparRascunhoVenda();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // O item cujo produto foi editado puxa o nome/preço novos do cadastro — só o que de fato mudou lá,
+  // pra não desfazer um preço ou nome que você ajustou à mão nesta venda.
+  useEffect(() => {
+    const ed = retorno?.edicao;
+    if (!ed || edicaoAplicadaRef.current || carregandoProdutos || produtosCatalogo.length === 0) return;
+    edicaoAplicadaRef.current = true;
+    limparRascunhoVenda();
+    const prod = produtosCatalogo.find(p => p.id === ed.produtoId);
+    if (!prod) return;
+    setItens(prev => prev.map((it, i) => {
+      if (i !== ed.indice || it.produto_id !== prod.id) return it;
+      const novoPreco = Number(prod.preco_venda ?? 0);
+      const mudouPreco = Math.abs(novoPreco - ed.precoAntes) > 0.0001;
+      const mudouNome = prod.nome !== ed.nomeAntes && it.descricao === ed.nomeAntes;
+      if (!mudouPreco && !mudouNome) return it;
+      return normalizarItem({
+        ...it,
+        descricao: mudouNome ? prod.nome : it.descricao,
+        preco_unitario: mudouPreco ? novoPreco : it.preco_unitario,
+      });
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [carregandoProdutos, produtosCatalogo]);
+
+  function handleEditarProduto(indice: number) {
+    const it = itens[indice];
+    if (!it?.produto_id) return;
+    guardarRascunhoVenda({
+      vendaId, form, itens, pagamentosRascunho, gastosRascunho,
+      edicao: {
+        indice, produtoId: it.produto_id, nomeAntes: it.descricao,
+        precoAntes: Number(produtosCatalogo.find(p => p.id === it.produto_id)?.preco_venda ?? it.preco_unitario),
+      },
+    });
+    limparAlteracoesPendentes(); // não é "sair sem salvar": o rascunho volta junto
+    const voltar = location.pathname + location.search;
+    navigate(`/produtos/catalogo?editar=${encodeURIComponent(it.produto_id)}&retorno=${encodeURIComponent(voltar)}`);
+  }
+
   function fechar() {
     limparAlteracoesPendentes();
     navigate(rotaVoltar);
@@ -187,18 +253,18 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
   // Reabrir uma parcela já travada (paga e salva): remove o pagamento de
   // verdade (desfaz os efeitos financeiros — conta, taxa, lançamento, igual
   // já acontece ao excluir) e devolve os mesmos dados como uma parcela
-  // editável, já marcada "Recebido" (só está sendo ajustada, não estornada).
-  // Só volta a valer de fato quando a venda for salva de novo.
+  // editável, voltando a "A receber": se está sendo editado, o valor pode não ter
+  // sido recebido de fato. Só vale como recebido de novo quando for marcado e a venda salva.
   async function handleReabrirPagamento(pagamento: PagamentoVenda) {
     if (!vendaId) return;
     const ok = await confirmar(
-      `Para editar este lançamento é necessário reabri-lo. Reabrir este financeiro (código ${pagamento.id.slice(0, 8)})?`,
+      `Para editar este lançamento é necessário reabri-lo: o recebimento será desfeito (conta, taxa e lançamento) e ele volta para "A receber" até você marcar "Recebido" de novo e salvar. Reabrir este financeiro (código ${pagamento.id.slice(0, 8)})?`,
       'Reabrir lançamento'
     );
     if (!ok) return;
     await excluirPagamento(pagamento.id, vendaId);
     const { created_at: _createdAt, ...dadosPagamento } = pagamento;
-    setPagamentosRascunho(prev => [...prev, { ...dadosPagamento, status: 'recebido' }]);
+    setPagamentosRascunho(prev => [...prev, { ...dadosPagamento, status: 'a_receber' }]);
     marcarAlteracoesPendentes('Você tem alterações não salvas nessa venda. Sair mesmo assim?');
   }
 
@@ -509,7 +575,7 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-1.5">
               <Package className="w-3.5 h-3.5" /> Itens da Venda
             </h3>
-            <ItensEditor itens={itens} onChange={novosItens => {
+            <ItensEditor itens={itens} onEditarProduto={handleEditarProduto} onChange={novosItens => {
               setItens(novosItens);
               if (!carregandoRef.current) {
                 marcarAlteracoesPendentes('Você tem alterações não salvas nessa venda. Sair mesmo assim?');

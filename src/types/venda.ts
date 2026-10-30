@@ -51,6 +51,8 @@ export interface VendaItem {
   quantidade: number;
   preco_unitario: number;
   desconto?: number | null;
+  /** Desconto do item em R$ (valor da linha). Ausente em registros antigos: vale `desconto` (%). */
+  desconto_valor?: number | null;
   obs?: string | null;
   unidade?: string | null;
   area_m2?: number | null;

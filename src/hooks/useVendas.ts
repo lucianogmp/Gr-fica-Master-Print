@@ -18,6 +18,7 @@ function serializarItens(itens: VendaItem[]) {
     quantidade:     i.quantidade,
     preco_unitario: i.preco_unitario,
     desconto:       i.desconto       ?? 0,
+    desconto_valor: i.desconto_valor ?? null,
     obs:            i.obs            ?? null,
     unidade:        i.unidade        ?? 'un',
     area_m2:        i.area_m2        ?? null,
@@ -25,6 +26,10 @@ function serializarItens(itens: VendaItem[]) {
     // Custo por unidade (ou por m²) — só pra referência de admin/dono, nunca
     // aparece em impressão/mensagem. Calculado a partir do BOM do produto.
     custo_unitario: (i as any).custo_unitario ?? null,
+    // não perder estes campos ao salvar de novo uma venda que já os tinha
+    detalhe_placa:  i.detalhe_placa  ?? null,
+    acabamento_id:  (i as any).acabamento_id ?? null,
+    acabamento_qtd_estoque: (i as any).acabamento_qtd_estoque ?? null,
   }));
 }
 

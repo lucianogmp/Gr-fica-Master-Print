@@ -6,16 +6,15 @@ import { Produto } from '../../types/produto';
 import { useProdutos } from '../../hooks/useProdutos';
 import { loadBom, calcCustoBOM } from '../../hooks/useBom';
 import { useRole } from '../../hooks/useRole';
-import { X, Search, Package } from 'lucide-react';
+import { X, Search, Pencil, Check } from 'lucide-react';
 import { correspondeABuscaEmCampos } from '../../lib/buscaFlexivel';
 import { MoneyInput } from '../ui/MoneyInput';
 import { QtdInput } from '../ui/QtdInput';
-import { PctInput } from '../ui/PctInput';
 
 const fmtBRL = (v: number) => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 const IN = [
-  'bg-[#111827]', 'border border-gray-700', 'rounded-lg', 'px-2', 'py-1.5',
+  'bg-[#111827]', 'border border-gray-700', 'rounded-md', 'px-1.5', 'py-1',
   'text-white', 'text-xs', 'focus:outline-none', 'focus:border-blue-500',
   'transition-colors', 'w-full',
 ].join(' ');
@@ -24,12 +23,39 @@ const IN = [
 // dos dígitos e fazem números maiores (ex: 1000) ficarem escondidos.
 const IN_NUM = IN + ' [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none';
 
+const r2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
+
+/**
+ * Desconto do item em R$ (valor da linha). Itens novos guardam `desconto_valor`; itens antigos só
+ * têm o percentual, então o valor em R$ é derivado dele (percentual × quantidade × preço).
+ */
+export function descontoEmReais(it: Pick<VendaItem, 'quantidade' | 'preco_unitario' | 'desconto'> & { desconto_valor?: number | null }): number {
+  const bruto = Number(it.quantidade) * Number(it.preco_unitario);
+  const rs = it.desconto_valor != null ? Number(it.desconto_valor) : bruto * (Number(it.desconto ?? 0) / 100);
+  return Math.min(Math.max(0, r2(rs)), Math.max(0, r2(bruto)));
+}
+
+/** Recalcula desconto (% e R$) e total da linha a partir de quantidade, preço e desconto em R$. */
+export function normalizarItem<T extends VendaItem>(it: T, descontoRs: number = descontoEmReais(it as any)): T {
+  const bruto = r2(Number(it.quantidade) * Number(it.preco_unitario));
+  const desc = Math.min(Math.max(0, r2(descontoRs)), Math.max(0, bruto));
+  return {
+    ...it,
+    desconto_valor: desc,
+    // percentual continua gravado (impressão e registros antigos usam ele)
+    desconto: bruto > 0 ? Number(((desc / bruto) * 100).toFixed(2)) : 0,
+    total: r2(bruto - desc),
+  };
+}
+
 interface ItensEditorProps {
   itens: VendaItem[];
   onChange: (itens: VendaItem[]) => void;
+  /** Lápis do item: abre o cadastro do produto pra editar; ao salvar, volta pra esta venda. */
+  onEditarProduto?: (indice: number) => void;
 }
 
-export function ItensEditor({ itens, onChange }: ItensEditorProps) {
+export function ItensEditor({ itens, onChange, onEditarProduto }: ItensEditorProps) {
   const [buscaProduto, setBuscaProduto] = useState('');
   const [mostrarSugestoes, setMostrar]  = useState(false);
   const [dropRect, setDropRect]         = useState<DOMRect | null>(null);
@@ -37,6 +63,10 @@ export function ItensEditor({ itens, onChange }: ItensEditorProps) {
   const [indiceAtivo, setIndiceAtivo]   = useState(0);
   const wrapRef  = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLDivElement>(null);
+  const buscaInputRef = useRef<HTMLInputElement>(null);
+  // Depois de adicionar um item, o cursor vai pra QUANTIDADE dele (não volta pra busca).
+  const focarQtdRef = useRef<number | null>(null);
+  const [editandoNome, setEditandoNome] = useState<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { data: produtos = [] } = useProdutos();
@@ -51,6 +81,14 @@ export function ItensEditor({ itens, onChange }: ItensEditorProps) {
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
+  useEffect(() => {
+    const idx = focarQtdRef.current;
+    if (idx == null || idx >= itens.length) return;
+    focarQtdRef.current = null;
+    const el = document.getElementById(`item-qtd-${idx}`) as HTMLInputElement | null;
+    if (el) { el.focus(); setTimeout(() => el.select(), 0); }
+  }, [itens.length]);
+
   function atualizarRect() {
     if (inputRef.current) setDropRect(inputRef.current.getBoundingClientRect());
   }
@@ -63,10 +101,6 @@ export function ItensEditor({ itens, onChange }: ItensEditorProps) {
       .filter(p => correspondeABuscaEmCampos([p.nome, p.sku], buscaProduto))
       .slice(0, 8);
   }, [produtosAtivos, buscaProduto]);
-
-  function calcTotal(qtd: number, preco: number, desc: number) {
-    return qtd * preco * (1 - (desc || 0) / 100);
-  }
 
   async function adicionarDoCatalogo(produto: Produto) {
     const eM2 = produto.unidade_medida === 'm2';
@@ -89,25 +123,26 @@ export function ItensEditor({ itens, onChange }: ItensEditorProps) {
       }
     }
 
-    onChange([...itens, {
+    focarQtdRef.current = itens.length;
+    onChange([...itens, normalizarItem({
       descricao: produto.nome, quantidade: 1,
       preco_unitario: Number(produto.preco_venda ?? 0), desconto: 0,
       unidade: eM2 ? 'm²' : 'un', obs: null, produto_id: produto.id,
-      total: calcTotal(1, Number(produto.preco_venda ?? 0), 0),
+      total: 0,
       ...(custoUnitario != null ? { custo_unitario: custoUnitario } as any : {}),
-    }]);
+    } as VendaItem, 0)]);
     setBuscaProduto('');
     setMostrar(false);
   }
 
-  function removerItem(idx: number) { onChange(itens.filter((_, i) => i !== idx)); }
+  function removerItem(idx: number) { setEditandoNome(null); onChange(itens.filter((_, i) => i !== idx)); }
 
+  // Quantidade ou preço mudando mantêm o desconto em R$ digitado (só limita ao valor da linha).
   function atualizarItem(idx: number, field: keyof VendaItem, val: any) {
     onChange(itens.map((it, i) => {
       if (i !== idx) return it;
-      const u = { ...it, [field]: val };
-      u.total = calcTotal(Number(u.quantidade), Number(u.preco_unitario), Number(u.desconto ?? 0));
-      return u;
+      const rsAtual = descontoEmReais(it as any);
+      return normalizarItem({ ...it, [field]: val } as VendaItem, field === ('desconto_valor' as any) ? Number(val) : rsAtual);
     }));
   }
 
@@ -151,7 +186,9 @@ export function ItensEditor({ itens, onChange }: ItensEditorProps) {
     <div
       style={{
         position: 'fixed',
-        top: dropRect.bottom + 4,
+        ...(dropRect.bottom + 330 > window.innerHeight && dropRect.top > 330
+          ? { bottom: window.innerHeight - dropRect.top + 4 }
+          : { top: dropRect.bottom + 4 }),
         left: dropRect.left,
         width: dropRect.width,
         zIndex: 99999,
@@ -173,7 +210,7 @@ export function ItensEditor({ itens, onChange }: ItensEditorProps) {
             onMouseEnter={() => setIndiceAtivo(idx)}
             style={{
               width: '100%', display: 'flex', alignItems: 'center',
-              justifyContent: 'space-between', padding: '10px 14px',
+              justifyContent: 'space-between', padding: '7px 12px',
               cursor: 'pointer', textAlign: 'left',
             }}
             className={`transition-colors duration-150 border-b border-gray-700/50 ${ativoPorTeclado ? 'bg-blue-900/30' : 'bg-transparent hover:bg-blue-900/20'}`}
@@ -195,77 +232,72 @@ export function ItensEditor({ itens, onChange }: ItensEditorProps) {
     document.body
   ) : null;
 
+  const podeEditarProduto = (it: VendaItem) => !!it.produto_id && !it.detalhe_placa && !!onEditarProduto;
+
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
 
-      {/* ── Buscar produto do catálogo ── */}
-      <div className="bg-[#111827] border border-blue-500/30 rounded-xl p-3 space-y-2" ref={wrapRef}>
-        <p className="text-[10px] font-bold text-blue-400 uppercase flex items-center gap-1.5">
-          <Package className="w-3.5 h-3.5" /> Adicionar produto do catálogo
-        </p>
-        <div
-          ref={inputRef}
-          className="flex items-center gap-2 bg-[#0d1117] border border-gray-700 rounded-lg px-3 py-2 focus-within:border-blue-500 transition-colors"
-        >
-          <Search className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
-          <input
-            value={buscaProduto}
-            onChange={e => handleBuscaChange(e.target.value)}
-            onFocus={() => { atualizarRect(); if (buscaProduto.length > 0) setMostrar(true); }}
-            onKeyDown={handleBuscaKeyDown}
-            placeholder="Buscar produto por nome ou SKU... (setas + Enter pra selecionar)"
-            className="flex-1 bg-transparent text-white text-xs placeholder-gray-600 focus:outline-none"
-          />
-        </div>
-        {dropdown}
-        {produtosAtivos.length === 0 && (
-          <p className="text-[10px] text-yellow-400">Nenhum produto ativo cadastrado em Produtos.</p>
-        )}
-      </div>
-
-      {/* ── Tabela de itens ── */}
+      {/* ── Tabela de itens (a busca fica SEMPRE abaixo dos itens já adicionados) ── */}
       {itens.length > 0 && (
-        <div className="overflow-x-auto rounded-xl border border-gray-700">
-          <table className="w-full" style={{ minWidth: 920 }}>
+        <div className="overflow-x-auto rounded-lg border border-gray-700">
+          <table className="w-full" style={{ minWidth: 640 }}>
             <thead>
-              <tr className="text-[10px] font-bold text-gray-400 uppercase bg-gray-800/50 border-b border-gray-700">
-                <th className="px-3 py-2 text-left">Descrição</th>
-                <th className="px-2 py-2 text-center" style={{ width: 80 }}>Un.</th>
-                <th className="px-2 py-2 text-center" style={{ width: 130 }}>Qtd.</th>
-                <th className="px-2 py-2 text-center" style={{ width: 170 }}>Preço Unit.</th>
-                <th className="px-2 py-2 text-center" style={{ width: 120 }}>Desc.%</th>
-                <th className="px-3 py-2 text-right" style={{ width: 150 }}>Total</th>
-                <th className="px-2 py-2 text-center" style={{ width: 36 }}></th>
+              <tr className="text-[9px] font-bold text-gray-400 uppercase bg-gray-800/50 border-b border-gray-700">
+                <th className="px-2 py-1 text-left">Descrição</th>
+                <th className="px-1 py-1 text-center" style={{ width: 52 }}>Un.</th>
+                <th className="px-1 py-1 text-center" style={{ width: 84 }}>Qtd.</th>
+                <th className="px-1 py-1 text-center" style={{ width: 104 }}>Preço unit.</th>
+                <th className="px-1 py-1 text-center" style={{ width: 92 }}>Desc. R$</th>
+                <th className="px-2 py-1 text-right" style={{ width: 104 }}>Total</th>
+                <th className="px-1 py-1" style={{ width: 52 }}></th>
               </tr>
             </thead>
             <tbody>
               {itens.map((it, i) => (
-                <tr key={i} className="border-b border-gray-800 hover:bg-gray-800/20">
-                  <td className="px-2 py-1.5">
-                    <input value={it.descricao} onChange={e => atualizarItem(i, 'descricao', e.target.value)} className={IN} />
+                <tr key={i} className="border-b border-gray-800 last:border-0 hover:bg-gray-800/20">
+                  <td className="px-2 py-1">
+                    {editandoNome === i ? (
+                      <input autoFocus value={it.descricao} className={IN}
+                        onChange={e => atualizarItem(i, 'descricao', e.target.value)}
+                        onBlur={() => setEditandoNome(null)}
+                        onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); setEditandoNome(null); } }} />
+                    ) : (
+                      <p className="text-xs text-white font-medium truncate" title={it.descricao}>{it.descricao}</p>
+                    )}
                   </td>
-                  <td className="px-1.5 py-1.5">
-                    <input value={it.unidade ?? 'un'} onChange={e => atualizarItem(i, 'unidade', e.target.value)} className={IN + ' text-center'} />
+                  <td className="px-1 py-1 text-center text-[11px] text-gray-400">{it.unidade ?? 'un'}</td>
+                  <td className="px-1 py-1">
+                    <QtdInput id={`item-qtd-${i}`} value={String(it.quantidade ?? '')}
+                      onChange={v => atualizarItem(i, 'quantidade', parseFloat(v) || 0)}
+                      onEnter={() => buscaInputRef.current?.focus()}
+                      className={IN_NUM + ' text-center'} />
                   </td>
-                  <td className="px-1.5 py-1.5">
-                    <QtdInput value={String(it.quantidade ?? '')}
-                      onChange={v => atualizarItem(i, 'quantidade', parseFloat(v) || 0)} className={IN_NUM + ' text-center'} />
-                  </td>
-                  <td className="px-1.5 py-1.5">
+                  <td className="px-1 py-1">
                     <MoneyInput value={it.preco_unitario}
                       onChange={v => atualizarItem(i, 'preco_unitario', v)} className={IN + ' text-right'} />
                   </td>
-                  <td className="px-1.5 py-1.5">
-                    <PctInput value={Number(it.desconto ?? 0)}
-                      onChange={v => atualizarItem(i, 'desconto', v)} className={IN_NUM + ' text-center'} />
+                  <td className="px-1 py-1">
+                    <MoneyInput value={descontoEmReais(it as any)}
+                      onChange={v => atualizarItem(i, 'desconto_valor' as any, v)} className={IN + ' text-right'} placeholder="0,00" />
                   </td>
-                  <td className="px-3 py-1.5 text-right font-bold text-white text-sm whitespace-nowrap">
+                  <td className="px-2 py-1 text-right font-bold text-white text-xs whitespace-nowrap">
                     {fmtBRL(it.total)}
                   </td>
-                  <td className="px-2 py-1.5 text-center">
-                    <button onClick={() => removerItem(i)} className="text-gray-600 hover:text-red-400 transition-colors inline-flex">
-                      <X className="w-3.5 h-3.5" />
-                    </button>
+                  <td className="px-1 py-1">
+                    <div className="flex items-center justify-center gap-1.5">
+                      <button
+                        title={podeEditarProduto(it) ? 'Editar o produto (volta pra esta venda ao salvar)' : 'Editar a descrição'}
+                        onClick={() => {
+                          if (podeEditarProduto(it)) onEditarProduto!(i);
+                          else setEditandoNome(editandoNome === i ? null : i);
+                        }}
+                        className="text-gray-500 hover:text-blue-400 transition-colors inline-flex">
+                        {editandoNome === i ? <Check className="w-3.5 h-3.5" /> : <Pencil className="w-3.5 h-3.5" />}
+                      </button>
+                      <button title="Remover item" onClick={() => removerItem(i)} className="text-gray-600 hover:text-red-400 transition-colors inline-flex">
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -274,26 +306,43 @@ export function ItensEditor({ itens, onChange }: ItensEditorProps) {
         </div>
       )}
 
+      {/* ── Buscar produto do catálogo ── */}
+      <div ref={wrapRef}>
+        <div
+          ref={inputRef}
+          className="flex items-center gap-2 bg-[#0d1117] border border-blue-500/30 rounded-lg px-2.5 py-1.5 focus-within:border-blue-500 transition-colors"
+        >
+          <Search className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
+          <input
+            ref={buscaInputRef}
+            value={buscaProduto}
+            onChange={e => handleBuscaChange(e.target.value)}
+            onFocus={() => { atualizarRect(); if (buscaProduto.length > 0) setMostrar(true); }}
+            onKeyDown={handleBuscaKeyDown}
+            placeholder="Adicionar produto: nome ou SKU (setas + Enter)"
+            className="flex-1 bg-transparent text-white text-xs placeholder-gray-600 focus:outline-none"
+          />
+        </div>
+        {dropdown}
+        {produtosAtivos.length === 0 && (
+          <p className="text-[10px] text-yellow-400 mt-1">Nenhum produto ativo cadastrado em Produtos.</p>
+        )}
+      </div>
+
       {/* ── Subtotal ── */}
       {itens.length > 0 && (
-        <div className="flex flex-col items-end gap-1.5 pr-1">
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-500">{itens.length} item(s)</span>
-            <span className="text-base font-black text-white">{fmtBRL(subtotal)}</span>
-          </div>
+        <div className="flex items-center justify-end gap-3 flex-wrap pr-1">
           {isAdmin && custoTotalItens > 0 && (
-            <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-1.5">
-              <span className="text-[10px] font-bold text-red-400 uppercase flex items-center gap-1">
-                🔒 Custo Total (só você vê)
-              </span>
-              <span className="text-xs font-black text-red-300">{fmtBRL(custoTotalItens)}</span>
+            <span className="flex items-center gap-1.5 bg-red-500/10 border border-red-500/20 rounded-md px-2 py-0.5 text-[10px]">
+              <span className="font-bold text-red-400 uppercase">🔒 Custo</span>
+              <span className="font-black text-red-300">{fmtBRL(custoTotalItens)}</span>
               {subtotal > 0 && (
-                <span className="text-[9px] text-gray-500">
-                  · Margem {(((subtotal - custoTotalItens) / subtotal) * 100).toFixed(1)}%
-                </span>
+                <span className="text-gray-500">· Margem {(((subtotal - custoTotalItens) / subtotal) * 100).toFixed(1)}%</span>
               )}
-            </div>
+            </span>
           )}
+          <span className="text-[11px] text-gray-500">{itens.length} item(s)</span>
+          <span className="text-sm font-black text-white">{fmtBRL(subtotal)}</span>
         </div>
       )}
     </div>

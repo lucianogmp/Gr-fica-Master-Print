@@ -13,7 +13,7 @@ const IN_BASE =
   'bg-[#111827] border border-gray-700 rounded-lg px-2.5 py-2 text-white text-xs focus:outline-none focus:border-blue-500 transition-colors w-full';
 
 export function QtdInput({
-  value, onChange, className, placeholder, center, big, autoFocus, style,
+  value, onChange, className, placeholder, center, big, autoFocus, style, id, onEnter,
 }: {
   /** Quantidade como string (ex: "3", "1.5", "" pra vazio). */
   value: string;
@@ -24,6 +24,9 @@ export function QtdInput({
   big?: boolean;
   autoFocus?: boolean;
   style?: React.CSSProperties;
+  id?: string;
+  /** Disparado ao apertar Enter no campo. */
+  onEnter?: () => void;
 }) {
   const LIMITE_CENTESIMOS = 99_999_999;
 
@@ -63,6 +66,8 @@ export function QtdInput({
 
     if (e.ctrlKey || e.metaKey) return;
 
+    if (e.key === 'Enter' && onEnter) { e.preventDefault(); onEnter(); return; }
+
     if (e.key >= '0' && e.key <= '9') {
       e.preventDefault();
       emitir(tudoSelecionado ? Number(e.key) : centesimos * 10 + Number(e.key));
@@ -92,6 +97,7 @@ export function QtdInput({
   return (
     <input
       type="text"
+      id={id}
       inputMode="numeric"
       autoFocus={autoFocus}
       value={paraTexto(centesimos)}

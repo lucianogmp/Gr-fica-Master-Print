@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useProdutos } from '../hooks/useProdutos';
 import { useCategorias } from '../hooks/useCategorias';
 import { useMateriasPrimas } from '../hooks/useEstoque';
@@ -375,6 +376,14 @@ export function Produtos() {
   const { data: acabamentos = [], criar: criarAcab, atualizar: atualizarAcab, deletar: deletarAcab } = useAcabamentos();
   const { confirmar, ConfirmModal } = useConfirm();
 
+  // Vindo de uma venda (lápis no item): abre direto este produto e, ao salvar ou fechar,
+  // volta pra venda que estava aberta (o rascunho dela fica guardado no navegador).
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const editarId = searchParams.get('editar');
+  const retornoPara = searchParams.get('retorno');
+  const abriuDaVendaRef = useRef(false);
+
   const [view, setView]         = useState<View>('lista');
   const [produtoId, setProdutoId] = useState<string | null>(null);
   const [form, setForm]         = useState({ ...NOVO });
@@ -465,7 +474,16 @@ export function Produtos() {
   function fecharDetalhe() {
     setView('lista'); setProdutoId(null);
     setForm({ ...NOVO }); setMaquinas([]); setMaquinasTempo({}); setBom([]);
+    // só volta se o retorno for uma rota interna do sistema
+    if (retornoPara && retornoPara.startsWith('/') && !retornoPara.startsWith('//')) navigate(retornoPara, { replace: true });
   }
+
+  useEffect(() => {
+    if (!editarId || abriuDaVendaRef.current || produtos.length === 0) return;
+    const p = produtos.find(x => x.id === editarId);
+    if (p) { abriuDaVendaRef.current = true; abrirDetalhe(p); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editarId, produtos]);
 
   function setF(field: string, val: any) { setForm(f => ({ ...f, [field]: val })); }
 

@@ -352,7 +352,8 @@ function LinhaTravada({ indice, total, pagamento, contas, onReabrir }: {
   return (
     <div className="grid grid-cols-[1.75rem_1fr_1fr_1fr_1fr_1fr_1.75rem] gap-2 px-4 py-2 items-center opacity-80">
       <span className="text-[10px] text-gray-500">{indice}/{total}</span>
-      <span className="text-xs font-bold text-white">{fmtBRL(pagamento.valor)}</span>
+      <button onClick={onReabrir} title="Editar o valor: pede pra reabrir o recebimento"
+        className="text-xs font-bold text-white text-left hover:text-blue-300 transition-colors cursor-text">{fmtBRL(pagamento.valor)}</button>
       <span className="text-xs text-gray-400">{new Date(pagamento.data_pagamento).toLocaleDateString('pt-BR')}</span>
       <span className="text-xs text-gray-400">{pagamento.forma_pagamento}{pagamento.parcelas && pagamento.parcelas > 1 ? ` (${pagamento.parcelas}x)` : ''}</span>
       <span className="text-xs text-gray-400 truncate">{conta?.nome ?? '—'}</span>
