@@ -11,6 +11,7 @@ import { TableSkeleton } from '../../components/ui/Skeleton';
 import { DateInput } from '../../components/ui/DateInput';
 import { DarkSelect } from '../../components/ui/DarkSelect';
 import { correspondeABuscaEmCampos } from '../../lib/buscaFlexivel';
+import { useRolarAoAbrir } from '../../hooks/useRolarAoAbrir';
 
 const NOVO = {
   alvo: '',          // formato "cliente:<id>" ou "lead:<id>"
@@ -34,6 +35,7 @@ export function HistoricoAtendimento() {
   const [busca, setBusca] = useState('');
   const [filtroTipo, setFiltroTipo] = useState<'todos' | TipoAtendimento>('todos');
   const [showForm, setShowForm] = useState(false);
+  useRolarAoAbrir(showForm);
   const [form, setForm] = useState({ ...NOVO });
 
   // Apenas leads ainda não convertidos aparecem como opção

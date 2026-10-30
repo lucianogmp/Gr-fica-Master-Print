@@ -9,6 +9,7 @@ import { TableSkeleton } from '../../components/ui/Skeleton';
 import { DateInput } from '../../components/ui/DateInput';
 import { DarkSelect } from '../../components/ui/DarkSelect';
 import { correspondeABuscaEmCampos } from '../../lib/buscaFlexivel';
+import { useRolarAoAbrir } from '../../hooks/useRolarAoAbrir';
 
 const NOVO = { cliente_id: '', nome: '', cargo: '', telefone: '', whatsapp: '', email: '', data_nascimento: '', observacoes: '' };
 const IN = "w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors";
@@ -24,6 +25,7 @@ export function Contatos() {
   const [busca, setBusca] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null); // null = criando novo
+  useRolarAoAbrir(showForm ? (editandoId ?? 'novo') : null);
   const [form, setForm] = useState({ ...NOVO });
 
   // Hook escopado ao cliente do formulário (para criar/editar)

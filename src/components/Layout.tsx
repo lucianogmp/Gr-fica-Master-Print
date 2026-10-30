@@ -7,6 +7,7 @@ import { ROLES, ROUTE_PERMISSIONS, Role } from '../types/roles';
 import { supabase } from '../lib/supabase';
 import { EstoqueAlertBanner } from './EstoqueAlertBanner';
 import { BackupAlertBanner } from './BackupAlertBanner';
+import { rolarParaTopo } from '../hooks/useRolarAoAbrir';
 import { useTheme } from '../hooks/useTheme';
 import { useConfiguracoes } from '../hooks/useConfiguracoes';
 import { useRealtimeSync } from '../hooks/useRealtimeSync';
@@ -269,6 +270,8 @@ export function Layout() {
 
   // Fecha menu mobile ao navegar
   useEffect(() => { setMenuOpen(false); }, [location.pathname]);
+  // Trocou de tela (ex.: abriu uma venda a partir da lista): começa no topo, não onde estava a rolagem da anterior.
+  useEffect(() => { rolarParaTopo(); }, [location.pathname]);
 
   // Abre o grupo correto ao navegar (ex: deep link)
   useEffect(() => {
@@ -570,7 +573,7 @@ export function Layout() {
         <BackupAlertBanner />
 
         {/* Conteúdo */}
-        <main className="flex-1 overflow-y-auto bg-[#111827]">
+        <main id="conteudo-principal" className="flex-1 overflow-y-auto bg-[#111827]">
           <Outlet />
         </main>
       </div>

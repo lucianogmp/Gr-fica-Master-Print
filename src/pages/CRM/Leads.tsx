@@ -8,6 +8,7 @@ import { UserPlus, Plus, X, AlertCircle, ArrowRightCircle, Phone, Building2 } fr
 import { TableSkeleton } from '../../components/ui/Skeleton';
 import { DarkSelect } from '../../components/ui/DarkSelect';
 import { correspondeABuscaEmCampos } from '../../lib/buscaFlexivel';
+import { useRolarAoAbrir } from '../../hooks/useRolarAoAbrir';
 
 const NOVO = {
   nome: '', telefone: '', empresa: '', como_conheceu: '', produto_interesse: '',
@@ -24,6 +25,7 @@ export function Leads() {
   const [busca, setBusca] = useState('');
   const [filtro, setFiltro] = useState<'todos' | StatusLead>('todos');
   const [showForm, setShowForm] = useState(false);
+  useRolarAoAbrir(showForm);
   const [form, setForm] = useState({ ...NOVO });
   const [convertendoId, setConvertendoId] = useState<string | null>(null);
 

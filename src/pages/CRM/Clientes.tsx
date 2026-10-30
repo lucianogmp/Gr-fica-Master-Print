@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
 import { Users2, Plus, X, AlertCircle, Phone, Mail, MapPin, Search, Loader2, CheckCircle2, Pencil } from 'lucide-react';
 import { DarkSelect } from '../../components/ui/DarkSelect';
 import { correspondeABuscaEmCampos } from '../../lib/buscaFlexivel';
+import { useRolarAoAbrir } from '../../hooks/useRolarAoAbrir';
 
 const NOVO: Omit<Cliente, 'id' | 'created_at' | 'updated_at'> = {
   nome: '', telefone: '', email: '', cpf_cnpj: '',
@@ -26,6 +27,7 @@ export function Clientes() {
   const [busca, setBusca] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
+  useRolarAoAbrir(showForm ? (editandoId ?? 'novo') : null);
   const [form, setForm] = useState({ ...NOVO });
   const [buscandoCnpj, setBuscandoCnpj] = useState(false);
   const [buscandoCep, setBuscandoCep] = useState(false);
@@ -48,7 +50,6 @@ export function Clientes() {
     setForm({ ...NOVO, ...c });
     setEditandoId(c.id);
     setShowForm(true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   function fecharForm() {

@@ -117,7 +117,12 @@ function InfoRow({ items }: { items: { label: string; value: string }[] }) {
 // ── Componente principal ─────────────────────────────────────────────────────
 
 interface Props {
-  onAdicionar: (item: OrcamentoItem) => void;
+  /** `continuar`: item adicionado com Enter na quantidade — a tela reabre o editor pra o próximo item. */
+  onAdicionar: (item: OrcamentoItem, opcoes?: { continuar?: boolean }) => void;
+  /** Aba que abre primeiro (padrão: m² Material). */
+  abaInicial?: 'catalogo' | 'metro' | 'metro_manual';
+  /** Leva o cursor direto pra busca do catálogo ao abrir. */
+  focarBuscaAoAbrir?: boolean;
   onCancelar: () => void;
   editando?: OrcamentoItem | null;
   /** Controlado pela tela pai (Orcamentos.tsx) — custo fica oculto por
@@ -125,7 +130,7 @@ interface Props {
   mostrarCusto?: boolean;
 }
 
-export function ItemOrcEditor({ onAdicionar, onCancelar, editando, mostrarCusto = false }: Props) {
+export function ItemOrcEditor({ onAdicionar, onCancelar, editando, mostrarCusto = false, abaInicial, focarBuscaAoAbrir = false }: Props) {
   const { data: acabamentos = [] } = useAcabamentos();
   const { data: produtos = [] } = useProdutos();
   const { podeVerCustos } = useRole();
@@ -149,13 +154,16 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando, mostrarCusto 
     });
   }
 
+  const buscaRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
-    raizRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // um instante depois do "voltar ao topo" da tela, pra a rolagem até o editor prevalecer
+    setTimeout(() => raizRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
+    if (focarBuscaAoAbrir) setTimeout(() => buscaRef.current?.focus({ preventScroll: true }), 50);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const [tab, setTab] = useState<TabMode>(
-    editando ? (editando.tipo_calculo as TabMode) : 'metro',
+    editando ? (editando.tipo_calculo as TabMode) : (abaInicial ?? 'metro'),
   );
   const [tipo, setTipo] = useState<TipoCalculo>(editando?.tipo_calculo ?? 'metro');
   const [descricao, setDescricao] = useState(editando?.descricao ?? '');
@@ -231,7 +239,13 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando, mostrarCusto 
     setPrecoLivre(String(p.preco_venda ?? 0));
     setTipo('livre');
     if (!editando || editando.produto_id !== p.id) setAreaM2('');
-    scrollAte(painelProdutoRef);
+    // Depois de escolher o produto o cursor vai pra QUANTIDADE (não volta pra busca);
+    // produto por m² pede a área primeiro. A busca só volta a ser usada com Enter (ao adicionar) ou clique.
+    setTimeout(() => {
+      const el = document.getElementById(((p as any).unidade_medida === 'm2') ? 'orc-catalogo-area' : 'orc-catalogo-qtd') as HTMLInputElement | null;
+      if (el) { el.focus(); setTimeout(() => el.select(), 0); }
+      else scrollAte(painelProdutoRef);
+    }, 80);
   }
 
   function selecionarMaterial(m: Produto) {
@@ -358,7 +372,7 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando, mostrarCusto 
 
   // ── adicionar item ─────────────────────────────────────────────────────────
 
-  function handleAdicionar() {
+  function handleAdicionar(opcoes?: { continuar?: boolean }) {
     if (!valido) return;
     const qtd = parseFloat(quantidade) || 1;
 
@@ -415,7 +429,7 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando, mostrarCusto 
       acabamento_qtd_estoque: (acabId && acabSel?.tipo === 'estoque') ? (parseInt(acabQtd) || null) : null,
       arte_inclusa: arteInclusa,
     };
-    onAdicionar(item);
+    onAdicionar(item, opcoes);
   }
 
   const produtosFiltrados = produtos
@@ -475,6 +489,7 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando, mostrarCusto 
           <div className="flex items-center gap-2 bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 focus-within:border-purple-500 transition-colors">
             <Search className="w-4 h-4 text-gray-500 flex-shrink-0" />
             <input
+              ref={buscaRef}
               value={buscaProd}
               onChange={e => { setBuscaProd(e.target.value); setIndiceAtivoProd(0); }}
               onKeyDown={e => {
@@ -611,8 +626,10 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando, mostrarCusto 
                 <div>
                   <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1.5">Quantidade</label>
                   <QtdInput
+                    id="orc-catalogo-qtd"
                     value={quantidade}
                     onChange={setQuantidade}
+                    onEnter={() => { if (valido) handleAdicionar({ continuar: true }); }}
                     center big
                     className="bg-[#111827] border border-gray-700 rounded-lg px-2.5 py-2 text-white text-xs focus:outline-none focus:border-purple-500 transition-colors w-full"
                   />
@@ -627,8 +644,10 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando, mostrarCusto 
                     <HelpTooltip texto="Digite a área total (largura × altura, em metros) que esse produto vai ocupar. O sistema multiplica pelo preço por m² do produto pra calcular o total." />
                   </label>
                   <QtdInput
+                    id="orc-catalogo-area"
                     value={areaM2}
                     onChange={setAreaM2}
+                    onEnter={() => document.getElementById('orc-catalogo-qtd')?.focus()}
                     center big
                     placeholder="Ex: 1.250"
                     className="bg-[#111827] border border-blue-500/50 rounded-lg px-2.5 py-2 text-blue-300 text-xs focus:outline-none focus:border-blue-400 transition-colors w-full"
@@ -930,7 +949,7 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando, mostrarCusto 
         </div>
         <button
           type="button"
-          onClick={handleAdicionar}
+          onClick={() => handleAdicionar()}
           disabled={!valido}
           className={[
             'px-8 py-3 rounded-xl font-bold text-sm transition-all',

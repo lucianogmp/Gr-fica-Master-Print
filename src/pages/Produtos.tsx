@@ -29,6 +29,7 @@ import {
   ClipboardList, Factory, Handshake, Briefcase, Save, X,
   Ruler, Copy,
 } from 'lucide-react';
+import { useRolarAoAbrir } from '../hooks/useRolarAoAbrir';
 
 type View = 'lista' | 'detalhe' | 'acabamentos' | 'categorias';
 
@@ -386,6 +387,7 @@ export function Produtos() {
 
   const [view, setView]         = useState<View>('lista');
   const [produtoId, setProdutoId] = useState<string | null>(null);
+  useRolarAoAbrir(`${view}:${produtoId}`);
   const [form, setForm]         = useState({ ...NOVO });
   const [maquinas, setMaquinas] = useState<string[]>([]);
   // tempo (em horas) que ESTE produto usa de cada máquina; sem entrada = usa o tempo de produção do produto

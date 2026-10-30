@@ -16,6 +16,7 @@ import { CustoHoraTab } from './equipamentos/CustoHoraTab';
 import { RelatorioTab } from './equipamentos/RelatorioTab';
 import { calcCustoPorUnidade, tecnologiaDe } from '../../lib/tecnologias';
 import { fmtBRL, fmtHora, fmtData } from './equipamentos/ui';
+import { useRolarAoAbrir } from '../../hooks/useRolarAoAbrir';
 
 type Aba = 'custo' | 'dados' | 'consumiveis' | 'manutencoes' | 'relatorio';
 const ABAS: { key: Aba; label: string }[] = [
@@ -34,6 +35,7 @@ export function Depreciacao() {
 
   const [novo, setNovo] = useState(false);
   const [abertoId, setAbertoId] = useState<string | null>(null);
+  useRolarAoAbrir(novo ? 'novo' : abertoId);
   const [aba, setAba] = useState<Aba>('custo');
   const [ordem, setOrdem] = useState<'nome' | 'custo'>('nome');
 

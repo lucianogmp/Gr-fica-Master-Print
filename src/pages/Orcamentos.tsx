@@ -34,6 +34,7 @@ import { MoneyInput } from '../components/ui/MoneyInput';
 import { PctInput } from '../components/ui/PctInput';
 import { DarkSelect } from '../components/ui/DarkSelect';
 import { useConfirm } from '../components/ui/ConfirmModal';
+import { useRolarAoAbrir } from '../hooks/useRolarAoAbrir';
 
 type View = 'lista' | 'detalhe' | 'acabamentos' | 'folhas';
 type Filtro = 'todos' | 'loja' | StatusOrcamento;
@@ -79,6 +80,7 @@ export function Orcamentos() {
   const { confirmar, ConfirmModal } = useConfirm();
   const [view, setView]               = useState<View>('lista');
   const [orcId, setOrcId]             = useState<string | null>(null);
+  useRolarAoAbrir(`${view}:${orcId}`);
   const [form, setForm]               = useState<Partial<Orcamento>>({ ...NOVO_ORC });
   const [itens, setItens]             = useState<OrcamentoItem[]>([]);
   const [showEditor, setShowEditor]   = useState(false);
@@ -86,6 +88,9 @@ export function Orcamentos() {
   // Item novo ainda não escolheu o tipo (chooser "Item padrão" vs "Placa").
   // Editando um item existente, o tipo é decidido pelo próprio item.
   const [tipoItemNovo, setTipoItemNovo] = useState<'padrao' | 'placa' | null>(null);
+  // Enter na quantidade do catálogo adiciona e reabre o editor já na busca (itens em sequência)
+  const [editorSeq, setEditorSeq] = useState(0);
+  const [editorContinuo, setEditorContinuo] = useState(false);
   const [filtro, setFiltro]           = useState<Filtro>('todos');
   const [busca, setBusca]             = useState('');
   const [posSalvar, setPosSalvar]     = useState<SnapshotOrcamento | null>(null);
@@ -409,14 +414,24 @@ export function Orcamentos() {
 
   function fechar() { limparAlteracoesPendentes(); setView('lista'); setOrcId(null); setForm({ ...NOVO_ORC }); setItens([]); setShowEditor(false); setTipoItemNovo(null); }
 
-  function handleAdicionarItem(item: OrcamentoItem) {
+  function handleAdicionarItem(item: OrcamentoItem, opcoes?: { continuar?: boolean }) {
     marcarSujoOrc();
-    if (editandoIdx !== null) {
+    const editando = editandoIdx !== null;
+    if (editando) {
       setItens(p => p.map((it, i) => i === editandoIdx ? item : it));
       setEditandoIdx(null);
     } else {
       setItens(p => [...p, item]);
     }
+    if (opcoes?.continuar && !editando) {
+      // próximo item: editor novo (catálogo, cursor na busca), abaixo dos itens já adicionados
+      setEditorSeq(n => n + 1);
+      setEditorContinuo(true);
+      setTipoItemNovo('padrao');
+      setShowEditor(true);
+      return;
+    }
+    setEditorContinuo(false);
     setTipoItemNovo(null);
     setShowEditor(false);
   }
@@ -1132,65 +1147,8 @@ export function Orcamentos() {
                     {mostrarCusto ? <><EyeOff className="w-3.5 h-3.5" /> Ocultar custo</> : <><Eye className="w-3.5 h-3.5" /> Mostrar custo</>}
                   </button>
                 )}
-                {!showEditor && !jaConvertido && (
-                  <button onClick={() => { setEditandoIdx(null); setTipoItemNovo(null); setShowEditor(true); }}
-                    className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5">
-                    <Plus className="w-3.5 h-3.5" /> Adicionar Item
-                  </button>
-                )}
               </div>
             </div>
-
-            {showEditor && (() => {
-              const editandoItem = editandoIdx !== null ? itens[editandoIdx] : null;
-              const tipoEditor = editandoItem ? (editandoItem.tipo_calculo === 'placa' ? 'placa' : 'padrao') : tipoItemNovo;
-              const cancelar = () => { setShowEditor(false); setEditandoIdx(null); setTipoItemNovo(null); };
-
-              if (tipoEditor === null) {
-                return (
-                  <div className="mb-5 bg-[#1f2937] border border-gray-700 rounded-xl p-5">
-                    <h3 className="text-xs font-bold text-gray-400 uppercase mb-4">Que tipo de item?</h3>
-                    <div className="grid grid-cols-2 gap-3">
-                      <button onClick={() => setTipoItemNovo('padrao')}
-                        className="text-left p-4 rounded-xl border border-gray-700 bg-[#111827] hover:border-blue-500 transition-colors">
-                        <div className="text-sm font-bold text-white">Item padrão</div>
-                        <div className="text-xs text-gray-500 mt-1">m² / catálogo / folha / livre</div>
-                      </button>
-                      <button onClick={() => setTipoItemNovo('placa')}
-                        className="text-left p-4 rounded-xl border border-gray-700 bg-[#111827] hover:border-blue-500 transition-colors">
-                        <div className="text-sm font-bold text-white">Placa</div>
-                        <div className="text-xs text-gray-500 mt-1">Com ou sem armação, serralheria e instalação</div>
-                      </button>
-                    </div>
-                    <button onClick={cancelar} className="text-xs text-gray-500 hover:text-white mt-4">Cancelar</button>
-                  </div>
-                );
-              }
-
-              if (tipoEditor === 'placa') {
-                return (
-                  <div className="mb-5">
-                    <PlacaOrcEditor
-                      editando={editandoItem}
-                      onAdicionar={handleAdicionarItem}
-                      onCancelar={cancelar}
-                      mostrarCusto={mostrarCusto}
-                    />
-                  </div>
-                );
-              }
-
-              return (
-                <div className="mb-5">
-                  <ItemOrcEditor
-                    editando={editandoItem}
-                    onAdicionar={handleAdicionarItem}
-                    onCancelar={cancelar}
-                    mostrarCusto={mostrarCusto}
-                  />
-                </div>
-              );
-            })()}
 
             {itens.length > 0 ? (
               <div className="overflow-x-auto rounded-xl border border-gray-700">
@@ -1271,6 +1229,68 @@ export function Orcamentos() {
                 </button>
               </div>
             ) : null}
+
+            {showEditor && (() => {
+              const editandoItem = editandoIdx !== null ? itens[editandoIdx] : null;
+              const tipoEditor = editandoItem ? (editandoItem.tipo_calculo === 'placa' ? 'placa' : 'padrao') : tipoItemNovo;
+              const cancelar = () => { setShowEditor(false); setEditandoIdx(null); setTipoItemNovo(null); };
+
+              if (tipoEditor === null) {
+                return (
+                  <div className="mt-3 bg-[#1f2937] border border-gray-700 rounded-xl p-5">
+                    <h3 className="text-xs font-bold text-gray-400 uppercase mb-4">Que tipo de item?</h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button onClick={() => setTipoItemNovo('padrao')}
+                        className="text-left p-4 rounded-xl border border-gray-700 bg-[#111827] hover:border-blue-500 transition-colors">
+                        <div className="text-sm font-bold text-white">Item padrão</div>
+                        <div className="text-xs text-gray-500 mt-1">m² / catálogo / folha / livre</div>
+                      </button>
+                      <button onClick={() => setTipoItemNovo('placa')}
+                        className="text-left p-4 rounded-xl border border-gray-700 bg-[#111827] hover:border-blue-500 transition-colors">
+                        <div className="text-sm font-bold text-white">Placa</div>
+                        <div className="text-xs text-gray-500 mt-1">Com ou sem armação, serralheria e instalação</div>
+                      </button>
+                    </div>
+                    <button onClick={cancelar} className="text-xs text-gray-500 hover:text-white mt-4">Cancelar</button>
+                  </div>
+                );
+              }
+
+              if (tipoEditor === 'placa') {
+                return (
+                  <div className="mt-3">
+                    <PlacaOrcEditor
+                      editando={editandoItem}
+                      onAdicionar={handleAdicionarItem}
+                      onCancelar={cancelar}
+                      mostrarCusto={mostrarCusto}
+                    />
+                  </div>
+                );
+              }
+
+              return (
+                <div className="mt-3">
+                  <ItemOrcEditor
+                    key={editorSeq}
+                    abaInicial={editorContinuo ? 'catalogo' : undefined}
+                    focarBuscaAoAbrir={editorContinuo}
+                    editando={editandoItem}
+                    onAdicionar={handleAdicionarItem}
+                    onCancelar={cancelar}
+                    mostrarCusto={mostrarCusto}
+                  />
+                </div>
+              );
+            })()}
+
+            {/* Adicionar item: fica ABAIXO dos itens já adicionados (e do editor, quando aberto) */}
+            {!showEditor && !jaConvertido && itens.length > 0 && (
+              <button onClick={() => { setEditandoIdx(null); setTipoItemNovo(null); setEditorContinuo(false); setEditorSeq(n => n + 1); setShowEditor(true); }}
+                className="mt-3 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5">
+                <Plus className="w-3.5 h-3.5" /> Adicionar Item
+              </button>
+            )}
           </div>
 
           {/* Resumo — tudo em uma linha só, igual o resumo financeiro de Vendas */}

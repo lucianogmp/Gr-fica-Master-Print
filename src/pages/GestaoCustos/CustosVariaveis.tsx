@@ -6,6 +6,7 @@ import { KpiCard } from '../../components/ui/KpiCard';
 import { MoneyInput } from '../../components/ui/MoneyInput';
 import { HelpTooltip } from '../../components/ui/HelpTooltip';
 import { GitCompare, Plus, X, Pencil, DollarSign, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useRolarAoAbrir } from '../../hooks/useRolarAoAbrir';
 
 const fmtBRL = (v: number) => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const IN = "w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors";
@@ -23,6 +24,7 @@ export function CustosVariaveis() {
 
   const [showForm, setShowForm]     = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
+  useRolarAoAbrir(showForm ? (editandoId ?? 'novo') : null);
   const [form, setForm]             = useState({ ...FORM_VAZIO });
 
   const totalMes = custos.reduce((s, c) => s + Number(c.valor), 0);
