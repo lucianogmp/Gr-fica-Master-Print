@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { Orcamento, OrcamentoItem, StatusOrcamento } from '../types/orcamento';
 import toast from 'react-hot-toast';
+import { nomeItemPlaca, medidasDoItemOrcamento } from '../lib/placaCalc';
 
 type OrcPayload = Omit<Orcamento, 'id' | 'created_at' | 'updated_at'>;
 
@@ -158,13 +159,15 @@ export function useOrcamentos() {
       const vendaId = (venda as any).id;
 
       // 2. Salva itens da venda — propaga produto_id vindo do item do orçamento
+      // Placa entra na venda como "Placa L×A m" (não como o material) e a configuração vai no
+      // detalhe_placa; item comum mantém o nome do produto e leva as medidas (ex.: 5 × 5 cm) em obs.
       const itensMapeados = itens.map(i => ({
         produto_id:     i.produto_id     ?? null,
-        descricao:      i.descricao,
+        descricao:      i.tipo_calculo === 'placa' ? nomeItemPlaca(i.descricao) : i.descricao,
         quantidade:     i.quantidade,
         preco_unitario: i.preco_unitario,
         desconto:       0,
-        obs:            null,
+        obs:            i.tipo_calculo === 'placa' ? null : medidasDoItemOrcamento(i),
         unidade:        'un',
         total:          i.total,
         acabamento_id:          i.acabamento_id          ?? null,

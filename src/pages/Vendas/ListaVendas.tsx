@@ -192,7 +192,7 @@ export function ListaVendas({
       clienteEmail: clientes.find(c => c.id === vendaImprimir.cliente_id)?.email ?? null,
       clienteEndereco: formatarEnderecoCliente(clientes.find(c => c.id === vendaImprimir.cliente_id)) || null,
       itens: itensImprimir.map(i => ({
-        descricao: formatarDescricaoImpressaoPlaca(i.descricao, i.detalhe_placa), quantidade: Number(i.quantidade),
+        descricao: formatarDescricaoImpressaoPlaca(i.descricao, i.detalhe_placa, i.obs), quantidade: Number(i.quantidade),
         unidade: i.unidade ?? 'un', precoUnitario: Number(i.preco_unitario),
         desconto: Number(i.desconto ?? 0), total: Number(i.total),
       })),

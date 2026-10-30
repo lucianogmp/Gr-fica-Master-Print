@@ -8,6 +8,7 @@ import { loadBom, calcCustoBOM } from '../../hooks/useBom';
 import { useRole } from '../../hooks/useRole';
 import { X, Search, Pencil, Check } from 'lucide-react';
 import { correspondeABuscaEmCampos } from '../../lib/buscaFlexivel';
+import { resumoPlacaLinha } from '../../lib/placaCalc';
 import { MoneyInput } from '../ui/MoneyInput';
 import { QtdInput } from '../ui/QtdInput';
 
@@ -262,7 +263,14 @@ export function ItensEditor({ itens, onChange, onEditarProduto }: ItensEditorPro
                         onBlur={() => setEditandoNome(null)}
                         onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); setEditandoNome(null); } }} />
                     ) : (
-                      <p className="text-xs text-white font-medium truncate" title={it.descricao}>{it.descricao}</p>
+                      <>
+                        <p className="text-xs text-white font-medium truncate" title={it.descricao}>{it.descricao}</p>
+                        {/* Detalhe vindo do orçamento: configuração da placa ou medidas do item (ex.: 5 × 5 cm) */}
+                        {(() => {
+                          const detalhe = it.detalhe_placa ? resumoPlacaLinha(it.detalhe_placa) : (it.obs ?? '');
+                          return detalhe ? <p className="text-[10px] text-gray-500 truncate" title={detalhe}>{detalhe}</p> : null;
+                        })()}
+                      </>
                     )}
                   </td>
                   <td className="px-1 py-1 text-center text-[11px] text-gray-400">{it.unidade ?? 'un'}</td>

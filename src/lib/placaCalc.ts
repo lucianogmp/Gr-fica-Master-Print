@@ -162,8 +162,9 @@ const INSTALACAO_LABEL: Record<TipoInstalacaoPlaca, string> = {
  * um formato "achatado" (descricao + preço), reaproveitado tal como
  * está — aqui só enriquecemos a string de descrição.
  */
-export function formatarDescricaoImpressaoPlaca(descricaoBase: string, d: DetalhePlaca | null | undefined): string {
-  if (!d) return descricaoBase;
+export function formatarDescricaoImpressaoPlaca(descricaoBase: string, d: DetalhePlaca | null | undefined, obs?: string | null): string {
+  // Item comum: a descrição é o nome do produto; as medidas (guardadas em obs) vão logo abaixo.
+  if (!d) return obs && obs.trim() ? `${descricaoBase}\n${obs.trim()}` : descricaoBase;
 
   const linhas: string[] = [descricaoBase];
   linhas.push(`Dimensões: ${d.largura.toFixed(2)} × ${d.altura.toFixed(2)} m${d.quantidade > 1 ? ` (${d.quantidade} un.)` : ''}`);
@@ -178,4 +179,41 @@ export function formatarDescricaoImpressaoPlaca(descricaoBase: string, d: Detalh
   }
   linhas.push(INSTALACAO_LABEL[d.instalacao.tipo]);
   return linhas.join('\n');
+}
+
+/**
+ * Resumo de UMA linha da configuração da placa, pra tela da venda (abaixo do nome "Placa ...").
+ * Ex.: "2,00 × 1,00 m · Lona Backlight · com armação (Metalon 20x20) · ilhós, fita · instalação completa"
+ */
+export function resumoPlacaLinha(d: DetalhePlaca | null | undefined): string {
+  if (!d) return '';
+  const partes: string[] = [];
+  partes.push(`${d.largura.toFixed(2).replace('.', ',')} × ${d.altura.toFixed(2).replace('.', ',')} m${d.quantidade > 1 ? ` (${d.quantidade} un.)` : ''}`);
+  if (d.material?.nome) partes.push(d.material.nome);
+  partes.push(d.possui_armacao
+    ? `com armação${d.serralheria?.metalon_nome ? ` (${d.serralheria.metalon_nome})` : ''}`
+    : 'sem armação');
+  if (d.acabamentos?.length) partes.push(d.acabamentos.map(a => a.nome).join(', '));
+  const inst = d.instalacao?.tipo;
+  partes.push(inst === 'completa' ? 'instalação completa' : inst === 'esticar' ? 'esticar lona na estrutura do cliente' : 'sem instalação');
+  return partes.join(' · ');
+}
+
+/** Nome do item de placa na venda: só "Placa L×A m" — o material e o resto vão na descrição abaixo. */
+export function nomeItemPlaca(descricaoOrcamento: string): string {
+  // a descrição automática é "Placa 2,00×1,00m — Material"; se foi digitada à mão (sem " — "), mantém.
+  const nome = descricaoOrcamento.split(' — ')[0].trim() || descricaoOrcamento;
+  return nome.replace(/(\d)\.(\d{2})/g, '$1,$2'); // 2.00 → 2,00
+}
+
+/** Medidas de um item comum do orçamento (ex.: rótulo 5 × 5 cm), pra levar pra venda. */
+export function medidasDoItemOrcamento(item: {
+  largura_cm?: number | null; altura_cm?: number | null; area_m2?: number | null;
+}): string | null {
+  const fmt = (n: number) => Number(n.toFixed(2)).toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+  const l = Number(item.largura_cm ?? 0), a = Number(item.altura_cm ?? 0);
+  if (l > 0 && a > 0) return `${fmt(l)} × ${fmt(a)} cm`;
+  const area = Number(item.area_m2 ?? 0);
+  if (area > 0) return `${fmt(area)} m²`;
+  return null;
 }

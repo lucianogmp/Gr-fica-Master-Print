@@ -328,7 +328,7 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
     clienteEmail: clienteSelecionado?.email ?? null,
     clienteEndereco: formatarEnderecoCliente(clienteSelecionado) || null,
     itens: itens.map(i => ({
-      descricao: formatarDescricaoImpressaoPlaca(i.descricao, i.detalhe_placa),
+      descricao: formatarDescricaoImpressaoPlaca(i.descricao, i.detalhe_placa, i.obs),
       quantidade: Number(i.quantidade),
       unidade: i.unidade ?? 'un',
       precoUnitario: Number(i.preco_unitario),
