@@ -107,14 +107,6 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
   const { data: contas = [] } = useContasBancarias();
   const { user } = useAuth();
 
-  // Vendedor logado entra como padrão numa venda nova — o usuário pode
-  // trocar livremente depois, isso só evita ter que selecionar toda vez.
-  useEffect(() => {
-    if (isNovo && user && !form.vendedor_id) {
-      setForm(f => ({ ...f, vendedor: user.name, vendedor_id: user.id }));
-    }
-  }, [isNovo, user]);
-
   useEffect(() => {
     carregandoRef.current = true;
   }, [vendaId, isNovo]);
@@ -134,10 +126,15 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
     if (itensCarregados !== undefined) carregandoRef.current = false;
   }, [itensCarregados, isNovo, vendaId]);
 
-  // Carrega dados da venda existente
+  // Carrega dados da venda existente — UMA vez por venda. Antes, o formulário inteiro era
+  // recarregado do banco toda vez que a lista de vendas mudava (ex.: ao trocar o status), o que
+  // apagava o vendedor e qualquer outra edição ainda não salva.
+  const formCarregadoRef = useRef<string | null>(null);
   useEffect(() => {
     if (restauradoRef.current) return;
+    if (formCarregadoRef.current === vendaId) return;
     if (isNovo) {
+      formCarregadoRef.current = vendaId;
       setForm({ ...NOVA_VENDA, data_venda: new Date().toISOString().split('T')[0] });
       setItens([]);
       setPagamentosRascunho([]);
@@ -146,6 +143,7 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
     }
     const v = vendas.find(x => x.id === vendaId);
     if (v) {
+      formCarregadoRef.current = vendaId;
       setForm({
         cliente_nome:    v.cliente_nome,
         cliente_id:      (v as any).cliente_id ?? null,
@@ -170,6 +168,21 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
     }
   }, [vendaId, isNovo, vendas]);
 
+  // Registrar/reabrir pagamento recalcula valores financeiros no banco: só estes campos acompanham o
+  // banco depois do carregamento inicial (o resto do formulário fica como está sendo digitado).
+  useEffect(() => {
+    if (isNovo || formCarregadoRef.current !== vendaId) return;
+    const v = vendas.find(x => x.id === vendaId);
+    if (!v) return;
+    setForm(f => {
+      const total = Number(v.valor_total ?? v.total ?? 0);
+      const pago = Number(v.valor_pago ?? 0);
+      const forma = v.forma_pagamento ?? '';
+      return (f.valor_total === total && f.valor_pago === pago && f.forma_pagamento === forma)
+        ? f : { ...f, valor_total: total, valor_pago: pago, forma_pagamento: forma };
+    });
+  }, [vendas]);
+
   // Sugestão de data de entrega e valores padrão ao criar nova venda
   useEffect(() => {
     if (restauradoRef.current) return;
@@ -192,6 +205,16 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
       }));
     }
   }, [isNovo, cfg]);
+
+  // Vendedor = quem está logado, automaticamente, em toda venda nova (pode trocar à vontade; o que
+  // você escolher fica). Roda depois dos efeitos que montam o formulário, senão o reset o apagava, e
+  // só uma vez, pra não sobrescrever o que for digitado.
+  const vendedorPadraoAplicadoRef = useRef(false);
+  useEffect(() => {
+    if (!isNovo || !user || restauradoRef.current || vendedorPadraoAplicadoRef.current) return;
+    vendedorPadraoAplicadoRef.current = true;
+    setForm(f => (f.vendedor_id || f.vendedor?.trim()) ? f : { ...f, vendedor: user.name, vendedor_id: user.id });
+  }, [isNovo, user]);
 
   // Aplica o rascunho guardado antes de abrir o produto (roda por último na montagem, pra valer sobre os demais).
   useEffect(() => {
