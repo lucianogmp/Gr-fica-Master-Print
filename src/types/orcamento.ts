@@ -58,6 +58,8 @@ export interface Orcamento {
   tipo?: string | null;
   total?: number | null;
   venda_id?: string | null;
+  vendedor?: string | null;
+  vendedor_id?: string | null;
   // 'loja' = pedido feito pelo site (loja virtual); 'erp' = criado aqui no sistema.
   origem?: 'erp' | 'loja' | null;
   // Quando alguém abriu o pedido da loja pela primeira vez (null = ainda não visto → ponto vermelho).

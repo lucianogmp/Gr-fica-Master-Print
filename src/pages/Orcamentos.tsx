@@ -27,6 +27,8 @@ import { useClientes } from '../hooks/useClientes';
 import { useRole } from '../hooks/useRole';
 import { ItemOrcEditor } from '../components/orcamentos/ItemOrcEditor';
 import { PlacaOrcEditor } from '../components/orcamentos/PlacaOrcEditor';
+import { VendedorSelector } from '../components/vendas/VendedorSelector';
+import { useAuth } from '../hooks/useAuth';
 import { ClienteSelectorVenda } from '../components/vendas/ClienteSelectorVenda';
 import { CalculadoraFolhas } from '../components/CalculadoraFolhas';
 import { KpiCard } from '../components/ui/KpiCard';
@@ -65,6 +67,7 @@ const NOVO_ORC: Omit<Orcamento, 'id' | 'created_at' | 'updated_at'> = {
 export function Orcamentos() {
   const { data: orcamentos = [], isLoading, criar, atualizar, atualizarStatus, converterEmVenda, deletar, isSaving, isConvertendo } = useOrcamentos();
   const qc = useQueryClient();
+  const { user } = useAuth();
   const { data: acabamentos = [], criar: criarAcab, atualizar: atualizarAcab, deletar: deletarAcab } = useAcabamentos();
   const { data: materiasPrimas = [] } = useMateriasPrimas();
   const { data: produtos = [] } = useProdutos();
@@ -404,7 +407,7 @@ export function Orcamentos() {
       // Com tipoInicial='placa' (atalho "Orçamento de Placa"), pula até o
       // chooser "Item padrão vs Placa" e abre a Placa direto.
       setOrcId('__novo__');
-      setForm({ ...NOVO_ORC });
+      setForm({ ...NOVO_ORC, vendedor: user?.name ?? '', vendedor_id: user?.id ?? null } as any);
       setItens([]);
       setTipoItemNovo(tipoInicial ?? null);
       setShowEditor(true);
@@ -1085,6 +1088,7 @@ export function Orcamentos() {
           <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5">
             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Dados do Orçamento</h3>
             <div className="space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-[1fr_260px] gap-3">
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="text-xs font-bold text-gray-400 uppercase">Cliente</label>
@@ -1107,6 +1111,16 @@ export function Orcamentos() {
                     hideLabel
                   />
                 )}
+              </div>
+              <div>
+                <div className="mb-1.5"><label className="text-xs font-bold text-gray-400 uppercase">Vendedor</label></div>
+                <VendedorSelector
+                  value={(form as any).vendedor ?? ''}
+                  vendedorId={(form as any).vendedor_id ?? null}
+                  onChange={(nome, id) => { setF('vendedor' as any, nome); setF('vendedor_id' as any, id ?? null); }}
+                  hideLabel
+                />
+              </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
