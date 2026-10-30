@@ -323,6 +323,20 @@ export function Orcamentos() {
     });
   }
 
+  // Rascunho que foi enviado (WhatsApp ou texto copiado) passa sozinho pra "Enviado".
+  // Nunca rebaixa: aprovado/recusado/enviado ficam como estão.
+  function marcarEnviadoSeRascunho(dados?: SnapshotOrcamento) {
+    if (dados) {
+      if (dados.orcamento.status !== 'rascunho' || !dados.orcamento.id) return;
+      atualizarStatus({ id: dados.orcamento.id, status: 'enviado' });
+      setPosSalvar(p => p ? { ...p, orcamento: { ...p.orcamento, status: 'enviado' } } : p);
+      return;
+    }
+    if (form.status !== 'rascunho') return;
+    setF('status', 'enviado' as any);
+    if (orcId && !isNovo) atualizarStatus({ id: orcId, status: 'enviado' });
+  }
+
   async function enviarWhatsAppTexto(dados?: SnapshotOrcamento) {
     let telefone = dados ? dados.clienteTelefone : (clienteSelecionado?.telefone ?? null);
 
@@ -347,6 +361,7 @@ export function Orcamentos() {
     // redireciona por uma etapa do WhatsApp que troca os emojis por "�". O texto continua
     // percent-encoded em UTF-8 (encodeURIComponent), então acentos, quebras de linha e emojis seguem intactos.
     window.open(`https://api.whatsapp.com/send?phone=${comCodigoPais}&text=${encodeURIComponent(texto)}`, '_blank');
+    marcarEnviadoSeRascunho(dados);
   }
 
   // Copia o mesmo texto do WhatsApp pro clipboard, sem abrir conversa nenhuma —
@@ -356,6 +371,7 @@ export function Orcamentos() {
     try {
       await navigator.clipboard.writeText(texto);
       toast.success('Texto do orçamento copiado!');
+      marcarEnviadoSeRascunho(dados);
     } catch {
       toast.error('Não foi possível copiar o texto — copia manualmente pelo navegador.');
     }
@@ -471,13 +487,30 @@ export function Orcamentos() {
     fechar();
   }
 
+  // Converte em venda a partir da própria tela do orçamento (inclusive um orçamento novo, ainda não
+  // salvo — cliente fechou na hora): grava o orçamento do jeito que está e converte em seguida.
+  const convertendoRef = useRef(false);
   async function handleConverter() {
-    if (!orcId || isNovo) return;
-    const orc = orcamentos.find(o => o.id === orcId);
-    if (!orc) return;
-    await converterEmVenda({ orc: { ...orc, total: totalFinal }, itens });
-    fechar();
-    navigate('/vendas');
+    if (convertendoRef.current || itens.length === 0) return;
+    convertendoRef.current = true;
+    try {
+      const payload = { ...form, total: totalFinal, desconto: descGlobal };
+      const { id: _id, created_at: _c, updated_at: _u, ...clean } = { id: '', created_at: '', updated_at: '', ...payload };
+      let id = orcId;
+      let numero = (form as any).numero ?? null;
+      if (isNovo) {
+        const salvo: any = await criar({ orc: clean as any, itens });
+        id = salvo?.id; numero = salvo?.numero ?? numero;
+      } else if (orcId) {
+        await atualizar({ id: orcId, orc: clean as any, itens });
+      }
+      if (!id) return;
+      await converterEmVenda({ orc: { ...(clean as any), id, numero, total: totalFinal } as Orcamento, itens });
+      fechar();
+      navigate('/vendas');
+    } finally {
+      convertendoRef.current = false;
+    }
   }
 
   async function salvarAcabamento() {
@@ -858,8 +891,22 @@ export function Orcamentos() {
                   </td>
                   <td className="px-5 py-3 text-gray-400 text-xs">{fmtData(o.created_at)}</td>
                   <td className="px-5 py-3 text-right font-bold text-white">{fmtBRL(o.total)}</td>
-                  <td className="px-5 py-3 text-center">
-                    <span className={`px-2 py-1 rounded-full text-[10px] font-bold border ${st.cor}`}>{st.label}</span>
+                  <td className="px-3 py-2 text-center" onClick={e => e.stopPropagation()}>
+                    {o.status === 'convertido' ? (
+                      <span className={`px-2 py-1 rounded-full text-[10px] font-bold border ${st.cor}`}>{st.label}</span>
+                    ) : (
+                      // muda o estágio direto da lista, sem abrir o orçamento
+                      <div style={{ width: 118 }} className="mx-auto">
+                        <DarkSelect
+                          size="sm"
+                          value={o.status}
+                          allowEmpty={false}
+                          onChange={v => atualizarStatus({ id: o.id, status: v as StatusOrcamento })}
+                          triggerClassName={`w-full rounded-full px-2.5 py-1 text-[10px] font-bold border text-left flex items-center justify-between gap-1 cursor-pointer ${st.cor}`}
+                          options={Object.entries(STATUS_ORC).filter(([k]) => k !== 'convertido').map(([k, v]) => ({ value: k, label: v.label }))}
+                        />
+                      </div>
+                    )}
                   </td>
                   <td className="px-5 py-3 text-center" onClick={e => e.stopPropagation()}>
                     <div className="flex gap-1.5 justify-center">
@@ -979,17 +1026,17 @@ export function Orcamentos() {
           </h1>
         </div>
         <div className="flex gap-2 flex-wrap">
-          {!isNovo && !jaConvertido && (
+          {!jaConvertido && (
             <DarkSelect
               value={form.status}
-              onChange={v => { setF('status', v as any); atualizarStatus({ id: orcId!, status: v as StatusOrcamento }); }}
+              onChange={v => { setF('status', v as any); if (!isNovo && orcId) atualizarStatus({ id: orcId, status: v as StatusOrcamento }); }}
               allowEmpty={false}
               triggerClassName="bg-[#1f2937] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500 text-left flex items-center justify-between gap-2 cursor-pointer min-w-[140px]"
-              options={Object.entries(STATUS_ORC).map(([k, v]) => ({ value: k, label: v.label }))}
+              options={Object.entries(STATUS_ORC).filter(([k]) => k !== 'convertido').map(([k, v]) => ({ value: k, label: v.label }))}
             />
           )}
-          {!isNovo && form.status === 'aprovado' && !jaConvertido && (
-            <button onClick={handleConverter} disabled={isConvertendo}
+          {itens.length > 0 && !jaConvertido && (
+            <button onClick={handleConverter} disabled={isConvertendo || isSaving}
               className="bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white px-5 py-2 rounded-xl font-bold text-sm transition-all">
               {isConvertendo ? 'Convertendo...' : 'Converter em Venda'}
             </button>
@@ -1269,14 +1316,14 @@ export function Orcamentos() {
                 )}
               </div>
 
-              {!isNovo && !jaConvertido && (
+              {!jaConvertido && (
                 <>
                   <div className="w-px h-7 bg-gray-700 flex-shrink-0" />
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] text-gray-500 uppercase font-bold">Status</span>
                     <div className="flex items-center gap-1.5">
                       {Object.entries(STATUS_ORC).filter(([k]) => k !== 'convertido').map(([k, v]) => (
-                        <button key={k} onClick={() => { setF('status', k as any); atualizarStatus({ id: orcId!, status: k as StatusOrcamento }); }}
+                        <button key={k} onClick={() => { setF('status', k as any); if (!isNovo && orcId) atualizarStatus({ id: orcId, status: k as StatusOrcamento }); }}
                           className={`px-3.5 py-2 rounded-lg text-xs font-bold border transition-all ${form.status === k ? v.cor : 'border-gray-700 text-gray-500 hover:text-white hover:bg-gray-700/30'}`}>
                           {v.label}
                         </button>
@@ -1287,8 +1334,8 @@ export function Orcamentos() {
               )}
 
               <div className="flex items-center gap-2 flex-wrap">
-              {!isNovo && form.status === 'aprovado' && !jaConvertido && (
-                <button onClick={handleConverter} disabled={isConvertendo}
+              {itens.length > 0 && !jaConvertido && (
+                <button onClick={handleConverter} disabled={isConvertendo || isSaving}
                   className="bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all flex-shrink-0">
                   {isConvertendo ? 'Convertendo...' : 'Converter em Venda'}
                 </button>
