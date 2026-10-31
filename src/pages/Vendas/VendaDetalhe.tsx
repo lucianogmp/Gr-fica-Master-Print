@@ -453,7 +453,7 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
             className="text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 w-9 h-9 rounded-lg flex items-center justify-center transition-all flex-shrink-0">
             <ArrowLeft className="w-4 h-4" />
           </button>
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 basis-[10rem]">
             <h1 className="text-xl font-black text-white truncate">
               {isNovo
                 ? 'Nova Venda'

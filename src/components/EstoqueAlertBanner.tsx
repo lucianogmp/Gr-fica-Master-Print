@@ -21,7 +21,7 @@ export function EstoqueAlertBanner() {
       <div className="max-w-7xl mx-auto">
 
         {/* Linha principal */}
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-2 sm:gap-3">
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <AlertTriangle className="w-4 h-4 text-yellow-400 flex-shrink-0" />
             <span className="text-yellow-300 text-xs font-bold">

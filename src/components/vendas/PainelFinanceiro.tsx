@@ -245,7 +245,7 @@ export function PainelFinanceiro({
           <DollarSign className="w-3 h-3 text-green-400" /> Resumo Financeiro
         </span>
 
-        <div className="w-px h-4 bg-gray-700 flex-shrink-0" />
+        <div className="w-px h-4 bg-gray-700 flex-shrink-0 max-md:hidden" />
 
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <span className="text-[10px] text-gray-500 uppercase">Subtotal</span>
@@ -277,7 +277,7 @@ export function PainelFinanceiro({
           <MoneyInput value={taxaAdicional} onChange={onTaxaChange} className={IN_SM} style={{ width: 88 }} placeholder="0,00" />
         </div>
 
-        <div className="w-px h-4 bg-gray-700 flex-shrink-0" />
+        <div className="w-px h-4 bg-gray-700 flex-shrink-0 max-md:hidden" />
 
         <div className="flex items-center gap-2 flex-shrink-0">
           <span className="text-[10px] text-gray-500 uppercase">Recebido líquido</span>
@@ -313,7 +313,7 @@ export function PainelFinanceiro({
       {/* ══ Tabela de parcelas — sempre visível, sem precisar clicar em nada ══ */}
       {totalLinhas > 0 && (
         <div className="border-t border-gray-700/60 divide-y divide-gray-800">
-          <div className="grid grid-cols-[1.75rem_1fr_1fr_1fr_1fr_1fr_1.75rem] gap-2 px-4 py-1.5 text-[9px] font-bold text-gray-500 uppercase">
+          <div className="parcela-grid parcela-head grid grid-cols-[1.75rem_1fr_1fr_1fr_1fr_1fr_1.75rem] gap-2 px-4 py-1.5 text-[9px] font-bold text-gray-500 uppercase">
             <span>#</span><span>Valor Total</span><span>Data de Pagamento</span><span>Forma de Pagamento</span><span>Conta</span><span>Status</span><span />
           </div>
 
@@ -350,7 +350,7 @@ function LinhaTravada({ indice, total, pagamento, contas, onReabrir }: {
 }) {
   const conta = contas.find(c => c.id === pagamento.conta_id);
   return (
-    <div className="grid grid-cols-[1.75rem_1fr_1fr_1fr_1fr_1fr_1.75rem] gap-2 px-4 py-2 items-center opacity-80">
+    <div className="parcela-grid grid grid-cols-[1.75rem_1fr_1fr_1fr_1fr_1fr_1.75rem] gap-2 px-4 py-2 items-center opacity-80">
       <span className="text-[10px] text-gray-500">{indice}/{total}</span>
       <button onClick={onReabrir} title="Editar o valor: pede pra reabrir o recebimento"
         className="text-xs font-bold text-white text-left hover:text-blue-300 transition-colors cursor-text">{fmtBRL(pagamento.valor)}</button>
@@ -409,7 +409,7 @@ function LinhaRascunho({ indice, total, linha, contas, formas, onChange, onRemov
   const recebido = linha.status === 'recebido';
 
   return (
-    <div className={`grid grid-cols-[1.75rem_1fr_1fr_1fr_1fr_1fr_1.75rem] gap-2 px-4 py-2 items-center ${recebido ? 'bg-blue-500/5' : ''}`}>
+    <div className={`parcela-grid grid grid-cols-[1.75rem_1fr_1fr_1fr_1fr_1fr_1.75rem] gap-2 px-4 py-2 items-center ${recebido ? 'bg-blue-500/5' : ''}`}>
       <span className="text-[10px] text-gray-500">{indice}/{total}</span>
       <MoneyInput value={linha.valor} onChange={v => onChange({ valor: v })}
         className="bg-[#111827] border border-gray-700 rounded-md px-2 py-1 text-white text-xs focus:outline-none focus:border-blue-500 w-full" placeholder="0,00" />

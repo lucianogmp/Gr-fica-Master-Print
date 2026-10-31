@@ -242,7 +242,7 @@ export function ItensEditor({ itens, onChange, onEditarProduto }: ItensEditorPro
       {itens.length > 0 && (
         <div className="overflow-x-auto rounded-lg border border-gray-700">
           {/* table-fixed + larguras iguais: Qtd., Preço e Desconto ficam do mesmo tamanho e não cortam o número */}
-          <table className="w-full table-fixed" style={{ minWidth: 780 }}>
+          <table className="w-full table-fixed tabela-itens" style={{ minWidth: 780 }}>
             <colgroup>
               <col />
               <col style={{ width: 48 }} />

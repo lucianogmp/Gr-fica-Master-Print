@@ -21,7 +21,7 @@ export function BackupAlertBanner() {
 
   return (
     <div className="bg-orange-500/10 border-b border-orange-500/30 px-4 py-2">
-      <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
+      <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 sm:gap-3">
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <HardDrive className="w-4 h-4 text-orange-400 flex-shrink-0" />
           <span className="text-orange-300 text-xs font-bold">
@@ -29,7 +29,7 @@ export function BackupAlertBanner() {
           </span>
         </div>
 
-        <div className="flex items-center gap-3 flex-shrink-0">
+        <div className="flex items-center gap-3 sm:flex-shrink-0 flex-wrap">
           <button
             onClick={() => navigate('/configuracoes/backup')}
             className="text-xs font-bold text-orange-400 hover:text-orange-300 underline transition-colors"

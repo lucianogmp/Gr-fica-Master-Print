@@ -1038,7 +1038,7 @@ export function Orcamentos() {
           className="text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0">
           <ArrowLeft className="w-4 h-4" />
         </button>
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 basis-[10rem]">
           <h1 className="text-xl font-black text-white truncate">
             {isNovo ? 'Novo Orçamento' : `Orçamento ${form.numero ? `#${form.numero}` : ''} — ${form.cliente_nome || 'Editar'}`}
           </h1>
@@ -1353,9 +1353,9 @@ export function Orcamentos() {
               {!jaConvertido && (
                 <>
                   <div className="w-px h-7 bg-gray-700 flex-shrink-0" />
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-[10px] text-gray-500 uppercase font-bold">Status</span>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       {Object.entries(STATUS_ORC).filter(([k]) => k !== 'convertido').map(([k, v]) => (
                         <button key={k} onClick={() => { setF('status', k as any); if (!isNovo && orcId) atualizarStatus({ id: orcId, status: k as StatusOrcamento }); }}
                           className={`px-3.5 py-2 rounded-lg text-xs font-bold border transition-all ${form.status === k ? v.cor : 'border-gray-700 text-gray-500 hover:text-white hover:bg-gray-700/30'}`}>

@@ -309,7 +309,7 @@ export function PlacaOrcEditor({ editando, onAdicionar, onCancelar, mostrarCusto
                     }`}
                   >
                     {done ? <Check size={14} /> : <Icon size={14} />}
-                    {s.label}
+                    <span className={active ? '' : 'max-sm:hidden'}>{s.label}</span>
                   </button>
                   {i < STEPS.length - 1 && <ChevronRight size={14} className="text-gray-700" />}
                 </div>

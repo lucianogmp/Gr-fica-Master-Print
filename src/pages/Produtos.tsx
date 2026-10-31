@@ -1010,7 +1010,7 @@ export function Produtos() {
               </div>
 
               {/* ── Unidade de medida + Tipo — lado a lado, numa única linha ── */}
-              <div className="mt-5 pt-4 border-t border-gray-700 grid grid-cols-2 gap-4">
+              <div className="mt-5 pt-4 border-t border-gray-700 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Unidade de medida: Unidade vs m² */}
                 <div>
                   <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Unidade de Medida</label>

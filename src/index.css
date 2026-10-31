@@ -475,3 +475,121 @@ textarea:focus,
     background: rgba(255, 255, 255, 0.06) !important;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   MOBILE (até 767px) — tabelas viram cartões, espaçamentos menores
+   (a marcação `tabela-cartoes` / `data-label` vem de hooks/useTabelasMobile)
+   ═══════════════════════════════════════════════════════════════════════ */
+@media (max-width: 767px) {
+  /* Sem blur pesado em todo card (trava no celular) e sidebar opaca */
+  .bg-\[\#1f2937\], .bg-\[\#1a2332\], .bg-\[\#1a222f\] {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  aside.bg-\[\#1f2937\] { background: var(--floating-panel-bg) !important; }
+
+  /* Evita rolagem lateral da página inteira */
+  html, body { overflow-x: hidden; }
+
+  /* Espaçamentos das páginas */
+  #conteudo-principal .p-6, #conteudo-principal .p-8 { padding: 0.75rem !important; }
+  #conteudo-principal .px-6, #conteudo-principal .px-8 { padding-left: 0.75rem !important; padding-right: 0.75rem !important; }
+  #conteudo-principal .space-y-6 > :not([hidden]) ~ :not([hidden]) { margin-top: 1rem !important; }
+
+  /* Tabelas → cartões */
+  table.tabela-cartoes, table.tabela-cartoes tbody, table.tabela-cartoes tfoot,
+  table.tabela-cartoes tr, table.tabela-cartoes td {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  table.tabela-cartoes thead, table.tabela-cartoes colgroup { display: none !important; }
+  .overflow-x-auto:has(> table.tabela-cartoes) { overflow-x: visible !important; border: 0 !important; background: transparent !important; }
+
+  table.tabela-cartoes tbody tr {
+    background: var(--surface-soft-bg) !important;
+    border: 1px solid var(--glass-border) !important;
+    border-radius: 0.75rem;
+    margin: 0 0 0.6rem;
+    padding: 0.35rem 0.75rem;
+  }
+  table.tabela-cartoes tbody tr:nth-child(even) { background: var(--surface-soft-bg) !important; }
+  table.tabela-cartoes tbody td {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.3rem 0 !important;
+    border: 0 !important;
+    text-align: right !important;
+    font-size: 0.85rem !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere;
+  }
+  table.tabela-cartoes tbody td::before {
+    content: attr(data-label);
+    flex: 0 0 38%;
+    max-width: 38%;
+    text-align: left;
+    font-size: 0.66rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-subtle);
+  }
+  table.tabela-cartoes tbody td[data-label=""]::before { content: none; }
+  table.tabela-cartoes tbody td[data-label=""] { justify-content: flex-start; }
+  table.tabela-cartoes tbody td:empty { display: none !important; }
+  /* campos dentro de célula (inputs de editor) ocupam o resto da linha */
+  table.tabela-cartoes td input, table.tabela-cartoes td select { max-width: 100%; }
+}
+
+/* Itens da venda no celular: cartão em grade (descrição em cima; Qtd/Preço/Desc. lado a lado) */
+@media (max-width: 767px) {
+  table.tabela-cartoes.tabela-itens tbody tr {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.35rem 0.5rem;
+    padding: 0.6rem 0.75rem;
+  }
+  table.tabela-cartoes.tabela-itens tbody td {
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    text-align: left !important;
+    gap: 0.15rem;
+    padding: 0 !important;
+  }
+  table.tabela-cartoes.tabela-itens tbody td::before { flex: none; max-width: none; }
+  table.tabela-cartoes.tabela-itens tbody td:nth-child(1) { grid-column: 1 / -1; }
+  table.tabela-cartoes.tabela-itens tbody td:nth-child(1)::before { content: none; }
+  table.tabela-cartoes.tabela-itens tbody td:nth-child(2) { display: none !important; }
+  table.tabela-cartoes.tabela-itens tbody td:nth-child(6) { grid-column: 1 / 3; text-align: left !important; flex-direction: row; align-items: center; justify-content: space-between; }
+  table.tabela-cartoes.tabela-itens tbody td:nth-child(7) { flex-direction: row; justify-content: flex-end; align-items: center; gap: 0.75rem; }
+  table.tabela-cartoes.tabela-itens tbody td:nth-child(7)::before { content: none; }
+}
+@media (max-width: 767px) {
+  table.tabela-cartoes.tabela-itens tbody td:nth-child(1) p { white-space: normal !important; overflow: visible !important; text-overflow: clip !important; }
+}
+
+/* Parcelas do painel financeiro no celular: 2 colunas em vez de 7 */
+@media (max-width: 767px) {
+  .parcela-grid.parcela-head { display: none !important; }
+  .parcela-grid:not(.parcela-head) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    gap: 0.5rem !important;
+    padding: 0.75rem !important;
+  }
+  .parcela-grid:not(.parcela-head) > :nth-child(1) { order: 1; align-self: center; }
+  .parcela-grid:not(.parcela-head) > :nth-child(7) { order: 2; justify-self: end; }
+  .parcela-grid:not(.parcela-head) > :nth-child(2) { order: 3; }
+  .parcela-grid:not(.parcela-head) > :nth-child(3) { order: 4; }
+  .parcela-grid:not(.parcela-head) > :nth-child(4) { order: 5; }
+  .parcela-grid:not(.parcela-head) > :nth-child(5) { order: 6; }
+  .parcela-grid:not(.parcela-head) > :nth-child(6) { order: 7; grid-column: 1 / -1; padding-top: 0.4rem; padding-bottom: 0.4rem; }
+  .parcela-grid:not(.parcela-head) > :nth-child(n+8) { order: 8; grid-column: 1 / -1 !important; padding-left: 0 !important; flex-wrap: wrap; margin-top: 0 !important; }
+}
+@media (max-width: 767px) {
+  /* Divisores verticais de barras horizontais ficam soltos quando a linha quebra */
+  #conteudo-principal .w-px { display: none !important; }
+}

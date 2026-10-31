@@ -8,6 +8,7 @@ import { supabase } from '../lib/supabase';
 import { EstoqueAlertBanner } from './EstoqueAlertBanner';
 import { BackupAlertBanner } from './BackupAlertBanner';
 import { rolarParaTopo } from '../hooks/useRolarAoAbrir';
+import { useTabelasMobile } from '../hooks/useTabelasMobile';
 import { useTheme } from '../hooks/useTheme';
 import { useConfiguracoes } from '../hooks/useConfiguracoes';
 import { useRealtimeSync } from '../hooks/useRealtimeSync';
@@ -270,6 +271,7 @@ export function Layout() {
 
   // Fecha menu mobile ao navegar
   useEffect(() => { setMenuOpen(false); }, [location.pathname]);
+  useTabelasMobile();
   // Trocou de tela (ex.: abriu uma venda a partir da lista): começa no topo, não onde estava a rolagem da anterior.
   useEffect(() => { rolarParaTopo(); }, [location.pathname]);
 
@@ -340,7 +342,7 @@ export function Layout() {
   // ── Render ──────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex h-screen bg-[#111827] text-gray-100 overflow-hidden">
+    <div className="flex h-dvh bg-[#111827] text-gray-100 overflow-hidden">
       {/* Backdrop mobile */}
       {menuOpen && (
         <div
@@ -354,8 +356,8 @@ export function Layout() {
       <aside
         className={`fixed inset-y-0 left-0 z-40 ${collapsed ? 'md:w-[72px]' : 'md:w-64'} w-64 bg-[#1f2937] border-r border-gray-700 flex flex-col
           transition-all duration-300 ease-out
-          md:static md:translate-x-0
-          ${menuOpen ? 'translate-x-0' : '-translate-x-full'}`}
+          md:static md:translate-x-0 md:shadow-none
+          ${menuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full shadow-none'}`}
       >
         {/* Logo */}
         <div className="p-4 border-b border-gray-700 flex-shrink-0 relative">
@@ -483,7 +485,7 @@ export function Layout() {
         </nav>
 
         {/* Rodapé: usuário */}
-        <div className={`${collapsed ? 'md:p-2' : 'p-4'} p-4 border-t border-gray-700 bg-[#1a222f] flex-shrink-0`}>
+        <div className={`${collapsed ? 'md:p-2' : 'md:p-4'} p-3 border-t border-gray-700 bg-[#1a222f] flex-shrink-0`}>
           {/* Recolher/expandir — só desktop; fica junto do usuário, mais discreto que lá em cima na logo */}
           <button
             onClick={toggleCollapsed}
