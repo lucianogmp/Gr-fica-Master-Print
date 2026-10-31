@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import { useRolarItemAtivo } from '../../hooks/useListaTeclado';
 import { BomItem } from '../../types/produto';
 import { MateriaPrima } from '../../types/estoque';
 import { Modal } from '../ui/Modal';
@@ -25,6 +26,8 @@ export function BomEditor({ bom, materias, onChange, porMetroQuadrado }: BomEdit
   const [showModal, setShowModal] = useState(false);
   const [busca, setBusca] = useState('');
   const [indiceAtivo, setIndiceAtivo] = useState(0);
+  const listaMpRef = useRef<HTMLDivElement>(null);
+  useRolarItemAtivo(listaMpRef, indiceAtivo, true);
   const [selecionada, setSelecionada] = useState<MateriaPrima | null>(null);
   const [qtd, setQtd] = useState('');
 
@@ -195,13 +198,15 @@ export function BomEditor({ bom, materias, onChange, porMetroQuadrado }: BomEdit
           </div>
 
           {!selecionada && (
-            <div className="border border-gray-700 rounded-lg overflow-hidden max-h-48 overflow-y-auto">
+            <div ref={listaMpRef} className="border border-gray-700 rounded-lg overflow-hidden max-h-48 overflow-y-auto">
               {disponiveis.length === 0 ? (
                 <p className="p-4 text-center text-gray-600 text-sm">Nenhuma encontrada.</p>
               ) : (
                 disponiveis.map((m, idx) => (
                   <button
                     key={m.id}
+                    type="button"
+                    data-nav={idx}
                     onClick={() => { setSelecionada(m); setBusca(m.nome); }}
                     onMouseEnter={() => setIndiceAtivo(idx)}
                     className={`w-full flex items-center justify-between px-4 py-3 border-b border-gray-800 last:border-b-0 text-left transition-colors duration-150 ${

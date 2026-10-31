@@ -11,6 +11,7 @@ import toast from 'react-hot-toast';
 import { ArrowRight, UserPlus, Search, Loader2, Pencil } from 'lucide-react';
 import { buscarCNPJ, formatarCNPJ, apenasNumeros } from '../../utils/cnpjCep';
 import { Modal } from '../ui/Modal';
+import { useListaTeclado } from '../../hooks/useListaTeclado';
 
 interface ClienteSimples {
   id: string;
@@ -69,6 +70,30 @@ export function ClienteSelectorVenda({ value, clienteId, onChange, hideLabel }: 
     if (inputRef.current) setDropRect(inputRef.current.getBoundingClientRect());
   }
 
+  // Consulta os clientes que batem com o texto (vazio = os primeiros por nome,
+  // usado quando a pessoa abre a lista só com a setinha).
+  const buscarOpcoes = useCallback(async (q: string) => {
+    setCarregando(true);
+    atualizarRect();
+    try {
+      // Busca por nome, telefone ou CPF/CNPJ — cada palavra digitada
+      // precisa aparecer em algum desses campos (em qualquer ordem),
+      // não só quando o texto bate exatamente como está cadastrado.
+      const palavras = q.trim().split(/\s+/).filter(Boolean);
+      let query = supabase
+        .from('clientes')
+        .select('id, nome, telefone, email, cpf_cnpj');
+      for (const palavra of palavras) {
+        query = query.or(`nome.ilike.%${palavra}%,telefone.ilike.%${palavra}%,cpf_cnpj.ilike.%${palavra}%`);
+      }
+      const { data } = await query.order('nome').limit(8);
+      setOpcoes(data ?? []);
+      setAberto(true);
+    } finally {
+      setCarregando(false);
+    }
+  }, []);
+
   const pesquisar = useCallback((q: string) => {
     setBusca(q);
     onChange(q, null); // limpa o id ao digitar
@@ -76,28 +101,8 @@ export function ClienteSelectorVenda({ value, clienteId, onChange, hideLabel }: 
     if (timerRef.current) clearTimeout(timerRef.current);
     if (q.length < 1) { setOpcoes([]); setAberto(false); return; }
 
-    timerRef.current = setTimeout(async () => {
-      setCarregando(true);
-      atualizarRect();
-      try {
-        // Busca por nome, telefone ou CPF/CNPJ — cada palavra digitada
-        // precisa aparecer em algum desses campos (em qualquer ordem),
-        // não só quando o texto bate exatamente como está cadastrado.
-        const palavras = q.trim().split(/\s+/).filter(Boolean);
-        let query = supabase
-          .from('clientes')
-          .select('id, nome, telefone, email, cpf_cnpj');
-        for (const palavra of palavras) {
-          query = query.or(`nome.ilike.%${palavra}%,telefone.ilike.%${palavra}%,cpf_cnpj.ilike.%${palavra}%`);
-        }
-        const { data } = await query.limit(8);
-        setOpcoes(data ?? []);
-        setAberto(true);
-      } finally {
-        setCarregando(false);
-      }
-    }, 300);
-  }, [onChange]);
+    timerRef.current = setTimeout(() => { buscarOpcoes(q); }, 300);
+  }, [onChange, buscarOpcoes]);
 
   function selecionar(c: ClienteSimples) {
     setBusca(c.nome);
@@ -254,8 +259,18 @@ export function ClienteSelectorVenda({ value, clienteId, onChange, hideLabel }: 
   // floating-panel (index.css) dá fundo 100% opaco — NUNCA bg-[#1a2332]
   // aqui (glassmorphism translúcido dos cards, deixa o conteúdo por baixo
   // vazando através do dropdown).
+  const abrirLista = useCallback(() => {
+    atualizarRect();
+    if (opcoes.length > 0) setAberto(true);
+    else buscarOpcoes(busca);
+  }, [opcoes.length, busca, buscarOpcoes]);
+  const { indice, setIndice, onKeyDown: onKeyDownLista, listaRef } = useListaTeclado<ClienteSimples>({
+    itens: opcoes, aberto, abrir: abrirLista, fechar: () => setAberto(false), onSelecionar: selecionar, chave: busca,
+  });
+
   const dropdownLista = aberto && opcoes.length > 0 && dropRect ? createPortal(
     <div
+      ref={listaRef}
       style={{
         position: 'fixed', top: dropRect.bottom + 4, left: dropRect.left, width: dropRect.width, zIndex: 99999,
         overflow: 'hidden', maxHeight: 320, overflowY: 'auto',
@@ -265,12 +280,15 @@ export function ClienteSelectorVenda({ value, clienteId, onChange, hideLabel }: 
       {opcoes.map((c, idx) => (
         <button
           key={c.id}
+          type="button"
+          data-nav={idx}
           onMouseDown={e => { e.preventDefault(); selecionar(c); }}
+          onMouseEnter={() => setIndice(idx)}
           style={{
             width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             padding: '10px 16px', cursor: 'pointer', textAlign: 'left',
           }}
-          className={`bg-transparent hover:bg-blue-900/20 transition-colors ${idx < opcoes.length - 1 ? 'border-b border-gray-700/50' : ''}`}
+          className={`transition-colors ${idx === indice ? 'bg-blue-900/30' : 'bg-transparent hover:bg-blue-900/20'} ${idx < opcoes.length - 1 ? 'border-b border-gray-700/50' : ''}`}
         >
           <div>
             <p className="text-white" style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>
@@ -310,7 +328,10 @@ export function ClienteSelectorVenda({ value, clienteId, onChange, hideLabel }: 
             ref={inputRef}
             value={busca}
             onChange={e => pesquisar(e.target.value)}
-            onFocus={() => { if (busca.length > 0 && opcoes.length > 0) { atualizarRect(); setAberto(true); } }}
+            onFocus={e => { e.target.select(); if (busca.length > 0 && opcoes.length > 0) { atualizarRect(); setAberto(true); } }}
+            onKeyDown={onKeyDownLista}
+            role="combobox"
+            aria-expanded={aberto}
             className="w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors"
             placeholder="Buscar por nome, telefone ou CPF/CNPJ..."
             autoComplete="off"

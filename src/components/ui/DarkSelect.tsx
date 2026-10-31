@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronDown } from 'lucide-react';
 import { correspondeABusca } from '../../lib/buscaFlexivel';
+import { useListaTeclado } from '../../hooks/useListaTeclado';
 
 export interface DarkSelectOption {
   value: string;
@@ -87,6 +88,7 @@ function OptionButton({
   onSelect,
   ativoPorTeclado,
   onHover,
+  navIdx,
 }: {
   option: DarkSelectOption;
   selected: boolean;
@@ -94,11 +96,13 @@ function OptionButton({
   onSelect: (value: string) => void;
   ativoPorTeclado?: boolean;
   onHover?: () => void;
+  navIdx?: number;
 }) {
   const destacado = selected || ativoPorTeclado;
   return (
     <button
       type="button"
+      data-nav={navIdx}
       onMouseDown={e => {
         e.preventDefault();
         onSelect(option.value);
@@ -147,9 +151,8 @@ export function DarkSelect({
     width: number;
     maxHeight: number;
   } | null>(null);
-  // Só usados no modo searchable: texto digitado e item destacado por teclado.
+  // Só usado no modo searchable: texto digitado.
   const [busca, setBusca] = useState('');
-  const [indiceAtivo, setIndiceAtivo] = useState(0);
 
   function recalcularPosicao() {
     const rect = triggerRef.current?.getBoundingClientRect();
@@ -191,6 +194,13 @@ export function DarkSelect({
     ? flatOptions.filter(o => correspondeABusca(o.label, busca))
     : flatOptions;
 
+  // Lista navegável por teclado, na mesma ordem em que aparece na tela
+  // (item "vazio" primeiro, se existir; depois as opções, inclusive as de grupos).
+  const navValores = useMemo(
+    () => [...(allowEmpty ? [''] : []), ...(searchable ? opcoesExibidas : flatOptions).map(o => o.value)],
+    [allowEmpty, searchable, opcoesExibidas, flatOptions],
+  );
+
   const label = flatOptions.find(o => o.value === value)?.label ?? placeholder;
   const defaultTrigger = size === 'sm' ? TRIGGER_SM : TRIGGER_MD;
 
@@ -230,29 +240,53 @@ export function DarkSelect({
   function abrirBusca() {
     if (disabled) return;
     setBusca('');
-    setIndiceAtivo(0);
     setAberto(true);
   }
 
-  function handleBuscaKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+  const abrirLista = () => { if (!disabled) { setBusca(''); setAberto(true); } };
+  const fecharLista = () => { setAberto(false); setBusca(''); };
+
+  const { indice, setIndice, onKeyDown: onKeyDownLista, listaRef } = useListaTeclado<string>({
+    itens: navValores,
+    aberto,
+    abrir: abrirLista,
+    fechar: fecharLista,
+    onSelecionar: selecionar,
+    chave: busca,
+  });
+
+  // Ao abrir, o destaque começa no item já selecionado (se houver).
+  useEffect(() => {
     if (!aberto) return;
-    const total = opcoesExibidas.length + (allowEmpty ? 1 : 0);
-    if (total === 0) return;
-    if (e.key === 'ArrowDown') {
+    const i = navValores.indexOf(value);
+    setIndice(i >= 0 ? i : 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aberto]);
+
+  // Campo sem busca (botão): Espaço escolhe o item destacado e digitar uma letra
+  // pula pra primeira opção que começa com ela (como num select nativo).
+  function onKeyDownBotao(e: React.KeyboardEvent<HTMLButtonElement>) {
+    if (e.key === ' ' && aberto) {
       e.preventDefault();
-      setIndiceAtivo(i => (i + 1) % total);
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setIndiceAtivo(i => (i - 1 + total) % total);
-    } else if (e.key === 'Enter') {
-      e.preventDefault();
-      if (allowEmpty && indiceAtivo === 0) { selecionar(''); return; }
-      const opcao = opcoesExibidas[allowEmpty ? indiceAtivo - 1 : indiceAtivo];
-      if (opcao) selecionar(opcao.value);
-    } else if (e.key === 'Escape') {
-      setAberto(false);
-      setBusca('');
+      const v = navValores[indice];
+      if (v !== undefined) selecionar(v);
+      return;
     }
+    if (e.key.length === 1 && e.key !== ' ' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      const letra = e.key.toLowerCase();
+      const rotulos = [...(allowEmpty ? [placeholder] : []), ...flatOptions.map(o => o.label)];
+      const n = rotulos.length;
+      for (let k = 1; k <= n; k++) {
+        const j = (indice + k) % n;
+        if (rotulos[j].toLowerCase().startsWith(letra)) {
+          if (!aberto) abrirLista();
+          setIndice(j);
+          break;
+        }
+      }
+      return;
+    }
+    onKeyDownLista(e);
   }
 
   function renderOptions() {
@@ -268,6 +302,9 @@ export function DarkSelect({
               selected={value === o.value}
               isLast={gi === groups.length - 1 && idx === group.options.length - 1}
               onSelect={selecionar}
+              navIdx={navValores.indexOf(o.value)}
+              ativoPorTeclado={navValores.indexOf(o.value) === indice}
+              onHover={() => setIndice(navValores.indexOf(o.value))}
             />
           ))}
         </div>
@@ -286,10 +323,11 @@ export function DarkSelect({
         key={o.value}
         option={o}
         selected={value === o.value}
-        ativoPorTeclado={searchable && idx + offset === indiceAtivo}
+        navIdx={idx + offset}
+        ativoPorTeclado={idx + offset === indice}
         isLast={idx === lista.length - 1}
         onSelect={selecionar}
-        onHover={searchable ? () => setIndiceAtivo(idx + offset) : undefined}
+        onHover={() => setIndice(idx + offset)}
       />
     ));
   }
@@ -304,8 +342,8 @@ export function DarkSelect({
             disabled={disabled}
             value={aberto ? busca : label}
             onFocus={e => { abrirBusca(); e.target.select(); }}
-            onChange={e => { setBusca(e.target.value); setIndiceAtivo(0); if (!aberto) setAberto(true); }}
-            onKeyDown={handleBuscaKeyDown}
+            onChange={e => { setBusca(e.target.value); if (!aberto) setAberto(true); }}
+            onKeyDown={onKeyDownLista}
             className={(triggerClassName ?? defaultTrigger) + ' pr-8'}
             placeholder={placeholder}
           />
@@ -314,6 +352,9 @@ export function DarkSelect({
             type="button"
             disabled={disabled}
             onClick={() => !disabled && setAberto(a => !a)}
+            onKeyDown={onKeyDownBotao}
+            aria-haspopup="listbox"
+            aria-expanded={aberto}
             className={triggerClassName ?? defaultTrigger}
           >
             <span className={value ? 'text-white' : 'text-gray-400'}>{label}</span>
@@ -333,7 +374,7 @@ export function DarkSelect({
 
       {aberto && !disabled && coords && createPortal(
         <div
-          ref={dropdownRef}
+          ref={el => { (dropdownRef as any).current = el; listaRef.current = el; }}
           style={{ ...DROPDOWN_BASE, top: coords.top, left: coords.left, width: coords.width, maxHeight: coords.maxHeight }}
           className={DROPDOWN_CLASSNAME}
         >
@@ -344,10 +385,11 @@ export function DarkSelect({
                 e.preventDefault();
                 selecionar('');
               }}
-              onMouseEnter={() => searchable && setIndiceAtivo(0)}
+              data-nav={0}
+              onMouseEnter={() => setIndice(0)}
               style={ITEM}
               className={`transition-colors duration-150 border-b border-gray-700/50 ${
-                searchable && indiceAtivo === 0 ? 'bg-gray-700' : 'bg-transparent hover:bg-gray-700'
+                indice === 0 ? 'bg-gray-700' : 'bg-transparent hover:bg-gray-700'
               }`}
             >
               <span className="text-gray-400" style={{ fontSize: 14 }}>{placeholder}</span>

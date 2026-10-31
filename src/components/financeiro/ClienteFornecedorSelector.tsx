@@ -12,6 +12,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 import { UserPlus, ArrowRight, Loader2 } from 'lucide-react';
+import { useListaTeclado } from '../../hooks/useListaTeclado';
 
 interface Registro { id: string; nome: string; telefone?: string | null; email?: string | null; }
 
@@ -54,28 +55,27 @@ export function ClienteFornecedorSelector({ tipo, value, onChange }: Props) {
     if (inputRef.current) setDropRect(inputRef.current.getBoundingClientRect());
   }
 
+  const buscarOpcoes = useCallback(async (q: string) => {
+    setCarregando(true);
+    atualizarRect();
+    try {
+      let query = supabase.from(tabela).select('id, nome, telefone, email');
+      if (q.trim()) query = query.or(`nome.ilike.%${q}%,telefone.ilike.%${q}%`);
+      const { data } = await query.order('nome').limit(8);
+      setOpcoes(data ?? []);
+      setAberto(true);
+    } finally {
+      setCarregando(false);
+    }
+  }, [tabela]);
+
   const pesquisar = useCallback((q: string) => {
     setBusca(q);
     onChange(q);
     if (timerRef.current) clearTimeout(timerRef.current);
     if (q.length < 1) { setOpcoes([]); setAberto(false); return; }
-
-    timerRef.current = setTimeout(async () => {
-      setCarregando(true);
-      atualizarRect();
-      try {
-        const { data } = await supabase
-          .from(tabela)
-          .select('id, nome, telefone, email')
-          .or(`nome.ilike.%${q}%,telefone.ilike.%${q}%`)
-          .limit(8);
-        setOpcoes(data ?? []);
-        setAberto(true);
-      } finally {
-        setCarregando(false);
-      }
-    }, 300);
-  }, [onChange, tabela]);
+    timerRef.current = setTimeout(() => { buscarOpcoes(q); }, 300);
+  }, [onChange, buscarOpcoes]);
 
   function selecionar(r: Registro) {
     setBusca(r.nome);
@@ -108,11 +108,20 @@ export function ClienteFornecedorSelector({ tipo, value, onChange }: Props) {
 
   const IN = 'w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500';
 
+  const abrirLista = useCallback(() => {
+    atualizarRect();
+    if (opcoes.length > 0) setAberto(true); else buscarOpcoes(busca);
+  }, [opcoes.length, busca, buscarOpcoes]);
+  const { indice, setIndice, onKeyDown, listaRef } = useListaTeclado<Registro>({
+    itens: opcoes, aberto, abrir: abrirLista, fechar: () => setAberto(false), onSelecionar: selecionar, chave: busca,
+  });
+
   const dropdown = aberto && dropRect ? createPortal(
     // floating-panel (index.css) dá fundo 100% opaco — NUNCA bg-[#1a2332]
     // aqui (glassmorphism translúcido dos cards, deixa o conteúdo por
     // baixo vazando através do dropdown).
     <div
+      ref={listaRef}
       style={{
         position: 'fixed', top: dropRect.bottom + 4, left: dropRect.left, width: dropRect.width, zIndex: 99999,
         overflow: 'hidden', maxHeight: 280, overflowY: 'auto',
@@ -128,12 +137,15 @@ export function ClienteFornecedorSelector({ tipo, value, onChange }: Props) {
       ) : opcoes.map((r, idx) => (
         <button
           key={r.id}
+          type="button"
+          data-nav={idx}
           onMouseDown={e => { e.preventDefault(); selecionar(r); }}
+          onMouseEnter={() => setIndice(idx)}
           style={{
             width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             padding: '10px 16px', cursor: 'pointer', textAlign: 'left',
           }}
-          className={`bg-transparent hover:bg-blue-900/20 transition-colors ${idx < opcoes.length - 1 ? 'border-b border-gray-700/50' : ''}`}
+          className={`${idx === indice ? 'bg-blue-900/30' : 'bg-transparent hover:bg-blue-900/20'} transition-colors ${idx < opcoes.length - 1 ? 'border-b border-gray-700/50' : ''}`}
         >
           <div>
             <p className="text-white" style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>{r.nome}</p>
@@ -157,7 +169,10 @@ export function ClienteFornecedorSelector({ tipo, value, onChange }: Props) {
           ref={inputRef}
           value={busca}
           onChange={e => pesquisar(e.target.value)}
-          onFocus={() => { if (busca.length > 0) { atualizarRect(); pesquisar(busca); } }}
+          onFocus={e => { e.target.select(); if (busca.length > 0) { atualizarRect(); buscarOpcoes(busca); } }}
+          onKeyDown={onKeyDown}
+          role="combobox"
+          aria-expanded={aberto}
           className={IN}
           placeholder={`Buscar ${rotulo.toLowerCase()} ou digitar um nome novo...`}
           autoComplete="off"

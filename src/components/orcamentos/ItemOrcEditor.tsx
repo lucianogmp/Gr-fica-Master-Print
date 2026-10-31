@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useRolarItemAtivo } from '../../hooks/useListaTeclado';
 import { useQuery } from '@tanstack/react-query';
 import {
   Ruler, Pencil, Plus, X, AlertTriangle,
@@ -208,6 +209,8 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando, mostrarCusto 
   // Navegação por teclado na lista de produtos (seta cima/baixo + Enter),
   // sem precisar tirar a mão do teclado pra clicar com o mouse.
   const [indiceAtivoProd, setIndiceAtivoProd] = useState(0);
+  const gridProdRef = useRef<HTMLDivElement>(null);
+  useRolarItemAtivo(gridProdRef, indiceAtivoProd, true);
   const [prodSel, setProdSel] = useState<Produto | null>(null);
   const [produtoId, setProdutoId] = useState<string | null>(editando?.produto_id ?? null);
   const [areaM2, setAreaM2] = useState(
@@ -518,7 +521,7 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando, mostrarCusto 
               Nenhum produto ativo cadastrado.
             </p>
           ) : (
-            <div className="grid grid-cols-2 gap-2 max-h-52 overflow-y-auto pr-1">
+            <div ref={gridProdRef} className="grid grid-cols-2 gap-2 max-h-52 overflow-y-auto pr-1">
               {produtosFiltrados.length === 0 ? (
                 <p className="col-span-2 text-center text-xs text-gray-600 py-4">Nenhum produto encontrado.</p>
               ) : produtosFiltrados.map((p, idx) => {
@@ -527,6 +530,8 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando, mostrarCusto 
                 return (
                   <button
                     key={p.id}
+                    type="button"
+                    data-nav={idx}
                     onClick={() => selecionarProduto(p)}
                     onMouseEnter={() => setIndiceAtivoProd(idx)}
                     className={[

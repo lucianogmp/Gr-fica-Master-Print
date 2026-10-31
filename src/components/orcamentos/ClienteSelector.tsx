@@ -1,7 +1,8 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 import { ArrowRight } from 'lucide-react';
+import { useListaTeclado } from '../../hooks/useListaTeclado';
 
 interface Props {
   value: string;
@@ -31,17 +32,20 @@ export function ClienteSelector({ value, onChange }: Props) {
 
   useEffect(() => { setBusca(value); }, [value]);
 
+  // Sem texto = primeiros por nome (setinha com campo vazio abre a lista).
+  async function buscarOpcoes(q: string) {
+    let query = supabase.from('clientes').select('id, nome, telefone');
+    if (q.trim()) query = query.ilike('nome', `%${q}%`);
+    const { data } = await query.order('nome').limit(8);
+    setOpcoes(data ?? []);
+    setAberto(true);
+  }
+
   async function pesquisar(q: string) {
     setBusca(q);
     onChange(q);
     if (q.length < 1) { setOpcoes([]); setAberto(false); return; }
-    const { data } = await supabase
-      .from('clientes')
-      .select('id, nome, telefone')
-      .ilike('nome', `%${q}%`)
-      .limit(8);
-    setOpcoes(data ?? []);
-    setAberto(true);
+    await buscarOpcoes(q);
   }
 
   function selecionar(c: ClienteSimples) {
@@ -73,6 +77,14 @@ export function ClienteSelector({ value, onChange }: Props) {
     }
   }
 
+  const abrirLista = useCallback(() => {
+    if (opcoes.length > 0) setAberto(true); else buscarOpcoes(busca);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [opcoes.length, busca]);
+  const { indice, setIndice, onKeyDown, listaRef } = useListaTeclado<ClienteSimples>({
+    itens: opcoes, aberto, abrir: abrirLista, fechar: () => setAberto(false), onSelecionar: selecionar, chave: busca,
+  });
+
   const IN = "w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors";
 
   return (
@@ -84,7 +96,10 @@ export function ClienteSelector({ value, onChange }: Props) {
           <input
             value={busca}
             onChange={e => pesquisar(e.target.value)}
-            onFocus={() => busca.length > 0 && opcoes.length > 0 && setAberto(true)}
+            onFocus={e => { e.target.select(); if (busca.length > 0 && opcoes.length > 0) setAberto(true); }}
+            onKeyDown={onKeyDown}
+            role="combobox"
+            aria-expanded={aberto}
             className={IN}
             placeholder="Digite para buscar ou criar cliente..."
             autoComplete="off"
@@ -95,21 +110,25 @@ export function ClienteSelector({ value, onChange }: Props) {
               conteúdo por baixo vazando através do menu). */}
           {aberto && opcoes.length > 0 && (
             <div
+              ref={listaRef}
               style={{
                 position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px', zIndex: 9999,
-                overflow: 'hidden',
+                overflow: 'hidden', maxHeight: 320, overflowY: 'auto',
               }}
               className="floating-panel"
             >
               {opcoes.map((c, idx) => (
                 <button
                   key={c.id}
+                  type="button"
+                  data-nav={idx}
                   onMouseDown={e => { e.preventDefault(); selecionar(c); }}
+                  onMouseEnter={() => setIndice(idx)}
                   style={{
                     width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     padding: '12px 16px', cursor: 'pointer', textAlign: 'left',
                   }}
-                  className={`bg-transparent hover:bg-gray-700 transition-colors duration-150 ${idx < opcoes.length - 1 ? 'border-b border-gray-700/50' : ''}`}
+                  className={`${idx === indice ? 'bg-gray-700' : 'bg-transparent hover:bg-gray-700'} transition-colors duration-150 ${idx < opcoes.length - 1 ? 'border-b border-gray-700/50' : ''}`}
                 >
                   <div>
                     <p className="text-white" style={{ fontSize: '14px', fontWeight: 600, margin: 0 }}>

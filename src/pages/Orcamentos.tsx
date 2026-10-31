@@ -1093,9 +1093,9 @@ export function Orcamentos() {
           <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5">
             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Dados do Orçamento</h3>
             <div className="space-y-3">
-              <div className="grid grid-cols-1 md:grid-cols-[1fr_260px] gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center justify-between mb-1.5 h-5">
                   <label className="text-xs font-bold text-gray-400 uppercase">Cliente</label>
                   <label className="flex items-center gap-1.5 text-[11px] text-gray-500 cursor-pointer hover:text-gray-300">
                     <input type="checkbox" checked={semCliente}
@@ -1118,7 +1118,7 @@ export function Orcamentos() {
                 )}
               </div>
               <div>
-                <div className="mb-1.5"><label className="text-xs font-bold text-gray-400 uppercase">Vendedor</label></div>
+                <div className="mb-1.5 h-5 flex items-center"><label className="text-xs font-bold text-gray-400 uppercase">Vendedor</label></div>
                 <VendedorSelector
                   value={(form as any).vendedor ?? ''}
                   vendedorId={(form as any).vendedor_id ?? null}

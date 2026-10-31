@@ -1,6 +1,6 @@
 // src/components/vendas/VendedorSelector.tsx
 //
-// Autocomplete de vendedor — busca usuários com role 'vendedor', 'admin' ou 'dono'.
+// Autocomplete de vendedor — qualquer usuário cadastrado pode ser escolhido.
 // Salva nome + id separadamente.
 
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
@@ -8,6 +8,7 @@ import { createPortal } from 'react-dom';
 import { supabase } from '../../lib/supabase';
 import { ChevronDown } from 'lucide-react';
 import { correspondeABuscaEmCampos } from '../../lib/buscaFlexivel';
+import { useListaTeclado } from '../../hooks/useListaTeclado';
 
 interface Vendedor {
   id: string;
@@ -26,15 +27,17 @@ interface Props {
 
 export function VendedorSelector({ value, vendedorId, onChange, hideLabel }: Props) {
   const [busca, setBusca]       = useState(value);
+  // Só filtra a lista depois que a pessoa DIGITA. Ao abrir/setinha com um vendedor
+  // já escolhido, mostra todos — senão a lista vinha filtrada pelo próprio nome
+  // atual e não dava pra trocar de vendedor.
+  const [digitou, setDigitou]   = useState(false);
   const [opcoes, setOpcoes]     = useState<Vendedor[]>([]);
   const [aberto, setAberto]     = useState(false);
   const [carregado, setCarregado] = useState(false);
   const wrapRef  = useRef<HTMLDivElement>(null);
   const inputWrapRef = useRef<HTMLDivElement>(null);
   const dropdownRef  = useRef<HTMLDivElement>(null);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null);
-  const [indiceAtivo, setIndiceAtivo] = useState(0);
 
   useEffect(() => { setBusca(value); }, [value]);
 
@@ -44,6 +47,7 @@ export function VendedorSelector({ value, vendedorId, onChange, hideLabel }: Pro
       if (wrapRef.current?.contains(alvo)) return;
       if (dropdownRef.current?.contains(alvo)) return;
       setAberto(false);
+      setDigitou(false);
     }
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
@@ -67,35 +71,44 @@ export function VendedorSelector({ value, vendedorId, onChange, hideLabel }: Pro
     };
   }, [aberto]);
 
-  async function carregarVendedores() {
+  // Todos os usuários cadastrados podem ser vendedor (quem cuida só da produção
+  // quase nunca será, mas pode ser escolhido se precisar).
+  const carregarVendedores = useCallback(async () => {
     if (carregado) return;
     try {
-      const { data } = await supabase.rpc('listar_usuarios');
-      const vendedores = (data ?? [])
-        .filter((u: any) => ['dono', 'admin', 'vendedor'].includes(u.role))
-        .map((u: any) => ({ id: u.id, nome: u.nome || u.email, email: u.email }));
-      setOpcoes(vendedores);
+      let { data, error } = await supabase.rpc('listar_vendedores');
+      if (error) ({ data } = await supabase.rpc('listar_usuarios'));
+      setOpcoes((data ?? []).map((u: any) => ({ id: u.id, nome: u.nome || u.email, email: u.email })));
       setCarregado(true);
     } catch {
       // silencioso — fallback para campo texto livre
     }
-  }
+  }, [carregado]);
 
   const pesquisar = useCallback((q: string) => {
     setBusca(q);
+    setDigitou(true);
     onChange(q, null);
-    setIndiceAtivo(0);
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => setAberto(true), 300);
+    setAberto(true);
   }, [onChange]);
 
-  function selecionar(v: Vendedor) {
+  const selecionar = useCallback((v: Vendedor) => {
     setBusca(v.nome);
+    setDigitou(false);
     onChange(v.nome, v.id);
     setAberto(false);
-  }
+  }, [onChange]);
 
-  const opcoesFiltradas = opcoes.filter(o => correspondeABuscaEmCampos([o.nome, o.email], busca));
+  const abrir = useCallback(() => { carregarVendedores(); setAberto(true); }, [carregarVendedores]);
+  const fechar = useCallback(() => { setAberto(false); setDigitou(false); }, []);
+
+  const opcoesFiltradas = digitou && busca.trim()
+    ? opcoes.filter(o => correspondeABuscaEmCampos([o.nome, o.email], busca))
+    : opcoes;
+
+  const { indice, setIndice, onKeyDown, listaRef } = useListaTeclado<Vendedor>({
+    itens: opcoesFiltradas, aberto, abrir, fechar, onSelecionar: selecionar, chave: digitou ? busca : '',
+  });
 
   return (
     <div ref={wrapRef} className="relative">
@@ -104,26 +117,15 @@ export function VendedorSelector({ value, vendedorId, onChange, hideLabel }: Pro
         <input
           value={busca}
           onChange={e => pesquisar(e.target.value)}
-          onFocus={() => { carregarVendedores(); setAberto(true); }}
-          onKeyDown={e => {
-            if (!aberto || opcoesFiltradas.length === 0) return;
-            if (e.key === 'ArrowDown') {
-              e.preventDefault();
-              setIndiceAtivo(i => (i + 1) % opcoesFiltradas.length);
-            } else if (e.key === 'ArrowUp') {
-              e.preventDefault();
-              setIndiceAtivo(i => (i - 1 + opcoesFiltradas.length) % opcoesFiltradas.length);
-            } else if (e.key === 'Enter') {
-              e.preventDefault();
-              const v = opcoesFiltradas[indiceAtivo];
-              if (v) selecionar(v);
-            } else if (e.key === 'Escape') {
-              setAberto(false);
-            }
-          }}
+          onFocus={e => { abrir(); e.target.select(); }}
+          onClick={abrir}
+          onKeyDown={onKeyDown}
           className="w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 pr-9 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors"
-          placeholder="Buscar vendedor... (setas + Enter pra selecionar)"
+          placeholder="Buscar vendedor... (setas + Enter)"
           autoComplete="off"
+          role="combobox"
+          aria-expanded={aberto}
+          aria-autocomplete="list"
         />
         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500 pointer-events-none" />
       </div>
@@ -134,7 +136,7 @@ export function VendedorSelector({ value, vendedorId, onChange, hideLabel }: Pro
           classes já cobertas usadas em DarkSelect/ConfirmModal. */}
       {aberto && opcoesFiltradas.length > 0 && pos && createPortal(
         <div
-          ref={dropdownRef}
+          ref={el => { dropdownRef.current = el; listaRef.current = el; }}
           style={{
             position: 'fixed',
             top: pos.top,
@@ -152,8 +154,10 @@ export function VendedorSelector({ value, vendedorId, onChange, hideLabel }: Pro
           {opcoesFiltradas.map((v, idx) => (
             <button
               key={v.id}
+              type="button"
+              data-nav={idx}
               onMouseDown={e => { e.preventDefault(); selecionar(v); }}
-              onMouseEnter={() => setIndiceAtivo(idx)}
+              onMouseEnter={() => setIndice(idx)}
               style={{
                 width: '100%',
                 display: 'flex',
@@ -163,10 +167,12 @@ export function VendedorSelector({ value, vendedorId, onChange, hideLabel }: Pro
                 cursor: 'pointer',
               }}
               className={`transition-colors duration-150 ${idx < opcoesFiltradas.length - 1 ? 'border-b border-gray-700/50' : ''} ${
-                idx === indiceAtivo ? 'bg-blue-900/30' : 'bg-transparent hover:bg-blue-900/20'
+                idx === indice ? 'bg-blue-900/30' : 'bg-transparent hover:bg-blue-900/20'
               }`}
             >
-              <span className="text-white" style={{ fontSize: 14, fontWeight: 600 }}>{v.nome}</span>
+              <span className="text-white" style={{ fontSize: 14, fontWeight: 600 }}>
+                {v.nome}{v.id === vendedorId ? '  ✓' : ''}
+              </span>
               <span className="text-gray-400" style={{ fontSize: 11 }}>{v.email}</span>
             </button>
           ))}

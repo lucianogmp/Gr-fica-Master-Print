@@ -11,6 +11,7 @@ import { correspondeABuscaEmCampos } from '../../lib/buscaFlexivel';
 import { resumoPlacaLinha } from '../../lib/placaCalc';
 import { MoneyInput } from '../ui/MoneyInput';
 import { QtdInput } from '../ui/QtdInput';
+import { useRolarItemAtivo } from '../../hooks/useListaTeclado';
 
 const fmtBRL = (v: number) => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -62,6 +63,7 @@ export function ItensEditor({ itens, onChange, onEditarProduto }: ItensEditorPro
   const [dropRect, setDropRect]         = useState<DOMRect | null>(null);
   // Navegação por teclado no dropdown de produtos (seta cima/baixo + Enter).
   const [indiceAtivo, setIndiceAtivo]   = useState(0);
+  const dropRef = useRef<HTMLDivElement>(null);
   const wrapRef  = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLDivElement>(null);
   const buscaInputRef = useRef<HTMLInputElement>(null);
@@ -155,6 +157,11 @@ export function ItensEditor({ itens, onChange, onEditarProduto }: ItensEditorPro
   }
 
   function handleBuscaKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    // Lista fechada: ↓ abre (útil depois de Esc ou com o campo vazio).
+    if (!mostrarSugestoes && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+      e.preventDefault(); atualizarRect(); setIndiceAtivo(0); setMostrar(true); return;
+    }
+    if (mostrarSugestoes && e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); setMostrar(false); return; }
     if (!mostrarSugestoes || produtosFiltrados.length === 0) return;
     if (e.key === 'ArrowDown') {
       e.preventDefault();
@@ -166,10 +173,10 @@ export function ItensEditor({ itens, onChange, onEditarProduto }: ItensEditorPro
       e.preventDefault();
       const p = produtosFiltrados[indiceAtivo];
       if (p) adicionarDoCatalogo(p);
-    } else if (e.key === 'Escape') {
-      setMostrar(false);
     }
   }
+
+  useRolarItemAtivo(dropRef, indiceAtivo, mostrarSugestoes);
 
   const subtotal = itens.reduce((s, i) => s + Number(i.total), 0);
   // Custo total dos itens — só admin/dono, nunca aparece em impressão/mensagem.
@@ -185,6 +192,7 @@ export function ItensEditor({ itens, onChange, onEditarProduto }: ItensEditorPro
   // vazando através do dropdown).
   const dropdown = mostrarSugestoes && dropRect ? createPortal(
     <div
+      ref={dropRef}
       style={{
         position: 'fixed',
         ...(dropRect.bottom + 330 > window.innerHeight && dropRect.top > 330
@@ -207,6 +215,8 @@ export function ItensEditor({ itens, onChange, onEditarProduto }: ItensEditorPro
         return (
           <button
             key={p.id}
+            type="button"
+            data-nav={idx}
             onMouseDown={e => { e.preventDefault(); adicionarDoCatalogo(p); }}
             onMouseEnter={() => setIndiceAtivo(idx)}
             style={{
