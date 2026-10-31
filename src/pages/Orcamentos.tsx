@@ -562,7 +562,6 @@ export function Orcamentos() {
   }
 
   const totalOrc    = orcamentos.filter(o => o.status !== 'convertido').length;
-  const aprovados   = orcamentos.filter(o => o.status === 'aprovado').length;
   const convertidos = orcamentos.filter(o => o.status === 'convertido').length;
   // Pedidos novos vindos do site que ninguém abriu ainda (bolinha vermelha no filtro).
   const novosLoja   = orcamentos.filter(o => o.origem === 'loja' && !o.loja_visto_em && o.status !== 'convertido').length;
@@ -806,7 +805,6 @@ export function Orcamentos() {
         <div className="flex items-center gap-2 flex-wrap">
           {/* KPIs — encaixados na mesma linha do título, compactos */}
           <KpiCard compact label="Total"       value={totalOrc}           icon={FileText} color="text-blue-400" />
-          <KpiCard compact label="Aprovados"   value={aprovados}          icon={Check } color="text-green-400" />
           <div onClick={() => navigate('/vendas')} className="cursor-pointer" title="Clique para ver as vendas geradas">
             <KpiCard compact label="Convertidos → Vendas" value={convertidos} icon={Zap} color="text-purple-400" />
           </div>
