@@ -15,8 +15,8 @@ import { QtdInput } from '../ui/QtdInput';
 const fmtBRL = (v: number) => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 const IN = [
-  'bg-[#111827]', 'border border-gray-700', 'rounded-md', 'px-1.5', 'py-1',
-  'text-white', 'text-xs', 'focus:outline-none', 'focus:border-blue-500',
+  'bg-[#111827]', 'border border-gray-700', 'rounded-md', 'px-1.5', 'py-1.5',
+  'text-white', 'text-sm', 'focus:outline-none', 'focus:border-blue-500',
   'transition-colors', 'w-full',
 ].join(' ');
 
@@ -253,7 +253,7 @@ export function ItensEditor({ itens, onChange, onEditarProduto }: ItensEditorPro
               <col style={{ width: 56 }} />
             </colgroup>
             <thead>
-              <tr className="text-[9px] font-bold text-gray-400 uppercase bg-gray-800/50 border-b border-gray-700">
+              <tr className="text-[11px] font-bold text-gray-400 uppercase bg-gray-800/50 border-b border-gray-700">
                 <th className="px-2 py-1 text-left">Descrição</th>
                 <th className="px-1 py-1 text-center">Un.</th>
                 <th className="px-1 py-1 text-center">Qtd.</th>
@@ -266,7 +266,7 @@ export function ItensEditor({ itens, onChange, onEditarProduto }: ItensEditorPro
             <tbody>
               {itens.map((it, i) => (
                 <tr key={i} className="border-b border-gray-800 last:border-0 hover:bg-gray-800/20">
-                  <td className="px-2 py-1">
+                  <td className="px-2 py-2">
                     {editandoNome === i ? (
                       <input autoFocus value={it.descricao} className={IN}
                         onChange={e => atualizarItem(i, 'descricao', e.target.value)}
@@ -274,7 +274,7 @@ export function ItensEditor({ itens, onChange, onEditarProduto }: ItensEditorPro
                         onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); setEditandoNome(null); } }} />
                     ) : (
                       <>
-                        <p className="text-xs text-white font-medium truncate" title={it.descricao}>{it.descricao}</p>
+                        <p className="text-sm text-white font-semibold truncate" title={it.descricao}>{it.descricao}</p>
                         {/* Detalhe vindo do orçamento: configuração da placa ou medidas do item (ex.: 5 × 5 cm) */}
                         {(() => {
                           const detalhe = it.detalhe_placa ? resumoPlacaLinha(it.detalhe_placa) : (it.obs ?? '');
@@ -283,7 +283,7 @@ export function ItensEditor({ itens, onChange, onEditarProduto }: ItensEditorPro
                       </>
                     )}
                   </td>
-                  <td className="px-1 py-1 text-center text-[11px] text-gray-400">{it.unidade ?? 'un'}</td>
+                  <td className="px-1 py-1 text-center text-xs text-gray-400">{it.unidade ?? 'un'}</td>
                   <td className="px-1 py-1">
                     <QtdInput id={`item-qtd-${i}`} value={String(it.quantidade ?? '')}
                       onChange={v => atualizarItem(i, 'quantidade', parseFloat(v) || 0)}
@@ -298,7 +298,7 @@ export function ItensEditor({ itens, onChange, onEditarProduto }: ItensEditorPro
                     <MoneyInput value={descontoEmReais(it as any)}
                       onChange={v => atualizarItem(i, 'desconto_valor' as any, v)} className={IN + ' text-right px-2 min-w-0'} placeholder="0,00" />
                   </td>
-                  <td className="px-2 py-1 text-right font-bold text-white text-xs whitespace-nowrap">
+                  <td className="px-2 py-1 text-right font-bold text-white text-sm whitespace-nowrap">
                     {fmtBRL(it.total)}
                   </td>
                   <td className="px-1 py-1">
