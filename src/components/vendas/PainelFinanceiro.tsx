@@ -399,6 +399,20 @@ function LinhaRascunho({ indice, total, linha, contas, formas, onChange, onRemov
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isVendedor, linha.forma_pagamento]);
 
+  // Parcela já nasce com a forma padrão (PIX), mas a conta de destino só era
+  // preenchida ao reescolher a forma. Aqui preenche sozinha, uma vez por forma,
+  // assim que as contas carregam (a pessoa ainda pode trocar ou limpar depois).
+  const autoAplicadoRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (isVendedor || linha.conta_id || contasAtivas.length === 0) return;
+    if (autoAplicadoRef.current === linha.forma_pagamento) return;
+    autoAplicadoRef.current = linha.forma_pagamento;
+    const doPix = contasCompativeis.filter(c => (c.formas_aceitas ?? []).includes(linha.forma_pagamento));
+    const auto = (doPix.length === 1 ? doPix[0] : contasCompativeis.length === 1 ? contasCompativeis[0] : null)?.id;
+    if (auto) onChange({ conta_id: auto });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isVendedor, contas, linha.forma_pagamento, linha.conta_id]);
+
   const formaSelecionada = formas.find(f => f.nome === linha.forma_pagamento);
   const permiteParc = formaSelecionada?.permite_parcelamento;
   const maxParcelas = Math.max(1, formaSelecionada?.max_parcelas ?? 1);
