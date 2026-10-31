@@ -12,7 +12,7 @@ import { DEFAULT_LAYOUT_ORCAMENTO } from '../types/layoutImpressao';
 import { marcarAlteracoesPendentes, limparAlteracoesPendentes } from '../lib/unsavedChangesGuard';
 import { OrdenarMenu, aplicarOrdenacao, Ordenacao } from '../components/ui/OrdenarMenu';
 import { FiltrosAvancados, aplicarFiltrosAvancados, FiltrosAvancadosValor } from '../components/ui/FiltrosAvancados';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useOrcamentos, useOrcamentoItens } from '../hooks/useOrcamentos';
 import { useAcabamentos } from '../hooks/useAcabamentos';
@@ -79,11 +79,22 @@ export function Orcamentos() {
   // ao atualizar a página ou reabrir a tela, volta a ficar oculto.
   const [mostrarCusto, setMostrarCusto] = useState(false);
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const { confirmar, ConfirmModal } = useConfirm();
   const [view, setView]               = useState<View>('lista');
   const [orcId, setOrcId]             = useState<string | null>(null);
   useRolarAoAbrir(`${view}:${orcId}`);
+
+  // Link vindo da venda ("Veio do orçamento #N"): abre esse orçamento direto.
+  useEffect(() => {
+    const alvo = searchParams.get('abrir');
+    if (!alvo || orcamentos.length === 0) return;
+    const o = orcamentos.find(x => x.id === alvo);
+    setSearchParams({}, { replace: true });
+    if (o) abrirDetalhe(o);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, orcamentos]);
   const [form, setForm]               = useState<Partial<Orcamento>>({ ...NOVO_ORC });
   const [itens, setItens]             = useState<OrcamentoItem[]>([]);
   const [showEditor, setShowEditor]   = useState(false);
@@ -562,7 +573,6 @@ export function Orcamentos() {
   }
 
   const totalOrc    = orcamentos.filter(o => o.status !== 'convertido').length;
-  const convertidos = orcamentos.filter(o => o.status === 'convertido').length;
   // Pedidos novos vindos do site que ninguém abriu ainda (bolinha vermelha no filtro).
   const novosLoja   = orcamentos.filter(o => o.origem === 'loja' && !o.loja_visto_em && o.status !== 'convertido').length;
   const valorTotal  = orcamentos.filter(o => o.status !== 'recusado' && o.status !== 'convertido').reduce((s, o) => s + Number(o.total ?? 0), 0);
@@ -805,9 +815,6 @@ export function Orcamentos() {
         <div className="flex items-center gap-2 flex-wrap">
           {/* KPIs — encaixados na mesma linha do título, compactos */}
           <KpiCard compact label="Total"       value={totalOrc}           icon={FileText} color="text-blue-400" />
-          <div onClick={() => navigate('/vendas')} className="cursor-pointer" title="Clique para ver as vendas geradas">
-            <KpiCard compact label="Convertidos → Vendas" value={convertidos} icon={Zap} color="text-purple-400" />
-          </div>
           <KpiCard compact label="Valor total" value={fmtBRL(valorTotal)} icon={Banknote} color="text-yellow-400" />
 
           <button onClick={() => setView('folhas')}

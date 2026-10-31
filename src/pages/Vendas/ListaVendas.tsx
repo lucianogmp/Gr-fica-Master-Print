@@ -377,7 +377,14 @@ export function ListaVendas({
                       </button>
                     </td>
                     <td className="px-5 py-3 text-gray-500 font-mono text-xs">{v.numero ? `#${v.numero}` : '—'}</td>
-                    <td className="px-5 py-3 font-medium text-white">{v.cliente_nome || '—'}</td>
+                    <td className="px-5 py-3 font-medium text-white">
+                      {v.cliente_nome || '—'}
+                      {v.orcamento_origem_numero ? (
+                        <span className="ml-2 align-middle text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-500/15 text-purple-300 border border-purple-500/30 whitespace-nowrap" title="Venda criada a partir de um orçamento">
+                          Orç. #{v.orcamento_origem_numero}
+                        </span>
+                      ) : null}
+                    </td>
                     <td className="px-5 py-3 text-gray-400 text-xs">{fmtData(v.data_venda)}</td>
                     <td className="px-5 py-3 text-gray-400 text-xs">{fmtData(v.data_entrega)}</td>
                     <td className="px-5 py-3 text-right">

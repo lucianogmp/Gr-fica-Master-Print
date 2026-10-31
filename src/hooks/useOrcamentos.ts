@@ -150,6 +150,8 @@ export function useOrcamentos() {
           observacoes:  orc.observacoes,
           tipo:         tituloVenda(orc.tipo),
           vendedor:     orc.vendedor ?? null,
+          orcamento_origem_id:     orc.id,
+          orcamento_origem_numero: orc.numero ?? null,
           vendedor_id:  orc.vendedor_id ?? null,
           valor_total:  orc.total ?? 0,
           data_venda:   new Date().toISOString().split('T')[0],

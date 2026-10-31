@@ -461,6 +461,13 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
             </h1>
             <p className="text-gray-500 text-sm">
               {isNovo ? 'Preencha os dados e salve' : 'Edite e salve as alterações'}
+              {!isNovo && (form as any).orcamento_origem_id && (
+                <button type="button"
+                  onClick={() => navigate(`/orcamentos?abrir=${(form as any).orcamento_origem_id}`)}
+                  className="ml-2 text-purple-300 hover:text-purple-200 underline text-xs font-bold">
+                  Veio do orçamento #{(form as any).orcamento_origem_numero ?? ''} — abrir
+                </button>
+              )}
             </p>
           </div>
           <div className="flex gap-2 flex-wrap">
