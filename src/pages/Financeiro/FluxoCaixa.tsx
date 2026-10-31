@@ -411,7 +411,7 @@ export function FluxoCaixa() {
             </h1>
             <p className="text-gray-500 text-sm">Movimentos de dinheiro físico e avulsos</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             {isVendedor ? (
               <div className="bg-[#1f2937] border border-gray-700 rounded-xl px-3 py-1.5 text-sm font-bold text-gray-300">
                 Hoje
@@ -544,7 +544,7 @@ export function FluxoCaixa() {
             )}
             <div className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full text-sm fluxo-dias">
                   <thead>
                     <tr className="text-gray-400 text-[10px] font-bold uppercase border-b border-gray-700 bg-gray-800/40">
                       <th className="px-3 py-3 text-center w-8"></th>
@@ -562,11 +562,12 @@ export function FluxoCaixa() {
                       const saiDia = movs.filter(m => m.tipo === 'saida' && m.origem !== 'transferencia').reduce((s, m) => s + Number(m.valor), 0);
                       return (
                         <Fragment key={data}>
-                          <tr className="bg-gray-800/60">
-                            <td colSpan={6} className="px-5 py-2">
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs font-bold text-white">{fmtData(data)}</span>
-                                <div className="flex gap-4 text-[11px]">
+                          <tr className="fluxo-dia-espaco" aria-hidden><td colSpan={6} /></tr>
+                          <tr className="fluxo-dia-cab">
+                            <td colSpan={6} className="px-5 py-2.5">
+                              <div className="flex items-center justify-between flex-wrap gap-x-4 gap-y-1">
+                                <span className="text-sm font-black text-white">{fmtData(data)}</span>
+                                <div className="flex gap-4 text-[11px] flex-wrap">
                                   {entDia > 0 && <span className="text-green-400 font-bold">+{fmtBRL(entDia)}</span>}
                                   {saiDia > 0 && <span className="text-red-400 font-bold">-{fmtBRL(saiDia)}</span>}
                                   <span className={`font-black ${entDia - saiDia >= 0 ? 'text-blue-400' : 'text-red-400'}`}>

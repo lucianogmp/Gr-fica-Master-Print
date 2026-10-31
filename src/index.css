@@ -593,3 +593,38 @@ textarea:focus,
   /* Divisores verticais de barras horizontais ficam soltos quando a linha quebra */
   #conteudo-principal .w-px { display: none !important; }
 }
+
+/* ─── Fluxo de caixa: cada dia vira um bloco bem separado ───
+   A zebra global (linha par/ímpar) misturava cabeçalho de dia com lançamentos
+   e deixava linhas inteiras mais escuras/claras sem motivo. Aqui: lançamentos
+   todos iguais, cabeçalho do dia com cor de destaque + faixa azul, e um
+   respiro entre um dia e outro. */
+table.fluxo-dias tbody tr,
+table.fluxo-dias tbody tr:nth-child(even) {
+  background: transparent !important;
+}
+table.fluxo-dias tbody tr:not(.fluxo-dia-cab):not(.fluxo-dia-espaco):hover {
+  background: var(--row-hover-bg) !important;
+}
+table.fluxo-dias tbody tr.fluxo-dia-espaco,
+table.fluxo-dias tbody tr.fluxo-dia-espaco:hover { background: transparent !important; border: 0 !important; height: 14px; }
+table.fluxo-dias tbody tr.fluxo-dia-espaco td { padding: 0 !important; border: 0 !important; height: 14px; }
+table.fluxo-dias tbody tr.fluxo-dia-espaco:first-child { display: none; }
+table.fluxo-dias tbody tr.fluxo-dia-cab,
+table.fluxo-dias tbody tr.fluxo-dia-cab:hover {
+  background: rgba(59, 130, 246, 0.16) !important;
+  border-top: 1px solid rgba(59, 130, 246, 0.35) !important;
+  border-bottom: 1px solid rgba(59, 130, 246, 0.35) !important;
+}
+table.fluxo-dias tbody tr.fluxo-dia-cab td { box-shadow: inset 4px 0 0 #3b82f6; }
+table.fluxo-dias tbody tr:not(.fluxo-dia-cab):not(.fluxo-dia-espaco) { border-bottom: 1px solid var(--row-border) !important; }
+:root[data-theme="light"] table.fluxo-dias tbody tr.fluxo-dia-cab,
+:root[data-theme="light"] table.fluxo-dias tbody tr.fluxo-dia-cab:hover {
+  background: rgba(37, 99, 235, 0.12) !important;
+  border-top-color: rgba(37, 99, 235, 0.35) !important;
+  border-bottom-color: rgba(37, 99, 235, 0.35) !important;
+}
+@media (max-width: 767px) {
+  table.fluxo-dias.tabela-cartoes tbody tr.fluxo-dia-espaco { display: block !important; height: 6px; margin: 0; padding: 0; border: 0 !important; background: transparent !important; }
+  table.fluxo-dias.tabela-cartoes tbody tr.fluxo-dia-cab { border-radius: 0.75rem; margin: 0 0 0.5rem; }
+}
