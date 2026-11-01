@@ -45,9 +45,9 @@ export function DashboardPedidosSite({ data, className = '' }: { data: Dados; cl
         ))}
       </div>
 
-      <div className="flex-1 overflow-auto space-y-1.5">
+      <div className="flex-1 overflow-auto space-y-1.5 flex flex-col">
         {(data?.recentes ?? []).length === 0 ? (
-          <p className="text-xs text-gray-600 py-3 text-center">Nenhum pedido do site neste mês</p>
+          <p className="flex-1 flex items-center justify-center text-xs text-gray-600 py-3 text-center">Nenhum pedido do site neste mês</p>
         ) : (data?.recentes ?? []).map(p => (
           <button key={p.id} onClick={() => navigate(`/orcamentos?abrir=${p.id}`)}
             className="w-full text-left text-[11px] flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-700/30 transition-colors">

@@ -90,10 +90,10 @@ export function Dashboard() {
         <DashboardSituacao data={data} className="xl:col-span-3" />
         <DashboardRankings
           data={data}
-          produtoClassName="xl:col-span-2"
+          produtoClassName="xl:col-span-3"
           clienteClassName="xl:col-span-3"
         />
-        <DashboardIndicators data={data} className="lg:col-span-2 xl:col-span-4" />
+        <DashboardIndicators data={data} className="lg:col-span-2 xl:col-span-3" />
       </div>
     </div>
   );

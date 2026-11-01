@@ -18,7 +18,7 @@ export function DashboardIndicators({ data, className = '' }: { data: any; class
       <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
         <TrendingUp className="w-3.5 h-3.5" /> Indicadores Financeiros
       </h3>
-      <div className="grid grid-cols-2 xl:grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2 flex-1 auto-rows-fr">
         {[
           { label: 'Ticket Médio',       valor: fmtBRL(data?.ticketMedio), sub: `${(data?.top5Clientes?.length ?? 0)} clientes`, cor: 'var(--chart-blue)', icon: Ticket },
           { label: 'Margem de Lucro',    valor: `${(data?.margemContrib ?? 0).toFixed(1)}%`, sub: '', cor: 'var(--chart-emerald)', icon: TrendingUp },

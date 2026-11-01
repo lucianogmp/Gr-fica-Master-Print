@@ -34,7 +34,10 @@ export function DashboardAccounts({ data }: { data: any }) {
           <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Contas a Receber</h3>
           <button onClick={() => navigate('/financeiro')} className="text-[10px] text-blue-400 hover:text-blue-300 font-bold transition-colors flex items-center gap-0.5">Ver todas <ArrowRight className="w-3 h-3" /></button>
         </div>
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-auto flex flex-col">
+          {(data?.contasReceber ?? []).length === 0 ? (
+            <div className="flex-1 flex items-center justify-center text-xs text-gray-600 py-6">Nenhuma conta a receber</div>
+          ) : (
           <div className="overflow-x-auto">
           <table className="dash-tab w-full text-xs">
             <thead>
@@ -46,9 +49,6 @@ export function DashboardAccounts({ data }: { data: any }) {
               </tr>
             </thead>
             <tbody>
-              {(data?.contasReceber ?? []).length === 0 && (
-                <tr><td colSpan={4} className="py-8 text-center text-gray-600">Nenhuma conta a receber</td></tr>
-              )}
               {(data?.contasReceber ?? []).map((c: any) => (
                 <tr key={c.id} className="border-b border-gray-800/50 hover:bg-gray-800/20">
                   <td className="py-2 text-gray-300 max-w-24 truncate">{oculto ? MASCARA : (c.cliente_nome || c.descricao)}</td>
@@ -61,7 +61,7 @@ export function DashboardAccounts({ data }: { data: any }) {
               ))}
             </tbody>
           </table>
-          </div>
+          </div>)}
         </div>
       </div>
 
@@ -71,7 +71,10 @@ export function DashboardAccounts({ data }: { data: any }) {
           <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Contas a Pagar</h3>
           <button onClick={() => navigate('/financeiro')} className="text-[10px] text-blue-400 hover:text-blue-300 font-bold transition-colors flex items-center gap-0.5">Ver todas <ArrowRight className="w-3 h-3" /></button>
         </div>
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-auto flex flex-col">
+          {(data?.contasPagar ?? []).length === 0 ? (
+            <div className="flex-1 flex items-center justify-center text-xs text-gray-600 py-6">Nenhuma conta a pagar</div>
+          ) : (
           <div className="overflow-x-auto">
           <table className="dash-tab w-full text-xs">
             <thead>
@@ -83,9 +86,6 @@ export function DashboardAccounts({ data }: { data: any }) {
               </tr>
             </thead>
             <tbody>
-              {(data?.contasPagar ?? []).length === 0 && (
-                <tr><td colSpan={4} className="py-8 text-center text-gray-600">Nenhuma conta a pagar</td></tr>
-              )}
               {(data?.contasPagar ?? []).map((c: any) => (
                 <tr key={c.id} className="border-b border-gray-800/50 hover:bg-gray-800/20">
                   <td className="py-2 text-gray-300 max-w-24 truncate">{oculto ? MASCARA : (c.cliente_nome || c.descricao)}</td>
@@ -98,7 +98,7 @@ export function DashboardAccounts({ data }: { data: any }) {
               ))}
             </tbody>
           </table>
-          </div>
+          </div>)}
         </div>
       </div>
     </>

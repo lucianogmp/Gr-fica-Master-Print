@@ -9,7 +9,7 @@ export function DashboardSituacao({ data, className = '' }: { data: any; classNa
           <p className="text-2xl font-black text-white">{data?.totalVendas ?? 0}</p>
           <p className="text-[9px] text-gray-600">Total</p>
         </div>
-        <div className="flex-1 flex flex-col justify-center space-y-1.5 min-w-0">
+        <div className="flex-1 flex flex-col justify-between self-stretch gap-1.5 min-w-0 py-1">
           {[
             { label: 'Pendente',    key: 'pendente',    cor: '#f59e0b' },
             { label: 'Em execução', key: 'em_execucao', cor: '#3b82f6' },
@@ -21,7 +21,7 @@ export function DashboardSituacao({ data, className = '' }: { data: any; classNa
             const tot = data?.totalVendas ?? 0;
             const pct = tot > 0 ? Math.round((val / tot) * 100) : 0;
             return (
-              <div key={s.key} className="flex items-center justify-between gap-2 text-[10px]">
+              <div key={s.key} className="flex items-center justify-between gap-2 text-xs">
                 <div className="flex items-center gap-1.5 min-w-0">
                   <div className="w-2 h-2 rounded-full" style={{ backgroundColor: s.cor }} />
                   <span className="text-gray-400 truncate">{s.label}</span>
