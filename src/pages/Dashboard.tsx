@@ -10,6 +10,7 @@ import { DashboardAlerts } from '../components/dashboard/DashboardAlerts';
 import { DashboardSituacao } from '../components/dashboard/DashboardSituacao';
 import { DashboardRankings } from '../components/dashboard/DashboardRankings';
 import { DashboardIndicators } from '../components/dashboard/DashboardIndicators';
+import { VersiculoDoDia } from '../components/dashboard/VersiculoDoDia';
 
 export function Dashboard() {
   const [mes, setMes] = useState(() => new Date().toISOString().slice(0, 7));
@@ -17,6 +18,7 @@ export function Dashboard() {
 
   if (isLoading) return (
     <div className="p-5 space-y-4">
+      <VersiculoDoDia />
       <div className="flex justify-between items-center">
         <div className="space-y-2">
           <div className="skeleton h-7 w-56 rounded-md" />
@@ -38,6 +40,7 @@ export function Dashboard() {
 
   return (
     <div className="p-4 space-y-3 min-h-screen">
+      <VersiculoDoDia />
       {/* Header com botão de refresh */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1">

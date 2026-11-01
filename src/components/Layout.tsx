@@ -9,6 +9,7 @@ import { EstoqueAlertBanner } from './EstoqueAlertBanner';
 import { BackupAlertBanner } from './BackupAlertBanner';
 import { rolarParaTopo } from '../hooks/useRolarAoAbrir';
 import { useTabelasMobile } from '../hooks/useTabelasMobile';
+import { useIniciarNaDashboard } from '../hooks/useIniciarNaDashboard';
 import { useTheme } from '../hooks/useTheme';
 import { useConfiguracoes } from '../hooks/useConfiguracoes';
 import { useRealtimeSync } from '../hooks/useRealtimeSync';
@@ -272,6 +273,7 @@ export function Layout() {
   // Fecha menu mobile ao navegar
   useEffect(() => { setMenuOpen(false); }, [location.pathname]);
   useTabelasMobile();
+  useIniciarNaDashboard();
   // Trocou de tela (ex.: abriu uma venda a partir da lista): começa no topo, não onde estava a rolagem da anterior.
   useEffect(() => { rolarParaTopo(); }, [location.pathname]);
 
