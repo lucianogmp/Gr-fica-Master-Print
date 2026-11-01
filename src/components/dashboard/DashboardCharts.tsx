@@ -16,7 +16,7 @@ interface ChartData {
   lucroMes: number;
 }
 
-const CARD_BASE = "bg-[#1a2332] border border-gray-700/60 rounded-xl";
+const CARD_BASE = "bg-[#1a2332] border border-gray-700/60 rounded-xl self-stretch flex flex-col";
 
 // Rosca de progresso: receita do mês ÷ ponto de equilíbrio.
 //  • até 100%: anel azul que vai enchendo;
@@ -70,8 +70,9 @@ export function DashboardCharts({ data }: { data: ChartData | undefined }) {
             <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500 inline-block" />Despesa</span>
           </div>
         </div>
-        <div className="h-40" ref={chart1Ref}>
+        <div className="relative flex-1 min-h-[10rem]" ref={chart1Ref}>
           {chart1Pronto && (
+          <div className="absolute inset-0">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data?.chart6 ?? []} barGap={2}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1f2937" />
@@ -84,6 +85,7 @@ export function DashboardCharts({ data }: { data: ChartData | undefined }) {
               <Bar dataKey="despesa" fill="#ef4444" radius={[3,3,0,0]} maxBarSize={28} />
             </BarChart>
           </ResponsiveContainer>
+          </div>
           )}
         </div>
       </div>
@@ -91,8 +93,8 @@ export function DashboardCharts({ data }: { data: ChartData | undefined }) {
       {/* Ponto de Equilíbrio */}
       <div className={`${CARD_BASE} lg:col-span-4 p-3`}>
         <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Ponto de Equilíbrio</h3>
-        <div className="grid grid-cols-2 gap-3 flex-1 items-center">
-          <div className="space-y-2">
+        <div className="grid grid-cols-2 gap-3 flex-1 items-stretch">
+          <div className="flex flex-col justify-between gap-2">
             {[
               { label: 'Receita Necessária (mês)', value: fmtBRL(data?.custoFixoTotal) },
               { label: 'Custo Fixo Total',          value: fmtBRL(data?.custoFixoTotal) },
