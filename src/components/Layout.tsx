@@ -11,6 +11,8 @@ import { rolarParaTopo } from '../hooks/useRolarAoAbrir';
 import { useTabelasMobile } from '../hooks/useTabelasMobile';
 import { useIniciarNaDashboard } from '../hooks/useIniciarNaDashboard';
 import { useTheme } from '../hooks/useTheme';
+import { limparAtividade } from '../lib/sessaoInatividade';
+import { useBloqueioInatividade } from '../hooks/useBloqueioInatividade';
 import { useConfiguracoes } from '../hooks/useConfiguracoes';
 import { useRealtimeSync } from '../hooks/useRealtimeSync';
 import { podeSairSemSalvar } from '../lib/unsavedChangesGuard';
@@ -274,6 +276,7 @@ export function Layout() {
   useEffect(() => { setMenuOpen(false); }, [location.pathname]);
   useTabelasMobile();
   useIniciarNaDashboard();
+  useBloqueioInatividade();
   // Trocou de tela (ex.: abriu uma venda a partir da lista): começa no topo, não onde estava a rolagem da anterior.
   useEffect(() => { rolarParaTopo(); }, [location.pathname]);
 
@@ -295,6 +298,7 @@ export function Layout() {
   }
 
   async function handleLogout() {
+    limparAtividade();
     await supabase.auth.signOut();
     toast.success('Até logo!');
     navigate('/login');

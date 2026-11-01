@@ -8,7 +8,7 @@
 
 export interface Versiculo { texto: string; ref: string; }
 
-export const VERSICULOS: Versiculo[] = [
+const BASE: Versiculo[] = [
   { ref: 'Provérbios 16:3',  texto: 'Entrega ao Senhor as tuas obras, e teus pensamentos serão estabelecidos.' },
   { ref: 'Salmos 37:5',      texto: 'Entrega o teu caminho ao Senhor; confia nele, e ele o fará.' },
   { ref: 'Filipenses 4:13',  texto: 'Posso todas as coisas em Cristo que me fortalece.' },
@@ -55,6 +55,13 @@ export const VERSICULOS: Versiculo[] = [
   { ref: 'Provérbios 19:21', texto: 'Muitos propósitos há no coração do homem, mas o conselho do Senhor permanecerá.' },
   { ref: 'Deuteronômio 8:18', texto: 'Antes te lembrarás do Senhor teu Deus, porque é ele o que te dá força para adquirires riqueza.' },
 ];
+
+// Lista completa = base + extras, sem repetir a mesma referência.
+import { VERSICULOS_EXTRA } from './versiculos_extra';
+export const VERSICULOS: Versiculo[] = (() => {
+  const vistos = new Set<string>();
+  return [...BASE, ...VERSICULOS_EXTRA].filter(v => (vistos.has(v.ref) ? false : (vistos.add(v.ref), true)));
+})();
 
 /** Versículo do dia: troca à meia-noite (data local), igual para todos os usuários. */
 export function versiculoDoDia(hoje: Date = new Date()): Versiculo {
