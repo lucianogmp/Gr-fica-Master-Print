@@ -74,15 +74,15 @@ export function DashboardCharts({ data }: { data: ChartData | undefined }) {
           {chart1Pronto && (
           <div className="absolute inset-0">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data?.chart6 ?? []} barGap={2}>
+            <BarChart data={data?.chart6 ?? []} barGap={2} margin={{ top: 6, right: 4, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1f2937" />
-              <XAxis dataKey="name" stroke="#4b5563" fontSize={10} tickLine={false} />
-              <YAxis stroke="#4b5563" fontSize={10} tickLine={false} axisLine={false}
+              <XAxis dataKey="name" stroke="#4b5563" fontSize={10} tickLine={false} height={20} tickMargin={4} />
+              <YAxis stroke="#4b5563" fontSize={10} tickLine={false} axisLine={false} width={26} tickMargin={2}
                 tickFormatter={v => oculto ? '' : v >= 1000 ? `${(v/1000).toFixed(0)}k` : String(v)} />
               <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: 8, fontSize: 11 }}
                 formatter={(v: any) => fmtBRL(v)} />
-              <Bar dataKey="vendas" fill="#10b981" radius={[3,3,0,0]} maxBarSize={28} />
-              <Bar dataKey="despesa" fill="#ef4444" radius={[3,3,0,0]} maxBarSize={28} />
+              <Bar dataKey="vendas" fill="#10b981" radius={[3,3,0,0]} maxBarSize={36} />
+              <Bar dataKey="despesa" fill="#ef4444" radius={[3,3,0,0]} maxBarSize={36} />
             </BarChart>
           </ResponsiveContainer>
           </div>
