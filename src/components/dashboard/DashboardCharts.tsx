@@ -1,5 +1,5 @@
 import {
-  ResponsiveContainer, BarChart, Bar, LineChart, Line,
+  ResponsiveContainer, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
 } from 'recharts';
 import { useContainerReady } from '../../hooks/useContainerReady';
@@ -19,9 +19,45 @@ interface ChartData {
 
 const CARD_BASE = "bg-[#1a2332] border border-gray-700/60 rounded-xl";
 
+// Rosca de progresso: receita do mês ÷ ponto de equilíbrio.
+//  • até 100%: anel azul que vai enchendo;
+//  • passou de 100%: anel cheio verde e o número continua crescendo (130%, 250%...).
+function RoscaEquilibrio({ receita, meta }: { receita: number; meta: number }) {
+  const pct = meta > 0 ? (receita / meta) * 100 : 0;
+  const bateu = meta > 0 && pct > 100;
+  const cor = bateu ? '#10b981' : '#3b82f6';
+  const R = 44, C = 2 * Math.PI * R;
+  const preenchido = Math.min(Math.max(pct, 0), 100) / 100 * C;
+  const diff = receita - meta;
+  return (
+    <div className="flex flex-col items-center justify-center">
+      <div className="relative w-32 h-32">
+        <svg viewBox="0 0 120 120" className="w-full h-full -rotate-90">
+          <circle cx="60" cy="60" r={R} fill="none" stroke="rgba(148,163,184,0.18)" strokeWidth="16" />
+          <circle cx="60" cy="60" r={R} fill="none" stroke={cor} strokeWidth="16"
+            strokeDasharray={`${preenchido} ${C}`}
+            style={{ transition: 'stroke-dasharray 700ms ease, stroke 300ms ease' }} />
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className="text-xl font-black leading-none" style={{ color: cor }}>
+            {pct.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%
+          </span>
+          <span className="text-[9px] text-gray-500 uppercase mt-1">da meta</span>
+        </div>
+      </div>
+      <p className={`text-[10px] mt-1.5 font-bold text-center ${bateu ? 'text-green-400' : 'text-gray-500'}`}>
+        {meta <= 0 ? 'Sem custos fixos cadastrados'
+          : pct >= 100 && diff < 0.005 ? 'Meta batida!'
+          : bateu ? `Meta batida — ${fmtBRL(diff)} acima`
+          : `Faltam ${fmtBRL(-diff)} para a meta`}
+      </p>
+    </div>
+  );
+}
+
+
 export function DashboardCharts({ data }: { data: ChartData | undefined }) {
   const { ref: chart1Ref, pronto: chart1Pronto } = useContainerReady<HTMLDivElement>();
-  const { ref: chart2Ref, pronto: chart2Pronto } = useContainerReady<HTMLDivElement>();
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
       {/* Gráfico 6 meses */}
@@ -72,22 +108,8 @@ export function DashboardCharts({ data }: { data: ChartData | undefined }) {
               <span className="text-sm font-black text-white">{fmtBRL(data?.pontoEq)}</span>
             </div>
           </div>
-          {/* Mini gráfico PE */}
-          <div className="h-24" ref={chart2Ref}>
-            {chart2Pronto && (
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={data?.chart6?.map((c, i) => ({ x: i, receita: c.receita, custo: (data?.custoFixoTotal ?? 0) })) ?? []}>
-                <Line type="monotone" dataKey="receita" stroke="#10b981" dot={false} strokeWidth={1.5} />
-                <Line type="monotone" dataKey="custo"   stroke="#ef4444" dot={false} strokeWidth={1} strokeDasharray="3 3" />
-                <XAxis dataKey="x" hide />
-                <YAxis hide />
-                <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: 6, fontSize: 10 }}
-                  formatter={(v: any) => fmtBRL(v)} />
-              </LineChart>
-            </ResponsiveContainer>
-            )}
-            <p className="text-[9px] text-gray-600 text-center mt-1">Receita Total ● Custo Total — Custo Fixo</p>
-          </div>
+          {/* Rosca do ponto de equilíbrio: azul até bater a meta, verde depois (e a % continua subindo) */}
+          <RoscaEquilibrio receita={data?.receitaMes ?? 0} meta={data?.pontoEq ?? 0} />
         </div>
       </div>
 
