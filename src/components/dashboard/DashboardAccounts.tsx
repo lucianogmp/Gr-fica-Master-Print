@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 
-import { moeda as fmtBRL, useOcultarValores } from '../../lib/privacidade';
+import { moeda as fmtBRL, useOcultarValores, MASCARA } from '../../lib/privacidade';
 const fmtData = (d?: string | null) => d ? new Date(d + 'T00:00:00').toLocaleDateString('pt-BR') : '—';
 
 const STATUS_COR: Record<string, string> = {
@@ -23,7 +23,7 @@ function StatusBadge({ status, venc }: { status: string; venc?: string | null })
 const CARD_BASE = "bg-[#1a2332] border border-gray-700/60 rounded-xl h-full flex flex-col";
 
 export function DashboardAccounts({ data }: { data: any }) {
-  useOcultarValores();
+  const oculto = useOcultarValores();
   const navigate = useNavigate();
 
   return (
@@ -51,7 +51,7 @@ export function DashboardAccounts({ data }: { data: any }) {
               )}
               {(data?.contasReceber ?? []).map((c: any) => (
                 <tr key={c.id} className="border-b border-gray-800/50 hover:bg-gray-800/20">
-                  <td className="py-2 text-gray-300 max-w-24 truncate">{c.cliente_nome || c.descricao}</td>
+                  <td className="py-2 text-gray-300 max-w-24 truncate">{oculto ? MASCARA : (c.cliente_nome || c.descricao)}</td>
                   <td className="py-2 text-gray-400">{fmtData(c.data_vencimento)}</td>
                   <td className="py-2 text-right font-bold text-green-400">{fmtBRL(c.valor)}</td>
                   <td className="py-2 text-center">
@@ -88,7 +88,7 @@ export function DashboardAccounts({ data }: { data: any }) {
               )}
               {(data?.contasPagar ?? []).map((c: any) => (
                 <tr key={c.id} className="border-b border-gray-800/50 hover:bg-gray-800/20">
-                  <td className="py-2 text-gray-300 max-w-24 truncate">{c.cliente_nome || c.descricao}</td>
+                  <td className="py-2 text-gray-300 max-w-24 truncate">{oculto ? MASCARA : (c.cliente_nome || c.descricao)}</td>
                   <td className="py-2 text-gray-400">{fmtData(c.data_vencimento)}</td>
                   <td className="py-2 text-right font-bold text-red-400">{fmtBRL(c.valor)}</td>
                   <td className="py-2 text-center">

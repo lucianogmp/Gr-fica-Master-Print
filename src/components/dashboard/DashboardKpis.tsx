@@ -43,7 +43,7 @@ function KpiCard({ title, value, pct, icon: Icon, cor, spark, invertPct = false,
           <Icon className="w-4 h-4" style={{ color: cor }} />
         </div>
       </div>
-      <div className={`h-8 -mx-1 mt-1.5 ${oculto ? 'blur-sm opacity-60' : ''}`} ref={chartRef}>
+      <div className="h-8 -mx-1 mt-1.5" ref={chartRef}>
         {chartPronto && (
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={spark}>

@@ -1,4 +1,4 @@
-import { moeda as fmtBRL, useOcultarValores } from '../../lib/privacidade';
+import { moeda as fmtBRL, useOcultarValores, MASCARA } from '../../lib/privacidade';
 
 const CARD_BASE = "bg-[#1a2332] border border-gray-700/60 rounded-xl h-full flex flex-col";
 
@@ -11,7 +11,7 @@ export function DashboardRankings({
   produtoClassName?: string;
   clienteClassName?: string;
 }) {
-  useOcultarValores();
+  const oculto = useOcultarValores();
   return (
     <>
       {/* Top 5 Produtos */}
@@ -50,7 +50,7 @@ export function DashboardRankings({
             <div key={i} className="flex items-center justify-between gap-2 text-xs">
               <div className="flex items-center gap-2 min-w-0">
                 <span className="text-[10px] font-black text-gray-600 w-4">{i + 1}</span>
-                <span className="text-gray-300 truncate">{c.nome}</span>
+                <span className="text-gray-300 truncate">{oculto ? MASCARA : c.nome}</span>
               </div>
               <span className="font-bold text-white flex-shrink-0">{fmtBRL(c.total)}</span>
             </div>

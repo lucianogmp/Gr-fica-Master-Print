@@ -70,14 +70,14 @@ export function DashboardCharts({ data }: { data: ChartData | undefined }) {
             <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500 inline-block" />Despesa</span>
           </div>
         </div>
-        <div className={`h-36 ${oculto ? 'blur-md opacity-50 pointer-events-none select-none' : ''}`} ref={chart1Ref}>
+        <div className="h-36" ref={chart1Ref}>
           {chart1Pronto && (
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data?.chart6 ?? []} barGap={2}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1f2937" />
               <XAxis dataKey="name" stroke="#4b5563" fontSize={10} tickLine={false} />
               <YAxis stroke="#4b5563" fontSize={10} tickLine={false} axisLine={false}
-                tickFormatter={v => v >= 1000 ? `${(v/1000).toFixed(0)}k` : String(v)} />
+                tickFormatter={v => oculto ? '' : v >= 1000 ? `${(v/1000).toFixed(0)}k` : String(v)} />
               <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: 8, fontSize: 11 }}
                 formatter={(v: any) => fmtBRL(v)} />
               <Bar dataKey="vendas" fill="#10b981" radius={[3,3,0,0]} maxBarSize={28} />
