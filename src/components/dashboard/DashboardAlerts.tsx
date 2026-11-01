@@ -1,11 +1,12 @@
 import { CheckCircle2, ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
 
 const fmtData = (d?: string | null) => d ? new Date(d + 'T00:00:00').toLocaleDateString('pt-BR') : '—';
-const fmtBRL = (v: number) => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+import { moeda as fmtBRL, useOcultarValores } from '../../lib/privacidade';
 
 const CARD_BASE = "bg-[#1a2332] border border-gray-700/60 rounded-xl h-full flex flex-col";
 
 export function DashboardAlerts({ data }: { data: any }) {
+  useOcultarValores();
   return (
     <div className={`${CARD_BASE} lg:col-span-1 p-3`}>
       <div className="flex items-center justify-between mb-2">

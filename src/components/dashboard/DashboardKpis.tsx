@@ -2,8 +2,7 @@ import { DollarSign, ShoppingCart, TrendingUp, Landmark, type LucideIcon, ArrowU
 import { LineChart, Line, ResponsiveContainer } from 'recharts';
 import { useContainerReady } from '../../hooks/useContainerReady';
 
-const fmtBRL = (v: number | null | undefined) =>
-  Number(v ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+import { moeda as fmtBRL, useOcultarValores, MASCARA } from '../../lib/privacidade';
 
 interface KpiData {
   receitaMes: number;
@@ -23,6 +22,7 @@ function KpiCard({ title, value, pct, icon: Icon, cor, spark, invertPct = false,
   title: string; value: number; pct: number; icon: LucideIcon;
   cor: string; spark: { v: number }[]; invertPct?: boolean; hideVar?: boolean;
 }) {
+  const oculto = useOcultarValores();
   const isPos = invertPct ? pct <= 0 : pct >= 0;
   const { ref: chartRef, pronto: chartPronto } = useContainerReady<HTMLDivElement>();
   return (
@@ -34,7 +34,7 @@ function KpiCard({ title, value, pct, icon: Icon, cor, spark, invertPct = false,
           {!hideVar && (
             <p className={`text-[10px] font-bold mt-0.5 flex items-center gap-0.5 ${isPos ? 'text-green-400' : 'text-red-400'}`}>
               {isPos ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}
-              {Math.abs(pct).toFixed(1)}% vs mês anterior
+              {oculto ? MASCARA : `${Math.abs(pct).toFixed(1)}%`} vs mês anterior
             </p>
           )}
         </div>
@@ -43,7 +43,7 @@ function KpiCard({ title, value, pct, icon: Icon, cor, spark, invertPct = false,
           <Icon className="w-4 h-4" style={{ color: cor }} />
         </div>
       </div>
-      <div className="h-8 -mx-1 mt-1.5" ref={chartRef}>
+      <div className={`h-8 -mx-1 mt-1.5 ${oculto ? 'blur-sm opacity-60' : ''}`} ref={chartRef}>
         {chartPronto && (
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={spark}>

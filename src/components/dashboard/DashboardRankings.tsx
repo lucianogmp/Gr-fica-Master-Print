@@ -1,4 +1,4 @@
-const fmtBRL = (v: number) => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+import { moeda as fmtBRL, useOcultarValores } from '../../lib/privacidade';
 
 const CARD_BASE = "bg-[#1a2332] border border-gray-700/60 rounded-xl h-full flex flex-col";
 
@@ -11,6 +11,7 @@ export function DashboardRankings({
   produtoClassName?: string;
   clienteClassName?: string;
 }) {
+  useOcultarValores();
   return (
     <>
       {/* Top 5 Produtos */}

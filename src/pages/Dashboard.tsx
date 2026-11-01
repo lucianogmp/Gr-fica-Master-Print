@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Eye, EyeOff } from 'lucide-react';
+import { alternarOcultar, useOcultarValores } from '../lib/privacidade';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { KpiGridSkeleton, CardSkeleton } from '../components/ui/Skeleton';
 import { DashboardHeader } from '../components/dashboard/DashboardHeader';
@@ -15,6 +16,7 @@ import { VersiculoDoDia } from '../components/dashboard/VersiculoDoDia';
 export function Dashboard() {
   const [mes, setMes] = useState(() => new Date().toISOString().slice(0, 7));
   const { data, isLoading, isFetching, refetch } = useDashboardData(mes);
+  const oculto = useOcultarValores();
 
   if (isLoading) return (
     <div className="p-5 space-y-4">
@@ -46,6 +48,14 @@ export function Dashboard() {
         <div className="flex-1">
           <DashboardHeader mes={mes} setMes={setMes} />
         </div>
+        <button
+          onClick={alternarOcultar}
+          title={oculto ? 'Mostrar valores' : 'Ocultar valores (a % do ponto de equilíbrio continua visível)'}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold border transition-all mt-1 flex-shrink-0 bg-gray-800 border-gray-700 text-gray-400 hover:border-blue-500 hover:text-blue-300 cursor-pointer"
+        >
+          {oculto ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+          <span className="max-sm:hidden">{oculto ? 'Mostrar' : 'Ocultar'}</span>
+        </button>
         <button
           onClick={() => refetch()}
           disabled={isFetching}

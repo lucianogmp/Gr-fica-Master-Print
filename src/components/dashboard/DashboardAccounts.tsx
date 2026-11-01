@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 
-const fmtBRL = (v: number) => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+import { moeda as fmtBRL, useOcultarValores } from '../../lib/privacidade';
 const fmtData = (d?: string | null) => d ? new Date(d + 'T00:00:00').toLocaleDateString('pt-BR') : '—';
 
 const STATUS_COR: Record<string, string> = {
@@ -23,6 +23,7 @@ function StatusBadge({ status, venc }: { status: string; venc?: string | null })
 const CARD_BASE = "bg-[#1a2332] border border-gray-700/60 rounded-xl h-full flex flex-col";
 
 export function DashboardAccounts({ data }: { data: any }) {
+  useOcultarValores();
   const navigate = useNavigate();
 
   return (

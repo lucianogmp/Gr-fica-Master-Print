@@ -4,8 +4,7 @@ import {
 } from 'recharts';
 import { useContainerReady } from '../../hooks/useContainerReady';
 
-const fmtBRL = (v: number | null | undefined) =>
-  Number(v ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+import { moeda as fmtBRL, useOcultarValores } from '../../lib/privacidade';
 
 interface ChartData {
   chart6: any[];
@@ -23,6 +22,7 @@ const CARD_BASE = "bg-[#1a2332] border border-gray-700/60 rounded-xl";
 //  • até 100%: anel azul que vai enchendo;
 //  • passou de 100%: anel cheio verde e o número continua crescendo (130%, 250%...).
 function RoscaEquilibrio({ receita, meta }: { receita: number; meta: number }) {
+  useOcultarValores();
   const pct = meta > 0 ? (receita / meta) * 100 : 0;
   const bateu = meta > 0 && pct > 100;
   const cor = bateu ? '#10b981' : '#3b82f6';
@@ -57,6 +57,7 @@ function RoscaEquilibrio({ receita, meta }: { receita: number; meta: number }) {
 
 
 export function DashboardCharts({ data }: { data: ChartData | undefined }) {
+  const oculto = useOcultarValores();
   const { ref: chart1Ref, pronto: chart1Pronto } = useContainerReady<HTMLDivElement>();
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
@@ -69,7 +70,7 @@ export function DashboardCharts({ data }: { data: ChartData | undefined }) {
             <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500 inline-block" />Despesa</span>
           </div>
         </div>
-        <div className="h-36" ref={chart1Ref}>
+        <div className={`h-36 ${oculto ? 'blur-md opacity-50 pointer-events-none select-none' : ''}`} ref={chart1Ref}>
           {chart1Pronto && (
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data?.chart6 ?? []} barGap={2}>

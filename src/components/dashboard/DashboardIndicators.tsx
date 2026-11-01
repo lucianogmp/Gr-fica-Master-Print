@@ -3,8 +3,7 @@ import {
   Ticket, TrendingUp, TrendingDown, AlertTriangle, ShoppingCart, Factory
 } from 'lucide-react';
 
-const fmtBRL = (v: number | null | undefined) =>
-  Number(v ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+import { moeda as fmtBRL, useOcultarValores, MASCARA } from '../../lib/privacidade';
 
 const fmtPct = (v: number) => `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`;
 
@@ -12,6 +11,7 @@ const CARD_BASE = "bg-[#1a2332] border border-gray-700/60 rounded-xl h-full flex
 
 export function DashboardIndicators({ data, className = '' }: { data: any; className?: string }) {
   const navigate = useNavigate();
+  const oculto = useOcultarValores();
 
   return (
     <div className={`${CARD_BASE} ${className} p-3`}>
@@ -32,7 +32,7 @@ export function DashboardIndicators({ data, className = '' }: { data: any; class
               <Icon className="w-3 h-3 flex-shrink-0" style={{ color: ind.cor }} />
               <span className="text-[9px] text-gray-500 font-bold uppercase truncate">{ind.label}</span>
             </div>
-            <p className="text-sm font-black" style={{ color: ind.cor }}>{ind.valor}</p>
+            <p className="text-sm font-black" style={{ color: ind.cor }}>{oculto && ind.label !== 'Ticket Médio' ? MASCARA : ind.valor}</p>
             {ind.sub && <p className="text-[9px] text-gray-600">{ind.sub}</p>}
           </div>
         ); })}
