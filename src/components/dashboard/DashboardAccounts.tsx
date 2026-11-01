@@ -29,14 +29,14 @@ export function DashboardAccounts({ data }: { data: any }) {
   return (
     <>
       {/* Contas a Receber */}
-      <div className={`${CARD_BASE} lg:col-span-4 p-3`}>
+      <div className={`${CARD_BASE} lg:col-span-3 p-3`}>
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Contas a Receber</h3>
           <button onClick={() => navigate('/financeiro')} className="text-[10px] text-blue-400 hover:text-blue-300 font-bold transition-colors flex items-center gap-0.5">Ver todas <ArrowRight className="w-3 h-3" /></button>
         </div>
         <div className="flex-1 overflow-auto">
           <div className="overflow-x-auto">
-          <table className="w-full text-xs">
+          <table className="dash-tab w-full text-xs">
             <thead>
               <tr className="text-gray-600 uppercase text-[9px] border-b border-gray-800">
                 <th className="pb-3 text-left font-bold">Cliente</th>
@@ -73,7 +73,7 @@ export function DashboardAccounts({ data }: { data: any }) {
         </div>
         <div className="flex-1 overflow-auto">
           <div className="overflow-x-auto">
-          <table className="w-full text-xs">
+          <table className="dash-tab w-full text-xs">
             <thead>
               <tr className="text-gray-600 uppercase text-[9px] border-b border-gray-800">
                 <th className="pb-3 text-left font-bold">Fornecedor</th>

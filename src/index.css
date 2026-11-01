@@ -628,3 +628,9 @@ table.fluxo-dias tbody tr:not(.fluxo-dia-cab):not(.fluxo-dia-espaco) { border-bo
   table.fluxo-dias.tabela-cartoes tbody tr.fluxo-dia-espaco { display: block !important; height: 6px; margin: 0; padding: 0; border: 0 !important; background: transparent !important; }
   table.fluxo-dias.tabela-cartoes tbody tr.fluxo-dia-cab { border-radius: 0.75rem; margin: 0 0 0.5rem; }
 }
+
+/* Tabelas compactas do Dashboard (Contas a Receber / Pagar) — cabem em 3 de 12 colunas */
+.dash-tab { table-layout: auto; }
+.dash-tab th { font-size: 9px !important; letter-spacing: 0.02em !important; padding: 0.35rem 0.4rem !important; white-space: nowrap; }
+.dash-tab td { font-size: 11px !important; padding: 0.4rem 0.4rem !important; }
+.dash-tab td:first-child { max-width: 5.5rem; }

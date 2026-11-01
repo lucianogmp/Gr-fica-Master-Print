@@ -15,7 +15,7 @@ export function DashboardAlerts({ data, pedidosSite }: { data: any; pedidosSite?
   const novosSite = pedidosSite?.novos ?? [];
   const totalAvisos = (data?.contasReceber?.length ?? 0) + (data?.contasPagar?.length ?? 0) + novosSite.length;
   return (
-    <div className={`${CARD_BASE} lg:col-span-2 p-3`}>
+    <div className={`${CARD_BASE} lg:col-span-3 p-3`}>
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Avisos e Notificações</h3>
         {totalAvisos > 0 && (
