@@ -190,7 +190,12 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando, mostrarCusto 
   // Override manual do total, usado pelas setas de arredondar (múltiplo de 5,
   // pra mais ou pra menos). Fica ativo até qualquer input que afete o cálculo
   // mudar de novo — aí o preview volta a ser automático.
-  const [totalManual, setTotalManual] = useState<number | null>(null);
+  // Ao reabrir um item já salvo, o total gravado (inclusive o arredondado à mão) é
+  // o valor que vale — senão o editor recalcula do zero e "esquece" o arredondamento.
+  const [totalManual, setTotalManual] = useState<number | null>(
+    editando && Number(editando.total) > 0 ? Number(editando.total) : null,
+  );
+  const primeiraRodada = useRef(true);
 
   // Detalhe adicional opcional pro tipo "m² Material" — a descrição principal
   // vem automaticamente do material selecionado (ex: "Adesivo de Papel"), e
@@ -221,6 +226,9 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando, mostrarCusto 
   // materialId, areaM2, etc.) — senão dá erro de "acessar antes de inicializar",
   // já que o array de dependências é avaliado na hora que o efeito é declarado.
   useEffect(() => {
+    // Na abertura do item salvo mantém o total gravado; só volta ao automático quando
+    // a pessoa muda algo que afeta o cálculo.
+    if (primeiraRodada.current) { primeiraRodada.current = false; return; }
     setTotalManual(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, tipo, materialId, precoM2, largura, altura, quantidade, precoLivre, areaM2, acabId, acabQtd, arteInclusa]);
@@ -908,7 +916,7 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando, mostrarCusto 
                   </button>
                 </div>
               </div>
-              {totalManual != null && (
+              {totalManual != null && Math.abs(totalManual - prev.total) > 0.005 && (
                 <p className="text-[10px] text-yellow-500">
                   Arredondado manualmente (calculado: {fmtBRL(prev.total)})
                 </p>
