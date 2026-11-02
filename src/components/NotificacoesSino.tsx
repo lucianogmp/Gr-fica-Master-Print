@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { createPortal } from 'react-dom';
 import { Bell, CheckCheck, Trash2, Globe, ArrowDownCircle, ArrowUpCircle, CheckCircle2, Package, Truck, HardDrive } from 'lucide-react';
 import { useNotificacoes, TipoNotif } from '../hooks/useNotificacoes';
 
@@ -13,12 +14,14 @@ const COR = {
 export function NotificacoesSino() {
   const [aberto, setAberto] = useState(false);
   const raiz = useRef<HTMLDivElement>(null);
+  const painel = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState({ top: 56, right: 8 });
   const navigate = useNavigate();
   const { notificacoes, naoLidas, lidas, marcarLida, marcarTodasLidas, limpar } = useNotificacoes();
 
   useEffect(() => {
     if (!aberto) return;
-    const fora = (e: MouseEvent | TouchEvent) => { if (!raiz.current?.contains(e.target as Node)) setAberto(false); };
+    const fora = (e: MouseEvent | TouchEvent) => { const alvo = e.target as Node; if (!raiz.current?.contains(alvo) && !painel.current?.contains(alvo)) setAberto(false); };
     const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setAberto(false); };
     document.addEventListener('mousedown', fora);
     document.addEventListener('touchstart', fora);
@@ -33,7 +36,11 @@ export function NotificacoesSino() {
   return (
     <div ref={raiz} className="relative">
       <button
-        onClick={() => setAberto(a => !a)}
+        onClick={() => {
+          const r = raiz.current?.getBoundingClientRect();
+          if (r) setPos({ top: r.bottom + 12, right: Math.max(8, window.innerWidth - r.right - 8) });
+          setAberto(a => !a);
+        }}
         className="relative text-gray-300 hover:text-white transition-colors"
         aria-label={naoLidas > 0 ? `Notificações (${naoLidas} novas)` : 'Notificações'}
         aria-expanded={aberto}
@@ -46,8 +53,9 @@ export function NotificacoesSino() {
         )}
       </button>
 
-      {aberto && (
-        <div className="fixed sm:absolute right-2 sm:right-0 top-14 sm:top-full sm:mt-3 w-[min(24rem,calc(100vw-1rem))] floating-panel z-50 flex flex-col max-h-[70vh]">
+      {aberto && createPortal(
+        <div ref={painel} style={{ position: 'fixed', top: pos.top, right: pos.right, zIndex: 9999, backdropFilter: 'none' }}
+          className="w-[min(24rem,calc(100vw-1rem))] floating-panel flex flex-col max-h-[70vh]">
           <div className="flex items-center justify-between gap-2 px-3 py-2.5 border-b border-gray-700">
             <h3 className="text-sm font-bold text-white">Notificações</h3>
             <div className="flex items-center gap-1">
@@ -85,7 +93,8 @@ export function NotificacoesSino() {
               );
             })}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
