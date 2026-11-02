@@ -142,6 +142,16 @@ export function usePagamentosVenda(vendaId: string | null) {
         throw new Error('Selecione a conta financeira que recebeu esse pagamento.');
       }
 
+      // Trava de coerência: Dinheiro só entra em conta do tipo Caixa; Pix/cartão/etc. nunca no Caixa.
+      {
+        const { data: contaSel } = await supabase.from('contas_bancarias').select('tipo,nome').eq('id', pag.conta_id).maybeSingle();
+        if (contaSel) {
+          const ehDinheiro = pag.forma_pagamento === 'Dinheiro';
+          if (ehDinheiro && contaSel.tipo !== 'caixa') throw new Error(`Dinheiro só pode entrar no caixa físico — "${contaSel.nome}" não é caixa.`);
+          if (!ehDinheiro && contaSel.tipo === 'caixa') throw new Error(`${pag.forma_pagamento} não pode entrar no caixa físico. Escolha a conta de destino correta.`);
+        }
+      }
+
       // Trava contra duplicidade: se essa parcela (mesmo id) já foi gravada —
       // por clique repetido em Salvar, por exemplo — não grava nem lança no caixa de novo.
       if (pag.id) {

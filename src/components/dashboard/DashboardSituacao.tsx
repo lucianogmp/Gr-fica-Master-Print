@@ -9,7 +9,7 @@ export function DashboardSituacao({ data, className = '' }: { data: any; classNa
           <p className="text-2xl font-black text-white">{data?.totalVendas ?? 0}</p>
           <p className="text-[9px] text-gray-600">Total</p>
         </div>
-        <div className="flex-1 flex flex-col justify-between self-stretch gap-1.5 min-w-0 py-1">
+        <div className="flex-1 flex flex-col justify-center gap-1.5 min-w-0">
           {[
             { label: 'Pendente',    key: 'pendente',    cor: '#f59e0b' },
             { label: 'Em execução', key: 'em_execucao', cor: '#3b82f6' },

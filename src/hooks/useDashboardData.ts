@@ -64,7 +64,7 @@ export function useDashboardData(mes: string) {
 
         // Caixa 6 meses — pro gráfico e pro mês anterior baterem com a
         // mesma regra do mês atual (ver soma abaixo).
-        supabase.from('caixa_movimentos').select('tipo,valor,data,origem')
+        supabase.from('caixa_movimentos').select('tipo,valor,data,origem,conta_id')
           .gte('data', start6),
 
         // Vendas — sem filtro de data para rankings e situação gerais
@@ -181,9 +181,17 @@ export function useDashboardData(mes: string) {
       // Soma de entradas/saídas do caixa físico num intervalo — usado pra
       // "Receita Total"/"Despesas Totais" contarem TODO o dinheiro que
       // mexe na empresa, e não só o que passa por venda/lançamento.
+      // NÃO entram aqui (senão contariam duas vezes): transferências, entradas que vieram de
+      // pagamento de venda (já somadas por pagamentos_venda), movimentos gerados por lançamento
+      // (já somados nos lançamentos) e movimentos de contas que não são o caixa físico.
       const somaCaixa = (tipo: 'entrada' | 'saida', s: string, e: string) =>
         caixaH
-          .filter(c => c.tipo === tipo && c.origem !== 'transferencia' && (c.data ?? '') >= s && (c.data ?? '') <= e)
+          .filter(c => {
+            const o = String(c.origem ?? '');
+            if (o === 'transferencia' || o === 'lancamento' || o.startsWith('pagamento_venda:')) return false;
+            return !c.conta_id || idsContasCaixa.has(c.conta_id);
+          })
+          .filter(c => c.tipo === tipo && (c.data ?? '') >= s && (c.data ?? '') <= e)
           .reduce((acc, c) => acc + Number(c.valor ?? 0), 0);
 
       // ─── KPIs do mês ────────────────────────────────────────────────────────

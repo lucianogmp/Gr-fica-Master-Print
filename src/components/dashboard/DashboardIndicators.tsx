@@ -1,6 +1,5 @@
-import { useNavigate } from 'react-router-dom';
 import { 
-  Ticket, TrendingUp, TrendingDown, AlertTriangle, ShoppingCart, Factory
+  Ticket, TrendingUp, TrendingDown, AlertTriangle
 } from 'lucide-react';
 
 import { moeda as fmtBRL, useOcultarValores, MASCARA } from '../../lib/privacidade';
@@ -10,7 +9,6 @@ const fmtPct = (v: number) => `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`;
 const CARD_BASE = "bg-[#1a2332] border border-gray-700/60 rounded-xl h-full flex flex-col";
 
 export function DashboardIndicators({ data, className = '' }: { data: any; className?: string }) {
-  const navigate = useNavigate();
   const oculto = useOcultarValores();
 
   return (
@@ -36,18 +34,6 @@ export function DashboardIndicators({ data, className = '' }: { data: any; class
             {ind.sub && <p className="text-[9px] text-gray-600">{ind.sub}</p>}
           </div>
         ); })}
-        <button onClick={() => navigate('/financeiro')}
-          className="bg-gray-800/30 border border-gray-700/50 rounded-lg p-2.5 text-left hover:bg-gray-700/30 transition-all min-w-0">
-          <div className="flex items-center gap-1 mb-1 min-w-0"><ShoppingCart className="w-3 h-3 text-gray-400 flex-shrink-0" /><span className="text-[9px] text-gray-500 font-bold uppercase truncate">Pedidos em Aberto</span></div>
-          <p className="text-sm font-black text-white">{data?.situacao?.pendente ?? 0}</p>
-          <p className="text-[9px] text-blue-400">Ver pedidos</p>
-        </button>
-        <button onClick={() => navigate('/producao')}
-          className="bg-gray-800/30 border border-gray-700/50 rounded-lg p-2.5 text-left hover:bg-gray-700/30 transition-all min-w-0">
-          <div className="flex items-center gap-1 mb-1 min-w-0"><Factory className="w-3 h-3 text-gray-400 flex-shrink-0" /><span className="text-[9px] text-gray-500 font-bold uppercase truncate">Prod. em Andamento</span></div>
-          <p className="text-sm font-black text-white">{data?.prodEmAnd ?? 0}</p>
-          <p className="text-[9px] text-blue-400">Acompanhar</p>
-        </button>
       </div>
     </div>
   );
