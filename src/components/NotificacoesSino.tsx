@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
-import { Bell, CheckCheck, Trash2, Globe, ArrowDownCircle, ArrowUpCircle, CheckCircle2, Package, Truck, HardDrive } from 'lucide-react';
+import { Bell, CheckCheck, Globe, ArrowDownCircle, ArrowUpCircle, CheckCircle2, Package, Truck, HardDrive } from 'lucide-react';
 import { useNotificacoes, TipoNotif } from '../hooks/useNotificacoes';
 
 const ICONE: Record<TipoNotif, any> = { site: Globe, pagar: ArrowDownCircle, receber: ArrowUpCircle, estoque: Package, entrega: Truck, backup: HardDrive };
@@ -17,7 +17,7 @@ export function NotificacoesSino() {
   const painel = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ top: 56, right: 8 });
   const navigate = useNavigate();
-  const { notificacoes, naoLidas, lidas, marcarLida, marcarTodasLidas, limpar } = useNotificacoes();
+  const { atualizar, notificacoes, naoLidas, marcarLida, marcarTodasLidas } = useNotificacoes();
 
   useEffect(() => {
     if (!aberto) return;
@@ -39,6 +39,7 @@ export function NotificacoesSino() {
         onClick={() => {
           const r = raiz.current?.getBoundingClientRect();
           if (r) setPos({ top: r.bottom + 12, right: Math.max(8, window.innerWidth - r.right - 8) });
+          atualizar();
           setAberto(a => !a);
         }}
         className="relative text-gray-300 hover:text-white transition-colors"
@@ -61,16 +62,12 @@ export function NotificacoesSino() {
             <div className="flex items-center gap-1">
               <button onClick={marcarTodasLidas} disabled={naoLidas === 0}
                 className="flex items-center gap-1 text-[11px] font-bold text-blue-400 hover:text-blue-300 disabled:text-gray-600 disabled:cursor-not-allowed px-2 py-1 rounded-md hover:bg-gray-700/40">
-                <CheckCheck className="w-3.5 h-3.5" /> Marcar lidas
-              </button>
-              <button onClick={limpar} disabled={notificacoes.length === 0}
-                className="flex items-center gap-1 text-[11px] font-bold text-gray-400 hover:text-red-400 disabled:text-gray-600 disabled:cursor-not-allowed px-2 py-1 rounded-md hover:bg-gray-700/40">
-                <Trash2 className="w-3.5 h-3.5" /> Limpar
+                <CheckCheck className="w-3.5 h-3.5" /> Marcar todas como lidas
               </button>
             </div>
           </div>
 
-          <div className="overflow-y-auto p-2 space-y-1.5">
+          <div className="overflow-y-auto overscroll-contain touch-pan-y p-2 space-y-1.5 max-h-[min(19rem,55vh)]">
             {notificacoes.length === 0 ? (
               <div className="flex flex-col items-center justify-center gap-2 py-10">
                 <CheckCircle2 className="w-8 h-8 text-green-500" />
@@ -78,17 +75,16 @@ export function NotificacoesSino() {
               </div>
             ) : notificacoes.map(n => {
               const Icon = ICONE[n.tipo];
-              const lida = lidas.has(n.key);
               return (
                 <button key={n.key}
                   onClick={() => { marcarLida(n.key); setAberto(false); navigate(n.rota); }}
-                  className={`w-full text-left flex items-start gap-2.5 p-2.5 rounded-lg border transition-colors hover:brightness-125 ${COR[n.nivel]} ${lida ? 'opacity-55' : ''}`}>
+                  className={`w-full text-left flex items-start gap-2.5 p-2.5 rounded-lg border transition-colors hover:brightness-125 ${COR[n.nivel]}`}>
                   <Icon className="w-4 h-4 flex-shrink-0 mt-0.5" />
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-bold truncate">{n.titulo}</p>
                     <p className="text-[11px] text-gray-400 truncate">{n.detalhe}</p>
                   </div>
-                  {!lida && <span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0 mt-1" />}
+                  <span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0 mt-1" />
                 </button>
               );
             })}

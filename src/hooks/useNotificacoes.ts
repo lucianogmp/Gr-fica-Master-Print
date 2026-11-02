@@ -1,7 +1,8 @@
 // Central de notificações do sino: junta os avisos do sistema (pedidos novos do site,
 // contas vencidas/vencendo) e guarda, por usuário neste aparelho, o que já foi lido ou limpo.
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './useAuth';
 import { useRole } from './useRole';
@@ -41,6 +42,8 @@ function gravarSet(chave: string, s: Set<string>) {
 export function useNotificacoes() {
   const { user } = useAuth();
   const { pode } = useRole();
+  const qc = useQueryClient();
+  const { pathname } = useLocation();
   const verSite    = pode('/orcamentos');
   const verPagar   = pode('/financeiro/pagar');
   const verReceber = pode('/financeiro/receber') || pode('/vendas/pedidos');
@@ -52,7 +55,7 @@ export function useNotificacoes() {
   const { data: itens = [] } = useQuery({
     queryKey: ['notificacoes', user?.id, verSite, verPagar, verReceber, verEstoque, verEntregas, isAdmin && backupAtrasado, diasDesdeUltimoBackup],
     enabled: !!user?.id,
-    refetchInterval: 60_000,
+    refetchInterval: 30_000,
     refetchOnWindowFocus: true,
     staleTime: 0,
     queryFn: async (): Promise<Notificacao[]> => {
@@ -79,7 +82,7 @@ export function useNotificacoes() {
         verEstoque ? supabase.from('materias_primas').select('id,nome,saldo,estoque_minimo,unidade').gt('estoque_minimo', 0) : Promise.resolve({ data: [] as any[] }),
         verEntregas ? supabase.from('vendas')
           .select('id,numero,cliente_nome,data_entrega,status')
-          .lt('data_entrega', hoje).not('status', 'in', '(entregue,finalizado,cancelado)')
+          .lte('data_entrega', limiteISO).not('status', 'in', '(entregue,finalizado,cancelado)')
           .order('data_entrega', { ascending: true }).limit(20) : Promise.resolve({ data: [] as any[] }),
       ]);
 
@@ -89,22 +92,23 @@ export function useNotificacoes() {
       const baixos = criticos.filter((m: any) => Number(m.saldo) > 0);
       const nomes = (l: any[]) => l.slice(0, 3).map(m => m.nome).join(', ') + (l.length > 3 ? ` e mais ${l.length - 3}` : '');
       const ids = (l: any[]) => l.map(m => m.id).sort().join(',');
-      if (zerados.length) out.push({ key: `estoque-zerado:${ids(zerados)}`, tipo: 'estoque', nivel: 'critico',
+      if (zerados.length) out.push({ key: `estoque-zerado:${ids(zerados)}:${hoje}`, tipo: 'estoque', nivel: 'critico',
         titulo: `${zerados.length} ${zerados.length === 1 ? 'item zerado' : 'itens zerados'} no estoque`, detalhe: nomes(zerados),
         rota: '/estoque/atual', quando: hoje });
-      if (baixos.length) out.push({ key: `estoque-baixo:${ids(baixos)}`, tipo: 'estoque', nivel: 'atencao',
+      if (baixos.length) out.push({ key: `estoque-baixo:${ids(baixos)}:${hoje}`, tipo: 'estoque', nivel: 'atencao',
         titulo: `${baixos.length} ${baixos.length === 1 ? 'item abaixo' : 'itens abaixo'} do mínimo`, detalhe: nomes(baixos),
         rota: '/estoque/atual', quando: hoje });
 
       (entregas.data ?? []).forEach((v: any) => {
-        const dias = diasEntre(v.data_entrega, hoje);
-        out.push({ key: `entrega:${v.id}`, tipo: 'entrega', nivel: 'critico',
-          titulo: `Entrega atrasada ${dias} ${dias === 1 ? 'dia' : 'dias'}`,
+        const dias = diasEntre(v.data_entrega, hoje); // >0 atrasada, 0 hoje, <0 ainda vai vencer
+        out.push({ key: `entrega:${v.id}:${hoje}`, tipo: 'entrega', nivel: dias > 0 ? 'critico' : 'atencao',
+          titulo: dias > 0 ? `Entrega atrasada ${dias} ${dias === 1 ? 'dia' : 'dias'}`
+            : dias === 0 ? 'Entrega prevista para hoje' : `Entrega em ${-dias} ${-dias === 1 ? 'dia' : 'dias'}`,
           detalhe: `Venda #${v.numero ?? '—'} · ${v.cliente_nome ?? 'Cliente'}`,
           rota: `/vendas/nova/${v.id}`, quando: v.data_entrega });
       });
 
-      if (isAdmin && backupAtrasado) out.push({ key: `backup:${Math.floor((diasDesdeUltimoBackup ?? 99) / 7)}`, tipo: 'backup', nivel: 'atencao',
+      if (isAdmin && backupAtrasado) out.push({ key: `backup:${hoje}`, tipo: 'backup', nivel: 'atencao',
         titulo: 'Backup atrasado',
         detalhe: diasDesdeUltimoBackup === null ? 'Nenhum backup registrado ainda.' : `Último backup há ${diasDesdeUltimoBackup} dias.`,
         rota: '/configuracoes/backup', quando: hoje });
@@ -123,7 +127,7 @@ export function useNotificacoes() {
           : dias === 0 ? 'vence hoje' : `vence em ${dias} ${dias === 1 ? 'dia' : 'dias'}`;
         const quem = l.cliente_nome || l.descricao || '';
         out.push({
-          key: `${tipo}:${l.id}:${atrasado ? 'atrasado' : dias <= 0 ? 'hoje' : 'breve'}`,
+          key: `${tipo}:${l.id}:${hoje}`,
           tipo, nivel: atrasado ? 'critico' : 'atencao',
           titulo: tipo === 'pagar' ? `Conta a pagar ${estado}` : `Recebimento ${estado}`,
           detalhe: `${l.descricao ?? quem} · ${brl(l.valor)}`,
@@ -140,14 +144,23 @@ export function useNotificacoes() {
     },
   });
 
+  useEffect(() => { qc.invalidateQueries({ queryKey: ['notificacoes'] }); }, [pathname, qc]);
+  useEffect(() => {
+    const cache = qc.getMutationCache();
+    return cache.subscribe(ev => {
+      if (ev?.type === 'updated' && (ev as any).action?.type === 'success') qc.invalidateQueries({ queryKey: ['notificacoes'] });
+    });
+  }, [qc]);
+
   const chaveLidas = `mp-notif-lidas:${user?.id ?? ''}`;
   const chaveLimpas = `mp-notif-limpas:${user?.id ?? ''}`;
   const [lidas, setLidas] = useState<Set<string>>(() => lerSet(chaveLidas));
   const [limpas, setLimpas] = useState<Set<string>>(() => lerSet(chaveLimpas));
   useEffect(() => { setLidas(lerSet(chaveLidas)); setLimpas(lerSet(chaveLimpas)); }, [chaveLidas, chaveLimpas]);
 
-  const visiveis = useMemo(() => itens.filter(n => !limpas.has(n.key)), [itens, limpas]);
-  const naoLidas = useMemo(() => visiveis.filter(n => !lidas.has(n.key)).length, [visiveis, lidas]);
+  // Lida = some da lista na hora. Como a chave muda a cada dia, o que continuar pendente volta amanhã.
+  const visiveis = useMemo(() => itens.filter(n => !lidas.has(n.key) && !limpas.has(n.key)), [itens, lidas, limpas]);
+  const naoLidas = visiveis.length;
 
   const marcarLida = useCallback((key: string) => {
     setLidas(prev => { const s = new Set(prev); s.add(key); gravarSet(chaveLidas, s); return s; });
@@ -159,5 +172,6 @@ export function useNotificacoes() {
     setLimpas(prev => { const s = new Set(prev); visiveis.forEach(n => s.add(n.key)); gravarSet(chaveLimpas, s); return s; });
   }, [chaveLimpas, visiveis]);
 
-  return { notificacoes: visiveis, naoLidas, lidas, marcarLida, marcarTodasLidas, limpar };
+  const atualizar = useCallback(() => { qc.invalidateQueries({ queryKey: ['notificacoes'] }); }, [qc]);
+  return { atualizar, notificacoes: visiveis, naoLidas, lidas, marcarLida, marcarTodasLidas, limpar };
 }
