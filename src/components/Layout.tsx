@@ -12,6 +12,7 @@ import { useTabelasMobile } from '../hooks/useTabelasMobile';
 import { useIniciarNaDashboard } from '../hooks/useIniciarNaDashboard';
 import { useTheme } from '../hooks/useTheme';
 import { limparAtividade } from '../lib/sessaoInatividade';
+import { NotificacoesSino } from './NotificacoesSino';
 import { useBloqueioInatividade } from '../hooks/useBloqueioInatividade';
 import { useConfiguracoes } from '../hooks/useConfiguracoes';
 import { useRealtimeSync } from '../hooks/useRealtimeSync';
@@ -568,9 +569,7 @@ export function Layout() {
             >
               {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
-            <button className="relative text-gray-300 hover:text-white transition-colors" aria-label="Notificações">
-              <Bell className="w-5 h-5" />
-            </button>
+            <NotificacoesSino />
           </div>
         </header>
 
