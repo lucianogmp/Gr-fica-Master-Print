@@ -5,8 +5,9 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './useAuth';
 import { useRole } from './useRole';
+import { useBackupStatus } from './useBackupStatus';
 
-export type TipoNotif = 'site' | 'pagar' | 'receber';
+export type TipoNotif = 'site' | 'pagar' | 'receber' | 'estoque' | 'entrega' | 'backup';
 export interface Notificacao {
   key: string;            // identifica o aviso (muda se o aviso muda, ex.: passou de "vence" para "atrasado")
   tipo: TipoNotif;
@@ -43,9 +44,13 @@ export function useNotificacoes() {
   const verSite    = pode('/orcamentos');
   const verPagar   = pode('/financeiro/pagar');
   const verReceber = pode('/financeiro/receber') || pode('/vendas/pedidos');
+  const verEstoque = pode('/estoque/atual');
+  const verEntregas = pode('/vendas/pedidos');
+  const { isAdmin } = useRole();
+  const { atrasado: backupAtrasado, diasDesdeUltimoBackup } = useBackupStatus();
 
   const { data: itens = [] } = useQuery({
-    queryKey: ['notificacoes', user?.id, verSite, verPagar, verReceber],
+    queryKey: ['notificacoes', user?.id, verSite, verPagar, verReceber, verEstoque, verEntregas, isAdmin && backupAtrasado, diasDesdeUltimoBackup],
     enabled: !!user?.id,
     refetchInterval: 60_000,
     refetchOnWindowFocus: true,
@@ -63,7 +68,7 @@ export function useNotificacoes() {
           .lte('data_vencimento', limiteISO)
           .order('data_vencimento', { ascending: true }).limit(30);
 
-      const [site, pagar, receber] = await Promise.all([
+      const [site, pagar, receber, estoque, entregas] = await Promise.all([
         verSite ? supabase.from('orcamentos')
           .select('id,numero,cliente_nome,total,created_at')
           .eq('origem', 'loja').is('loja_visto_em', null)
@@ -71,7 +76,38 @@ export function useNotificacoes() {
           .order('created_at', { ascending: false }).limit(20) : Promise.resolve({ data: [] as any[] }),
         verPagar ? pendentes('despesa') : Promise.resolve({ data: [] as any[] }),
         verReceber ? pendentes('receita') : Promise.resolve({ data: [] as any[] }),
+        verEstoque ? supabase.from('materias_primas').select('id,nome,saldo,estoque_minimo,unidade').gt('estoque_minimo', 0) : Promise.resolve({ data: [] as any[] }),
+        verEntregas ? supabase.from('vendas')
+          .select('id,numero,cliente_nome,data_entrega,status')
+          .lt('data_entrega', hoje).not('status', 'in', '(entregue,finalizado,cancelado)')
+          .order('data_entrega', { ascending: true }).limit(20) : Promise.resolve({ data: [] as any[] }),
       ]);
+
+      // Estoque: um aviso para zerados e outro para abaixo do mínimo (muda se a lista mudar).
+      const criticos = (estoque.data ?? []).filter((m: any) => Number(m.saldo) <= Number(m.estoque_minimo));
+      const zerados = criticos.filter((m: any) => Number(m.saldo) <= 0);
+      const baixos = criticos.filter((m: any) => Number(m.saldo) > 0);
+      const nomes = (l: any[]) => l.slice(0, 3).map(m => m.nome).join(', ') + (l.length > 3 ? ` e mais ${l.length - 3}` : '');
+      const ids = (l: any[]) => l.map(m => m.id).sort().join(',');
+      if (zerados.length) out.push({ key: `estoque-zerado:${ids(zerados)}`, tipo: 'estoque', nivel: 'critico',
+        titulo: `${zerados.length} ${zerados.length === 1 ? 'item zerado' : 'itens zerados'} no estoque`, detalhe: nomes(zerados),
+        rota: '/estoque/atual', quando: hoje });
+      if (baixos.length) out.push({ key: `estoque-baixo:${ids(baixos)}`, tipo: 'estoque', nivel: 'atencao',
+        titulo: `${baixos.length} ${baixos.length === 1 ? 'item abaixo' : 'itens abaixo'} do mínimo`, detalhe: nomes(baixos),
+        rota: '/estoque/atual', quando: hoje });
+
+      (entregas.data ?? []).forEach((v: any) => {
+        const dias = diasEntre(v.data_entrega, hoje);
+        out.push({ key: `entrega:${v.id}`, tipo: 'entrega', nivel: 'critico',
+          titulo: `Entrega atrasada ${dias} ${dias === 1 ? 'dia' : 'dias'}`,
+          detalhe: `Venda #${v.numero ?? '—'} · ${v.cliente_nome ?? 'Cliente'}`,
+          rota: `/vendas/nova/${v.id}`, quando: v.data_entrega });
+      });
+
+      if (isAdmin && backupAtrasado) out.push({ key: `backup:${Math.floor((diasDesdeUltimoBackup ?? 99) / 7)}`, tipo: 'backup', nivel: 'atencao',
+        titulo: 'Backup atrasado',
+        detalhe: diasDesdeUltimoBackup === null ? 'Nenhum backup registrado ainda.' : `Último backup há ${diasDesdeUltimoBackup} dias.`,
+        rota: '/configuracoes/backup', quando: hoje });
 
       (site.data ?? []).forEach((o: any) => out.push({
         key: `site:${o.id}`, tipo: 'site', nivel: 'info',

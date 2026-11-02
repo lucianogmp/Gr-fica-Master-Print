@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, CheckCheck, Trash2, Globe, ArrowDownCircle, ArrowUpCircle, CheckCircle2 } from 'lucide-react';
+import { Bell, CheckCheck, Trash2, Globe, ArrowDownCircle, ArrowUpCircle, CheckCircle2, Package, Truck, HardDrive } from 'lucide-react';
 import { useNotificacoes, TipoNotif } from '../hooks/useNotificacoes';
 
-const ICONE: Record<TipoNotif, any> = { site: Globe, pagar: ArrowDownCircle, receber: ArrowUpCircle };
+const ICONE: Record<TipoNotif, any> = { site: Globe, pagar: ArrowDownCircle, receber: ArrowUpCircle, estoque: Package, entrega: Truck, backup: HardDrive };
 const COR = {
   critico: 'text-red-400 bg-red-500/10 border-red-500/30',
   atencao: 'text-amber-400 bg-amber-500/10 border-amber-500/30',
@@ -47,7 +47,7 @@ export function NotificacoesSino() {
       </button>
 
       {aberto && (
-        <div className="fixed sm:absolute right-2 sm:right-0 top-14 sm:top-full sm:mt-3 w-[min(24rem,calc(100vw-1rem))] bg-[#1a2332] border border-gray-700 rounded-xl shadow-2xl z-50 flex flex-col max-h-[70vh]">
+        <div className="fixed sm:absolute right-2 sm:right-0 top-14 sm:top-full sm:mt-3 w-[min(24rem,calc(100vw-1rem))] floating-panel z-50 flex flex-col max-h-[70vh]">
           <div className="flex items-center justify-between gap-2 px-3 py-2.5 border-b border-gray-700">
             <h3 className="text-sm font-bold text-white">Notificações</h3>
             <div className="flex items-center gap-1">
