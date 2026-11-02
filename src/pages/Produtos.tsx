@@ -1,3 +1,4 @@
+import { AutoTextarea } from '../components/ui/AutoTextarea';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useProdutos } from '../hooks/useProdutos';
@@ -938,18 +939,18 @@ export function Produtos() {
               <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-1.5">
                 <ClipboardList className="w-3.5 h-3.5" /> Dados Básicos
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="md:col-span-2">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-x-3 gap-y-2.5">
+                <div className="md:col-span-12">
                   <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Nome *</label>
                   <input value={(form as any).nome} onChange={e => setF('nome', e.target.value)}
                     className={IN} placeholder="Ex: Lona Fosca" />
                 </div>
-                <div>
+                <div className="md:col-span-3">
                   <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">SKU</label>
                   <input value={(form as any).sku ?? ''} onChange={e => setF('sku', e.target.value)} className={IN} />
                 </div>
                 {/* Categoria */}
-                <div>
+                <div className="md:col-span-5">
                   <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Categoria</label>
                   <div className="flex gap-2">
                     <DarkSelect
@@ -966,7 +967,7 @@ export function Produtos() {
                     </button>
                   </div>
                 </div>
-                <div>
+                <div className="md:col-span-4">
                   <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Status</label>
                   <DarkSelect
                     value={(form as any).status}
@@ -979,14 +980,14 @@ export function Produtos() {
                     ]}
                   />
                 </div>
-                <div>
+                <div className="md:col-span-5">
                   <label className="text-xs font-bold text-gray-400 uppercase mb-1.5 flex items-center gap-1.5">
                     Tempo de Produção
                     <HelpTooltip texto="Só o tempo em que você ou a máquina estão realmente trabalhando pra fazer 1 unidade (ex.: 20 min). É o que gera o overhead no custo: custos fixos por hora × esse tempo + depreciação das máquinas escolhidas. NÃO coloque prazo de entrega nem tempo de espera aqui — pra isso use o campo 'Prazo de entrega'." />
                   </label>
                   <TempoProducaoInput valor={(form as any).tempo_producao ?? ''} onChange={v => setF('tempo_producao', v)} />
                 </div>
-                <div>
+                <div className="md:col-span-4">
                   <label className="text-xs font-bold text-gray-400 uppercase mb-1.5 flex items-center gap-1.5">
                     Prazo de entrega
                     <HelpTooltip texto="Em quantos dias úteis você entrega esse produto ao cliente (ex.: 2). É só informativo — NÃO entra no custo nem no preço. Deixe em branco se não tiver prazo fixo." />
@@ -998,14 +999,10 @@ export function Produtos() {
                     <span className="text-xs text-gray-500 whitespace-nowrap">dias úteis</span>
                   </div>
                 </div>
-                <div>
-                  <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Setor</label>
-                  <input value={(form as any).setor ?? ''} onChange={e => setF('setor', e.target.value)} className={IN} />
-                </div>
-                <div className="md:col-span-2">
+                <div className="md:col-span-12">
                   <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Descrição</label>
-                  <textarea rows={2} value={(form as any).descricao ?? ''} onChange={e => setF('descricao', e.target.value)}
-                    className={IN + ' resize-none'} />
+                  <AutoTextarea value={(form as any).descricao ?? ''} onChange={v => setF('descricao', v)}
+                    minRows={2} className={IN} />
                 </div>
               </div>
 
