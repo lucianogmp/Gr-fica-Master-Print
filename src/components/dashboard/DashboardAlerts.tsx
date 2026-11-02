@@ -45,22 +45,22 @@ export function DashboardAlerts({ data, pedidosSite }: { data: any; pedidosSite?
             <button onClick={() => navigate('/orcamentos')} className="text-[10px] text-blue-400 font-bold">+ {novosSite.length - 4} pedidos do site</button>
           )}
           {(data?.contasPagar ?? []).slice(0, 3).map((c: any) => (
-            <div key={c.id} className="text-[10px] flex items-start gap-2 p-2 bg-red-500/10 border border-red-500/20 rounded-lg">
+            <button key={c.id} onClick={() => navigate('/financeiro/pagar')} className="w-full text-left text-[10px] flex items-start gap-2 p-2 bg-red-500/10 border border-red-500/20 rounded-lg hover:bg-red-500/20 transition-colors">
               <ArrowDownCircle className="w-3.5 h-3.5 text-red-400 flex-shrink-0 mt-0.5" />
               <div>
                 <p className="font-bold text-red-300">{c.descricao}</p>
                 <p className="text-gray-500">{fmtData(c.data_vencimento)} · {fmtBRL(c.valor)}</p>
               </div>
-            </div>
+            </button>
           ))}
           {(data?.contasReceber ?? []).slice(0, 2).map((c: any) => (
-            <div key={c.id} className="text-[10px] flex items-start gap-2 p-2 bg-green-500/10 border border-green-500/20 rounded-lg">
+            <button key={c.id} onClick={() => navigate(c.venda_id ? `/vendas/nova/${c.venda_id}` : '/financeiro/receber')} className="w-full text-left text-[10px] flex items-start gap-2 p-2 bg-green-500/10 border border-green-500/20 rounded-lg hover:bg-green-500/20 transition-colors">
               <ArrowUpCircle className="w-3.5 h-3.5 text-green-400 flex-shrink-0 mt-0.5" />
               <div>
                 <p className="font-bold text-green-300">{oculto ? MASCARA : c.descricao}</p>
                 <p className="text-gray-500">{fmtData(c.data_vencimento)} · {fmtBRL(c.valor)}</p>
               </div>
-            </div>
+            </button>
           ))}
         </div>
       )}

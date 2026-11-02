@@ -81,14 +81,14 @@ export function useDashboardData(mes: string) {
 
         // Contas a receber (pendentes)
         supabase.from('lancamentos')
-          .select('id,descricao,cliente_nome,data_vencimento,valor,status')
+          .select('id,descricao,cliente_nome,data_vencimento,valor,status,venda_id')
           .eq('tipo', 'receita')
           .neq('status', 'pago').neq('status', 'cancelado')
           .order('data_vencimento', { ascending: true }).limit(5),
 
         // Contas a pagar (pendentes)
         supabase.from('lancamentos')
-          .select('id,descricao,cliente_nome,data_vencimento,valor,status')
+          .select('id,descricao,cliente_nome,data_vencimento,valor,status,venda_id')
           .eq('tipo', 'despesa')
           .neq('status', 'pago').neq('status', 'cancelado')
           .order('data_vencimento', { ascending: true }).limit(5),
