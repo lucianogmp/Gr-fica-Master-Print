@@ -94,9 +94,11 @@ export function useDashboardData(mes: string) {
           .order('data_vencimento', { ascending: true }).limit(5),
 
         // Itens de venda para top produtos
+        // Só itens de vendas do mês selecionado (não canceladas).
         supabase.from('venda_itens')
-          .select('descricao,total')
-          .limit(200),
+          .select('descricao,total,vendas!inner(data_venda,status)')
+          .gte('vendas.data_venda', start).lte('vendas.data_venda', end)
+          .neq('vendas.status', 'cancelado'),
 
         // ✅ Pagamentos de vendas dos últimos 6 meses — fonte de verdade para receita
         // juros_pct incluído para calcular valor líquido (bruto - taxa maquininha)
@@ -261,7 +263,7 @@ export function useDashboardData(mes: string) {
       // ─── Top 5 clientes ──────────────────────────────────────────────────────
 
       const clienteMap: Record<string, number> = {};
-      vendas.filter(v => v.status !== 'cancelado').forEach(v => {
+      vendas.filter(v => v.status !== 'cancelado' && (v.data_venda ?? '') >= start && (v.data_venda ?? '') <= end).forEach(v => {
         const nome = v.cliente_nome || 'Sem cliente';
         clienteMap[nome] = (clienteMap[nome] || 0) + Number(v.valor_total ?? 0);
       });
@@ -282,7 +284,7 @@ export function useDashboardData(mes: string) {
 
       // ─── Indicadores ─────────────────────────────────────────────────────────
 
-      const vendasComValor = vendas.filter(v => Number(v.valor_total) > 0);
+      const vendasComValor = vendas.filter(v => v.status !== 'cancelado' && Number(v.valor_total) > 0 && (v.data_venda ?? '') >= start && (v.data_venda ?? '') <= end);
       const ticketMedio = vendasComValor.length > 0
         ? vendasComValor.reduce((s, v) => s + Number(v.valor_total), 0) / vendasComValor.length
         : 0;
@@ -313,7 +315,7 @@ export function useDashboardData(mes: string) {
         contasReceber: recFut.data ?? [],
         contasPagar:   pagFut.data ?? [],
         top5Clientes, top5Produtos,
-        ticketMedio, inadimplencia, prodEmAnd,
+        ticketMedio, ticketQtd: vendasComValor.length, inadimplencia, prodEmAnd,
         totalVendasValor: vendas.reduce((s, v) => s + Number(v.valor_total ?? 0), 0),
       };
     },

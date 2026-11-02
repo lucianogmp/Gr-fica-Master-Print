@@ -20,7 +20,7 @@ export function DashboardIndicators({ data, className = '' }: { data: any; class
       </h3>
       <div className="grid grid-cols-2 gap-2 flex-1 auto-rows-fr">
         {[
-          { label: 'Ticket Médio',       valor: fmtBRL(data?.ticketMedio), sub: `${(data?.top5Clientes?.length ?? 0)} clientes`, cor: 'var(--chart-blue)', icon: Ticket },
+          { label: 'Ticket Médio',       valor: fmtBRL(data?.ticketMedio), sub: `${data?.ticketQtd ?? 0} ${(data?.ticketQtd ?? 0) === 1 ? 'venda' : 'vendas'} no mês`, cor: 'var(--chart-blue)', icon: Ticket },
           { label: 'Margem de Lucro',    valor: `${(data?.margemContrib ?? 0).toFixed(1)}%`, sub: '', cor: 'var(--chart-emerald)', icon: TrendingUp },
           { label: 'Inadimplência',      valor: `${(data?.inadimplencia ?? 0).toFixed(1)}%`, sub: '', cor: 'var(--chart-red)', icon: AlertTriangle },
           { label: 'Crescimento Mensal', valor: fmtPct(data?.pctReceita ?? 0), sub: '', cor: data?.pctReceita && data.pctReceita >= 0 ? 'var(--chart-emerald)' : 'var(--chart-red)', icon: TrendingDown },
