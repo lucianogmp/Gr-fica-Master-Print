@@ -529,9 +529,9 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando, mostrarCusto 
               Nenhum produto ativo cadastrado.
             </p>
           ) : (
-            <div ref={gridProdRef} className="grid grid-cols-2 gap-2 max-h-52 overflow-y-auto pr-1">
+            <div ref={gridProdRef} className="grid grid-cols-2 md:grid-cols-3 gap-1.5 max-h-[12.5rem] overflow-y-auto pr-1">
               {produtosFiltrados.length === 0 ? (
-                <p className="col-span-2 text-center text-xs text-gray-600 py-4">Nenhum produto encontrado.</p>
+                <p className="col-span-full text-center text-xs text-gray-600 py-4">Nenhum produto encontrado.</p>
               ) : produtosFiltrados.map((p, idx) => {
                 const eM2 = (p as any).unidade_medida === 'm2';
                 const ativoPorTeclado = idx === indiceAtivoProd;
@@ -543,7 +543,7 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando, mostrarCusto 
                     onClick={() => selecionarProduto(p)}
                     onMouseEnter={() => setIndiceAtivoProd(idx)}
                     className={[
-                      'text-left px-3 py-2.5 rounded-xl border transition-all',
+                      'text-left px-2.5 py-1.5 rounded-lg border transition-all',
                       prodSel?.id === p.id
                         ? 'bg-purple-600/30 border-purple-500 text-purple-200'
                         : ativoPorTeclado
@@ -559,14 +559,14 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando, mostrarCusto 
                         </span>
                       )}
                     </div>
-                    {p.sku && (
-                      <div className="text-[10px] text-gray-500 font-mono mt-0.5">{p.sku}</div>
-                    )}
-                    <div className="text-[11px] font-black text-green-400 mt-1">
-                      {Number(p.preco_venda ?? 0).toLocaleString('pt-BR', {
-                        style: 'currency', currency: 'BRL',
-                      })}
-                      {eM2 ? ' /m²' : ' /un'}
+                    <div className="text-[11px] font-black text-green-400 mt-0.5 flex items-baseline gap-1.5 min-w-0">
+                      <span className="flex-shrink-0">
+                        {Number(p.preco_venda ?? 0).toLocaleString('pt-BR', {
+                          style: 'currency', currency: 'BRL',
+                        })}
+                        {eM2 ? ' /m²' : ' /un'}
+                      </span>
+                      {p.sku && <span className="text-[9px] text-gray-500 font-mono font-normal truncate">{p.sku}</span>}
                     </div>
                   </button>
                 );
@@ -712,7 +712,7 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando, mostrarCusto 
                 Nenhum material cadastrado.
               </p>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5 max-h-44 overflow-y-auto pr-1">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5 max-h-[13.5rem] overflow-y-auto pr-1">
                 {materiais.map(m => (
                   <button
                     key={m.id}
