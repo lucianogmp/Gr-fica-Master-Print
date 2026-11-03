@@ -313,8 +313,15 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
 
   async function handleMudarStatus(novoStatus: StatusVenda) {
     setF('status', novoStatus);
+    // Marcou como entregue: a data de entrega passa a ser o dia em que foi marcada.
+    let dataEntregaHoje: string | undefined;
+    if (novoStatus === 'entregue') {
+      const d = new Date();
+      dataEntregaHoje = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      setF('data_entrega', dataEntregaHoje);
+    }
     if (vendaId && vendaId !== '__novo__') {
-      atualizarStatus({ id: vendaId, status: novoStatus });
+      atualizarStatus({ id: vendaId, status: novoStatus, data_entrega: dataEntregaHoje });
 
       if (novoStatus === 'producao') {
         try {

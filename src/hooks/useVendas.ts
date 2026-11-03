@@ -141,10 +141,10 @@ export function useVendas() {
   });
 
   const atualizarStatus = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: StatusVenda }) => {
+    mutationFn: async ({ id, status, data_entrega }: { id: string; status: StatusVenda; data_entrega?: string }) => {
       const { error } = await supabase
         .from('vendas')
-        .update({ status, updated_at: new Date().toISOString() })
+        .update({ status, ...(data_entrega ? { data_entrega } : {}), updated_at: new Date().toISOString() })
         .eq('id', id);
       if (error) throw error;
     },
