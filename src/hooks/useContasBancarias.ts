@@ -122,10 +122,14 @@ export function useSaldoContas() {
 
   const movimentos = query.data ?? [];
 
+  // Movimentos antigos sem conta vinculada sempre contaram como dinheiro físico (Fluxo de Caixa e
+  // Dashboard). Aqui entram no saldo da (primeira) conta tipo Caixa, pra todas as telas baterem.
+  const contaCaixaPadraoId = contas.find(c => c.ativo && c.tipo === 'caixa')?.id;
+
   const saldos = contas
     .filter(c => c.ativo)
     .map(c => {
-      const movsConta = movimentos.filter(m => m.conta_id === c.id);
+      const movsConta = movimentos.filter(m => m.conta_id === c.id || (!m.conta_id && c.id === contaCaixaPadraoId));
       const entradas  = movsConta.filter(m => m.tipo === 'entrada').reduce((s, m) => s + Number(m.valor), 0);
       const saidas    = movsConta.filter(m => m.tipo === 'saida').reduce((s, m) => s + Number(m.valor), 0);
       const saldo     = Number(c.saldo_inicial) + entradas - saidas;
