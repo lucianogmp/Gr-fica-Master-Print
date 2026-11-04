@@ -78,6 +78,6 @@ export interface Depreciacao {
   updated_at?: string;
 }
 
-export const CATEGORIAS_RECEITA = ['Venda', 'Serviço', 'Outros'];
-export const CATEGORIAS_DESPESA = ['Fornecedor', 'Aluguel', 'Salário', 'Impostos', 'Manutenção', 'Marketing', 'Outros'];
+export const CATEGORIAS_RECEITA = ['Venda', 'Serviço', 'Ajuste de Saldo', 'Outros'];
+export const CATEGORIAS_DESPESA = ['Fornecedor', 'Aluguel', 'Salário', 'Impostos', 'Manutenção', 'Marketing', 'Ajuste de Saldo', 'Outros'];
 export const FORMAS_PAGAMENTO   = ['Dinheiro', 'Pix', 'Cartão Débito', 'Cartão Crédito', 'Boleto', 'Transferência'];

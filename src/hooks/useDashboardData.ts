@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { ehAjusteSaldo } from '../lib/financeiroMes';
 import { supabase } from '../lib/supabase';
 
 function mesRange(mes: string) {
@@ -51,11 +52,11 @@ export function useDashboardData(mes: string) {
         contasRes,      // saldo inicial das contas — ponto de partida do saldo acumulado
       ] = await Promise.all([
         // Lançamentos do mês (receitas manuais sem venda_id + todas as despesas)
-        supabase.from('lancamentos').select('tipo,valor,status,categoria,venda_id')
+        supabase.from('lancamentos').select('tipo,valor,status,categoria,venda_id,descricao')
           .gte('data_vencimento', start).lte('data_vencimento', end),
 
         // Lançamentos 6 meses para gráfico de despesas
-        supabase.from('lancamentos').select('tipo,valor,status,data_vencimento,venda_id')
+        supabase.from('lancamentos').select('tipo,valor,status,data_vencimento,venda_id,categoria,descricao')
           .gte('data_vencimento', start6),
 
         // Caixa do mês
@@ -64,7 +65,7 @@ export function useDashboardData(mes: string) {
 
         // Caixa 6 meses — pro gráfico e pro mês anterior baterem com a
         // mesma regra do mês atual (ver soma abaixo).
-        supabase.from('caixa_movimentos').select('tipo,valor,data,origem,conta_id')
+        supabase.from('caixa_movimentos').select('tipo,valor,data,origem,conta_id,descricao')
           .gte('data', start6),
 
         // Vendas — sem filtro de data para rankings e situação gerais
@@ -118,8 +119,9 @@ export function useDashboardData(mes: string) {
         supabase.from('contas_bancarias').select('id,saldo_inicial,ativo,tipo'),
       ]);
 
-      const lanc     = lancRes.data ?? [];
-      const hist     = lancHist.data ?? [];
+      // Ajustes de saldo ('Diferença de conta') não são receita/despesa: ficam fora dos resultados.
+      const lanc     = (lancRes.data ?? []).filter(l => !ehAjusteSaldo(l as any));
+      const hist     = (lancHist.data ?? []).filter(l => !ehAjusteSaldo(l as any));
       const caixa    = caixaRes.data ?? [];
       const caixaH   = caixaHist.data ?? [];
       const caixaAll = caixaTudo.data ?? [];
@@ -188,7 +190,7 @@ export function useDashboardData(mes: string) {
         caixaH
           .filter(c => {
             const o = String(c.origem ?? '');
-            if (o === 'transferencia' || o === 'lancamento' || o.startsWith('pagamento_venda:')) return false;
+            if (o === 'transferencia' || o === 'lancamento' || o.startsWith('pagamento_venda:') || ehAjusteSaldo(c as any)) return false;
             return !c.conta_id || idsContasCaixa.has(c.conta_id);
           })
           .filter(c => c.tipo === tipo && (c.data ?? '') >= s && (c.data ?? '') <= e)
