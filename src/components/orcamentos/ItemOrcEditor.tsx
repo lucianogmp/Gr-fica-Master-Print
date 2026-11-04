@@ -164,8 +164,15 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando, mostrarCusto 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Ao editar, o sistema identifica sozinho onde o item nasceu: item de produto
+  // do catálogo (inclusive os vendidos por m²) é gravado como 'livre' + produto_id,
+  // então cai direto na aba Catálogo; m² Material / m² Manual abrem na própria aba.
+  const ehItemCatalogo = !!editando && editando.tipo_calculo !== 'metro'
+    && editando.tipo_calculo !== 'metro_manual' && !!editando.produto_id;
   const [tab, setTab] = useState<TabMode>(
-    editando ? (editando.tipo_calculo as TabMode) : (abaInicial ?? 'metro'),
+    editando
+      ? (ehItemCatalogo ? 'catalogo' : (editando.tipo_calculo as TabMode))
+      : (abaInicial ?? 'metro'),
   );
   const [tipo, setTipo] = useState<TipoCalculo>(editando?.tipo_calculo ?? 'metro');
   const [descricao, setDescricao] = useState(editando?.descricao ?? '');
@@ -183,7 +190,12 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando, mostrarCusto 
     editando?.altura_cm != null ? String(editando.altura_cm / 100).replace('.', ',') : ''
   );
   const [quantidade, setQuantidade] = useState(String(editando?.quantidade ?? 1));
-  const [precoLivre, setPrecoLivre] = useState(String(editando?.preco_unitario ?? ''));
+  // Item por m² do catálogo: o preço editável é o do m², não o unitário derivado.
+  const [precoLivre, setPrecoLivre] = useState(String(
+    ehItemCatalogo && editando?.area_m2 != null && editando?.preco_por_m2 != null
+      ? editando.preco_por_m2
+      : (editando?.preco_unitario ?? ''),
+  ));
   const [acabId, setAcabId] = useState(editando?.acabamento_id ?? '');
   const [acabQtd, setAcabQtd] = useState(String(editando?.acabamentos_por_folha ?? ''));
   const [arteInclusa, setArteInclusa] = useState(editando?.arte_inclusa ?? false);
@@ -245,6 +257,21 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando, mostrarCusto 
   const [areaM2, setAreaM2] = useState(
     editando?.area_m2 != null ? String(editando.area_m2) : '',
   );
+
+  // Editando item do catálogo: reabre já com o produto selecionado (sem precisar
+  // pesquisar de novo). Se o produto foi apagado/inativado, monta um equivalente
+  // a partir do próprio item.
+  useEffect(() => {
+    if (!ehItemCatalogo || !editando || prodSel) return;
+    const achado = produtos.find(pr => pr.id === editando.produto_id);
+    if (!achado && produtos.length === 0) return; // ainda carregando
+    setProdSel(achado ?? ({
+      id: editando.produto_id, nome: editando.descricao, status: 'ativo',
+      preco_venda: editando.preco_por_m2 ?? editando.preco_unitario,
+      unidade_medida: editando.area_m2 != null ? 'm2' : 'un',
+    } as unknown as Produto));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [produtos]);
 
   // Precisa vir DEPOIS de todos os estados que usa nas dependências (tab,
   // materialId, areaM2, etc.) — senão dá erro de "acessar antes de inicializar",
