@@ -221,6 +221,18 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando, mostrarCusto 
   const [mostrarSugProd, setMostrarSugProd] = useState(false);
   const [dropRectProd, setDropRectProd] = useState<DOMRect | null>(null);
   useRolarItemAtivo(gridProdRef, indiceAtivoProd, mostrarSugProd);
+  // A lista é position:fixed: acompanha a barra de busca quando a página rola
+  // (antes ficava parada na tela por cima de tudo).
+  useEffect(() => {
+    if (!mostrarSugProd) return;
+    function reposicionar(e?: Event) {
+      if (e && gridProdRef.current && e.target instanceof Node && gridProdRef.current.contains(e.target)) return;
+      if (buscaWrapRef.current) setDropRectProd(buscaWrapRef.current.getBoundingClientRect());
+    }
+    window.addEventListener('scroll', reposicionar, true);
+    window.addEventListener('resize', reposicionar);
+    return () => { window.removeEventListener('scroll', reposicionar, true); window.removeEventListener('resize', reposicionar); };
+  }, [mostrarSugProd]);
   useEffect(() => {
     function fora(e: MouseEvent) {
       if (buscaWrapRef.current && !buscaWrapRef.current.contains(e.target as Node)) setMostrarSugProd(false);
@@ -633,7 +645,7 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando, mostrarCusto 
                 }}
                 onFocus={() => {
                   if (buscaWrapRef.current) setDropRectProd(buscaWrapRef.current.getBoundingClientRect());
-                  setMostrarSugProd(true);
+                  if (buscaProd.trim()) setMostrarSugProd(true);
                 }}
                 onKeyDown={e => {
                   if (!mostrarSugProd && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
@@ -661,7 +673,7 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando, mostrarCusto 
             {produtos.filter(p => p.status === 'ativo').length === 0 && (
               <p className="text-[10px] text-yellow-400 mt-1">Nenhum produto ativo cadastrado em Produtos.</p>
             )}
-            {mostrarSugProd && dropRectProd && createPortal(
+            {mostrarSugProd && buscaProd.trim() !== '' && dropRectProd && createPortal(
               <div
                 ref={gridProdRef}
                 style={{

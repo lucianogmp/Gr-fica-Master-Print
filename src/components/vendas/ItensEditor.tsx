@@ -84,6 +84,18 @@ export function ItensEditor({ itens, onChange, onEditarProduto }: ItensEditorPro
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
+  // Lista position:fixed acompanha a barra de busca quando a página rola.
+  useEffect(() => {
+    if (!mostrarSugestoes) return;
+    function reposicionar(e?: Event) {
+      if (e && dropRef.current && e.target instanceof Node && dropRef.current.contains(e.target)) return;
+      if (inputRef.current) setDropRect(inputRef.current.getBoundingClientRect());
+    }
+    window.addEventListener('scroll', reposicionar, true);
+    window.addEventListener('resize', reposicionar);
+    return () => { window.removeEventListener('scroll', reposicionar, true); window.removeEventListener('resize', reposicionar); };
+  }, [mostrarSugestoes]);
+
   useEffect(() => {
     const idx = focarQtdRef.current;
     if (idx == null || idx >= itens.length) return;

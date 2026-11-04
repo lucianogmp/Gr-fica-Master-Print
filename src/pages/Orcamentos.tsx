@@ -943,7 +943,7 @@ export function Orcamentos() {
                             await converterEmVenda({ orc: o, itens: its ?? [] });
                             navigate('/vendas');
                           }}
-                          className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-purple-500/15 text-purple-400 hover:bg-purple-500/25 border border-purple-500/30">
+                          className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-sky-500/15 text-sky-400 hover:bg-sky-500/25 border border-sky-500/30">
                           Converter em Venda
                         </button>
                       )}
@@ -1060,7 +1060,7 @@ export function Orcamentos() {
           )}
           {itens.length > 0 && !jaConvertido && (
             <button onClick={handleConverter} disabled={isConvertendo || isSaving}
-              className="bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white px-5 py-2 rounded-xl font-bold text-sm transition-all">
+              className="bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-white px-5 py-2 rounded-xl font-bold text-sm transition-all">
               {isConvertendo ? 'Convertendo...' : 'Converter em Venda'}
             </button>
           )}
@@ -1375,7 +1375,7 @@ export function Orcamentos() {
               <div className="flex items-center gap-2 flex-wrap">
               {itens.length > 0 && !jaConvertido && (
                 <button onClick={handleConverter} disabled={isConvertendo || isSaving}
-                  className="bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all flex-shrink-0">
+                  className="bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all flex-shrink-0">
                   {isConvertendo ? 'Convertendo...' : 'Converter em Venda'}
                 </button>
               )}

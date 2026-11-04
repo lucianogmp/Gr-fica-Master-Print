@@ -13,6 +13,23 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+// Marca a hora da última tecla: o destaque só "puxa" a rolagem quando veio do
+// teclado. Com o mouse (roda do mouse passando itens sob o cursor) puxar a
+// rolagem brigava com o usuário e travava a lista.
+let ultimaTecla = 0;
+if (typeof document !== 'undefined') {
+  document.addEventListener('keydown', () => { ultimaTecla = Date.now(); }, true);
+}
+
+/** Rola SÓ o container da lista (nunca a página) pra mostrar o item. */
+function mostrarItemNaLista(lista: HTMLElement | null | undefined, item: HTMLElement | null | undefined) {
+  if (!lista || !item || Date.now() - ultimaTecla > 400) return;
+  const l = lista.getBoundingClientRect();
+  const i = item.getBoundingClientRect();
+  if (i.top < l.top) lista.scrollTop -= l.top - i.top;
+  else if (i.bottom > l.bottom) lista.scrollTop += i.bottom - l.bottom;
+}
+
 interface Opcoes<T> {
   itens: T[];
   aberto: boolean;
@@ -33,8 +50,7 @@ export function useListaTeclado<T>({ itens, aberto, abrir, fechar, onSelecionar,
   // Mantém o destaque visível ao andar pela lista.
   useEffect(() => {
     if (!aberto) return;
-    const el = listaRef.current?.querySelector<HTMLElement>(`[data-nav="${indice}"]`);
-    el?.scrollIntoView({ block: 'nearest' });
+    mostrarItemNaLista(listaRef.current, listaRef.current?.querySelector<HTMLElement>(`[data-nav="${indice}"]`));
   }, [indice, aberto, itens.length]);
 
   const onKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -78,6 +94,6 @@ export function useRolarItemAtivo(
 ) {
   useEffect(() => {
     if (!ativo) return;
-    containerRef.current?.querySelector<HTMLElement>(`[data-nav="${indice}"]`)?.scrollIntoView({ block: 'nearest' });
+    mostrarItemNaLista(containerRef.current, containerRef.current?.querySelector<HTMLElement>(`[data-nav="${indice}"]`));
   }, [containerRef, indice, ativo]);
 }
