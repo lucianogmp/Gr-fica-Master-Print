@@ -1,12 +1,22 @@
 // src/pages/Estoque/EstoqueAtual.tsx
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useMateriasPrimas, useMovimentos } from '../../hooks/useEstoque';
 import { MateriaPrima, statusEstoque } from '../../types/estoque';
 import { KpiCard } from '../../components/ui/KpiCard';
 import { ModalMP } from '../../components/estoque/ModalMP';
 import { ModalMov } from '../../components/estoque/ModalMov';
-import { Warehouse, Package, AlertTriangle, AlertCircle, DollarSign, Plus } from 'lucide-react';
+import { Warehouse, Package, AlertTriangle, AlertCircle, DollarSign, Plus, ArrowLeft } from 'lucide-react';
 import { correspondeABuscaEmCampos } from '../../lib/buscaFlexivel';
+
+// Rótulo amigável da tela de onde a pessoa veio (pro botão "Voltar").
+function rotuloOrigem(caminho: string): string {
+  const p = caminho.split('?')[0];
+  if (p === '/') return 'Dashboard';
+  const mapa: [string, string][] = [['/producao', 'Produção'], ['/orcamentos', 'Orçamentos'], ['/vendas', 'Vendas'],
+    ['/financeiro', 'Financeiro'], ['/crm', 'CRM'], ['/produtos', 'Produtos'], ['/relatorios', 'Relatórios'], ['/configuracoes', 'Configurações']];
+  return mapa.find(([pre]) => p.startsWith(pre))?.[1] ?? 'tela anterior';
+}
 
 const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -14,14 +24,32 @@ export function EstoqueAtual() {
   const { data: mps = [], isLoading, criar, atualizar } = useMateriasPrimas();
   const { registrar, isRegistrando } = useMovimentos();
 
+  // Vindo de um aviso ("Ver estoque"): mostra só os itens em alerta e lembra de onde a pessoa veio.
+  const location = useLocation();
+  const navigate = useNavigate();
+  const estadoNav = (location.state ?? {}) as { soAlertas?: boolean; voltarPara?: string };
+  const voltarPara = estadoNav.voltarPara && estadoNav.voltarPara !== location.pathname ? estadoNav.voltarPara : null;
+  const [soAlertas, setSoAlertas] = useState(!!estadoNav.soAlertas);
+  const movimentouRef = useRef(false);
+
   const [busca, setBusca]       = useState('');
   const [modalMP, setModalMP]   = useState(false);
   const [movTipo, setMovTipo]   = useState<'entrada' | 'saida'>('entrada');
   const [movMP, setMovMP]       = useState<MateriaPrima | null>(null);
 
+  const emAlerta = useMemo(() =>
+    mps.filter(m => ['zerado', 'baixo'].includes(statusEstoque(m).key)),
+    [mps]);
   const filtradas = useMemo(() =>
-    mps.filter(m => correspondeABuscaEmCampos([m.nome, m.categoria], busca)),
-    [mps, busca]);
+    (soAlertas ? emAlerta : mps).filter(m => correspondeABuscaEmCampos([m.nome, m.categoria], busca)),
+    [mps, emAlerta, soAlertas, busca]);
+
+  // Repôs tudo que estava em alerta → volta sozinho pra tela de onde veio.
+  useEffect(() => {
+    if (soAlertas && movimentouRef.current && emAlerta.length === 0 && voltarPara) {
+      navigate(voltarPara, { replace: true });
+    }
+  }, [soAlertas, emAlerta.length, voltarPara, navigate]);
 
   const zerados    = mps.filter(m => m.controla_estoque !== false && Number(m.saldo) <= 0).length;
   const baixos     = mps.filter(m => m.controla_estoque !== false && statusEstoque(m).key === 'baixo').length;
@@ -58,6 +86,28 @@ export function EstoqueAtual() {
           </button>
         </div>
       </div>
+
+      {soAlertas && (
+        <div className="flex items-center justify-between gap-3 flex-wrap bg-yellow-500/10 border border-yellow-500/30 rounded-xl px-4 py-2.5">
+          <p className="text-xs font-bold text-yellow-300 flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4" />
+            {emAlerta.length === 0
+              ? 'Tudo reposto! Nenhum item em alerta.'
+              : `Mostrando só os ${emAlerta.length} ${emAlerta.length === 1 ? 'item em alerta' : 'itens em alerta'} (zerados ou abaixo do mínimo).`}
+          </p>
+          <div className="flex items-center gap-3">
+            <button onClick={() => setSoAlertas(false)} className="text-[11px] font-bold text-blue-400 hover:text-blue-300 underline">
+              Ver todo o estoque
+            </button>
+            {voltarPara && (
+              <button onClick={() => navigate(voltarPara)}
+                className="flex items-center gap-1.5 text-[11px] font-bold bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg transition-colors">
+                <ArrowLeft className="w-3.5 h-3.5" /> Voltar para {rotuloOrigem(voltarPara)}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">
         <div className="p-4 border-b border-gray-700">
@@ -141,7 +191,7 @@ export function EstoqueAtual() {
         tipo={movTipo}
         materia={movMP}
         onClose={() => setMovMP(null)}
-        onConfirmar={registrar}
+        onConfirmar={async (d: any) => { const r = await (registrar as any)(d); movimentouRef.current = true; return r; }}
       />
     </div>
   );

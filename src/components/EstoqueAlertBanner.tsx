@@ -1,6 +1,6 @@
 // src/components/EstoqueAlertBanner.tsx
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { AlertTriangle, X, ChevronDown, ChevronUp, Wifi, WifiOff } from 'lucide-react';
 import { useEstoqueRealtime } from '../hooks/useEstoqueRealtime';
 
@@ -9,6 +9,7 @@ export function EstoqueAlertBanner() {
   const [expandido, setExpandido] = useState(false);
   const [fechado, setFechado]     = useState(false);
   const navigate                  = useNavigate();
+  const location                  = useLocation();
 
   // Sem alertas ou fechado pelo usuário — não renderiza nada
   if (totalAlertas === 0 || fechado) return null;
@@ -45,7 +46,7 @@ export function EstoqueAlertBanner() {
 
           <div className="flex items-center gap-2 flex-shrink-0">
             <button
-              onClick={() => navigate('/estoque')}
+              onClick={() => navigate('/estoque/atual', { state: { soAlertas: true, voltarPara: location.pathname + location.search } })}
               className="text-xs font-bold text-yellow-400 hover:text-yellow-300 underline transition-colors"
             >
               Ver estoque

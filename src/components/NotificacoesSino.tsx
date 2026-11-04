@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { Bell, CheckCheck, Globe, ArrowDownCircle, ArrowUpCircle, CheckCircle2, Package, Truck, HardDrive } from 'lucide-react';
 import { useNotificacoes, TipoNotif } from '../hooks/useNotificacoes';
@@ -17,6 +17,7 @@ export function NotificacoesSino() {
   const painel = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ top: 56, right: 8 });
   const navigate = useNavigate();
+  const location = useLocation();
   const { atualizar, notificacoes, naoLidas, marcarLida, marcarTodasLidas } = useNotificacoes();
 
   useEffect(() => {
@@ -77,7 +78,7 @@ export function NotificacoesSino() {
               const Icon = ICONE[n.tipo];
               return (
                 <button key={n.key}
-                  onClick={() => { marcarLida(n.key); setAberto(false); navigate(n.rota); }}
+                  onClick={() => { marcarLida(n.key); setAberto(false); navigate(n.rota, n.tipo === 'estoque' ? { state: { soAlertas: true, voltarPara: location.pathname + location.search } } : undefined); }}
                   className={`w-full text-left flex items-start gap-2.5 p-2.5 rounded-lg border transition-colors hover:brightness-125 ${COR[n.nivel]}`}>
                   <Icon className="w-4 h-4 flex-shrink-0 mt-0.5" />
                   <div className="min-w-0 flex-1">
