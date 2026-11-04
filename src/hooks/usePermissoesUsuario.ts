@@ -6,9 +6,12 @@ import { supabase } from '../lib/supabase';
  * cargo), já resolvidas pelo banco via minhas_permissoes(). Usado pelo
  * useRole() pra decidir o que mostrar no menu/telas.
  */
-export function useMinhasPermissoesEfetivas() {
+export function useMinhasPermissoesEfetivas(userId?: string | null) {
   return useQuery({
-    queryKey: ['minhas-permissoes'],
+    // Chave por usuário: sem isso, quem entrava depois no mesmo navegador
+    // herdava (por até 5 min) as permissões de quem tinha saído.
+    queryKey: ['minhas-permissoes', userId ?? null],
+    enabled: !!userId,
     queryFn: async (): Promise<Record<string, boolean>> => {
       const { data, error } = await supabase.rpc('minhas_permissoes');
       if (error) throw error;

@@ -104,10 +104,15 @@ function PR({ rota, children }: { rota: string; children: React.ReactNode }) {
 // vendedor não tem Dashboard: em vez de bater na tela de "Acesso negado",
 // manda ele direto para a área que ele de fato usa (Pedidos de venda).
 function IndexRoute() {
-  const { role } = useRole();
+  const { pode, carregandoPermissoes } = useRole();
 
-  if (role === 'vendedor') {
-    return <Navigate to="/vendas/pedidos" replace />;
+  if (carregandoPermissoes) return <PageLoadingFallback />;
+
+  // Sem permissão no Dashboard: vai pra primeira área que a pessoa pode usar.
+  if (!pode('/')) {
+    const destino = ['/vendas/pedidos', '/producao', '/crm/clientes', '/produtos/catalogo', '/estoque/atual',
+      '/financeiro/fluxo-caixa', '/relatorios/vendas'].find(r => pode(r));
+    if (destino) return <Navigate to={destino} replace />;
   }
 
   return (

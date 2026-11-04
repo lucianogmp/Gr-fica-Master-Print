@@ -22,9 +22,13 @@ export function useRole() {
   // estático de cargo — o mesmo que o banco usa como padrão, então o
   // resultado bate. A segurança de verdade mora nas policies do banco;
   // isso aqui só decide o que aparece na tela.
-  const { data: permissoesEfetivas } = useMinhasPermissoesEfetivas();
+  const { data: permissoesEfetivas, isError: permErro } = useMinhasPermissoesEfetivas(user?.id);
+  // Enquanto as permissões do banco não chegam, NÃO libera nada (antes caía no
+  // padrão do cargo e o vendedor via, por instantes, telas bloqueadas pra ele).
+  const carregandoPermissoes = !!user && !permissoesEfetivas && !permErro;
 
   function pode(rota: string): boolean {
+    if (carregandoPermissoes) return false;
     if (permissoesEfetivas && rota in permissoesEfetivas) return permissoesEfetivas[rota];
     return temPermissao(role, rota);
   }
@@ -37,6 +41,7 @@ export function useRole() {
     isFinanceiro: role === 'financeiro',
     isProducao:   role === 'producao',
     pode,
+    carregandoPermissoes,
     // Ver custos/margens nos orçamentos e gerar o PDF de custos. Padrão:
     // dono e admin. Liberável por usuário em Configurações > Usuários >
     // Permissões (rota '/orcamentos/custos'). Vendedor só com liberação.

@@ -15,18 +15,18 @@ const CHAVE = 'mp-sessao-iniciada';
 export function useIniciarNaDashboard() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const { role, pode } = useRole();
+  const { role, pode, carregandoPermissoes } = useRole();
 
   useEffect(() => {
     let jaIniciou = false;
     try { jaIniciou = sessionStorage.getItem(CHAVE) === '1'; } catch { /* sem storage: age só uma vez por carregamento */ }
     if (jaIniciou) return;
     // Espera saber o cargo pra decidir (evita marcar como iniciado antes da hora).
-    if (!role) return;
+    if (!role || carregandoPermissoes) return;
     try { sessionStorage.setItem(CHAVE, '1'); } catch { /* ignora */ }
-    if (pathname !== '/' && role !== 'vendedor' && pode('/')) {
+    if (pathname !== '/' && pode('/')) {
       navigate('/', { replace: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [role]);
+  }, [role, carregandoPermissoes]);
 }

@@ -16,7 +16,11 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, rota }: ProtectedRouteProps) {
-  const { role, pode, semRole } = useRole();
+  const { role, pode, semRole, carregandoPermissoes } = useRole();
+
+  if (carregandoPermissoes) {
+    return <div className="p-8 text-center text-sm text-gray-500 animate-pulse">Carregando permissões...</div>;
+  }
 
   // Usuário autenticado mas sem role configurado
   // Mostra aviso em vez de redirecionar para evitar loop
