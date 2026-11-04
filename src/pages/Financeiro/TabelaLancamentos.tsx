@@ -2,6 +2,8 @@
 // Tabela reutilizável de lançamentos com filtros, KPIs e ações.
 // Usada por: Lancamentos.tsx (todos), ContasReceber.tsx (receitas), ContasPagar.tsx (despesas)
 import { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '../../lib/supabase';
 import { movimentoManual } from '../../lib/financeiroMes';
 import { useNavigate } from 'react-router-dom';
 import { useLancamentos } from '../../hooks/useLancamentos';
@@ -64,6 +66,28 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
   const navigate = useNavigate();
   const { data: todos = [], isLoading, criar, atualizar, pagar, deletar, isSaving, isPagando } = useLancamentos();
   const { data: contas = [] } = useContasBancarias();
+  const contaCaixaPadraoId = contas.find(c => c.ativo && c.tipo === 'caixa')?.id ?? null;
+  // Pra onde foi o dinheiro de cada venda: o lançamento da venda é um só (total),
+  // mas a conta que recebeu está em cada pagamento da venda (pode ser mais de uma).
+  // Chave começa com 'lancamentos' pra ser atualizada junto com qualquer pagamento.
+  const { data: pagamentosDestino = [] } = useQuery({
+    queryKey: ['lancamentos', 'destino-pagamentos'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('pagamentos_venda').select('venda_id,conta_id');
+      if (error) throw error;
+      return (data ?? []) as { venda_id: string; conta_id: string | null }[];
+    },
+  });
+  const contasPorVenda = useMemo(() => {
+    const m = new Map<string, string[]>();
+    pagamentosDestino.forEach(p => {
+      if (!p.conta_id) return;
+      const l = m.get(p.venda_id) ?? [];
+      if (!l.includes(p.conta_id)) l.push(p.conta_id);
+      m.set(p.venda_id, l);
+    });
+    return m;
+  }, [pagamentosDestino]);
   // Fluxo de Caixa também é "algo lançado no sistema" (entrada/saída de
   // dinheiro) — mescla aqui só pra exibição, marcado com isDeCaixa. Editar
   // e excluir desses continua só lá no Fluxo de Caixa, pra não arriscar
@@ -90,9 +114,16 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
       data_vencimento: m.data,
       data_pagamento:  m.data,
       observacoes:     m.observacoes ?? null,
+      conta_id:        m.conta_id ?? contaCaixaPadraoId,
       isDeCaixa:       true,
     })),
-  ], [todos, movsCaixaReais]);
+  ], [todos, movsCaixaReais, contaCaixaPadraoId]);
+
+  // Contas (ids) de destino/origem de um lançamento
+  const idsContaDe = (l: LancamentoExibido): string[] =>
+    l.venda_id ? (contasPorVenda.get(l.venda_id) ?? (l.conta_id ? [l.conta_id] : []))
+      : (l.conta_id ? [l.conta_id] : []);
+  const nomeConta = (id: string) => contas.find(c => c.id === id)?.nome?.trim() ?? 'Conta removida';
   const { confirmar, ConfirmModal } = useConfirm();
 
   const [pagandoLanc, setPagandoLanc] = useState<LancamentoExibido | null>(null);
@@ -125,7 +156,7 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
         return true;
       })
       .filter(l => correspondeABuscaEmCampos([l.descricao, l.cliente_nome], busca))
-      .filter(l => !filtroContaId || l.conta_id === filtroContaId)
+      .filter(l => !filtroContaId || idsContaDe(l as LancamentoExibido).includes(filtroContaId))
       .filter(l => !filtroCategoria || l.categoria === filtroCategoria)
       .filter(l => !filtroForma || l.forma_pagamento === filtroForma);
     const comFiltrosAv = aplicarFiltrosAvancados(basico, filtrosAv, l => l.data_vencimento, l => l.valor);
@@ -134,7 +165,7 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
       cliente: l => l.cliente_nome ?? '',
       valor:   l => Number(l.valor ?? 0),
     });
-  }, [base, filtroStatus, busca, filtrosAv, ordenacao, filtroContaId, filtroCategoria, filtroForma]);
+  }, [base, filtroStatus, busca, filtrosAv, ordenacao, filtroContaId, filtroCategoria, filtroForma, contasPorVenda]);
 
   // Seleção múltipla: inclui todos os lançamentos, inclusive os vindos de
   // venda. Excluir um lançamento de venda não mexe na venda em si (o
@@ -229,13 +260,13 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
           placeholder="Buscar por descrição ou cliente..."
           className="flex-1 min-w-48 bg-[#1f2937] border border-gray-700 rounded-xl px-4 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500" />
 
-        <div className="w-40">
+        <div className="w-48">
           <DarkSelect
             value={filtroContaId}
             onChange={setFiltroContaId}
             allowEmpty
             placeholder="Todas as contas"
-            options={contas.filter(c => c.ativo).map(c => ({ value: c.id, label: c.nome }))}
+            options={contas.map(c => ({ value: c.id, label: c.ativo ? c.nome.trim() : `${c.nome.trim()} (inativa)` }))}
           />
         </div>
         <div className="w-40">
@@ -287,6 +318,7 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
               <th className="px-5 py-3 text-left">Categoria</th>
               <th className="px-5 py-3 text-left">Cliente/Forn.</th>
               <th className="px-5 py-3 text-right">Valor</th>
+              <th className="px-5 py-3 text-left">Conta</th>
               <th className="px-5 py-3 text-center">Vencimento</th>
               <th className="px-5 py-3 text-center">Status</th>
               <th className="px-5 py-3 text-center">Ações</th>
@@ -294,7 +326,7 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
           </thead>
           <tbody>
             {filtrados.length === 0 && (
-              <tr><td colSpan={!fixarTipo ? 9 : 8} className="px-5 py-12 text-center text-gray-600">
+              <tr><td colSpan={!fixarTipo ? 10 : 9} className="px-5 py-12 text-center text-gray-600">
                 {mensagemVazio ?? 'Nenhum lançamento encontrado.'}
               </td></tr>
             )}
@@ -340,6 +372,19 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
                   <td className="px-5 py-3 text-gray-400 text-xs">{l.cliente_nome || '—'}</td>
                   <td className={`px-5 py-3 text-right font-black ${l.tipo === 'receita' ? 'text-green-400' : 'text-red-400'}`}>
                     {fmtBRL(Number(l.valor))}
+                  </td>
+                  <td className="px-5 py-3 text-xs">
+                    {(() => {
+                      const ids = idsContaDe(l as LancamentoExibido);
+                      if (ids.length === 0) return <span className="text-gray-600">—</span>;
+                      return (
+                        <span className={`font-bold ${l.tipo === 'receita' ? 'text-green-300' : 'text-red-300'}`}
+                          title={ids.map(nomeConta).join(', ')}>
+                          {l.tipo === 'receita' ? '→ ' : '← '}{nomeConta(ids[0])}
+                          {ids.length > 1 && <span className="text-gray-500 font-normal"> +{ids.length - 1}</span>}
+                        </span>
+                      );
+                    })()}
                   </td>
                   <td className="px-5 py-3 text-center text-xs text-gray-400">{fmtData(l.data_vencimento)}</td>
                   <td className="px-5 py-3 text-center">
