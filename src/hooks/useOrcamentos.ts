@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { Orcamento, OrcamentoItem, StatusOrcamento } from '../types/orcamento';
 import toast from 'react-hot-toast';
 import { nomeItemPlaca, medidasDoItemOrcamento } from '../lib/placaCalc';
+import { prazoEstimadoDias, dataEntregaPrevista } from '../lib/prazoEntrega';
 
 type OrcPayload = Omit<Orcamento, 'id' | 'created_at' | 'updated_at'>;
 
@@ -138,6 +139,15 @@ export function useOrcamentos() {
       // aparecia certo no topo da tela, mas o checkbox vinha marcado errado.
       const orcSemCliente = !orc.cliente_id;
 
+      // Previsão de entrega pelos prazos dos produtos (média dos distintos)
+      const idsProd = Array.from(new Set(itens.map(i => i.produto_id).filter((x): x is string => !!x)));
+      let dataEntregaPrev: string | null = null;
+      if (idsProd.length) {
+        const { data: prods } = await supabase.from('produtos').select('id,prazo_entrega_dias').in('id', idsProd);
+        const dias = prazoEstimadoDias(itens, new Map((prods ?? []).map((p: any) => [p.id, p.prazo_entrega_dias])));
+        if (dias) dataEntregaPrev = dataEntregaPrevista(dias);
+      }
+
       // 1. Cria a venda
       const { data: venda, error: vErr } = await supabase
         .from('vendas')
@@ -155,6 +165,7 @@ export function useOrcamentos() {
           vendedor_id:  orc.vendedor_id ?? null,
           valor_total:  orc.total ?? 0,
           data_venda:   new Date().toISOString().split('T')[0],
+          data_entrega: dataEntregaPrev,
         })
         .select()
         .single();

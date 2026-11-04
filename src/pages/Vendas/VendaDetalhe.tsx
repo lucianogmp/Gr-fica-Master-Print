@@ -4,6 +4,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useProdutos } from '../../hooks/useProdutos';
+import { prazoEstimadoDias, dataEntregaPrevista } from '../../lib/prazoEntrega';
 import { guardarRascunhoVenda, lerRascunhoVenda, limparRascunhoVenda } from '../../lib/rascunhoVenda';
 import { useVendas, useVendaItens } from '../../hooks/useVendas';
 import { usePagamentosVenda } from '../../hooks/usePagamentosVenda';
@@ -183,15 +184,21 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
     });
   }, [vendas]);
 
-  // Sugestão de data de entrega e valores padrão ao criar nova venda
+  // Previsão de entrega: vem do prazo dos produtos da venda (média dos produtos
+  // distintos). Só preenche venda nova e enquanto você não mexer na data à mão.
+  const entregaManualRef = useRef(false);
+  const [prazoEstimado, setPrazoEstimado] = useState<number | null>(null);
   useEffect(() => {
-    if (restauradoRef.current) return;
-    if (isNovo && cfg?.venda_prazo_entrega_dias) {
-      const d = new Date();
-      d.setDate(d.getDate() + cfg.venda_prazo_entrega_dias);
-      setForm(f => ({ ...f, data_entrega: d.toISOString().split('T')[0] }));
-    }
-  }, [isNovo, cfg?.venda_prazo_entrega_dias]);
+    if (!isNovo) return;
+    const mapa = new Map(produtosCatalogo.map(p => [p.id, p.prazo_entrega_dias] as const));
+    const dias = prazoEstimadoDias(itens, mapa);
+    setPrazoEstimado(dias);
+    if (entregaManualRef.current || restauradoRef.current) return;
+    setForm(f => {
+      const novaData = dias ? dataEntregaPrevista(dias) : '';
+      return f.data_entrega === novaData ? f : { ...f, data_entrega: novaData };
+    });
+  }, [isNovo, itens, produtosCatalogo]);
 
   useEffect(() => {
     if (restauradoRef.current) return;
@@ -546,12 +553,12 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
                   <div>
                     <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1 flex items-center gap-1">
                       <Calendar className="w-3 h-3" /> Entrega
-                      {cfg?.venda_prazo_entrega_dias && (
-                        <span className="text-[9px] text-blue-400 font-normal">({cfg.venda_prazo_entrega_dias}d)</span>
+                      {isNovo && prazoEstimado && (
+                        <span className="text-[9px] text-blue-400 font-normal">(previsão {prazoEstimado}d)</span>
                       )}
                     </label>
                     <DateInput value={form.data_entrega}
-                      onChange={v => setF('data_entrega', v)} className={IN} />
+                      onChange={v => { entregaManualRef.current = true; setF('data_entrega', v); }} className={IN} />
                   </div>
                   <div className="col-span-2 sm:col-span-1">
                     <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Título</label>

@@ -392,18 +392,6 @@ export function AbaVendas({ form, set }: Props) {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">
-              Prazo padrão de entrega (dias)
-            </label>
-            <QtdInput
-              value={String(num('venda_prazo_entrega_dias') || '')}
-              onChange={v => set('venda_prazo_entrega_dias', v ? Math.round(parseFloat(v)) : null)}
-              className={IN_N}
-              placeholder="Ex: 5"
-            />
-            <p className="text-[10px] text-gray-600 mt-1">Sugerido ao criar nova venda.</p>
-          </div>
-          <div>
-            <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">
               Frete padrão (R$)
             </label>
             <MoneyInput
