@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useRolarItemAtivo } from '../../hooks/useListaTeclado';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -13,7 +14,7 @@ import { useRole } from '../../hooks/useRole';
 import { Produto } from '../../types/produto';
 import { MoneyInput } from '../ui/MoneyInput';
 import { QtdInput } from '../ui/QtdInput';
-import { correspondeABusca } from '../../lib/buscaFlexivel';
+import { correspondeABusca, correspondeABuscaEmCampos } from '../../lib/buscaFlexivel';
 import { HelpTooltip } from '../ui/HelpTooltip';
 
 const fmtBRL = (v: number) =>
@@ -214,8 +215,19 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando, mostrarCusto 
   // Navegação por teclado na lista de produtos (seta cima/baixo + Enter),
   // sem precisar tirar a mão do teclado pra clicar com o mouse.
   const [indiceAtivoProd, setIndiceAtivoProd] = useState(0);
+  // Dropdown de busca igual ao da Nova Venda (portal + floating-panel opaco).
   const gridProdRef = useRef<HTMLDivElement>(null);
-  useRolarItemAtivo(gridProdRef, indiceAtivoProd, true);
+  const buscaWrapRef = useRef<HTMLDivElement>(null);
+  const [mostrarSugProd, setMostrarSugProd] = useState(false);
+  const [dropRectProd, setDropRectProd] = useState<DOMRect | null>(null);
+  useRolarItemAtivo(gridProdRef, indiceAtivoProd, mostrarSugProd);
+  useEffect(() => {
+    function fora(e: MouseEvent) {
+      if (buscaWrapRef.current && !buscaWrapRef.current.contains(e.target as Node)) setMostrarSugProd(false);
+    }
+    document.addEventListener('mousedown', fora);
+    return () => document.removeEventListener('mousedown', fora);
+  }, []);
   const [prodSel, setProdSel] = useState<Produto | null>(null);
   const [produtoId, setProdutoId] = useState<string | null>(editando?.produto_id ?? null);
   const [areaM2, setAreaM2] = useState(
@@ -244,6 +256,8 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando, mostrarCusto 
   }
 
   function selecionarProduto(p: Produto) {
+    setMostrarSugProd(false);
+    setBuscaProd('');
     setProdSel(p);
     setProdutoId(p.id);
     setDescricao(p.nome);
@@ -445,7 +459,7 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando, mostrarCusto 
 
   const produtosFiltrados = produtos
     .filter(p => p.status === 'ativo' && !p.por_metro_quadrado)
-    .filter(p => correspondeABusca(p.nome, buscaProd));
+    .filter(p => correspondeABuscaEmCampos([p.nome, p.sku], buscaProd));
 
   // ── render ─────────────────────────────────────────────────────────────────
 
@@ -476,9 +490,7 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando, mostrarCusto 
             className={[
               'py-2.5 rounded-xl text-[10px] font-bold border transition-all flex flex-col items-center gap-1',
               tab === t.key
-                ? t.key === 'catalogo'
-                  ? 'bg-purple-600 border-purple-500 text-white'
-                  : 'bg-blue-600 border-blue-500 text-white'
+                ? 'bg-blue-600 border-blue-500 text-white'
                 : 'bg-gray-800 border-gray-700 text-gray-400 hover:text-white hover:border-gray-500',
             ].join(' ')}
           >
@@ -493,115 +505,81 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando, mostrarCusto 
         ))}
       </div>
 
-      {/* ── CATÁLOGO ── */}
+      {/* ── CATÁLOGO (mesmo visual da Nova Venda: busca azul + tabela de item) ── */}
       {tab === 'catalogo' && (
-        <div className="space-y-3">
-          {/* Busca */}
-          <div className="flex items-center gap-2 bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 focus-within:border-purple-500 transition-colors">
-            <Search className="w-4 h-4 text-gray-500 flex-shrink-0" />
-            <input
-              ref={buscaRef}
-              value={buscaProd}
-              onChange={e => { setBuscaProd(e.target.value); setIndiceAtivoProd(0); }}
-              onKeyDown={e => {
-                if (produtosFiltrados.length === 0) return;
-                if (e.key === 'ArrowDown') {
-                  e.preventDefault();
-                  setIndiceAtivoProd(i => (i + 1) % produtosFiltrados.length);
-                } else if (e.key === 'ArrowUp') {
-                  e.preventDefault();
-                  setIndiceAtivoProd(i => (i - 1 + produtosFiltrados.length) % produtosFiltrados.length);
-                } else if (e.key === 'Enter') {
-                  e.preventDefault();
-                  const p = produtosFiltrados[indiceAtivoProd];
-                  if (p) selecionarProduto(p);
-                }
-              }}
-              placeholder="Buscar produto por nome... (setas + Enter pra selecionar)"
-              className="flex-1 bg-transparent text-white text-sm placeholder-gray-600 focus:outline-none"
-            />
-          </div>
-
-          {/* Grid */}
-          {produtos.filter(p => p.status === 'ativo').length === 0 ? (
-            <p className="text-xs text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 rounded-lg px-3 py-3 flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-              Nenhum produto ativo cadastrado.
-            </p>
-          ) : (
-            <div ref={gridProdRef} className="grid grid-cols-2 md:grid-cols-3 gap-1.5 max-h-[12.5rem] overflow-y-auto pr-1">
-              {produtosFiltrados.length === 0 ? (
-                <p className="col-span-full text-center text-xs text-gray-600 py-4">Nenhum produto encontrado.</p>
-              ) : produtosFiltrados.map((p, idx) => {
-                const eM2 = (p as any).unidade_medida === 'm2';
-                const ativoPorTeclado = idx === indiceAtivoProd;
-                return (
-                  <button
-                    key={p.id}
-                    type="button"
-                    data-nav={idx}
-                    onClick={() => selecionarProduto(p)}
-                    onMouseEnter={() => setIndiceAtivoProd(idx)}
-                    className={[
-                      'text-left px-2.5 py-1.5 rounded-lg border transition-all',
-                      prodSel?.id === p.id
-                        ? 'bg-purple-600/30 border-purple-500 text-purple-200'
-                        : ativoPorTeclado
-                          ? 'bg-gray-700/60 border-purple-500/50 text-gray-200'
-                          : 'bg-gray-800 border-gray-700 text-gray-300 hover:border-purple-500/50 hover:bg-gray-700/60',
-                    ].join(' ')}
-                  >
-                    <div className="font-bold text-xs truncate flex items-center gap-1">
-                      {p.nome}
-                      {eM2 && (
-                        <span className="text-[8px] font-black bg-blue-500/20 text-blue-400 border border-blue-500/30 px-1 py-0.5 rounded flex-shrink-0">
-                          m²
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-[11px] font-black text-green-400 mt-0.5 flex items-baseline gap-1.5 min-w-0">
-                      <span className="flex-shrink-0">
-                        {Number(p.preco_venda ?? 0).toLocaleString('pt-BR', {
-                          style: 'currency', currency: 'BRL',
-                        })}
-                        {eM2 ? ' /m²' : ' /un'}
-                      </span>
-                      {p.sku && <span className="text-[9px] text-gray-500 font-mono font-normal truncate">{p.sku}</span>}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Painel produto selecionado */}
+        <div className="space-y-2">
+          {/* Tabela do item escolhido */}
           {prodSel && (
-            <div ref={painelProdutoRef} className="bg-purple-900/20 border border-purple-500/30 rounded-xl p-3 space-y-3">
-              {/* Header */}
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <p className="text-[10px] text-purple-400 uppercase font-bold">Produto selecionado</p>
-                  <p className="text-sm font-bold text-white truncate mt-0.5">{prodSel.nome}</p>
-                  <p className="text-xs text-green-400 font-black">
-                    {Number(prodSel.preco_venda ?? 0).toLocaleString('pt-BR', {
-                      style: 'currency', currency: 'BRL',
-                    })}
-                    {prodPorM2 ? ' /m²' : ' /un'}
-                  </p>
-                </div>
-                <button
-                  onClick={() => {
-                    setProdSel(null); setProdutoId(null);
-                    setDescricao(''); setPrecoLivre(''); setAreaM2('');
-                  }}
-                  className="text-gray-500 hover:text-red-400 transition-colors flex-shrink-0 mt-0.5"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+            <div ref={painelProdutoRef} className="space-y-2">
+              <div className="overflow-x-auto rounded-lg border border-gray-700">
+                <table className="w-full table-fixed" style={{ minWidth: 620 }}>
+                  <colgroup>
+                    <col />
+                    <col style={{ width: 48 }} />
+                    <col style={{ width: 112 }} />
+                    <col style={{ width: 112 }} />
+                    <col style={{ width: 112 }} />
+                    <col style={{ width: 40 }} />
+                  </colgroup>
+                  <thead>
+                    <tr className="text-[11px] font-bold text-gray-400 uppercase bg-gray-800/50 border-b border-gray-700">
+                      <th className="px-2 py-1 text-left">Descrição</th>
+                      <th className="px-1 py-1 text-center">Un.</th>
+                      <th className="px-1 py-1 text-center">Qtd.</th>
+                      <th className="px-1 py-1 text-center">{prodPorM2 ? 'Preço /m²' : 'Preço unit.'}</th>
+                      <th className="px-2 py-1 text-right">Total</th>
+                      <th className="px-1 py-1"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="hover:bg-gray-800/20">
+                      <td className="px-2 py-2">
+                        <input
+                          value={descricao}
+                          onChange={e => setDescricao(e.target.value)}
+                          title={descricao}
+                          className="bg-[#111827] border border-gray-700 rounded-md px-1.5 py-1.5 text-white text-sm font-semibold focus:outline-none focus:border-blue-500 transition-colors w-full"
+                        />
+                      </td>
+                      <td className="px-1 py-1 text-center text-xs text-gray-400">{prodPorM2 ? 'm²' : 'un'}</td>
+                      <td className="px-1 py-1">
+                        <QtdInput
+                          id="orc-catalogo-qtd"
+                          value={quantidade}
+                          onChange={setQuantidade}
+                          onEnter={() => { if (valido) handleAdicionar({ continuar: true }); }}
+                          className="bg-[#111827] border border-gray-700 rounded-md px-2 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors w-full min-w-0 text-right"
+                        />
+                      </td>
+                      <td className="px-1 py-1">
+                        <MoneyInput
+                          value={precoLivre}
+                          onChange={v => setPrecoLivre(String(v))}
+                          className="bg-[#111827] border border-gray-700 rounded-md px-2 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors w-full min-w-0 text-right"
+                        />
+                      </td>
+                      <td className="px-2 py-1 text-right font-bold text-white text-sm whitespace-nowrap">
+                        {fmtBRL(totalEfetivo)}
+                      </td>
+                      <td className="px-1 py-1">
+                        <button
+                          title="Remover produto"
+                          onClick={() => {
+                            setProdSel(null); setProdutoId(null);
+                            setDescricao(''); setPrecoLivre(''); setAreaM2('');
+                          }}
+                          className="text-gray-600 hover:text-red-400 transition-colors inline-flex mx-auto"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
 
               {podeVerCustos && mostrarCusto && custoItemTotal != null && (
-                <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 flex items-center justify-between">
+                <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-1.5 flex items-center justify-between">
                   <span className="text-[10px] font-bold text-red-400 uppercase flex items-center gap-1">
                     🔒 Custo (só você vê — não sai na impressão)
                   </span>
@@ -614,75 +592,119 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando, mostrarCusto 
                 </div>
               )}
 
-              {/* Descrição — linha inteira */}
-              <div>
-                <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1.5">Descrição</label>
-                <input
-                  value={descricao}
-                  onChange={e => setDescricao(e.target.value)}
-                  className="bg-[#111827] border border-gray-700 rounded-lg px-2.5 py-2 text-white text-sm focus:outline-none focus:border-purple-500 transition-colors w-full"
-                />
-              </div>
-
-              {/* Preço + Quantidade — linha dividida */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1.5">
-                    {prodPorM2 ? 'Preço por m² (R$)' : 'Preço unitário (R$)'}
-                  </label>
-                  <MoneyInput
-                    value={precoLivre}
-                    onChange={v => setPrecoLivre(String(v))}
-                    className="bg-[#111827] border border-gray-700 rounded-lg px-2.5 py-2 text-white text-sm focus:outline-none focus:border-purple-500 transition-colors w-full"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1.5">Quantidade</label>
-                  <QtdInput
-                    id="orc-catalogo-qtd"
-                    value={quantidade}
-                    onChange={setQuantidade}
-                    onEnter={() => { if (valido) handleAdicionar({ continuar: true }); }}
-                    center big
-                    className="bg-[#111827] border border-gray-700 rounded-lg px-2.5 py-2 text-white text-xs focus:outline-none focus:border-purple-500 transition-colors w-full"
-                  />
-                </div>
-              </div>
-
               {/* Área m² — só para produtos por m² */}
               {prodPorM2 && (
-                <div>
-                  <label className="text-[10px] font-bold text-blue-400 uppercase mb-1.5 flex items-center gap-1.5">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <label className="text-[10px] font-bold text-blue-400 uppercase flex items-center gap-1.5">
                     Área (m²)
                     <HelpTooltip texto="Digite a área total (largura × altura, em metros) que esse produto vai ocupar. O sistema multiplica pelo preço por m² do produto pra calcular o total." />
                   </label>
-                  <QtdInput
-                    id="orc-catalogo-area"
-                    value={areaM2}
-                    onChange={setAreaM2}
-                    onEnter={() => document.getElementById('orc-catalogo-qtd')?.focus()}
-                    center big
-                    placeholder="Ex: 1.250"
-                    className="bg-[#111827] border border-blue-500/50 rounded-lg px-2.5 py-2 text-blue-300 text-xs focus:outline-none focus:border-blue-400 transition-colors w-full"
-                  />
+                  <div className="w-32">
+                    <QtdInput
+                      id="orc-catalogo-area"
+                      value={areaM2}
+                      onChange={setAreaM2}
+                      onEnter={() => document.getElementById('orc-catalogo-qtd')?.focus()}
+                      placeholder="Ex: 1.250"
+                      className="bg-[#111827] border border-blue-500/50 rounded-md px-2 py-1.5 text-blue-300 text-sm focus:outline-none focus:border-blue-400 transition-colors w-full text-right"
+                    />
+                  </div>
                   {!areaOk && (
-                    <p className="text-[10px] text-red-500 mt-1 flex items-center gap-1">
+                    <p className="text-[10px] text-red-500 flex items-center gap-1">
                       <AlertTriangle className="w-3 h-3" /> Informe a área em m²
                     </p>
                   )}
                 </div>
               )}
-
-              {/* Resumo m² */}
-              {prodPorM2 && parseFloat(areaM2) > 0 && parseFloat(precoLivre) > 0 && (
-                <InfoRow items={[
-                  { label: 'Área', value: `${(parseFloat(areaM2) || 0).toFixed(3)} m²` },
-                  { label: 'Preço/m²', value: fmtBRL(parseFloat(precoLivre) || 0) },
-                  { label: 'Subtotal', value: fmtBRL(prev.unitario) },
-                ]} />
-              )}
             </div>
           )}
+
+          {/* Buscar produto do catálogo (igual à Nova Venda) */}
+          <div ref={buscaWrapRef}>
+            <div className="flex items-center gap-2 bg-[#0d1117] border border-blue-500/30 rounded-lg px-2.5 py-1.5 focus-within:border-blue-500 transition-colors">
+              <Search className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
+              <input
+                ref={buscaRef}
+                value={buscaProd}
+                onChange={e => {
+                  setBuscaProd(e.target.value); setIndiceAtivoProd(0);
+                  if (buscaWrapRef.current) setDropRectProd(buscaWrapRef.current.getBoundingClientRect());
+                  setMostrarSugProd(true);
+                }}
+                onFocus={() => {
+                  if (buscaWrapRef.current) setDropRectProd(buscaWrapRef.current.getBoundingClientRect());
+                  setMostrarSugProd(true);
+                }}
+                onKeyDown={e => {
+                  if (!mostrarSugProd && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+                    e.preventDefault(); setIndiceAtivoProd(0); setMostrarSugProd(true); return;
+                  }
+                  if (mostrarSugProd && e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); setMostrarSugProd(false); return; }
+                  const lista = produtosFiltrados.slice(0, 8);
+                  if (!mostrarSugProd || lista.length === 0) return;
+                  if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    setIndiceAtivoProd(i => (i + 1) % lista.length);
+                  } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    setIndiceAtivoProd(i => (i - 1 + lista.length) % lista.length);
+                  } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const p = lista[indiceAtivoProd];
+                    if (p) selecionarProduto(p);
+                  }
+                }}
+                placeholder="Adicionar produto: nome ou SKU (setas + Enter)"
+                className="flex-1 bg-transparent text-white text-xs placeholder-gray-600 focus:outline-none"
+              />
+            </div>
+            {produtos.filter(p => p.status === 'ativo').length === 0 && (
+              <p className="text-[10px] text-yellow-400 mt-1">Nenhum produto ativo cadastrado em Produtos.</p>
+            )}
+            {mostrarSugProd && dropRectProd && createPortal(
+              <div
+                ref={gridProdRef}
+                style={{
+                  position: 'fixed',
+                  ...(dropRectProd.bottom + 330 > window.innerHeight && dropRectProd.top > 330
+                    ? { bottom: window.innerHeight - dropRectProd.top + 4 }
+                    : { top: dropRectProd.bottom + 4 }),
+                  left: dropRectProd.left, width: dropRectProd.width,
+                  zIndex: 99999, overflow: 'hidden', maxHeight: 320, overflowY: 'auto',
+                }}
+                className="floating-panel"
+              >
+                {produtosFiltrados.slice(0, 8).length === 0 ? (
+                  <p className="px-4 py-3 text-xs text-gray-500">Nenhum produto encontrado.</p>
+                ) : produtosFiltrados.slice(0, 8).map((p, idx) => {
+                  const eM2 = (p as any).unidade_medida === 'm2';
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      data-nav={idx}
+                      onMouseDown={e => { e.preventDefault(); selecionarProduto(p); }}
+                      onMouseEnter={() => setIndiceAtivoProd(idx)}
+                      style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 12px', cursor: 'pointer', textAlign: 'left' }}
+                      className={`transition-colors duration-150 border-b border-gray-700/50 ${idx === indiceAtivoProd ? 'bg-blue-900/30' : 'bg-transparent hover:bg-blue-900/20'}`}
+                    >
+                      <div className="min-w-0">
+                        <p className="text-white text-xs font-bold truncate flex items-center gap-1.5">
+                          {p.nome}
+                          {eM2 && <span className="text-[8px] font-black bg-blue-500/20 text-blue-400 border border-blue-500/30 px-1 py-0.5 rounded flex-shrink-0">m²</span>}
+                        </p>
+                        {p.sku && <p className="text-[10px] text-gray-500 font-mono">{p.sku}</p>}
+                      </div>
+                      <span className="text-xs font-black text-green-400 ml-2 flex-shrink-0">
+                        {fmtBRL(Number(p.preco_venda ?? 0))}{eM2 ? '/m²' : ''}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>,
+              document.body,
+            )}
+          </div>
         </div>
       )}
 
