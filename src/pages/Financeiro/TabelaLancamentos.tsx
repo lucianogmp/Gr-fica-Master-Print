@@ -113,9 +113,9 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
   // Aplica filtro de tipo fixo (se vier da tela pai)
   const base = useMemo(() => {
     let lista = fixarTipo ? todosComCaixa.filter(l => l.tipo === fixarTipo) : todosComCaixa;
-    if (mes) lista = lista.filter(l => (l.data_vencimento ?? l.created_at ?? '').startsWith(mes));
+    if (mes && !busca.trim()) lista = lista.filter(l => (l.data_vencimento ?? l.created_at ?? '').startsWith(mes));
     return lista;
-  }, [todosComCaixa, fixarTipo, mes]);
+  }, [todosComCaixa, fixarTipo, mes, busca]);
 
   const filtrados = useMemo(() => {
     const basico = base

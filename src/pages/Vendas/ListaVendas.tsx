@@ -105,10 +105,12 @@ export function ListaVendas({
     [vendasBase, mes]
   );
 
+  const buscando = busca.trim() !== '';
   const filtradas = useMemo(() => {
     const base = vendasBase
       .filter(v => filtroExtra === 'todos' || v.status === filtroExtra)
-      .filter(v => !mes || (v.data_venda ?? '').startsWith(mes))
+      // Pesquisando: ignora o mês (busca geral em todo o histórico do cliente)
+      .filter(v => buscando || !mes || (v.data_venda ?? '').startsWith(mes))
       .filter(v => correspondeABuscaEmCampos([v.cliente_nome, v.numero, v.palavra_chave], busca));
     const comFiltrosAv = aplicarFiltrosAvancados(base, filtrosAv, v => v.data_venda, v => v.valor_total);
     return aplicarOrdenacao(comFiltrosAv, ordenacao, {
@@ -117,7 +119,7 @@ export function ListaVendas({
       valor:   v => Number(v.valor_total ?? 0),
       numero:  v => Number(v.numero ?? 0),
     });
-  }, [vendasBase, filtroExtra, mes, busca, filtrosAv, ordenacao]);
+  }, [vendasBase, filtroExtra, mes, busca, buscando, filtrosAv, ordenacao]);
 
   // Impressão a partir da lista
   const [imprimindoId, setImprimindoId] = useState<string | null>(null);
@@ -245,7 +247,7 @@ export function ListaVendas({
             <h1 className="text-2xl font-black text-white flex items-center gap-2">
               <Icon className="w-6 h-6 text-blue-400" /> {titulo}
             </h1>
-            <p className="text-gray-500 text-sm">{vendasDoMes.length} venda(s){mes ? ' neste mês' : ''}</p>
+            <p className="text-gray-500 text-sm">{buscando ? `${filtradas.length} venda(s) encontradas em todos os meses` : `${vendasDoMes.length} venda(s)${mes ? ' neste mês' : ''}`}</p>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
             {/* Compacto — mesmo padrão do Fluxo de Caixa: card pequeno com
