@@ -6,7 +6,10 @@ import { Produto } from '../../types/produto';
 import { useProdutos } from '../../hooks/useProdutos';
 import { loadBom, calcCustoBOM } from '../../hooks/useBom';
 import { useRole } from '../../hooks/useRole';
-import { X, Search, Pencil, Check } from 'lucide-react';
+import { X, Search, Pencil, Check, Ruler } from 'lucide-react';
+import { ItemOrcEditor } from '../orcamentos/ItemOrcEditor';
+import { OrcamentoItem } from '../../types/orcamento';
+import { medidasDoItemOrcamento } from '../../lib/placaCalc';
 import { correspondeABuscaEmCampos } from '../../lib/buscaFlexivel';
 import { resumoPlacaLinha } from '../../lib/placaCalc';
 import { MoneyInput } from '../ui/MoneyInput';
@@ -70,6 +73,8 @@ export function ItensEditor({ itens, onChange, onEditarProduto }: ItensEditorPro
   // Depois de adicionar um item, o cursor vai pra QUANTIDADE dele (não volta pra busca).
   const focarQtdRef = useRef<number | null>(null);
   const [editandoNome, setEditandoNome] = useState<number | null>(null);
+  // Janela "m² Material": mesmo editor do orçamento (largura × altura × quantidade)
+  const [abrirM2, setAbrirM2] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { data: produtos = [] } = useProdutos();
@@ -148,6 +153,27 @@ export function ItensEditor({ itens, onChange, onEditarProduto }: ItensEditorPro
     } as VendaItem, 0)]);
     setBuscaProduto('');
     setMostrar(false);
+  }
+
+  // Item calculado no editor de m² entra na venda igual a um item vindo de orçamento:
+  // nome do material, quantidade e preço unitário (total ÷ qtd), medidas em obs.
+  function adicionarDoEditorM2(oi: OrcamentoItem) {
+    const novo = normalizarItem({
+      descricao: oi.descricao,
+      quantidade: oi.quantidade,
+      preco_unitario: oi.preco_unitario,
+      desconto: 0,
+      unidade: 'un',
+      obs: medidasDoItemOrcamento(oi),
+      produto_id: oi.produto_id ?? null,
+      total: oi.total,
+      ...(oi.custo_unitario != null && isAdmin ? { custo_unitario: oi.custo_unitario } as any : {}),
+      ...(oi.acabamento_id ? { acabamento_id: oi.acabamento_id, acabamento_qtd_estoque: oi.acabamento_qtd_estoque ?? null } as any : {}),
+    } as VendaItem, 0);
+    // o total veio calculado (pode ter arredondamento manual): mantém exatamente o valor do editor
+    novo.total = Number(oi.total);
+    onChange([...itens, novo]);
+    setAbrirM2(false);
   }
 
   function removerItem(idx: number) { setEditandoNome(null); onChange(itens.filter((_, i) => i !== idx)); }
@@ -347,10 +373,10 @@ export function ItensEditor({ itens, onChange, onEditarProduto }: ItensEditorPro
       )}
 
       {/* ── Buscar produto do catálogo ── */}
-      <div ref={wrapRef}>
+      <div ref={wrapRef} className="flex items-stretch gap-2">
         <div
           ref={inputRef}
-          className="flex items-center gap-2 bg-[#0d1117] border border-blue-500/30 rounded-lg px-2.5 py-1.5 focus-within:border-blue-500 transition-colors"
+          className="flex-1 flex items-center gap-2 bg-[#0d1117] border border-blue-500/30 rounded-lg px-2.5 py-1.5 focus-within:border-blue-500 transition-colors"
         >
           <Search className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
           <input
@@ -363,11 +389,40 @@ export function ItensEditor({ itens, onChange, onEditarProduto }: ItensEditorPro
             className="flex-1 bg-transparent text-white text-xs placeholder-gray-600 focus:outline-none"
           />
         </div>
+        <button
+          type="button"
+          onClick={() => setAbrirM2(true)}
+          title="Calcular item por m² (largura × altura × quantidade)"
+          className="flex items-center gap-1.5 px-3 rounded-lg border border-blue-500/40 bg-blue-600/15 hover:bg-blue-600/30 text-blue-300 text-xs font-bold whitespace-nowrap transition-colors"
+        >
+          <Ruler className="w-3.5 h-3.5" /> m² Material
+        </button>
         {dropdown}
         {produtosAtivos.length === 0 && (
           <p className="text-[10px] text-yellow-400 mt-1">Nenhum produto ativo cadastrado em Produtos.</p>
         )}
       </div>
+
+      {abrirM2 && createPortal(
+        <div className="fixed inset-0 z-[9990] bg-black/70 flex items-start justify-center overflow-y-auto p-4"
+             onMouseDown={e => { if (e.target === e.currentTarget) setAbrirM2(false); }}>
+          <div className="w-full max-w-2xl my-6">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-black text-white">Item por m² / material</h3>
+              <button onClick={() => setAbrirM2(false)} className="text-gray-400 hover:text-white" title="Fechar">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <ItemOrcEditor
+              abaInicial="metro"
+              mostrarCusto={isAdmin}
+              onAdicionar={adicionarDoEditorM2}
+              onCancelar={() => setAbrirM2(false)}
+            />
+          </div>
+        </div>,
+        document.body,
+      )}
 
       {/* ── Subtotal ── */}
       {itens.length > 0 && (
