@@ -1,7 +1,8 @@
 // src/pages/Financeiro/TabelaLancamentos.tsx
 // Tabela reutilizável de lançamentos com filtros, KPIs e ações.
 // Usada por: Lancamentos.tsx (todos), ContasReceber.tsx (receitas), ContasPagar.tsx (despesas)
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabase';
 import { movimentoManual } from '../../lib/financeiroMes';
@@ -17,8 +18,85 @@ import { correspondeABuscaEmCampos } from '../../lib/buscaFlexivel';
 import { FiltrosAvancados, aplicarFiltrosAvancados, FiltrosAvancadosValor } from '../../components/ui/FiltrosAvancados';
 import { DarkSelect } from '../../components/ui/DarkSelect';
 import {
-  ArrowUp, ArrowDown, Clock, AlertCircle, Check, X, ExternalLink, LucideIcon, CheckSquare, Square, Wallet, Landmark,
+  ArrowUp, ArrowDown, ChevronDown, Clock, AlertCircle, Check, X, ExternalLink, LucideIcon, CheckSquare, Square, Wallet, Landmark,
 } from 'lucide-react';
+
+// Título de coluna que vira filtro: botão com setinha que abre a lista de opções
+// (mesmo painel opaco dos outros seletores). Fica destacado quando há filtro ativo.
+function CabecalhoFiltro({ label, valor, opcoes, onChange, align = 'left' }: {
+  label: string; valor: string; opcoes: { value: string; label: string }[];
+  onChange: (v: string) => void; align?: 'left' | 'center';
+}) {
+  const [aberto, setAberto] = useState(false);
+  const [rect, setRect] = useState<DOMRect | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const listaRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!aberto) return;
+    const fora = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (!btnRef.current?.contains(t) && !listaRef.current?.contains(t)) setAberto(false);
+    };
+    const reposicionar = (e?: Event) => {
+      if (e && listaRef.current && e.target instanceof Node && listaRef.current.contains(e.target)) return;
+      if (btnRef.current) setRect(btnRef.current.getBoundingClientRect());
+    };
+    document.addEventListener('mousedown', fora);
+    window.addEventListener('scroll', reposicionar, true);
+    window.addEventListener('resize', reposicionar);
+    return () => {
+      document.removeEventListener('mousedown', fora);
+      window.removeEventListener('scroll', reposicionar, true);
+      window.removeEventListener('resize', reposicionar);
+    };
+  }, [aberto]);
+  const ativo = !!valor;
+  const atual = opcoes.find(o => o.value === valor);
+  return (
+    <>
+      <button ref={btnRef} type="button"
+        onClick={() => { if (btnRef.current) setRect(btnRef.current.getBoundingClientRect()); setAberto(a => !a); }}
+        title={ativo ? `Filtrando: ${atual?.label}` : `Filtrar por ${label.toLowerCase()}`}
+        className={`inline-flex items-center gap-1 uppercase font-bold transition-colors ${ativo ? 'text-blue-400' : 'text-gray-400 hover:text-white'} ${align === 'center' ? 'mx-auto' : ''}`}>
+        {label}
+        {ativo && <span className="normal-case font-semibold text-[10px] bg-blue-500/20 border border-blue-500/30 rounded px-1 max-w-[90px] truncate">{atual?.label}</span>}
+        <ChevronDown className={`w-3 h-3 transition-transform ${aberto ? 'rotate-180' : ''}`} />
+      </button>
+      {aberto && rect && createPortal(
+        <div ref={listaRef} className="floating-panel"
+          style={{ position: 'fixed', top: rect.bottom + 4, left: Math.min(rect.left, window.innerWidth - 220), minWidth: 180, maxHeight: 300, overflowY: 'auto', zIndex: 99999 }}>
+          {[{ value: '', label: 'Todas' }, ...opcoes].map(o => (
+            <button key={o.value || 'todas'} type="button"
+              onMouseDown={e => { e.preventDefault(); onChange(o.value); setAberto(false); }}
+              className={`w-full text-left px-3 py-2 text-xs normal-case font-semibold border-b border-gray-700/50 last:border-0 transition-colors ${
+                o.value === valor ? 'bg-blue-900/40 text-blue-300' : 'text-white hover:bg-blue-900/20'}`}>
+              {o.label}
+            </button>
+          ))}
+        </div>,
+        document.body,
+      )}
+    </>
+  );
+}
+
+// Título de coluna que ordena: 1º clique = maior/mais recente primeiro, 2º inverte.
+function CabecalhoOrdem({ label, campo, ordenacao, onChange, center }: {
+  label: string; campo: string; ordenacao: Ordenacao | null; onChange: (o: Ordenacao) => void; center?: boolean;
+}) {
+  const ativo = ordenacao?.campo === campo;
+  return (
+    <button type="button"
+      onClick={() => onChange({ campo, direcao: ativo && ordenacao?.direcao === 'desc' ? 'asc' : 'desc' })}
+      title={campo === 'valor' ? 'Ordenar por valor (maior ↔ menor)' : 'Ordenar por vencimento (recente ↔ antigo)'}
+      className={`inline-flex items-center gap-1 uppercase font-bold transition-colors ${ativo ? 'text-blue-400' : 'text-gray-400 hover:text-white'} ${center ? 'mx-auto' : ''}`}>
+      {label}
+      {ativo
+        ? (ordenacao?.direcao === 'desc' ? <ArrowDown className="w-3 h-3" /> : <ArrowUp className="w-3 h-3" />)
+        : <ChevronDown className="w-3 h-3 opacity-60" />}
+    </button>
+  );
+}
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 export const fmtBRL  = (v: number | null | undefined) =>
@@ -264,23 +342,6 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
           </button>
         )}
 
-        <div className="flex gap-1 bg-[#1f2937] border border-gray-700 rounded-xl p-1 flex-wrap">
-          {([
-            { key: 'todos',    label: 'Todos' },
-            { key: 'pendente', label: 'Pendentes' },
-            { key: 'atrasado', label: 'Atrasados' },
-            { key: 'pago',     label: 'Pagos' },
-            { key: 'cancelado', label: 'Cancelados' },
-          ] as { key: FiltroStatus; label: string }[]).map(f => (
-            <button key={f.key} onClick={() => setFiltroStatus(f.key)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                filtroStatus === f.key ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'
-              }`}>
-              {f.label}
-            </button>
-          ))}
-        </div>
-
         <input value={busca} onChange={e => setBusca(e.target.value)}
           placeholder="Buscar por descrição ou cliente..."
           className="flex-1 min-w-48 bg-[#1f2937] border border-gray-700 rounded-xl px-4 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500" />
@@ -302,26 +363,6 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
         <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-gray-700 bg-gray-800/20">
-              <th className="px-1 py-1.5" />
-              {!fixarTipo && <th className="px-1 py-1.5" />}
-              <th className="px-2 py-1.5" />
-              <th className="px-2 py-1.5 font-normal">
-                <DarkSelect value={filtroCategoria} onChange={setFiltroCategoria} allowEmpty placeholder="Todas" options={opcoesCategoria} />
-              </th>
-              <th className="px-2 py-1.5" />
-              <th className="px-2 py-1.5" />
-              <th className="px-2 py-1.5 font-normal">
-                <DarkSelect value={filtroContaId} onChange={setFiltroContaId} allowEmpty placeholder="Todas"
-                  options={contas.map(c => ({ value: c.id, label: c.ativo ? c.nome.trim() : `${c.nome.trim()} (inativa)` }))} />
-              </th>
-              <th className="px-2 py-1.5 font-normal">
-                <DarkSelect value={filtroForma} onChange={setFiltroForma} allowEmpty placeholder="Todas" options={opcoesForma} />
-              </th>
-              <th className="px-1 py-1.5" />
-              <th className="px-1 py-1.5" />
-              <th className="px-1 py-1.5" />
-            </tr>
             <tr className="text-gray-400 text-[10px] font-bold uppercase border-b border-gray-700 bg-gray-800/40">
               <th className="px-3 py-3 text-center w-8">
                 <button onClick={toggleTodosVisiveis} title="Selecionar/desmarcar todos visíveis" className="text-gray-500 hover:text-blue-400 transition-colors">
@@ -332,13 +373,31 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
               </th>
               {!fixarTipo && <th className="px-5 py-3 text-left">Tipo</th>}
               <th className="px-5 py-3 text-left">Descrição</th>
-              <th className="px-5 py-3 text-left">Categoria</th>
+              <th className="px-5 py-3 text-left">
+                <CabecalhoFiltro label="Categoria" valor={filtroCategoria} onChange={setFiltroCategoria}
+                  opcoes={opcoesCategoria.map(c => ({ value: c, label: c }))} />
+              </th>
               <th className="px-5 py-3 text-left">Cliente/Forn.</th>
-              <th className="px-5 py-3 text-right">Valor</th>
-              <th className="px-5 py-3 text-left">Conta</th>
-              <th className="px-5 py-3 text-left">Forma</th>
-              <th className="px-5 py-3 text-center">Vencimento</th>
-              <th className="px-5 py-3 text-center">Status</th>
+              <th className="px-5 py-3 text-right">
+                <CabecalhoOrdem label="Valor" campo="valor" ordenacao={ordenacao} onChange={setOrdenacao} />
+              </th>
+              <th className="px-5 py-3 text-left">
+                <CabecalhoFiltro label="Conta" valor={filtroContaId} onChange={setFiltroContaId}
+                  opcoes={contas.map(c => ({ value: c.id, label: c.ativo ? c.nome.trim() : `${c.nome.trim()} (inativa)` }))} />
+              </th>
+              <th className="px-5 py-3 text-left">
+                <CabecalhoFiltro label="Forma" valor={filtroForma} onChange={setFiltroForma}
+                  opcoes={opcoesForma.map(f => ({ value: f, label: f }))} />
+              </th>
+              <th className="px-5 py-3 text-center">
+                <CabecalhoOrdem label="Vencimento" campo="data" ordenacao={ordenacao} onChange={setOrdenacao} center />
+              </th>
+              <th className="px-5 py-3 text-center">
+                <CabecalhoFiltro label="Status" align="center" valor={filtroStatus === 'todos' ? '' : filtroStatus}
+                  onChange={v => setFiltroStatus((v || 'todos') as FiltroStatus)}
+                  opcoes={[{ value: 'pendente', label: 'Pendentes' }, { value: 'atrasado', label: 'Atrasados' },
+                    { value: 'pago', label: 'Pagos' }, { value: 'cancelado', label: 'Cancelados' }]} />
+              </th>
               <th className="px-5 py-3 text-center">Ações</th>
             </tr>
           </thead>
