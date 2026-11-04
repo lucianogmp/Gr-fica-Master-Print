@@ -73,11 +73,22 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
   const { data: pagamentosDestino = [] } = useQuery({
     queryKey: ['lancamentos', 'destino-pagamentos'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('pagamentos_venda').select('venda_id,conta_id');
+      const { data, error } = await supabase.from('pagamentos_venda').select('venda_id,conta_id,forma_pagamento');
       if (error) throw error;
-      return (data ?? []) as { venda_id: string; conta_id: string | null }[];
+      return (data ?? []) as { venda_id: string; conta_id: string | null; forma_pagamento: string | null }[];
     },
   });
+  const formasPorVenda = useMemo(() => {
+    const m = new Map<string, string[]>();
+    pagamentosDestino.forEach(p => {
+      const f = (p.forma_pagamento ?? '').trim();
+      if (!f) return;
+      const l = m.get(p.venda_id) ?? [];
+      if (!l.includes(f)) l.push(f);
+      m.set(p.venda_id, l);
+    });
+    return m;
+  }, [pagamentosDestino]);
   const contasPorVenda = useMemo(() => {
     const m = new Map<string, string[]>();
     pagamentosDestino.forEach(p => {
@@ -123,6 +134,10 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
   const idsContaDe = (l: LancamentoExibido): string[] =>
     l.venda_id ? (contasPorVenda.get(l.venda_id) ?? (l.conta_id ? [l.conta_id] : []))
       : (l.conta_id ? [l.conta_id] : []);
+  // Forma(s) de pagamento: nas vendas vem dos pagamentos registrados; nos demais, do próprio lançamento
+  const formasDe = (l: LancamentoExibido): string[] =>
+    l.venda_id ? (formasPorVenda.get(l.venda_id) ?? (l.forma_pagamento ? [l.forma_pagamento] : []))
+      : (l.forma_pagamento ? [l.forma_pagamento] : []);
   const nomeConta = (id: string) => contas.find(c => c.id === id)?.nome?.trim() ?? 'Conta removida';
   const { confirmar, ConfirmModal } = useConfirm();
 
@@ -148,6 +163,16 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
     return lista;
   }, [todosComCaixa, fixarTipo, mes, busca]);
 
+  // Opções dos seletores vêm do que realmente existe nos lançamentos (antes eram listas fixas
+  // e deixavam de fora categorias/formas que aparecem nas vendas).
+  const opcoesCategoria = useMemo(
+    () => Array.from(new Set(base.map(l => l.categoria).filter((x): x is string => !!x))).sort((a, b) => a.localeCompare(b, 'pt-BR')),
+    [base]);
+  const opcoesForma = useMemo(() => {
+    const set = new Set<string>();
+    base.forEach(l => (l.venda_id ? (formasPorVenda.get(l.venda_id) ?? []) : [l.forma_pagamento ?? '']).forEach(f => f && set.add(f)));
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  }, [base, formasPorVenda]);
   const filtrados = useMemo(() => {
     const basico = base
       .map(l => ({ ...l, statusCalc: calcStatusLanc(l) }))
@@ -158,14 +183,14 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
       .filter(l => correspondeABuscaEmCampos([l.descricao, l.cliente_nome], busca))
       .filter(l => !filtroContaId || idsContaDe(l as LancamentoExibido).includes(filtroContaId))
       .filter(l => !filtroCategoria || l.categoria === filtroCategoria)
-      .filter(l => !filtroForma || l.forma_pagamento === filtroForma);
+      .filter(l => !filtroForma || formasDe(l as LancamentoExibido).includes(filtroForma));
     const comFiltrosAv = aplicarFiltrosAvancados(basico, filtrosAv, l => l.data_vencimento, l => l.valor);
     return aplicarOrdenacao(comFiltrosAv, ordenacao, {
       data:    l => l.data_vencimento,
       cliente: l => l.cliente_nome ?? '',
       valor:   l => Number(l.valor ?? 0),
     });
-  }, [base, filtroStatus, busca, filtrosAv, ordenacao, filtroContaId, filtroCategoria, filtroForma, contasPorVenda]);
+  }, [base, filtroStatus, busca, filtrosAv, ordenacao, filtroContaId, filtroCategoria, filtroForma, contasPorVenda, formasPorVenda]);
 
   // Seleção múltipla: inclui todos os lançamentos, inclusive os vindos de
   // venda. Excluir um lançamento de venda não mexe na venda em si (o
@@ -260,34 +285,6 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
           placeholder="Buscar por descrição ou cliente..."
           className="flex-1 min-w-48 bg-[#1f2937] border border-gray-700 rounded-xl px-4 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500" />
 
-        <div className="w-48">
-          <DarkSelect
-            value={filtroContaId}
-            onChange={setFiltroContaId}
-            allowEmpty
-            placeholder="Todas as contas"
-            options={contas.map(c => ({ value: c.id, label: c.ativo ? c.nome.trim() : `${c.nome.trim()} (inativa)` }))}
-          />
-        </div>
-        <div className="w-40">
-          <DarkSelect
-            value={filtroCategoria}
-            onChange={setFiltroCategoria}
-            allowEmpty
-            placeholder="Toda categoria"
-            options={Array.from(new Set([...CATEGORIAS_RECEITA, ...CATEGORIAS_DESPESA]))}
-          />
-        </div>
-        <div className="w-40">
-          <DarkSelect
-            value={filtroForma}
-            onChange={setFiltroForma}
-            allowEmpty
-            placeholder="Toda forma"
-            options={FORMAS_PAGAMENTO}
-          />
-        </div>
-
         <OrdenarMenu
           valor={ordenacao}
           onChange={setOrdenacao}
@@ -305,6 +302,26 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
         <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
+            <tr className="border-b border-gray-700 bg-gray-800/20">
+              <th className="px-1 py-1.5" />
+              {!fixarTipo && <th className="px-1 py-1.5" />}
+              <th className="px-2 py-1.5" />
+              <th className="px-2 py-1.5 font-normal">
+                <DarkSelect value={filtroCategoria} onChange={setFiltroCategoria} allowEmpty placeholder="Todas" options={opcoesCategoria} />
+              </th>
+              <th className="px-2 py-1.5" />
+              <th className="px-2 py-1.5" />
+              <th className="px-2 py-1.5 font-normal">
+                <DarkSelect value={filtroContaId} onChange={setFiltroContaId} allowEmpty placeholder="Todas"
+                  options={contas.map(c => ({ value: c.id, label: c.ativo ? c.nome.trim() : `${c.nome.trim()} (inativa)` }))} />
+              </th>
+              <th className="px-2 py-1.5 font-normal">
+                <DarkSelect value={filtroForma} onChange={setFiltroForma} allowEmpty placeholder="Todas" options={opcoesForma} />
+              </th>
+              <th className="px-1 py-1.5" />
+              <th className="px-1 py-1.5" />
+              <th className="px-1 py-1.5" />
+            </tr>
             <tr className="text-gray-400 text-[10px] font-bold uppercase border-b border-gray-700 bg-gray-800/40">
               <th className="px-3 py-3 text-center w-8">
                 <button onClick={toggleTodosVisiveis} title="Selecionar/desmarcar todos visíveis" className="text-gray-500 hover:text-blue-400 transition-colors">
@@ -319,6 +336,7 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
               <th className="px-5 py-3 text-left">Cliente/Forn.</th>
               <th className="px-5 py-3 text-right">Valor</th>
               <th className="px-5 py-3 text-left">Conta</th>
+              <th className="px-5 py-3 text-left">Forma</th>
               <th className="px-5 py-3 text-center">Vencimento</th>
               <th className="px-5 py-3 text-center">Status</th>
               <th className="px-5 py-3 text-center">Ações</th>
@@ -326,7 +344,7 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
           </thead>
           <tbody>
             {filtrados.length === 0 && (
-              <tr><td colSpan={!fixarTipo ? 10 : 9} className="px-5 py-12 text-center text-gray-600">
+              <tr><td colSpan={!fixarTipo ? 11 : 10} className="px-5 py-12 text-center text-gray-600">
                 {mensagemVazio ?? 'Nenhum lançamento encontrado.'}
               </td></tr>
             )}
@@ -384,6 +402,12 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
                           {ids.length > 1 && <span className="text-gray-500 font-normal"> +{ids.length - 1}</span>}
                         </span>
                       );
+                    })()}
+                  </td>
+                  <td className="px-5 py-3 text-xs text-gray-400">
+                    {(() => {
+                      const fs = formasDe(l as LancamentoExibido);
+                      return fs.length ? fs.join(', ') : '—';
                     })()}
                   </td>
                   <td className="px-5 py-3 text-center text-xs text-gray-400">{fmtData(l.data_vencimento)}</td>
