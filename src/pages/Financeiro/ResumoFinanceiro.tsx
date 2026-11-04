@@ -44,14 +44,14 @@ export function ResumoFinanceiro() {
   const totalRecebido = vendasMes.reduce((s, v) => s + Number(v.valor_pago ?? 0), 0);
   const totalRest     = Math.max(0, totalVendas - totalRecebido);
 
-  // Últimos 7 dias: terminam hoje (mês atual) ou no último dia do mês escolhido.
+  // Últimos 15 dias: terminam hoje (mês atual) ou no último dia do mês escolhido.
   const dias7 = useMemo(() => {
     const [y, m] = mes.split('-').map(Number);
     const hoje = new Date();
     const fimMes = new Date(y, m, 0);
     const fim = iso(hoje).startsWith(mes) ? hoje : fimMes;
-    return Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(fim.getFullYear(), fim.getMonth(), fim.getDate() - (6 - i));
+    return Array.from({ length: 15 }, (_, i) => {
+      const d = new Date(fim.getFullYear(), fim.getMonth(), fim.getDate() - (14 - i));
       return d;
     });
   }, [mes]);
@@ -135,11 +135,11 @@ export function ResumoFinanceiro() {
         </p>
       )}
 
-      {/* ── Gráficos dos últimos 7 dias ── */}
+      {/* ── Gráficos dos últimos 15 dias ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-3">
           <div className="flex items-center justify-between flex-wrap gap-1 mb-1">
-            <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Recebido x Pago — últimos 7 dias</h3>
+            <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Recebido x Pago — últimos 15 dias</h3>
             <span className="text-[10px] text-gray-500">
               <span className="text-green-400 font-bold">{fmtBRL(soma7('recebido'))}</span> · <span className="text-red-400 font-bold">{fmtBRL(soma7('pago'))}</span>
             </span>
@@ -148,11 +148,11 @@ export function ResumoFinanceiro() {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={grafico} barGap={2} margin={{ top: 6, right: 4, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
-                <XAxis dataKey="nome" stroke="#4b5563" fontSize={10} tickLine={false} height={20} />
+                <XAxis dataKey="nome" stroke="#4b5563" fontSize={10} tickLine={false} height={20} interval={0} tickFormatter={(v: string) => v.slice(0, 2)} />
                 <YAxis stroke="#4b5563" fontSize={10} tickLine={false} axisLine={false} width={30} tickFormatter={fmtK} />
                 <Tooltip contentStyle={tooltipStyle} formatter={(v: any, n: any) => [fmtBRL(Number(v)), n === 'recebido' ? 'Recebido' : 'Pago']} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
-                <Bar dataKey="recebido" fill="#10b981" radius={[3, 3, 0, 0]} maxBarSize={22} />
-                <Bar dataKey="pago" fill="#ef4444" radius={[3, 3, 0, 0]} maxBarSize={22} />
+                <Bar dataKey="recebido" fill="#10b981" radius={[3, 3, 0, 0]} maxBarSize={14} />
+                <Bar dataKey="pago" fill="#ef4444" radius={[3, 3, 0, 0]} maxBarSize={14} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -160,7 +160,7 @@ export function ResumoFinanceiro() {
 
         <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-3">
           <div className="flex items-center justify-between flex-wrap gap-1 mb-1">
-            <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Vendas — últimos 7 dias</h3>
+            <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Vendas — últimos 15 dias</h3>
             <span className="text-[10px] text-gray-500">
               <span className="text-purple-400 font-bold">{fmtBRL(soma7('vendas'))}</span> · {grafico.reduce((s, g) => s + g.qtd, 0)} venda(s)
             </span>
@@ -169,10 +169,10 @@ export function ResumoFinanceiro() {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={grafico} margin={{ top: 6, right: 4, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
-                <XAxis dataKey="nome" stroke="#4b5563" fontSize={10} tickLine={false} height={20} />
+                <XAxis dataKey="nome" stroke="#4b5563" fontSize={10} tickLine={false} height={20} interval={0} tickFormatter={(v: string) => v.slice(0, 2)} />
                 <YAxis stroke="#4b5563" fontSize={10} tickLine={false} axisLine={false} width={30} tickFormatter={fmtK} />
                 <Tooltip contentStyle={tooltipStyle} formatter={(v: any, _n: any, p: any) => [`${fmtBRL(Number(v))} (${p?.payload?.qtd ?? 0} venda(s))`, 'Vendas']} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
-                <Bar dataKey="vendas" fill="#8b5cf6" radius={[3, 3, 0, 0]} maxBarSize={30} />
+                <Bar dataKey="vendas" fill="#8b5cf6" radius={[3, 3, 0, 0]} maxBarSize={20} />
               </BarChart>
             </ResponsiveContainer>
           </div>
