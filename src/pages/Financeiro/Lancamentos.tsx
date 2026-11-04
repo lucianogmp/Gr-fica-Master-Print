@@ -5,6 +5,7 @@ import { useCaixaMovimentos } from '../../hooks/useCaixaMovimentos';
 import { TabelaLancamentos, fmtBRL } from './TabelaLancamentos';
 import { Landmark, TrendingUp, TrendingDown, Clock, Banknote, ChevronLeft, ChevronRight } from 'lucide-react';
 import { MonthInput } from '../../components/ui/MonthInput';
+import { totaisDoMes, movimentoManual } from '../../lib/financeiroMes';
 import { KpiCard } from '../../components/ui/KpiCard';
 
 export function Lancamentos() {
@@ -18,16 +19,9 @@ export function Lancamentos() {
     setMesKpi(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
   }
 
-  const doMes         = lancamentos.filter(l => (l.data_vencimento ?? l.created_at ?? '').startsWith(mesKpi));
-  const caixaDoMes     = movsCaixa.filter(m => (m.data ?? '').startsWith(mesKpi));
-  // "Receitas/Despesas do mês" contam tudo que foi lançado — lançamentos
-  // normais + os movimentos do Fluxo de Caixa desse mês.
-  const totalReceitas = doMes.filter(l => l.tipo === 'receita').reduce((s, l) => s + Number(l.valor), 0)
-    + caixaDoMes.filter(m => m.tipo === 'entrada').reduce((s, m) => s + Number(m.valor), 0);
-  const totalDespesas = doMes.filter(l => l.tipo === 'despesa').reduce((s, l) => s + Number(l.valor), 0)
-    + caixaDoMes.filter(m => m.tipo === 'saida').reduce((s, m) => s + Number(m.valor), 0);
-  const aReceber      = lancamentos.filter(l => l.tipo === 'receita' && !['pago','cancelado'].includes(l.status)).reduce((s, l) => s + Number(l.valor), 0);
-  const aPagar        = lancamentos.filter(l => l.tipo === 'despesa' && !['pago','cancelado'].includes(l.status)).reduce((s, l) => s + Number(l.valor), 0);
+  const { receitas: totalReceitas, despesas: totalDespesas, aReceber, aPagar } = totaisDoMes(lancamentos as any, movsCaixa as any, mesKpi);
+  const qtdMes = lancamentos.filter(l => (l.data_vencimento ?? l.created_at ?? '').startsWith(mesKpi)).length
+    + movsCaixa.filter(m => movimentoManual(m as any) && !(m as any).venda_id && (m.data ?? '').startsWith(mesKpi)).length;
 
   return (
     <div className="p-6 space-y-6">
@@ -36,14 +30,14 @@ export function Lancamentos() {
           <h1 className="text-2xl font-black text-white flex items-center gap-2">
             <Landmark className="w-6 h-6 text-blue-400" /> Lançamentos
           </h1>
-          <p className="text-gray-500 text-sm">{lancamentos.length + movsCaixa.length} lançamento(s)</p>
+          <p className="text-gray-500 text-sm">{qtdMes} lançamento(s) no mês</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {/* KPIs — encaixados na mesma linha do título, compactos */}
-          <KpiCard compact label="Receitas do mês"   value={fmtBRL(totalReceitas)} icon={TrendingUp}   color="text-green-400" />
-          <KpiCard compact label="Despesas do mês"   value={fmtBRL(totalDespesas)} icon={TrendingDown} color="text-red-400" />
-          <KpiCard compact label="A receber (total)" value={fmtBRL(aReceber)}      icon={Clock}        color="text-blue-400" />
-          <KpiCard compact label="A pagar (total)"   value={fmtBRL(aPagar)}        icon={Banknote}     color="text-yellow-400" />
+          <KpiCard compact label="Recebido no mês"   value={fmtBRL(totalReceitas)} icon={TrendingUp}   color="text-green-400" />
+          <KpiCard compact label="Pago no mês"       value={fmtBRL(totalDespesas)} icon={TrendingDown} color="text-red-400" />
+          <KpiCard compact label="A receber (mês)" value={fmtBRL(aReceber)}      icon={Clock}        color="text-blue-400" />
+          <KpiCard compact label="A pagar (mês)"     value={fmtBRL(aPagar)}        icon={Banknote}     color="text-yellow-400" />
 
           <div className="flex items-center gap-1 bg-[#1f2937] border border-gray-700 rounded-xl px-1.5 py-1.5">
             <button onClick={() => deslocarMesKpi(-1)} title="Mês anterior"
@@ -64,6 +58,7 @@ export function Lancamentos() {
       </div>
 
       <TabelaLancamentos
+        mes={mesKpi}
         mensagemVazio="Nenhum lançamento encontrado."
       />
     </div>

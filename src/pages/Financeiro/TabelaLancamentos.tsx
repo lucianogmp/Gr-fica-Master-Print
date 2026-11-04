@@ -2,6 +2,7 @@
 // Tabela reutilizável de lançamentos com filtros, KPIs e ações.
 // Usada por: Lancamentos.tsx (todos), ContasReceber.tsx (receitas), ContasPagar.tsx (despesas)
 import { useState, useMemo } from 'react';
+import { movimentoManual } from '../../lib/financeiroMes';
 import { useNavigate } from 'react-router-dom';
 import { useLancamentos } from '../../hooks/useLancamentos';
 import { useCaixaMovimentos } from '../../hooks/useCaixaMovimentos';
@@ -55,9 +56,11 @@ type TabelaLancamentosProps = {
   /** KPIs customizados passados pela tela pai */
   kpis?: KpiExtra[];
   mensagemVazio?: string;
+  /** 'AAAA-MM': mostra só os lançamentos com vencimento nesse mês. Sem isso, mostra tudo. */
+  mes?: string;
 };
 
-export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio }: TabelaLancamentosProps) {
+export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio, mes }: TabelaLancamentosProps) {
   const navigate = useNavigate();
   const { data: todos = [], isLoading, criar, atualizar, pagar, deletar, isSaving, isPagando } = useLancamentos();
   const { data: contas = [] } = useContasBancarias();
@@ -71,7 +74,7 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
   // cartão aparecia duplicada: uma vez como "venda", outra como "caixa".
   const { data: movsCaixa = [], isLoading: isLoadingCaixa } = useCaixaMovimentos();
   const movsCaixaReais = useMemo(
-    () => movsCaixa.filter(m => m.origem !== 'transferencia' && !m.venda_id),
+    () => movsCaixa.filter(m => movimentoManual(m) && !m.venda_id),
     [movsCaixa]
   );
   const todosComCaixa = useMemo<LancamentoExibido[]>(() => [
@@ -108,10 +111,11 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
   const [filtroForma, setFiltroForma] = useState('');
 
   // Aplica filtro de tipo fixo (se vier da tela pai)
-  const base = useMemo(() =>
-    fixarTipo ? todosComCaixa.filter(l => l.tipo === fixarTipo) : todosComCaixa,
-    [todosComCaixa, fixarTipo]
-  );
+  const base = useMemo(() => {
+    let lista = fixarTipo ? todosComCaixa.filter(l => l.tipo === fixarTipo) : todosComCaixa;
+    if (mes) lista = lista.filter(l => (l.data_vencimento ?? l.created_at ?? '').startsWith(mes));
+    return lista;
+  }, [todosComCaixa, fixarTipo, mes]);
 
   const filtrados = useMemo(() => {
     const basico = base
