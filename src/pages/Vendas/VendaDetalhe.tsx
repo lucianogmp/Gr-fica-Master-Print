@@ -26,8 +26,11 @@ import { DateInput } from '../../components/ui/DateInput';
 import { useConfirm } from '../../components/ui/ConfirmModal';
 import { useAuth } from '../../hooks/useAuth';
 import {
-  ArrowLeft, Save, Package, Settings, Printer, Calendar, AlertTriangle,
+  ArrowLeft, Save, Package, Settings, Printer, Calendar, AlertTriangle, Check, Download, Eye,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { Modal } from '../../components/ui/Modal';
+import { baixarPdfOrcamento } from '../../components/impressao/baixarPdf';
 import { DocumentoImpressaoData } from '../../components/impressao/DocumentoImpressao';
 import { imprimirDocumento } from '../../components/impressao/imprimirDocumento';
 import { DEFAULT_LAYOUT_VENDA } from '../../types/layoutImpressao';
@@ -351,6 +354,9 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
     }
   }
 
+  // Popup "Venda salva!": guarda uma cópia do documento exatamente como foi salvo.
+  const [posSalvar, setPosSalvar] = useState<{ id: string; doc: DocumentoImpressaoData } | null>(null);
+
   const layoutVenda = { ...DEFAULT_LAYOUT_VENDA, ...(cfg?.layout_impressao_venda ?? {}) };
 
   const clienteSelecionado = clientes.find(c => c.id === form.cliente_id);
@@ -427,8 +433,12 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
       .filter(p => p.status === 'recebido')
       .map(p => ({ ...p, juros_pct: resolverTaxaRascunho(p, cfg) || null }));
 
+    let idSalvo: string | null = vendaId ?? null;
+    let numeroSalvo: any = (form as any).numero ?? null;
     if (isNovo) {
       const vendaCriada = await criar({ venda: payload as any, itens });
+      idSalvo = vendaCriada.id;
+      numeroSalvo = (vendaCriada as any).numero ?? numeroSalvo;
       for (const pag of parcelasParaCommitar) {
         const { status: _status, ...pagamento } = pag;
         await registrarPagamento({
@@ -454,12 +464,54 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
       }
     }
     setPagamentosRascunho([]);
-    fechar();
+    if (idSalvo) {
+      // Em vez de sair direto: mostra as ações da venda recém-salva (imprimir, PDF, abrir).
+      limparAlteracoesPendentes();
+      setPosSalvar({ id: idSalvo, doc: { ...docImpressaoVenda, numero: numeroSalvo, valorPago: form.valor_pago } });
+    } else {
+      fechar();
+    }
+  }
+
+  function baixarPdfVenda(doc: DocumentoImpressaoData) {
+    const id = toast.loading('Gerando PDF...');
+    baixarPdfOrcamento(layoutVenda, cfg ?? {}, doc)
+      .then(() => toast.success('PDF baixado!', { id }))
+      .catch(e => { console.error(e); toast.error('Não foi possível gerar o PDF.', { id }); });
   }
 
   return (
     <>
       <ConfirmModal />
+      {posSalvar && (
+        <Modal
+          open={true}
+          onClose={fechar}
+          title={<span className="flex items-center gap-1.5"><Check className="w-4 h-4 text-green-400" /> Venda salva!{posSalvar.doc.numero ? ` #${posSalvar.doc.numero}` : ''}</span>}
+          maxWidth="420px"
+          actions={
+            <button onClick={fechar}
+              className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-sm font-medium transition-all">
+              Fechar
+            </button>
+          }
+        >
+          <div className="space-y-2">
+            <button onClick={() => imprimirDocumento(layoutVenda, cfg ?? {}, posSalvar.doc)}
+              className="w-full flex items-center gap-2 justify-center bg-gray-700 hover:bg-gray-600 text-gray-200 px-4 py-3 rounded-xl font-bold text-sm transition-all">
+              <Printer className="w-4 h-4" /> Imprimir
+            </button>
+            <button onClick={() => baixarPdfVenda(posSalvar.doc)}
+              className="w-full flex items-center gap-2 justify-center bg-gray-700 hover:bg-gray-600 text-gray-200 px-4 py-3 rounded-xl font-bold text-sm transition-all">
+              <Download className="w-4 h-4" /> Baixar PDF
+            </button>
+            <button onClick={() => { const id = posSalvar.id; setPosSalvar(null); navigate(`/vendas/nova/${id}`, { replace: true }); }}
+              className="w-full flex items-center gap-2 justify-center bg-blue-600 hover:bg-blue-500 text-white px-4 py-3 rounded-xl font-bold text-sm transition-all">
+              <Eye className="w-4 h-4" /> Abrir / Editar venda
+            </button>
+          </div>
+        </Modal>
+      )}
       <div className="p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4 flex-wrap">

@@ -142,7 +142,7 @@ export async function baixarPdfOrcamento(
   empresa: Partial<Configuracoes>,
   documento: DocumentoImpressaoData,
 ) {
-  const nome = `Orcamento${documento.numero ? `_${documento.numero}` : ''}${documento.clienteNome ? `_${nomeSeguro(documento.clienteNome)}` : ''}.pdf`;
+  const nome = `${documento.tipo === 'venda' ? 'Venda' : 'Orcamento'}${documento.numero ? `_${documento.numero}` : ''}${documento.clienteNome ? `_${nomeSeguro(documento.clienteNome)}` : ''}.pdf`;
   await gerarEBaixar(<DocumentoImpressao layout={layout} empresa={empresa} documento={documento} />, nome);
 }
 
