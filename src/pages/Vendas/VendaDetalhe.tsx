@@ -473,6 +473,14 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
     }
   }
 
+  // Igual ao popup de orçamento: fecha sozinho depois de 1 minuto parado na tela.
+  useEffect(() => {
+    if (!posSalvar) return;
+    const timer = setTimeout(() => fechar(), 60_000);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [posSalvar]);
+
   function baixarPdfVenda(doc: DocumentoImpressaoData) {
     const id = toast.loading('Gerando PDF...');
     baixarPdfOrcamento(layoutVenda, cfg ?? {}, doc)
