@@ -216,7 +216,7 @@ export function ModalLancamento({ open, editando, tipoInicial, onClose, onSalvar
             />
           </div>
           <div>
-            <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">{form.tipo === 'receita' ? 'Cliente' : 'Fornecedor'}</label>
+            <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">{form.tipo === 'receita' ? 'Cliente / Fornecedor' : 'Fornecedor / Cliente'}</label>
             <ClienteFornecedorSelector key={form.tipo} tipo={form.tipo} value={form.cliente_nome} onChange={v => set('cliente_nome', v)} />
           </div>
         </div>

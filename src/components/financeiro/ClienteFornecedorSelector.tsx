@@ -14,7 +14,7 @@ import toast from 'react-hot-toast';
 import { UserPlus, ArrowRight, Loader2 } from 'lucide-react';
 import { useListaTeclado } from '../../hooks/useListaTeclado';
 
-interface Registro { id: string; nome: string; telefone?: string | null; email?: string | null; }
+interface Registro { id: string; nome: string; telefone?: string | null; email?: string | null; origem?: 'clientes' | 'fornecedores'; }
 
 interface Props {
   tipo: 'receita' | 'despesa';
@@ -23,8 +23,13 @@ interface Props {
 }
 
 export function ClienteFornecedorSelector({ tipo, value, onChange }: Props) {
-  const tabela = tipo === 'receita' ? 'clientes' : 'fornecedores';
-  const rotulo = tipo === 'receita' ? 'Cliente' : 'Fornecedor';
+  // Pesquisa nas duas listas (nem todo pagamento é pra fornecedor, nem toda
+  // receita vem de cliente); a do tipo do lançamento aparece primeiro.
+  const tabelaPrincipal: 'clientes' | 'fornecedores' = tipo === 'receita' ? 'clientes' : 'fornecedores';
+  const tabelas: ('clientes' | 'fornecedores')[] = tipo === 'receita' ? ['clientes', 'fornecedores'] : ['fornecedores', 'clientes'];
+  const [tabelaNovo, setTabelaNovo] = useState<'clientes' | 'fornecedores'>(tabelaPrincipal);
+  const tabela = tabelaNovo;
+  const rotulo = tabela === 'clientes' ? 'Cliente' : 'Fornecedor';
   const queryClient = useQueryClient();
 
   const [busca, setBusca]       = useState(value);
@@ -59,15 +64,18 @@ export function ClienteFornecedorSelector({ tipo, value, onChange }: Props) {
     setCarregando(true);
     atualizarRect();
     try {
-      let query = supabase.from(tabela).select('id, nome, telefone, email');
-      if (q.trim()) query = query.or(`nome.ilike.%${q}%,telefone.ilike.%${q}%`);
-      const { data } = await query.order('nome').limit(8);
-      setOpcoes(data ?? []);
+      const listas = await Promise.all(tabelas.map(async t => {
+        let query = supabase.from(t).select('id, nome, telefone, email');
+        if (q.trim()) query = query.or(`nome.ilike.%${q}%,telefone.ilike.%${q}%`);
+        const { data } = await query.order('nome').limit(8);
+        return (data ?? []).map(d => ({ ...d, origem: t } as Registro));
+      }));
+      setOpcoes(listas.flat().slice(0, 12));
       setAberto(true);
     } finally {
       setCarregando(false);
     }
-  }, [tabela]);
+  }, [tipo]);
 
   const pesquisar = useCallback((q: string) => {
     setBusca(q);
@@ -132,11 +140,11 @@ export function ClienteFornecedorSelector({ tipo, value, onChange }: Props) {
         <div className="text-gray-400" style={{ padding: '10px 16px', fontSize: 12 }}>Buscando...</div>
       ) : opcoes.length === 0 ? (
         <div className="text-gray-500" style={{ padding: '10px 16px', fontSize: 12 }}>
-          Nenhum {rotulo.toLowerCase()} encontrado.
+          Nenhum cliente ou fornecedor encontrado.
         </div>
       ) : opcoes.map((r, idx) => (
         <button
-          key={r.id}
+          key={(r.origem ?? '') + r.id}
           type="button"
           data-nav={idx}
           onMouseDown={e => { e.preventDefault(); selecionar(r); }}
@@ -148,7 +156,12 @@ export function ClienteFornecedorSelector({ tipo, value, onChange }: Props) {
           className={`${idx === indice ? 'bg-blue-900/30' : 'bg-transparent hover:bg-blue-900/20'} transition-colors ${idx < opcoes.length - 1 ? 'border-b border-gray-700/50' : ''}`}
         >
           <div>
-            <p className="text-white" style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>{r.nome}</p>
+            <p className="text-white" style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>
+              {r.nome}
+              <span className={`ml-2 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${r.origem === 'clientes' ? 'bg-green-500/15 text-green-400' : 'bg-orange-500/15 text-orange-400'}`}>
+                {r.origem === 'clientes' ? 'Cliente' : 'Fornecedor'}
+              </span>
+            </p>
             {(r.telefone || r.email) && (
               <p className="text-gray-400" style={{ fontSize: 11, margin: '2px 0 0' }}>
                 {[r.telefone, r.email].filter(Boolean).join(' · ')}
@@ -174,14 +187,14 @@ export function ClienteFornecedorSelector({ tipo, value, onChange }: Props) {
           role="combobox"
           aria-expanded={aberto}
           className={IN}
-          placeholder={`Buscar ${rotulo.toLowerCase()} ou digitar um nome novo...`}
+          placeholder="Buscar cliente ou fornecedor, ou digitar um nome..."
           autoComplete="off"
         />
         {dropdown}
         <button
           type="button"
-          onClick={() => { setShowNovo(v => !v); setNovoNome(busca); }}
-          title={`Cadastrar novo ${rotulo.toLowerCase()}`}
+          onClick={() => { setShowNovo(v => !v); setNovoNome(busca); setTabelaNovo(tabelaPrincipal); }}
+          title="Cadastrar novo cliente ou fornecedor"
           className="w-9 h-9 flex-shrink-0 bg-blue-600 hover:bg-blue-500 text-white rounded-lg flex items-center justify-center transition-all"
         >
           <UserPlus className="w-4 h-4" />
@@ -190,7 +203,15 @@ export function ClienteFornecedorSelector({ tipo, value, onChange }: Props) {
 
       {showNovo && (
         <div className="bg-[#111827] border border-blue-500/30 rounded-xl p-3 space-y-2.5">
-          <p className="text-[10px] font-bold text-blue-300 uppercase">Cadastrar novo {rotulo.toLowerCase()}</p>
+          <div className="flex items-center gap-2">
+            <p className="text-[10px] font-bold text-blue-300 uppercase">Cadastrar novo</p>
+            {(['fornecedores', 'clientes'] as const).map(t => (
+              <button key={t} type="button" onClick={() => setTabelaNovo(t)}
+                className={`px-2 py-0.5 rounded-full text-[11px] font-bold border ${tabelaNovo === t ? 'bg-blue-600 border-blue-500 text-white' : 'border-gray-700 text-gray-400'}`}>
+                {t === 'clientes' ? 'Cliente' : 'Fornecedor'}
+              </button>
+            ))}
+          </div>
           <div className="grid grid-cols-2 gap-2">
             <input
               autoFocus
