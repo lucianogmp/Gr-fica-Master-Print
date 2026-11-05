@@ -15,6 +15,7 @@ export interface Fornecedor {
   estado?: string;
   cep?: string;
   categoria?: string;
+  categorias?: string[];
   observacoes?: string;
   ativo: boolean;
   created_at: string;
@@ -27,6 +28,7 @@ export const CATEGORIA_FORNECEDOR_OPCOES = [
   'Adesivos / Etiquetas',
   'Letra caixa / 3D',
   'Brindes / Personalizados',
+  'Canecas / Sublimação',
   'Papel',
   'Tinta',
   'Acabamento',

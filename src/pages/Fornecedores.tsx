@@ -7,7 +7,6 @@ import { useConfirm } from '../components/ui/ConfirmModal';
 import { buscarCNPJ, buscarCEP, formatarCEP, apenasNumeros } from '../utils/cnpjCep';
 import toast from 'react-hot-toast';
 import { Truck, Plus, X, AlertCircle, Phone, Mail, MapPin, Search, Loader2, Pencil, PackageSearch } from 'lucide-react';
-import { DarkSelect } from '../components/ui/DarkSelect';
 import { correspondeABuscaEmCampos } from '../lib/buscaFlexivel';
 import { useRolarAoAbrir } from '../hooks/useRolarAoAbrir';
 
@@ -15,7 +14,7 @@ const NOVO: Omit<Fornecedor, 'id' | 'created_at' | 'updated_at' | 'ativo'> = {
   nome: '', telefone: '', email: '', cpf_cnpj: '',
   razao_social: '', nome_fantasia: '', inscricao_estadual: '',
   endereco: '', numero: '', bairro: '', cidade: '', estado: '', cep: '',
-  categoria: '', observacoes: '',
+  categoria: '', categorias: [], observacoes: '',
 };
 
 const IN = "w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors";
@@ -33,15 +32,15 @@ export function Fornecedores() {
   const [buscandoCep, setBuscandoCep] = useState(false);
 
   const filtrados = fornecedores?.filter(f =>
-    correspondeABuscaEmCampos([f.nome, f.email, f.telefone, f.categoria], busca)
+    correspondeABuscaEmCampos([f.nome, f.email, f.telefone, f.categoria, ...(f.categorias ?? [])], busca)
   );
 
   async function handleSalvar(e: React.FormEvent) {
     e.preventDefault();
     if (editandoId) {
-      updateFornecedor({ id: editandoId, payload: { ...form } });
+      updateFornecedor({ id: editandoId, payload: { ...form, categoria: (form.categorias ?? []).join(', ') } });
     } else {
-      await createFornecedor({ ...form });
+      await createFornecedor({ ...form, categoria: (form.categorias ?? []).join(', ') });
     }
     setForm({ ...NOVO });
     setEditandoId(null);
@@ -49,7 +48,7 @@ export function Fornecedores() {
   }
 
   function abrirEdicao(f: Fornecedor) {
-    setForm({ ...NOVO, ...f });
+    setForm({ ...NOVO, ...f, categorias: f.categorias?.length ? f.categorias : (f.categoria ? [f.categoria] : []) });
     setEditandoId(f.id);
     setShowForm(true);
   }
@@ -170,12 +169,19 @@ export function Fornecedores() {
             </div>
 
             <div>
-              <label className={LABEL}>Categoria</label>
-              <DarkSelect
-                value={form.categoria}
-                onChange={v => setF('categoria', v)}
-                options={CATEGORIA_FORNECEDOR_OPCOES}
-              />
+              <label className={LABEL}>O que fornece (marque quantas precisar)</label>
+              <div className="flex flex-wrap gap-1.5">
+                {CATEGORIA_FORNECEDOR_OPCOES.map(op => {
+                  const on = (form.categorias ?? []).includes(op);
+                  return (
+                    <button key={op} type="button"
+                      onClick={() => setForm(p => ({ ...p, categorias: on ? (p.categorias ?? []).filter(c => c !== op) : [...(p.categorias ?? []), op] }))}
+                      className={`px-2.5 py-1 rounded-full text-xs font-bold border transition-colors ${on ? 'bg-blue-600 border-blue-500 text-white' : 'bg-[#111827] border-gray-700 text-gray-400 hover:border-gray-500'}`}>
+                      {op}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {/* ── CNPJ com busca automática ── */}
@@ -317,8 +323,10 @@ export function Fornecedores() {
                     )}
                   </td>
                   <td className="px-5 py-3 text-gray-400 text-xs">
-                    {f.categoria
-                      ? <span className="bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded-full text-[11px] font-bold">{f.categoria}</span>
+                    {(f.categorias?.length ? f.categorias : f.categoria ? [f.categoria] : []).length
+                      ? <div className="flex flex-wrap gap-1">{(f.categorias?.length ? f.categorias : [f.categoria!]).map(c => (
+                          <span key={c} className="bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded-full text-[11px] font-bold">{c}</span>
+                        ))}</div>
                       : '—'}
                   </td>
                   <td className="px-5 py-3 text-gray-400 text-xs">
