@@ -22,6 +22,11 @@ export interface Fornecedor {
 }
 
 export const CATEGORIA_FORNECEDOR_OPCOES = [
+  'Gráfica parceira (impressos)',
+  'Banner / Lona / Comunicação visual',
+  'Adesivos / Etiquetas',
+  'Letra caixa / 3D',
+  'Brindes / Personalizados',
   'Papel',
   'Tinta',
   'Acabamento',
