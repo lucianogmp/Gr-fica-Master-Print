@@ -29,10 +29,9 @@ export const PERMISSOES_MENU: GrupoPermissao[] = [
   { grupo: 'CRM', itens: [
     { rota: '/crm',                       label: 'CRM (geral)' },
     { rota: '/crm/clientes',              label: 'Clientes' },
-    { rota: '/crm/leads',                 label: 'Leads' },
     { rota: '/crm/contatos',              label: 'Contatos' },
     { rota: '/crm/aniversariantes',       label: 'Aniversariantes' },
-    { rota: '/crm/historico-atendimento', label: 'Histórico de Atendimento' },
+    { rota: '/crm/historico-atendimento', label: 'Histórico de Clientes' },
   ]},
   { grupo: 'Financeiro', itens: [
     { rota: '/financeiro',              label: 'Financeiro (geral)' },
@@ -40,7 +39,6 @@ export const PERMISSOES_MENU: GrupoPermissao[] = [
     { rota: '/financeiro/receber',      label: 'Contas a Receber' },
     { rota: '/financeiro/pagar',        label: 'Contas a Pagar' },
     { rota: '/financeiro/fluxo-caixa',  label: 'Fluxo de Caixa' },
-    { rota: '/financeiro/conciliacao',  label: 'Conciliação Bancária' },
     { rota: '/financeiro/resumo',       label: 'Resumo Financeiro' },
   ]},
   { grupo: 'Produtos', itens: [
@@ -48,8 +46,7 @@ export const PERMISSOES_MENU: GrupoPermissao[] = [
     { rota: '/produtos/catalogo',   label: 'Catálogo' },
     { rota: '/produtos/categorias', label: 'Categorias' },
     { rota: '/produtos/precos',     label: 'Tabela de Preços' },
-    { rota: '/produtos/kits',       label: 'Kits' },
-    { rota: '/produtos/servicos',   label: 'Serviços' },
+    { rota: '/produtos/servicos',   label: 'Terceirizados' },
   ]},
   { grupo: 'Estoque', itens: [
     { rota: '/estoque',           label: 'Estoque (geral)' },

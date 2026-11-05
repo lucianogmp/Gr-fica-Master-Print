@@ -8,6 +8,7 @@ import { buscarCNPJ, buscarCEP, formatarCNPJ, formatarCEP, apenasNumeros } from 
 import toast from 'react-hot-toast';
 import { Users2, Plus, X, AlertCircle, Phone, Mail, MapPin, Search, Loader2, CheckCircle2, Pencil } from 'lucide-react';
 import { DarkSelect } from '../../components/ui/DarkSelect';
+import { DateInput } from '../../components/ui/DateInput';
 import { correspondeABuscaEmCampos } from '../../lib/buscaFlexivel';
 import { useRolarAoAbrir } from '../../hooks/useRolarAoAbrir';
 
@@ -37,9 +38,9 @@ export function Clientes() {
   async function handleSalvar(e: React.FormEvent) {
     e.preventDefault();
     if (editandoId) {
-      updateCliente({ id: editandoId, payload: { ...form } });
+      updateCliente({ id: editandoId, payload: { ...form, data_nascimento: form.data_nascimento || null } });
     } else {
-      await createCliente({ ...form });
+      await createCliente({ ...form, data_nascimento: form.data_nascimento || null });
     }
     setForm({ ...NOVO });
     setEditandoId(null);
@@ -166,6 +167,10 @@ export function Clientes() {
               <div>
                 <label className={LABEL}>Email</label>
                 <input type="email" value={form.email} onChange={e => setF('email', e.target.value)} className={IN} />
+              </div>
+              <div>
+                <label className={LABEL}>Aniversário</label>
+                <DateInput value={form.data_nascimento ?? ''} onChange={v => setF('data_nascimento', v)} className={IN} />
               </div>
             </div>
 

@@ -1,228 +1,192 @@
-// src/pages/CRM/HistoricoAtendimento.tsx
-import { useState, useMemo } from 'react';
-import { useAtendimentos } from '../../hooks/useAtendimentos';
+// src/pages/CRM/HistoricoAtendimento.tsx  →  "Histórico de Clientes"
+//
+// Montado sozinho a partir do que o sistema já sabe (vendas e orçamentos) — nada de
+// registrar contato à mão. Serve pra responder: quem compra, quanto, quando foi a última
+// vez, quem está sumido (hora de chamar de volta) e o que cada cliente já fez com a gente.
+import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useClientes } from '../../hooks/useClientes';
-import { useLeads } from '../../hooks/useLeads';
-import { useAuth } from '../../hooks/useAuth';
-import { TipoAtendimento, TIPO_ATENDIMENTO } from '../../types/atendimento';
-import { useConfirm } from '../../components/ui/ConfirmModal';
-import { MessageSquare, Plus, X, AlertCircle, Phone, Mail, MapPin, Users2, UserPlus } from 'lucide-react';
+import { useVendas } from '../../hooks/useVendas';
+import { useOrcamentos } from '../../hooks/useOrcamentos';
+import { STATUS_VENDA } from '../../types/venda';
+import { History, Search, ChevronDown, ChevronRight, ShoppingBag, FileText, ExternalLink } from 'lucide-react';
 import { TableSkeleton } from '../../components/ui/Skeleton';
-import { DateInput } from '../../components/ui/DateInput';
 import { DarkSelect } from '../../components/ui/DarkSelect';
 import { correspondeABuscaEmCampos } from '../../lib/buscaFlexivel';
-import { useRolarAoAbrir } from '../../hooks/useRolarAoAbrir';
 
-const NOVO = {
-  alvo: '',          // formato "cliente:<id>" ou "lead:<id>"
-  tipo: 'whatsapp' as TipoAtendimento,
-  data_atendimento: new Date().toISOString().split('T')[0],
-  descricao: '',
+const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const fmtData = (d?: string | null) => d ? new Date(d.slice(0, 10) + 'T00:00:00').toLocaleDateString('pt-BR') : '—';
+const DIA = 86_400_000;
+
+type Situacao = 'ativo' | 'esfriando' | 'inativo' | 'nunca';
+const SIT: Record<Situacao, { label: string; cor: string }> = {
+  ativo:     { label: 'Ativo',          cor: 'bg-green-500/15 text-green-400 border-green-500/30' },
+  esfriando: { label: 'Esfriando',      cor: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30' },
+  inativo:   { label: 'Sumido',         cor: 'bg-red-500/15 text-red-400 border-red-500/30' },
+  nunca:     { label: 'Nunca comprou',  cor: 'bg-gray-500/15 text-gray-400 border-gray-500/30' },
 };
 
-const IN = "w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors";
-const LABEL = "text-xs font-bold text-gray-400 uppercase block mb-1";
-const fmtData = (d?: string | null) => d ? new Date(d + 'T00:00:00').toLocaleDateString('pt-BR') : '—';
-const fmtDataHora = (d?: string | null) => d ? new Date(d).toLocaleString('pt-BR') : '—';
-
 export function HistoricoAtendimento() {
-  const { data: atendimentos, isLoading, error, criar, deletar, isSaving } = useAtendimentos();
-  const { data: clientes } = useClientes();
-  const { data: leads } = useLeads();
-  const { user } = useAuth();
-  const { confirmar, ConfirmModal } = useConfirm();
+  const navigate = useNavigate();
+  const { data: clientes = [], isLoading: l1 } = useClientes();
+  const { data: vendas = [], isLoading: l2 } = useVendas();
+  const { data: orcamentos = [], isLoading: l3 } = useOrcamentos();
 
   const [busca, setBusca] = useState('');
-  const [filtroTipo, setFiltroTipo] = useState<'todos' | TipoAtendimento>('todos');
-  const [showForm, setShowForm] = useState(false);
-  useRolarAoAbrir(showForm);
-  const [form, setForm] = useState({ ...NOVO });
+  const [filtro, setFiltro] = useState<'' | Situacao>('');
+  const [ordem, setOrdem] = useState<'recente' | 'gasto' | 'pedidos' | 'nome'>('recente');
+  const [aberto, setAberto] = useState<string | null>(null);
 
-  // Apenas leads ainda não convertidos aparecem como opção
-  const leadsAtivos = useMemo(() => (leads ?? []).filter(l => !l.cliente_id), [leads]);
-
-  const filtrados = useMemo(() => (atendimentos ?? [])
-    .filter(a => filtroTipo === 'todos' || a.tipo === filtroTipo)
-    .filter(a => correspondeABuscaEmCampos([a.clientes?.nome ?? a.leads?.nome, a.descricao], busca)),
-    [atendimentos, filtroTipo, busca]);
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!form.alvo) return;
-    const [tipoAlvo, id] = form.alvo.split(':');
-
-    await criar({
-      cliente_id: tipoAlvo === 'cliente' ? id : null,
-      lead_id:    tipoAlvo === 'lead' ? id : null,
-      contato_id: null,
-      tipo:       form.tipo,
-      data_atendimento: form.data_atendimento,
-      descricao:  form.descricao,
-      usuario_id: user?.id ?? null,
-      usuario_nome: user?.name ?? null,
+  const linhas = useMemo(() => {
+    const agora = Date.now();
+    return clientes.map(c => {
+      const vs = vendas.filter(v => v.status !== 'cancelado' && (v.cliente_id === c.id));
+      const os = orcamentos.filter(o => (o as any).cliente_id === c.id);
+      const total = vs.reduce((s, v) => s + Number(v.valor_total ?? v.total ?? 0), 0);
+      const ultima = vs.map(v => v.data_venda ?? '').filter(Boolean).sort().pop() ?? null;
+      const dias = ultima ? Math.floor((agora - new Date(ultima.slice(0, 10) + 'T00:00:00').getTime()) / DIA) : null;
+      const sit: Situacao = dias == null ? 'nunca' : dias <= 60 ? 'ativo' : dias <= 120 ? 'esfriando' : 'inativo';
+      return { c, vs, os, total, ultima, dias, sit, ticket: vs.length ? total / vs.length : 0 };
     });
+  }, [clientes, vendas, orcamentos]);
 
-    setForm({ ...NOVO });
-    setShowForm(false);
-  }
+  const resumo = useMemo(() => ({
+    ativos: linhas.filter(l => l.sit === 'ativo').length,
+    esfriando: linhas.filter(l => l.sit === 'esfriando').length,
+    inativos: linhas.filter(l => l.sit === 'inativo').length,
+    nunca: linhas.filter(l => l.sit === 'nunca').length,
+  }), [linhas]);
 
-  function setF<K extends keyof typeof NOVO>(campo: K, valor: typeof NOVO[K]) {
-    setForm(f => ({ ...f, [campo]: valor }));
-  }
+  const lista = useMemo(() => {
+    const f = linhas
+      .filter(l => !filtro || l.sit === filtro)
+      .filter(l => correspondeABuscaEmCampos([l.c.nome, l.c.telefone, l.c.email], busca));
+    const cmp: Record<typeof ordem, (a: typeof f[0], b: typeof f[0]) => number> = {
+      recente: (a, b) => (b.ultima ?? '').localeCompare(a.ultima ?? ''),
+      gasto:   (a, b) => b.total - a.total,
+      pedidos: (a, b) => b.vs.length - a.vs.length,
+      nome:    (a, b) => a.c.nome.localeCompare(b.c.nome, 'pt-BR'),
+    };
+    return [...f].sort(cmp[ordem]);
+  }, [linhas, filtro, busca, ordem]);
 
-  if (isLoading) return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div className="space-y-2">
-          <div className="skeleton h-7 w-40 rounded-md" />
-          <div className="skeleton h-3 w-48 rounded-md" />
-        </div>
-        <div className="skeleton h-10 w-36 rounded-xl" />
-      </div>
-      <TableSkeleton rows={6} cols={4} />
-    </div>
-  );
-  if (error) return <div className="p-8 text-red-400 font-bold flex items-center gap-2"><AlertCircle className="w-5 h-5" /> Erro ao carregar atendimentos.</div>;
+  if (l1 || l2 || l3) return <div className="p-6"><TableSkeleton rows={8} cols={6} /></div>;
 
   return (
-    <>
-      <ConfirmModal />
-      <div className="p-6 space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-black text-white flex items-center gap-2">
-              <MessageSquare className="w-6 h-6 text-blue-400" /> Histórico de Atendimento
-            </h1>
-            <p className="text-gray-500 text-sm">{atendimentos?.length ?? 0} registro(s)</p>
-          </div>
-          <button
-            onClick={() => setShowForm(!showForm)}
-            className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg shadow-blue-900/30 flex items-center gap-2"
-          >
-            {showForm ? <><X className="w-4 h-4" /> Cancelar</> : <><Plus className="w-4 h-4" /> Novo Registro</>}
+    <div className="p-6 space-y-5">
+      <div>
+        <h1 className="text-2xl font-black text-white flex items-center gap-2">
+          <History className="w-6 h-6 text-blue-400" /> Histórico de Clientes
+        </h1>
+        <p className="text-gray-500 text-sm">Montado automaticamente com as vendas e orçamentos de cada cliente.</p>
+      </div>
+
+      {/* Situação da carteira — clique pra filtrar */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {([['ativo', resumo.ativos, 'comprou nos últimos 60 dias'], ['esfriando', resumo.esfriando, 'última compra entre 60 e 120 dias'],
+           ['inativo', resumo.inativos, 'sem comprar há mais de 120 dias'], ['nunca', resumo.nunca, 'cadastrados sem nenhuma venda']] as [Situacao, number, string][]).map(([k, n, dica]) => (
+          <button key={k} type="button" onClick={() => setFiltro(f => f === k ? '' : k)} title={dica}
+            className={`text-left bg-[#1f2937] border rounded-xl px-4 py-3 transition-colors ${filtro === k ? 'border-blue-500' : 'border-gray-700 hover:border-gray-500'}`}>
+            <p className="text-[10px] font-bold uppercase text-gray-400">{SIT[k].label}</p>
+            <p className="text-2xl font-black text-white">{n}</p>
+            <p className="text-[10px] text-gray-500 truncate">{dica}</p>
           </button>
+        ))}
+      </div>
+
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex-1 flex items-center gap-2 bg-[#1f2937] border border-gray-700 rounded-xl px-3 py-2 focus-within:border-blue-500">
+          <Search className="w-4 h-4 text-gray-500" />
+          <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar cliente por nome, telefone ou e-mail"
+            className="flex-1 bg-transparent text-white text-sm placeholder-gray-600 focus:outline-none" />
         </div>
-
-        {showForm && (
-          <form onSubmit={handleSubmit} className="bg-[#1f2937] border border-gray-700 rounded-xl p-5 space-y-4">
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <div className="col-span-2 md:col-span-1">
-                <label className={LABEL}>Cliente ou Lead *</label>
-                <DarkSelect
-                  value={form.alvo}
-                  onChange={v => setF('alvo', v)}
-                  groups={[
-                    ...(clientes && clientes.length > 0
-                      ? [{
-                          label: 'Clientes',
-                          options: clientes.map(c => ({ value: `cliente:${c.id}`, label: c.nome })),
-                        }]
-                      : []),
-                    ...(leadsAtivos.length > 0
-                      ? [{
-                          label: 'Leads',
-                          options: leadsAtivos.map(l => ({
-                            value: `lead:${l.id}`,
-                            label: `${l.nome}${l.empresa ? ` (${l.empresa})` : ''}`,
-                          })),
-                        }]
-                      : []),
-                  ]}
-                />
-              </div>
-              <div>
-                <label className={LABEL}>Tipo de Contato</label>
-                <DarkSelect
-                  value={form.tipo}
-                  onChange={v => setF('tipo', v as TipoAtendimento)}
-                  allowEmpty={false}
-                  options={Object.entries(TIPO_ATENDIMENTO).map(([k, v]) => ({ value: k, label: v.label }))}
-                />
-              </div>
-              <div>
-                <label className={LABEL}>Data</label>
-                <DateInput value={form.data_atendimento} onChange={v => setF('data_atendimento', v)} className={IN} />
-              </div>
-            </div>
-            <div>
-              <label className={LABEL}>O que foi conversado *</label>
-              <textarea required rows={3} value={form.descricao} onChange={e => setF('descricao', e.target.value)}
-                className={IN + ' resize-none'} placeholder="Ex: Cliente pediu orçamento de 500 cartões, disse que decide até sexta..." />
-            </div>
-            <div className="flex justify-end">
-              <button type="submit" disabled={isSaving || !form.alvo}
-                className="bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white px-6 py-2.5 rounded-xl font-bold text-sm transition-all">
-                {isSaving ? 'Salvando...' : 'Registrar Atendimento'}
-              </button>
-            </div>
-          </form>
-        )}
-
-        <div className="flex gap-2 flex-wrap items-center">
-          <div className="flex gap-1 bg-[#1f2937] border border-gray-700 rounded-xl p-1 flex-wrap">
-            {(['todos', 'whatsapp', 'ligacao', 'email', 'visita', 'outro'] as const).map(f => (
-              <button key={f} onClick={() => setFiltroTipo(f)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  filtroTipo === f ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'
-                }`}>
-                {f === 'todos' ? 'Todos' : TIPO_ATENDIMENTO[f as TipoAtendimento].label}
-              </button>
-            ))}
-          </div>
-          <input
-            value={busca}
-            onChange={e => setBusca(e.target.value)}
-            placeholder="Buscar por cliente, lead ou conteúdo..."
-            className="flex-1 min-w-48 bg-[#1f2937] border border-gray-700 rounded-xl px-4 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500"
-          />
-        </div>
-
-        <div className="space-y-3">
-          {filtrados.length === 0 && (
-            <div className="bg-[#1f2937] border border-gray-700 rounded-xl px-5 py-12 text-center text-gray-600">
-              Nenhum atendimento registrado.
-            </div>
-          )}
-          {filtrados.map(a => {
-            const tp = TIPO_ATENDIMENTO[a.tipo] ?? TIPO_ATENDIMENTO.outro;
-            const nomeAlvo = a.clientes?.nome ?? a.leads?.nome ?? '—';
-            const ehLead = !!a.leads;
-            return (
-              <div key={a.id} className="bg-[#1f2937] border border-gray-700 rounded-xl p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-start gap-3 min-w-0">
-                    <div className={`mt-0.5 w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                      ehLead ? 'bg-yellow-500/15' : 'bg-blue-500/15'
-                    }`}>
-                      {ehLead ? <UserPlus className="w-4 h-4 text-yellow-400" /> : <Users2 className="w-4 h-4 text-blue-400" />}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-white text-sm">{nomeAlvo}</span>
-                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${tp.cor}`}>{tp.label}</span>
-                        <span className="text-[10px] text-gray-500">{fmtData(a.data_atendimento)}</span>
-                      </div>
-                      <p className="text-sm text-gray-300 mt-1.5 whitespace-pre-wrap">{a.descricao}</p>
-                      {a.usuario_nome && (
-                        <p className="text-[10px] text-gray-600 mt-1.5">Registrado por {a.usuario_nome}</p>
-                      )}
-                    </div>
-                  </div>
-                  <button
-                    onClick={async () => {
-                      if (await confirmar('Remover este registro de atendimento?', 'Remover Atendimento'))
-                        deletar(a.id);
-                    }}
-                    className="text-gray-600 hover:text-red-400 p-1.5 rounded-lg hover:bg-red-500/10 transition-all flex-shrink-0"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+        <div className="w-full sm:w-56">
+          <DarkSelect value={ordem} onChange={v => setOrdem(v as typeof ordem)}
+            options={[{ value: 'recente', label: 'Última compra' }, { value: 'gasto', label: 'Mais gastou' },
+              { value: 'pedidos', label: 'Mais pedidos' }, { value: 'nome', label: 'Nome (A → Z)' }]} />
         </div>
       </div>
-    </>
+
+      <div className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-gray-400 text-[10px] font-bold uppercase border-b border-gray-700 bg-gray-800/40">
+                <th className="px-4 py-3 text-left">Cliente</th>
+                <th className="px-4 py-3 text-center">Situação</th>
+                <th className="px-4 py-3 text-center">Última compra</th>
+                <th className="px-4 py-3 text-center">Pedidos</th>
+                <th className="px-4 py-3 text-right">Total gasto</th>
+                <th className="px-4 py-3 text-right">Ticket médio</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lista.length === 0 && (
+                <tr><td colSpan={6} className="px-5 py-12 text-center text-gray-600">Nenhum cliente encontrado.</td></tr>
+              )}
+              {lista.map(l => {
+                const exp = aberto === l.c.id;
+                const eventos = [
+                  ...l.vs.map(v => ({ k: 'v' as const, id: v.id, data: v.data_venda ?? '', num: v.numero, titulo: v.tipo || 'Venda',
+                    valor: Number(v.valor_total ?? v.total ?? 0), status: STATUS_VENDA[v.status]?.label ?? v.status })),
+                  ...l.os.map(o => ({ k: 'o' as const, id: o.id, data: (o.created_at ?? '').slice(0, 10), num: o.numero, titulo: (o as any).tipo || 'Orçamento',
+                    valor: Number((o as any).total ?? 0), status: o.status })),
+                ].sort((a, b) => b.data.localeCompare(a.data));
+                return (
+                  <>
+                    <tr key={l.c.id} onClick={() => setAberto(exp ? null : l.c.id)}
+                      className="border-b border-gray-700/50 hover:bg-gray-800/30 cursor-pointer">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          {exp ? <ChevronDown className="w-4 h-4 text-gray-500" /> : <ChevronRight className="w-4 h-4 text-gray-500" />}
+                          <div>
+                            <p className="font-bold text-white">{l.c.nome}</p>
+                            {l.c.telefone && <p className="text-[11px] text-gray-500">{l.c.telefone}</p>}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${SIT[l.sit].cor}`}>{SIT[l.sit].label}</span>
+                      </td>
+                      <td className="px-4 py-3 text-center text-gray-300 text-xs">
+                        {fmtData(l.ultima)}{l.dias != null && <span className="text-gray-600"> · há {l.dias}d</span>}
+                      </td>
+                      <td className="px-4 py-3 text-center text-gray-300">{l.vs.length}</td>
+                      <td className="px-4 py-3 text-right font-bold text-green-400">{l.total ? fmtBRL(l.total) : '—'}</td>
+                      <td className="px-4 py-3 text-right text-gray-300">{l.ticket ? fmtBRL(l.ticket) : '—'}</td>
+                    </tr>
+                    {exp && (
+                      <tr key={l.c.id + '-det'} className="bg-gray-900/40 border-b border-gray-700/50">
+                        <td colSpan={6} className="px-6 py-3">
+                          {eventos.length === 0 ? (
+                            <p className="text-xs text-gray-500">Nenhuma venda ou orçamento para este cliente ainda.</p>
+                          ) : (
+                            <div className="space-y-1.5">
+                              {eventos.slice(0, 30).map(ev => (
+                                <div key={ev.k + ev.id} className="flex items-center gap-3 text-xs">
+                                  {ev.k === 'v' ? <ShoppingBag className="w-3.5 h-3.5 text-green-400 flex-shrink-0" /> : <FileText className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />}
+                                  <span className="text-gray-500 w-20 flex-shrink-0">{fmtData(ev.data)}</span>
+                                  <span className="text-gray-400 w-24 flex-shrink-0">{ev.k === 'v' ? 'Venda' : 'Orçamento'}{ev.num ? ` #${ev.num}` : ''}</span>
+                                  <span className="text-white font-semibold truncate flex-1">{ev.titulo}</span>
+                                  <span className="text-gray-500 hidden sm:inline">{ev.status}</span>
+                                  <span className="text-gray-200 font-bold w-24 text-right flex-shrink-0">{ev.valor ? fmtBRL(ev.valor) : '—'}</span>
+                                  <button title="Abrir" onClick={e => { e.stopPropagation(); navigate(ev.k === 'v' ? `/vendas/nova/${ev.id}` : `/orcamentos?abrir=${ev.id}`); }}
+                                    className="text-gray-500 hover:text-blue-400"><ExternalLink className="w-3.5 h-3.5" /></button>
+                                </div>
+                              ))}
+                              {eventos.length > 30 && <p className="text-[11px] text-gray-600">Mostrando os 30 mais recentes de {eventos.length}.</p>}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                  </>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   );
 }

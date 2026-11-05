@@ -118,7 +118,7 @@ export function Aniversariantes() {
           </thead>
           <tbody>
             {aniversariantes.length === 0 && (
-              <tr><td colSpan={4} className="px-5 py-12 text-center text-gray-600">Nenhum aniversariante neste mês.</td></tr>
+              <tr><td colSpan={4} className="px-5 py-12 text-center text-gray-600">Nenhum aniversariante neste mês. A data de nascimento é cadastrada no cadastro do cliente (campo Aniversário) ou do contato.</td></tr>
             )}
             {aniversariantes.map(a => {
               const ehHoje = mesSelecionado === hojeMes && a.dia === hojeDia;
