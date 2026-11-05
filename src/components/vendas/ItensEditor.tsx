@@ -6,7 +6,7 @@ import { Produto } from '../../types/produto';
 import { useProdutos } from '../../hooks/useProdutos';
 import { loadBom, calcCustoBOM } from '../../hooks/useBom';
 import { useRole } from '../../hooks/useRole';
-import { X, Search, Pencil, Check, Ruler } from 'lucide-react';
+import { X, Search, Pencil, Check, Ruler, PackagePlus, PackageSearch } from 'lucide-react';
 import { ItemOrcEditor } from '../orcamentos/ItemOrcEditor';
 import { OrcamentoItem } from '../../types/orcamento';
 import { medidasDoItemOrcamento } from '../../lib/placaCalc';
@@ -58,9 +58,11 @@ interface ItensEditorProps {
   onChange: (itens: VendaItem[]) => void;
   /** Lápis do item: abre o cadastro do produto pra editar; ao salvar, volta pra esta venda. */
   onEditarProduto?: (indice: number) => void;
+  /** Cria um produto novo no cadastro e volta pra esta venda (só passa se a pessoa tem permissão). */
+  onCriarProduto?: () => void;
 }
 
-export function ItensEditor({ itens, onChange, onEditarProduto }: ItensEditorProps) {
+export function ItensEditor({ itens, onChange, onEditarProduto, onCriarProduto }: ItensEditorProps) {
   const [buscaProduto, setBuscaProduto] = useState('');
   const [mostrarSugestoes, setMostrar]  = useState(false);
   const [dropRect, setDropRect]         = useState<DOMRect | null>(null);
@@ -298,7 +300,7 @@ export function ItensEditor({ itens, onChange, onEditarProduto }: ItensEditorPro
               <col style={{ width: 112 }} />
               <col style={{ width: 112 }} />
               <col style={{ width: 112 }} />
-              <col style={{ width: 56 }} />
+              <col style={{ width: 84 }} />
             </colgroup>
             <thead>
               <tr className="text-[11px] font-bold text-gray-400 uppercase bg-gray-800/50 border-b border-gray-700">
@@ -351,12 +353,17 @@ export function ItensEditor({ itens, onChange, onEditarProduto }: ItensEditorPro
                   </td>
                   <td className="px-1 py-1">
                     <div className="flex items-center justify-center gap-1.5">
+                      {podeEditarProduto(it) && (
+                        <button
+                          title="Editar o cadastro deste produto (ao salvar, volta pra esta venda sem perder nada)"
+                          onClick={() => onEditarProduto!(i)}
+                          className="text-blue-400/80 hover:text-blue-300 transition-colors inline-flex">
+                          <PackageSearch className="w-4 h-4" />
+                        </button>
+                      )}
                       <button
-                        title={podeEditarProduto(it) ? 'Editar o produto (volta pra esta venda ao salvar)' : 'Editar a descrição'}
-                        onClick={() => {
-                          if (podeEditarProduto(it)) onEditarProduto!(i);
-                          else setEditandoNome(editandoNome === i ? null : i);
-                        }}
+                        title="Editar a descrição deste item na venda"
+                        onClick={() => setEditandoNome(editandoNome === i ? null : i)}
                         className="text-gray-500 hover:text-blue-400 transition-colors inline-flex">
                         {editandoNome === i ? <Check className="w-3.5 h-3.5" /> : <Pencil className="w-3.5 h-3.5" />}
                       </button>
@@ -397,6 +404,16 @@ export function ItensEditor({ itens, onChange, onEditarProduto }: ItensEditorPro
         >
           <Ruler className="w-3.5 h-3.5" /> m² Material
         </button>
+        {onCriarProduto && (
+          <button
+            type="button"
+            onClick={onCriarProduto}
+            title="Cadastrar um produto novo (ao salvar, volta pra esta venda sem perder nada)"
+            className="flex items-center gap-1.5 px-3 rounded-lg border border-green-500/40 bg-green-600/15 hover:bg-green-600/30 text-green-300 text-xs font-bold whitespace-nowrap transition-colors"
+          >
+            <PackagePlus className="w-3.5 h-3.5" /> Novo produto
+          </button>
+        )}
         {dropdown}
         {produtosAtivos.length === 0 && (
           <p className="text-[10px] text-yellow-400 mt-1">Nenhum produto ativo cadastrado em Produtos.</p>

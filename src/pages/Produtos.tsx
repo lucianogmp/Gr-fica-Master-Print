@@ -385,6 +385,8 @@ export function Produtos() {
   const editarId = searchParams.get('editar');
   const retornoPara = searchParams.get('retorno');
   const abriuDaVendaRef = useRef(false);
+  const novoDaVenda = searchParams.get('novo') === '1';
+  const abriuNovoRef = useRef(false);
 
   const [view, setView]         = useState<View>('lista');
   const [produtoId, setProdutoId] = useState<string | null>(null);
@@ -487,6 +489,14 @@ export function Produtos() {
     if (p) { abriuDaVendaRef.current = true; abrirDetalhe(p); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editarId, produtos]);
+
+  // Vindo do botão "Novo produto" da venda: já abre o formulário em branco.
+  useEffect(() => {
+    if (!novoDaVenda || abriuNovoRef.current) return;
+    abriuNovoRef.current = true;
+    abrirDetalhe(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [novoDaVenda]);
 
   function setF(field: string, val: any) { setForm(f => ({ ...f, [field]: val })); }
 

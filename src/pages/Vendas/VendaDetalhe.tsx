@@ -25,6 +25,7 @@ import { GastosVenda } from '../../components/vendas/GastosVenda';
 import { DateInput } from '../../components/ui/DateInput';
 import { useConfirm } from '../../components/ui/ConfirmModal';
 import { useAuth } from '../../hooks/useAuth';
+import { useRole } from '../../hooks/useRole';
 import {
   ArrowLeft, Save, Package, Settings, Printer, Calendar, AlertTriangle, Check, Download, Eye,
 } from 'lucide-react';
@@ -278,6 +279,15 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
     navigate(`/produtos/catalogo?editar=${encodeURIComponent(it.produto_id)}&retorno=${encodeURIComponent(voltar)}`);
   }
 
+  // Criar produto novo a partir da venda: guarda a venda inteira e abre o cadastro; ao salvar
+  // (ou fechar) o cadastro, volta pra cá com tudo no lugar.
+  function handleCriarProduto() {
+    guardarRascunhoVenda({ vendaId, form, itens, pagamentosRascunho, gastosRascunho } as any);
+    limparAlteracoesPendentes();
+    const voltar = location.pathname + location.search;
+    navigate(`/produtos/catalogo?novo=1&retorno=${encodeURIComponent(voltar)}`);
+  }
+
   function fechar() {
     limparAlteracoesPendentes();
     navigate(rotaVoltar);
@@ -356,6 +366,10 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
 
   // Popup "Venda salva!": guarda uma cópia do documento exatamente como foi salvo.
   const [posSalvar, setPosSalvar] = useState<{ id: string; doc: DocumentoImpressaoData } | null>(null);
+
+  // Criar/editar produto só pra quem tem acesso ao Catálogo nas permissões.
+  const { pode } = useRole();
+  const podeProdutos = pode('/produtos/catalogo');
 
   const layoutVenda = { ...DEFAULT_LAYOUT_VENDA, ...(cfg?.layout_impressao_venda ?? {}) };
 
@@ -679,7 +693,7 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-1.5">
               <Package className="w-3.5 h-3.5" /> Itens da Venda
             </h3>
-            <ItensEditor itens={itens} onEditarProduto={handleEditarProduto} onChange={novosItens => {
+            <ItensEditor itens={itens} onEditarProduto={podeProdutos ? handleEditarProduto : undefined} onCriarProduto={podeProdutos ? handleCriarProduto : undefined} onChange={novosItens => {
               setItens(novosItens);
               if (!carregandoRef.current) {
                 marcarAlteracoesPendentes('Você tem alterações não salvas nessa venda. Sair mesmo assim?');
