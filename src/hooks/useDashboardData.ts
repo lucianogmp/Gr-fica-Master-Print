@@ -242,6 +242,7 @@ export function useDashboardData(mes: string) {
         const { start: ms, end: me } = mesRange(mm);
         const ml = hist.filter(l => (l.data_vencimento ?? '') >= ms && (l.data_vencimento ?? '') <= me);
         return {
+          mes: mm,
           name: NOMES_MES[mm.slice(5, 7)] ?? mm.slice(5, 7),
           vendas: somaVendas(ms, me),
           receita: somaPagementos(ms, me) + somaLancManual(ml, ms, me) + somaCaixa('entrada', ms, me),
@@ -256,7 +257,14 @@ export function useDashboardData(mes: string) {
         // mesma regra da Gestão de Custos: (valor − residual) ÷ vida útil, só equipamentos ativos
         deprs.filter((d: any) => d.ativo !== false)
           .reduce((s, d: any) => s + (Math.max(0, Number(d.valor) - Number(d.valor_residual ?? 0)) / (Number(d.vida_util_anos) * 12)), 0);
-      const margem  = receitaMes > 0 ? (lucroMes / receitaMes) * 100 : 0;
+      // Margem estável: soma dos últimos 3 meses (até o mês escolhido) em vez de só o mês
+      // corrente. No começo do mês uma única despesa derrubava a margem e o ponto de
+      // equilíbrio ia pra dezenas de milhares; com 3 meses o número só se move de verdade.
+      const ult3 = chart6.filter(c => c.mes <= mes).slice(-3);
+      const rec3 = ult3.reduce((s, c) => s + c.receita, 0);
+      const desp3 = ult3.reduce((s, c) => s + c.despesa, 0);
+      const margem = rec3 > 0 ? ((rec3 - desp3) / rec3) * 100
+        : (receitaMes > 0 ? (lucroMes / receitaMes) * 100 : 0);
       const pontoEq = margem > 0 ? custoFixoTotal / (margem / 100) : 0;
 
       // ─── Situação das vendas ─────────────────────────────────────────────────

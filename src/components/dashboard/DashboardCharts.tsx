@@ -99,7 +99,7 @@ export function DashboardCharts({ data }: { data: ChartData | undefined }) {
               { label: 'Receita Necessária (mês)', value: fmtBRL(data?.custoFixoTotal) },
               { label: 'Custo Fixo Total',          value: fmtBRL(data?.custoFixoTotal) },
               { label: 'Custo Variável Total',       value: fmtBRL(data?.despesaMes) },
-              { label: 'Margem de Contribuição',     value: `${(data?.margemContrib ?? 0).toFixed(1)}%`, cor: 'text-green-400' },
+              { label: 'Margem (média 3 meses)',        value: `${(data?.margemContrib ?? 0).toFixed(1)}%`, cor: 'text-green-400' },
             ].map(r => (
               <div key={r.label} className="flex justify-between items-center text-xs border-b border-gray-800 pb-1.5 last:border-0">
                 <span className="text-gray-500">{r.label}</span>
