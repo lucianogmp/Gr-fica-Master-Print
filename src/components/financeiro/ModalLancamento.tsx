@@ -6,6 +6,7 @@ import { Pencil, Plus, ArrowUp, ArrowDown } from 'lucide-react';
 import { MoneyInput } from '../ui/MoneyInput';
 import { DateInput } from '../ui/DateInput';
 import { DarkSelect } from '../ui/DarkSelect';
+import { ClienteFornecedorSelector } from './ClienteFornecedorSelector';
 import { marcarAlteracoesPendentes, limparAlteracoesPendentes } from '../../lib/unsavedChangesGuard';
 
 const IN = "w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors";
@@ -205,8 +206,8 @@ export function ModalLancamento({ open, editando, tipoInicial, onClose, onSalvar
             />
           </div>
           <div>
-            <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Cliente / Fornecedor</label>
-            <input value={form.cliente_nome} onChange={e => set('cliente_nome', e.target.value)} className={IN} placeholder="Nome..." />
+            <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">{form.tipo === 'receita' ? 'Cliente' : 'Fornecedor'}</label>
+            <ClienteFornecedorSelector key={form.tipo} tipo={form.tipo} value={form.cliente_nome} onChange={v => set('cliente_nome', v)} />
           </div>
         </div>
 
