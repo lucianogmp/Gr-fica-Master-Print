@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { BookOpen, Moon, Sun, Clock } from 'lucide-react';
 import { versiculoDoDia } from '../lib/versiculos';
-import { lerEApagarMotivo, registrarAtividade } from '../lib/sessaoInatividade';
+import { lerEApagarMotivo, limparExpiracaoAoAbrir } from '../lib/sessaoInatividade';
 import { useTheme } from '../hooks/useTheme';
 
 const CHAVE_LOGO = 'mp-logo-cache';
@@ -53,7 +53,7 @@ export function Login() {
     if (error) {
       toast.error('Email ou senha incorretos.');
     } else {
-      registrarAtividade();
+      limparExpiracaoAoAbrir();
       try { sessionStorage.removeItem('mp-sessao-iniciada'); } catch { /* ignora */ }
       navigate('/');
     }

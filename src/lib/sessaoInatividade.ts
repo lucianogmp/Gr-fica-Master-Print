@@ -50,4 +50,21 @@ export function lerEApagarMotivo(): MotivoLogin | null {
 }
 
 // Avaliado uma única vez, assim que o sistema é carregado (antes de qualquer atividade ser registrada).
-export const EXPIROU_AO_ABRIR: MotivoLogin | null = motivoDeExpiracao();
+// IMPORTANTE: só vale para a abertura da página. Antes ele continuava "expirado" pelo resto da
+// vida da aba: no celular (aba mantida em memória) a pessoa logava e, ao montar a próxima tela,
+// o sistema achava que ainda era a abertura expirada e deslogava de novo — o loop de login.
+const CARREGADO_EM = Date.now();
+const JANELA_ABERTURA_MS = 10_000;
+let expirouAoAbrir: MotivoLogin | null = motivoDeExpiracao();
+
+/** Motivo de expiração da abertura da página (só nos primeiros segundos, e só até o login). */
+export function expirouAoAbrirAgora(): MotivoLogin | null {
+  if (Date.now() - CARREGADO_EM > JANELA_ABERTURA_MS) return null;
+  return expirouAoAbrir;
+}
+
+/** Chamar quando a pessoa faz login: a expiração da abertura já foi tratada. */
+export function limparExpiracaoAoAbrir() {
+  expirouAoAbrir = null;
+  registrarAtividade();
+}

@@ -10,7 +10,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { User } from '@supabase/supabase-js';
-import { EXPIROU_AO_ABRIR, guardarMotivo, limparAtividade } from '../lib/sessaoInatividade';
+import { expirouAoAbrirAgora, guardarMotivo, limparAtividade } from '../lib/sessaoInatividade';
 
 export interface AuthUser {
   id: string;
@@ -45,8 +45,9 @@ export function useAuth() {
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
       // Primeira abertura do dia / mais de 30 min parado: volta para o login.
-      if (data.session && EXPIROU_AO_ABRIR) {
-        guardarMotivo(EXPIROU_AO_ABRIR);
+      const expirou = expirouAoAbrirAgora();
+      if (data.session && expirou) {
+        guardarMotivo(expirou);
         limparAtividade();
         try { sessionStorage.removeItem('mp-sessao-iniciada'); } catch { /* ignora */ }
         await supabase.auth.signOut();
