@@ -75,6 +75,16 @@ export function ModalLancamento({ open, editando, tipoInicial, onClose, onSalvar
     carregandoRef.current = false;
   }, [editando, tipoInicial, open]);
 
+  // Só uma conta serve pra essa forma de pagamento → já deixa preenchida
+  // (o campo continua aparecendo e dá pra trocar). Só fica em branco quando
+  // há mais de uma conta possível e a pessoa precisa escolher.
+  const unicaConta = opcoesConta.length === 1 ? opcoesConta[0].id : '';
+  useEffect(() => {
+    if (open && form.status === 'pago' && form.forma_pagamento && !form.conta_id && unicaConta) {
+      setForm(p => ({ ...p, conta_id: unicaConta }));
+    }
+  }, [open, form.status, form.forma_pagamento, form.conta_id, unicaConta]);
+
   // Modal fechou por qualquer caminho (Salvar, Cancelar, X, Esc, clique
   // fora) — limpa o aviso, não precisa mais dele.
   useEffect(() => {
