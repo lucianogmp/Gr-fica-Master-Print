@@ -4,7 +4,8 @@
 // faixa de valor, os dois critérios mais úteis em qualquer lista
 // financeira/operacional. O botão mostra quantos filtros estão ativos.
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useCallback } from 'react';
+import { PainelFlutuante } from './PainelFlutuante';
 import { Filter, X } from 'lucide-react';
 import { DateInput } from './DateInput';
 import { MoneyInput } from './MoneyInput';
@@ -35,21 +36,15 @@ export function FiltrosAvancados({
   labelData = 'Período', labelValor = 'Valor',
 }: Props) {
   const [aberto, setAberto] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function onClickFora(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setAberto(false);
-    }
-    document.addEventListener('mousedown', onClickFora);
-    return () => document.removeEventListener('mousedown', onClickFora);
-  }, []);
+  const ref = useRef<HTMLButtonElement>(null);
+  const fechar = useCallback(() => setAberto(false), []);
 
   const qtdAtivos = Object.values(valor).filter(v => v !== null && v !== undefined && v !== '').length;
 
   return (
-    <div ref={ref} className="relative">
+    <>
       <button
+        ref={ref}
         onClick={() => setAberto(a => !a)}
         className={`flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold text-xs transition-all whitespace-nowrap ${
           qtdAtivos > 0 ? 'bg-blue-600/20 text-blue-400 border border-blue-500/40' : 'bg-gray-700/60 text-gray-300 border border-gray-700 hover:bg-gray-700'
@@ -61,29 +56,31 @@ export function FiltrosAvancados({
         )}
       </button>
 
-      {aberto && (
-        <div className="absolute right-0 mt-1.5 w-72 bg-[#1f2937] border border-gray-700 rounded-xl shadow-2xl z-30 p-4 space-y-4">
+      <PainelFlutuante ancora={ref} aberto={aberto} onFechar={fechar} largura={340} className="p-4">
+        <div className="space-y-4">
           {mostrarData && (
             <div>
               <p className="text-[10px] font-bold text-gray-500 uppercase mb-1.5">{labelData}</p>
-              <div className="flex items-center gap-2">
+              <div className="grid grid-cols-[2rem_1fr] items-center gap-x-2 gap-y-2">
+                <span className="text-gray-500 text-[11px]">De</span>
                 <DateInput value={valor.dataInicio ?? ''} onChange={v => onChange({ ...valor, dataInicio: v || null })}
-                  className="bg-[#111827] border border-gray-700 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500 w-full" />
-                <span className="text-gray-600 text-xs flex-shrink-0">até</span>
+                  className="bg-[#111827] border border-gray-700 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500 w-full min-w-0" />
+                <span className="text-gray-500 text-[11px]">Até</span>
                 <DateInput value={valor.dataFim ?? ''} onChange={v => onChange({ ...valor, dataFim: v || null })}
-                  className="bg-[#111827] border border-gray-700 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500 w-full" />
+                  className="bg-[#111827] border border-gray-700 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500 w-full min-w-0" />
               </div>
             </div>
           )}
           {mostrarValor && (
             <div>
               <p className="text-[10px] font-bold text-gray-500 uppercase mb-1.5">{labelValor}</p>
-              <div className="flex items-center gap-2">
+              <div className="grid grid-cols-[2rem_1fr] items-center gap-x-2 gap-y-2">
+                <span className="text-gray-500 text-[11px]">De</span>
                 <MoneyInput value={valor.valorMin ?? 0} onChange={v => onChange({ ...valor, valorMin: v || null })}
-                  className="bg-[#111827] border border-gray-700 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500 w-full" placeholder="Mín." />
-                <span className="text-gray-600 text-xs flex-shrink-0">até</span>
+                  className="bg-[#111827] border border-gray-700 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500 w-full min-w-0" placeholder="Mín." />
+                <span className="text-gray-500 text-[11px]">Até</span>
                 <MoneyInput value={valor.valorMax ?? 0} onChange={v => onChange({ ...valor, valorMax: v || null })}
-                  className="bg-[#111827] border border-gray-700 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500 w-full" placeholder="Máx." />
+                  className="bg-[#111827] border border-gray-700 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500 w-full min-w-0" placeholder="Máx." />
               </div>
             </div>
           )}
@@ -96,8 +93,8 @@ export function FiltrosAvancados({
             </button>
           )}
         </div>
-      )}
-    </div>
+      </PainelFlutuante>
+    </>
   );
 }
 

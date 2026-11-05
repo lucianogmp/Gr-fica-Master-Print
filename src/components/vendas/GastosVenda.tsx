@@ -5,7 +5,8 @@
 // venda. Cria um lançamento de despesa (venda_id preenchido) que aparece
 // no Financeiro normalmente, mas fica rastreável de qual venda veio.
 
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
+import { PainelFlutuante } from '../ui/PainelFlutuante';
 import { Plus, Trash2, Truck, Receipt, X } from 'lucide-react';
 import { useLancamentos } from '../../hooks/useLancamentos';
 import { useFornecedores } from '../../hooks/useFornecedores';
@@ -43,6 +44,13 @@ export function GastosVenda({ vendaId, clienteNome, itens, gastosRascunho = [], 
   const [mostrarForm, setMostrarForm] = useState(false);
   const [itemRelacionadoIdx, setItemRelacionadoIdx] = useState<string>('');
   const [fornecedorNome, setFornecedorNome] = useState('');
+  const [sugForn, setSugForn] = useState(false);
+  const fornecedorInputRef = useRef<HTMLInputElement>(null);
+  const fecharSugForn = useCallback(() => setSugForn(false), []);
+  const sugestoesForn = fornecedores
+    .filter(f => !fornecedorNome.trim() || (f.nome ?? '').toLowerCase().includes(fornecedorNome.trim().toLowerCase()))
+    .filter(f => (f.nome ?? '').toLowerCase() !== fornecedorNome.trim().toLowerCase())
+    .slice(0, 8);
   const [valor, setValor] = useState(0);
   const [descricao, setDescricao] = useState('');
   const [dataVencimento, setDataVencimento] = useState(new Date().toISOString().split('T')[0]);
@@ -178,12 +186,20 @@ export function GastosVenda({ vendaId, clienteNome, itens, gastosRascunho = [], 
           <div className="grid grid-cols-2 gap-2.5">
             <div>
               <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Fornecedor / Pago a *</label>
-              <input list="fornecedores-lista-gasto" value={fornecedorNome}
-                onChange={e => setFornecedorNome(e.target.value)}
-                className={IN} placeholder="Nome do fornecedor" />
-              <datalist id="fornecedores-lista-gasto">
-                {fornecedores.map(f => <option key={f.id} value={f.nome} />)}
-              </datalist>
+              <input ref={fornecedorInputRef} value={fornecedorNome}
+                onChange={e => { setFornecedorNome(e.target.value); setSugForn(true); }}
+                onFocus={() => setSugForn(true)}
+                className={IN} placeholder="Nome do fornecedor" autoComplete="off" />
+              <PainelFlutuante ancora={fornecedorInputRef} aberto={sugForn && sugestoesForn.length > 0}
+                onFechar={fecharSugForn} largura={260} alinhar="left">
+                {sugestoesForn.map(f => (
+                  <button key={f.id} type="button"
+                    onMouseDown={e => { e.preventDefault(); setFornecedorNome(f.nome); setSugForn(false); }}
+                    className="w-full text-left px-3 py-2 text-xs text-white hover:bg-blue-900/20 border-b border-gray-700/50 last:border-0">
+                    {f.nome}
+                  </button>
+                ))}
+              </PainelFlutuante>
             </div>
             <div>
               <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Valor *</label>

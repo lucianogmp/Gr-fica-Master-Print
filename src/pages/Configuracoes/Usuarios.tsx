@@ -166,11 +166,8 @@ export function Usuarios() {
               className={IN} placeholder="Nome do colaborador" />
           </div>
           <div><Lbl>Perfil de acesso</Lbl>
-            <select value={conviteForm.role} onChange={e => setConviteForm(f => ({ ...f, role: e.target.value as Role }))} className={IN}>
-              {Object.entries(ROLES).map(([key, r]) => (
-                <option key={key} value={key}>{r.label} — {r.descricao}</option>
-              ))}
-            </select>
+            <DarkSelect value={conviteForm.role} onChange={v => setConviteForm(f => ({ ...f, role: v as Role }))}
+              options={Object.entries(ROLES).map(([key, r]) => ({ value: key, label: `${r.label} — ${r.descricao}` }))} />
           </div>
           <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 text-xs text-blue-300">
             O usuário receberá um e-mail para definir a senha e acessar o sistema.

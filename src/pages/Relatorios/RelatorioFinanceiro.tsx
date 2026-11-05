@@ -9,6 +9,7 @@ import { useRelatorioFinanceiro, RelatorioFinanceiroFiltros } from '../../hooks/
 import { useContainerReady } from '../../hooks/useContainerReady';
 import { DateInput } from '../../components/ui/DateInput';
 import { Landmark, Download, Printer, AlertTriangle, Inbox } from 'lucide-react';
+import { DarkSelect } from '../../components/ui/DarkSelect';
 
 const fmtBRL  = (v: number) => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const fmtData = (d?: string | null) => d ? new Date(d + 'T00:00:00').toLocaleDateString('pt-BR') : '—';
@@ -95,22 +96,15 @@ export function RelatorioFinanceiro() {
             </div>
             <div>
               <label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Tipo</label>
-              <select value={rascunho.tipo ?? ''}
-                onChange={e => setRascunho(f => ({ ...f, tipo: (e.target.value as any) || undefined }))} className={IN + ' w-full'}>
-                <option value="">Todos</option>
-                <option value="receita">Receita</option>
-                <option value="despesa">Despesa</option>
-              </select>
+              <DarkSelect value={rascunho.tipo ?? ''} allowEmpty placeholder="Todos" size="sm"
+                onChange={v => setRascunho(f => ({ ...f, tipo: (v as any) || undefined }))}
+                options={[{ value: 'receita', label: 'Receita' }, { value: 'despesa', label: 'Despesa' }]} />
             </div>
             <div>
               <label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Status</label>
-              <select value={rascunho.status ?? ''}
-                onChange={e => setRascunho(f => ({ ...f, status: e.target.value || undefined }))} className={IN + ' w-full'}>
-                <option value="">Todos</option>
-                <option value="pago">Pago</option>
-                <option value="pendente">Pendente</option>
-                <option value="atrasado">Atrasado</option>
-              </select>
+              <DarkSelect value={rascunho.status ?? ''} allowEmpty placeholder="Todos" size="sm"
+                onChange={v => setRascunho(f => ({ ...f, status: v || undefined }))}
+                options={[{ value: 'pago', label: 'Pago' }, { value: 'pendente', label: 'Pendente' }, { value: 'atrasado', label: 'Atrasado' }]} />
             </div>
             <div className="col-span-2 sm:col-span-2 md:col-span-4 lg:col-span-1">
               <button onClick={() => setFiltros(rascunho)}

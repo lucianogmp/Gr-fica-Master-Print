@@ -15,6 +15,7 @@ import { supabase } from '../../lib/supabase';
 import * as XLSX from 'xlsx';
 import { useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { DarkSelect } from '../../components/ui/DarkSelect';
 import { TABELAS_IMPORTAVEIS, type TabelaImportavel } from './importConfig';
 import { sugerirMapeamento, normalizar } from './mapeamento';
 
@@ -350,21 +351,11 @@ export default function ImportarDadosPage() {
         <div className="mt-6 space-y-5">
           <div>
             <label className="block text-sm font-medium mb-2">O que você quer importar?</label>
-            <select
-              className="w-full bg-gray-800 border border-gray-700 rounded-md p-2 text-sm"
-              value={tabelaEscolhida?.tabela ?? ''}
-              onChange={(e) => {
-                const t = TABELAS_IMPORTAVEIS.find((x) => x.tabela === e.target.value) ?? null;
-                setTabelaEscolhida(t);
-              }}
-            >
-              <option value="">Selecione...</option>
-              {TABELAS_IMPORTAVEIS.map((t) => (
-                <option key={t.tabela} value={t.tabela}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
+            <DarkSelect
+              value={tabelaEscolhida?.tabela ?? ''} allowEmpty placeholder="Selecione..."
+              onChange={(v) => setTabelaEscolhida(TABELAS_IMPORTAVEIS.find((x) => x.tabela === v) ?? null)}
+              options={TABELAS_IMPORTAVEIS.map((t) => ({ value: t.tabela, label: t.label }))}
+            />
           </div>
 
           {tabelaEscolhida && (
@@ -398,19 +389,11 @@ export default function ImportarDadosPage() {
               <div key={coluna} className="flex items-center gap-3 p-3">
                 <div className="w-1/2 text-sm text-gray-300 truncate">{coluna || '(sem nome)'}</div>
                 <div className="w-1/2">
-                  <select
-                    className="w-full bg-gray-800 border border-gray-700 rounded-md p-1.5 text-sm"
-                    value={mapeamento[coluna] ?? ''}
-                    onChange={(e) => atualizarMapeamento(coluna, e.target.value)}
-                  >
-                    <option value="">Ignorar esta coluna</option>
-                    {camposDisponiveis.map((campo) => (
-                      <option key={campo.chave} value={campo.chave}>
-                        {campo.label}
-                        {campo.obrigatorio ? ' *' : ''}
-                      </option>
-                    ))}
-                  </select>
+                  <DarkSelect
+                    size="sm" value={mapeamento[coluna] ?? ''} allowEmpty placeholder="Ignorar esta coluna"
+                    onChange={(v) => atualizarMapeamento(coluna, v)}
+                    options={camposDisponiveis.map((campo) => ({ value: campo.chave, label: campo.label + (campo.obrigatorio ? ' *' : '') }))}
+                  />
                 </div>
               </div>
             ))}

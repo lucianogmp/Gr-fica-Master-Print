@@ -5,7 +5,8 @@
 // Z→A/9→1 (decrescente). Mesmo componente em todo lugar, só muda a lista
 // de campos que cada tela passa.
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useCallback } from 'react';
+import { PainelFlutuante } from './PainelFlutuante';
 import { ArrowUpDown, ArrowUp, ArrowDown, Check } from 'lucide-react';
 
 export interface CampoOrdenacao {
@@ -32,21 +33,15 @@ interface Props {
 
 export function OrdenarMenu({ campos, valor, onChange }: Props) {
   const [aberto, setAberto] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function onClickFora(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setAberto(false);
-    }
-    document.addEventListener('mousedown', onClickFora);
-    return () => document.removeEventListener('mousedown', onClickFora);
-  }, []);
+  const ref = useRef<HTMLButtonElement>(null);
+  const fechar = useCallback(() => setAberto(false), []);
 
   const campoAtual = campos.find(c => c.key === valor?.campo);
 
   return (
-    <div ref={ref} className="relative">
+    <>
       <button
+        ref={ref}
         onClick={() => setAberto(a => !a)}
         className={`flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold text-xs transition-all whitespace-nowrap ${
           valor ? 'bg-blue-600/20 text-blue-400 border border-blue-500/40' : 'bg-gray-700/60 text-gray-300 border border-gray-700 hover:bg-gray-700'
@@ -56,8 +51,8 @@ export function OrdenarMenu({ campos, valor, onChange }: Props) {
         {campoAtual ? campoAtual.label : 'Ordenar'}
       </button>
 
-      {aberto && (
-        <div className="absolute right-0 mt-1.5 w-56 bg-[#1f2937] border border-gray-700 rounded-xl shadow-2xl z-30 py-1.5 overflow-hidden">
+      <PainelFlutuante ancora={ref} aberto={aberto} onFechar={fechar} largura={240} className="py-1.5">
+        <div>
           {valor && (
             <button
               onClick={() => { onChange(null); setAberto(false); }}
@@ -86,8 +81,8 @@ export function OrdenarMenu({ campos, valor, onChange }: Props) {
             </div>
           ))}
         </div>
-      )}
-    </div>
+      </PainelFlutuante>
+    </>
   );
 }
 

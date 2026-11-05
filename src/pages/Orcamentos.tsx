@@ -666,12 +666,8 @@ export function Orcamentos() {
             {acabTipo === 'estoque' && (
               <div className="flex-1">
                 <label className="text-[10px] text-gray-500 uppercase block mb-1.5">Matéria-prima no estoque *</label>
-                <select value={acabMateriaId} onChange={e => setAcabMateriaId(e.target.value)} className={IN}>
-                  <option value="">Selecione...</option>
-                  {materiasPrimas.map(mp => (
-                    <option key={mp.id} value={mp.id}>{mp.nome} ({mp.unidade})</option>
-                  ))}
-                </select>
+                <DarkSelect value={acabMateriaId} onChange={setAcabMateriaId} allowEmpty searchable placeholder="Selecione..."
+                  options={materiasPrimas.map(mp => ({ value: mp.id, label: `${mp.nome} (${mp.unidade})` }))} />
               </div>
             )}
             <div className="w-full sm:w-40">
@@ -733,13 +729,8 @@ export function Orcamentos() {
                           }`}>Estoque</button>
                       </div>
                       {acabEditTipo === 'estoque' && (
-                        <select value={acabEditMateriaId} onChange={e => setAcabEditMateriaId(e.target.value)}
-                          className="bg-[#111827] border border-blue-500 rounded-lg px-2 py-1 text-white text-xs focus:outline-none w-full">
-                          <option value="">Selecione...</option>
-                          {materiasPrimas.map(mp => (
-                            <option key={mp.id} value={mp.id}>{mp.nome} ({mp.unidade})</option>
-                          ))}
-                        </select>
+                        <DarkSelect value={acabEditMateriaId} onChange={setAcabEditMateriaId} allowEmpty searchable size="sm" placeholder="Selecione..."
+                          options={materiasPrimas.map(mp => ({ value: mp.id, label: `${mp.nome} (${mp.unidade})` }))} />
                       )}
                     </div>
                   ) : a.tipo === 'estoque' ? (

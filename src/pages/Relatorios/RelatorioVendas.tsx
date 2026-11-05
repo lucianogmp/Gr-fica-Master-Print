@@ -11,6 +11,7 @@ import { useContainerReady } from '../../hooks/useContainerReady';
 import { STATUS_VENDA } from '../../types/venda';
 import { DateInput } from '../../components/ui/DateInput';
 import { TrendingUp, Download, Printer, AlertTriangle, Inbox } from 'lucide-react';
+import { DarkSelect } from '../../components/ui/DarkSelect';
 
 const fmtBRL  = (v: number) => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const fmtData = (d?: string | null) => d ? new Date(d + 'T00:00:00').toLocaleDateString('pt-BR') : '—';
@@ -100,11 +101,9 @@ export function RelatorioVendas() {
             </div>
             <div>
               <label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Status</label>
-              <select value={rascunho.status ?? ''}
-                onChange={e => setRascunho(f => ({ ...f, status: e.target.value || undefined }))} className={IN + ' w-full'}>
-                <option value="">Todos</option>
-                {Object.entries(STATUS_VENDA).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-              </select>
+              <DarkSelect value={rascunho.status ?? ''} allowEmpty placeholder="Todos" size="sm"
+                onChange={v => setRascunho(f => ({ ...f, status: v || undefined }))}
+                options={Object.entries(STATUS_VENDA).map(([k, v]) => ({ value: k, label: v.label }))} />
             </div>
             <div>
               <label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Cliente</label>
