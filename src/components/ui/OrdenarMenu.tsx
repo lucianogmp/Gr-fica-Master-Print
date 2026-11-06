@@ -102,16 +102,22 @@ export function aplicarOrdenacao<T>(
   if (!getter) return itens;
 
   const copia = [...itens];
+  // Empate (ex.: vários lançamentos com a mesma data): desempata pelo
+  // momento em que foram criados, na mesma direção — assim, em "mais recente
+  // primeiro", o último que você lançou fica no topo.
+  const criado = (x: T) => String((x as any)?.created_at ?? '');
+  const sinal = ordenacao.direcao === 'asc' ? 1 : -1;
   copia.sort((a, b) => {
     const va = getter(a);
     const vb = getter(b);
-    if (va == null && vb == null) return 0;
-    if (va == null) return 1;
-    if (vb == null) return -1;
-    let cmp: number;
-    if (typeof va === 'number' && typeof vb === 'number') cmp = va - vb;
+    let cmp = 0;
+    if (va == null && vb == null) cmp = 0;
+    else if (va == null) return 1;
+    else if (vb == null) return -1;
+    else if (typeof va === 'number' && typeof vb === 'number') cmp = va - vb;
     else cmp = String(va).localeCompare(String(vb), 'pt-BR');
-    return ordenacao.direcao === 'asc' ? cmp : -cmp;
+    if (cmp !== 0) return sinal * cmp;
+    return sinal * criado(a).localeCompare(criado(b));
   });
   return copia;
 }

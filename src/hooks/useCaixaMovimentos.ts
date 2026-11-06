@@ -41,7 +41,8 @@ export function useCaixaMovimentos() {
       const { data, error } = await supabase
         .from('caixa_movimentos')
         .select('*')
-        .order('data', { ascending: false });
+        .order('data', { ascending: false })
+        .order('created_at', { ascending: false });
       if (error) throw error;
       return data ?? [];
     },

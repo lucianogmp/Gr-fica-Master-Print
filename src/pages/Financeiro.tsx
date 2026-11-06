@@ -224,7 +224,7 @@ export function Financeiro() {
   const pagar2   = lancamentos.filter(l => l.tipo === 'despesa' && l.status !== 'pago' && l.status !== 'cancelado' && (l.data_vencimento ?? '') >= hoje).reduce((s, l) => s + Number(l.valor), 0);
   const porData  = useMemo(() => {
     const map: Record<string, typeof movDoMes> = {};
-    [...movDoMes].sort((a, b) => b.data.localeCompare(a.data)).forEach(m => {
+    [...movDoMes].sort((a, b) => b.data.localeCompare(a.data) || (b.created_at ?? '').localeCompare(a.created_at ?? '')).forEach(m => {
       if (!map[m.data]) map[m.data] = [];
       map[m.data].push(m);
     });

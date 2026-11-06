@@ -15,7 +15,8 @@ export function useLancamentos() {
       const { data, error } = await supabase
         .from('lancamentos')
         .select('*')
-        .order('data_vencimento', { ascending: true });
+        .order('data_vencimento', { ascending: true })
+        .order('created_at', { ascending: true });
       if (error) throw error;
       return data ?? [];
     },
