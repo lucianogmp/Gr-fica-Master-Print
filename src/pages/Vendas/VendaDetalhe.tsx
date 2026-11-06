@@ -558,23 +558,6 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
               )}
             </p>
           </div>
-          <div className="flex gap-2 flex-wrap">
-            {!isNovo && (
-              <button
-                onClick={() => imprimirDocumento(layoutVenda, cfg ?? {}, docImpressaoVenda)}
-                className="bg-gray-700 hover:bg-gray-600 text-gray-300 px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2"
-              >
-                <Printer className="w-4 h-4" /> Imprimir
-              </button>
-            )}
-            <button
-              onClick={handleSalvar}
-              disabled={isSaving || salvandoTudo || !form.cliente_nome.trim()}
-              className="bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white px-6 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2"
-            >
-              <Save className="w-4 h-4" /> {(isSaving || salvandoTudo) ? 'Salvando...' : 'Salvar'}
-            </button>
-          </div>
         </div>
 
         <div className="space-y-5">
@@ -727,6 +710,25 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
             carregandoPagamentos={carregandoPagamentos}
             isSalvando={isSaving}
           />
+
+          {/* Ações logo abaixo do pagamento — é onde a pessoa termina de lançar */}
+          <div className="flex gap-2 flex-wrap justify-end">
+            {!isNovo && (
+              <button
+                onClick={() => imprimirDocumento(layoutVenda, cfg ?? {}, docImpressaoVenda)}
+                className="bg-gray-700 hover:bg-gray-600 text-gray-300 px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2"
+              >
+                <Printer className="w-4 h-4" /> Imprimir
+              </button>
+            )}
+            <button
+              onClick={handleSalvar}
+              disabled={isSaving || salvandoTudo || !form.cliente_nome.trim()}
+              className="bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white px-6 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2"
+            >
+              <Save className="w-4 h-4" /> {(isSaving || salvandoTudo) ? 'Salvando...' : 'Salvar'}
+            </button>
+          </div>
 
           {/* ── Linha 2.5: Gastos vinculados a essa venda (fornecedor, terceirização) ── */}
           <GastosVenda

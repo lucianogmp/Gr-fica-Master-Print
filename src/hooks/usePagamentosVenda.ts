@@ -97,6 +97,9 @@ async function recalcularFinanceiroVenda(vendaId: string) {
           status:          'pago',
           valor:           totalEfetivo,
           data_pagamento:  hoje,
+          // Venda antiga quitada hoje tem que aparecer na data do recebimento
+          // (senão some do mês atual na lista de Lançamentos).
+          data_vencimento: hoje,
         })
         .eq('id', lancExistente.id);
     } else {
