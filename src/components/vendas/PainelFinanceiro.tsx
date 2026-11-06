@@ -73,6 +73,8 @@ interface Props {
   onTaxaChange: (v: number) => void;
   onRascunhosChange: (rascunhos: RascunhoParcela[]) => void;
   onReabrirPagamento: (pagamento: PagamentoVenda) => void;
+  /** Data prevista de pagamento já salva (vencimento do lançamento) — vira a data padrão das parcelas "a receber". */
+  vencimentoPadrao?: string;
   /** true enquanto os pagamentos já salvos ainda estão sendo carregados do
    * banco (venda existente, primeira leitura) — evita que a auto-criação de
    * parcela rode com base num "restante" ainda incompleto/zerado. */
@@ -98,7 +100,7 @@ export function resolverTaxaRascunho(r: Pick<PagamentoVenda, 'forma_pagamento' |
   return getTaxaParcela(forma, r.parcelas || 1);
 }
 
-function novaParcelaBase(valor: number, formaPadrao: string, formas: FormasPagamentoConfig[] = []): RascunhoParcela {
+function novaParcelaBase(valor: number, formaPadrao: string, formas: FormasPagamentoConfig[] = [], dataPadrao?: string): RascunhoParcela {
   const nome  = formaPadrao || 'PIX';
   const forma = formas.find(f => f.nome === nome);
   const parc  = parcelasIniciais(forma);
@@ -111,7 +113,7 @@ function novaParcelaBase(valor: number, formaPadrao: string, formas: FormasPagam
     conta_id: '',
     parcelas: parc,
     juros_pct: taxa > 0 ? taxa : null,
-    data_pagamento: new Date().toISOString().slice(0, 10),
+    data_pagamento: dataPadrao || new Date().toISOString().slice(0, 10),
     observacoes: null,
     usuario_id: null,
     usuario_nome: null,
@@ -123,7 +125,7 @@ export function PainelFinanceiro({
   subtotal, desconto, frete, taxaAdicional, formaPagamento,
   pagamentos, rascunhos, cfg, vendaId, contas = [],
   onDescontoChange, onFreteChange, onTaxaChange,
-  onRascunhosChange, onReabrirPagamento, carregandoPagamentos, isSalvando,
+  onRascunhosChange, onReabrirPagamento, carregandoPagamentos, isSalvando, vencimentoPadrao,
 }: Props) {
   const [modoDesconto, setModoDesconto] = useState<'valor' | 'pct'>('valor');
   const [descontoValorLocal, setDescontoValorLocal] = useState(() => subtotal > 0 ? subtotal * (desconto / 100) : 0);
@@ -198,7 +200,7 @@ export function PainelFinanceiro({
     const diferenca = Math.round((valorRestante - somaRascunhos) * 100) / 100;
 
     if (diferenca > 0.01 && atuais.length === 0) {
-      emitirRascunhos([novaParcelaBase(diferenca, formaPagamento, formas)]);
+      emitirRascunhos([novaParcelaBase(diferenca, formaPagamento, formas, vencimentoPadrao)]);
       return;
     }
     // Se a diferença mudou (ex: adicionou item novo) e existe exatamente um
@@ -226,7 +228,7 @@ export function PainelFinanceiro({
     const somaRascunhos = atuais.reduce((s, r) => s + Number(r.valor || 0), 0);
     const falta = Math.max(0, Math.round((valorRestante - somaRascunhos) * 100) / 100);
     const formaBase = atuais.length > 0 ? atuais[atuais.length - 1].forma_pagamento : formaPagamento;
-    emitirRascunhos([...atuais, novaParcelaBase(falta, formaBase, formas)]);
+    emitirRascunhos([...atuais, novaParcelaBase(falta, formaBase, formas, vencimentoPadrao)]);
   }
   function toggleStatus(id: string) {
     emitirRascunhos(rascunhosRef.current.map(r => r.id === id

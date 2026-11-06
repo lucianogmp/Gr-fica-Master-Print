@@ -58,7 +58,7 @@ export async function recalcularFinanceiroVenda(vendaId: string) {
   // Busca qualquer lançamento desta venda que não seja de pagamento individual
   const { data: lancExistente } = await supabase
     .from('lancamentos')
-    .select('id,status')
+    .select('id,status,data_vencimento')
     .eq('venda_id', vendaId)
     .eq('tipo', 'receita')
     .not('status', 'eq', 'cancelado')
@@ -78,7 +78,9 @@ export async function recalcularFinanceiroVenda(vendaId: string) {
       categoria:       'Venda',
       cliente_nome:    venda?.cliente_nome ?? null,
       venda_id:        vendaId,
-      data_vencimento: venda?.data_entrega ?? hoje,
+      // Mantém o vencimento que já está no lançamento (a previsão de pagamento que
+      // a pessoa definiu); só usa a entrega/hoje se ainda não existir.
+      data_vencimento: lancExistente?.data_vencimento ?? venda?.data_entrega ?? hoje,
       data_pagamento:  null,
       forma_pagamento: null,
       origem:          null,

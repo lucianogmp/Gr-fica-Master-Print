@@ -7,7 +7,7 @@ import { useProdutos } from '../../hooks/useProdutos';
 import { prazoEstimadoDias, dataEntregaPrevista } from '../../lib/prazoEntrega';
 import { guardarRascunhoVenda, lerRascunhoVenda, limparRascunhoVenda } from '../../lib/rascunhoVenda';
 import { useVendas, useVendaItens } from '../../hooks/useVendas';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabase';
 import { usePagamentosVenda, recalcularFinanceiroVenda } from '../../hooks/usePagamentosVenda';
 import { useLancamentos } from '../../hooks/useLancamentos';
@@ -93,6 +93,16 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
   const [form, setForm]   = useState({ ...NOVA_VENDA });
   const [itens, setItens] = useState<VendaItem[]>([]);
   const qc = useQueryClient();
+  // Previsão de pagamento já salva (vencimento do lançamento pendente desta venda).
+  const { data: vencSalvo, isLoading: carregandoVenc } = useQuery({
+    queryKey: ['lancamentos', 'venc-venda', vendaId],
+    enabled: !!vendaId && vendaId !== '__novo__',
+    queryFn: async () => {
+      const { data } = await supabase.from('lancamentos').select('data_vencimento')
+        .eq('venda_id', vendaId!).eq('tipo', 'receita').eq('status', 'pendente').limit(1).maybeSingle();
+      return (data?.data_vencimento as string | null) ?? null;
+    },
+  });
   const [pagamentosRascunho, setPagamentosRascunho] = useState<RascunhoParcela[]>([]);
   const [gastosRascunho, setGastosRascunho] = useState<Lancamento[]>([]);
   // Trava contra clique repetido em Salvar: enquanto a venda e os pagamentos
@@ -491,6 +501,15 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
         qc.invalidateQueries({ queryKey: ['lancamentos'] });
       }
     }
+    // Data prevista de pagamento (parcela "a receber"): grava no vencimento do lançamento
+    // pendente. Antes essa data só existia na tela e voltava ao padrão ao reabrir a venda,
+    // deixando o lançamento "atrasado" mesmo depois de ajustada.
+    const previstas = pagamentosRascunho.filter(p => p.status === 'a_receber' && Number(p.valor) > 0.01 && p.data_pagamento).map(p => p.data_pagamento).sort();
+    if (idSalvo && previstas.length > 0) {
+      await supabase.from('lancamentos').update({ data_vencimento: previstas[0] })
+        .eq('venda_id', idSalvo).eq('tipo', 'receita').eq('status', 'pendente');
+    }
+    qc.invalidateQueries({ queryKey: ['lancamentos'] });
     setPagamentosRascunho([]);
     if (idSalvo) {
       // Em vez de sair direto: mostra as ações da venda recém-salva (imprimir, PDF, abrir).
@@ -721,7 +740,8 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
               }
             }}
             onReabrirPagamento={handleReabrirPagamento}
-            carregandoPagamentos={carregandoPagamentos}
+            carregandoPagamentos={carregandoPagamentos || (!isNovo && carregandoVenc)}
+            vencimentoPadrao={vencSalvo ?? (form.data_entrega || undefined)}
             isSalvando={isSaving}
           />
 
