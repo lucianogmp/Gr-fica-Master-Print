@@ -7,7 +7,9 @@ import { useProdutos } from '../../hooks/useProdutos';
 import { prazoEstimadoDias, dataEntregaPrevista } from '../../lib/prazoEntrega';
 import { guardarRascunhoVenda, lerRascunhoVenda, limparRascunhoVenda } from '../../lib/rascunhoVenda';
 import { useVendas, useVendaItens } from '../../hooks/useVendas';
-import { usePagamentosVenda } from '../../hooks/usePagamentosVenda';
+import { useQueryClient } from '@tanstack/react-query';
+import { supabase } from '../../lib/supabase';
+import { usePagamentosVenda, recalcularFinanceiroVenda } from '../../hooks/usePagamentosVenda';
 import { useLancamentos } from '../../hooks/useLancamentos';
 import { useConfiguracoes } from '../../hooks/useConfiguracoes';
 import { useProducao } from '../../hooks/useProducao';
@@ -90,6 +92,7 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
 
   const [form, setForm]   = useState({ ...NOVA_VENDA });
   const [itens, setItens] = useState<VendaItem[]>([]);
+  const qc = useQueryClient();
   const [pagamentosRascunho, setPagamentosRascunho] = useState<RascunhoParcela[]>([]);
   const [gastosRascunho, setGastosRascunho] = useState<Lancamento[]>([]);
   // Trava contra clique repetido em Salvar: enquanto a venda e os pagamentos
@@ -433,6 +436,9 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
       valor_total:     pagamentos.length > 0 ? (form.valor_total || totalFinal) : totalFinal,
       valor_pago:      form.valor_pago,
       forma_pagamento: form.forma_pagamento,
+      // Total bruto atual (sem taxa de maquininha). O financeiro recalcula em cima dele —
+      // antes ficava o valor antigo e o lançamento não acompanhava edição de itens/desconto.
+      valor_original:  totalFinal,
     };
 
     // Só parcelas marcadas como "Recebido" viram pagamento de verdade (com
@@ -475,6 +481,14 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
           ...pagamento,
           venda_id: vendaId,
         });
+      }
+      // Editou itens/desconto/frete numa venda que já tem pagamento? Reconcilia o
+      // lançamento (pendente ↔ pago e valor) com o que está realmente pago.
+      const { count } = await supabase.from('pagamentos_venda').select('id', { count: 'exact', head: true }).eq('venda_id', vendaId);
+      if ((count ?? 0) > 0) {
+        await recalcularFinanceiroVenda(vendaId);
+        qc.invalidateQueries({ queryKey: ['vendas'] });
+        qc.invalidateQueries({ queryKey: ['lancamentos'] });
       }
     }
     setPagamentosRascunho([]);

@@ -8,7 +8,7 @@ const origemPagamento = (pagamentoId: string) => `pagamento_venda:${pagamentoId}
 
 // Recalcula o financeiro da venda com base nos pagamentos registrados.
 // Regra: taxa da maquininha é desconto definitivo do vendedor, não restante do cliente.
-async function recalcularFinanceiroVenda(vendaId: string) {
+export async function recalcularFinanceiroVenda(vendaId: string) {
   // 1. Busca venda (valor original sem alterações de taxa) e todos os pagamentos
   const [{ data: venda }, { data: pagamentos }] = await Promise.all([
     supabase
@@ -83,15 +83,16 @@ async function recalcularFinanceiroVenda(vendaId: string) {
       forma_pagamento: null,
       origem:          null,
     };
-    if (lancExistente?.id) {
-      await supabase.from('lancamentos').update(payload).eq('id', lancExistente.id);
-    } else {
-      await supabase.from('lancamentos').insert(payload);
-    }
+    // Erros aqui antes eram engolidos: a venda aparecia quitada e o lançamento
+    // ficava pendente sem ninguém saber. Agora falha de verdade.
+    const { error: eLanc } = lancExistente?.id
+      ? await supabase.from('lancamentos').update(payload).eq('id', lancExistente.id)
+      : await supabase.from('lancamentos').insert(payload);
+    if (eLanc) throw eLanc;
   } else {
     // Quitado — marca o lançamento como pago com o valor efetivo
     if (lancExistente?.id) {
-      await supabase
+      const { error: eQuit } = await supabase
         .from('lancamentos')
         .update({
           status:          'pago',
@@ -102,9 +103,10 @@ async function recalcularFinanceiroVenda(vendaId: string) {
           data_vencimento: hoje,
         })
         .eq('id', lancExistente.id);
+      if (eQuit) throw eQuit;
     } else {
       // Não havia lançamento — cria já como pago
-      await supabase.from('lancamentos').insert({
+      const { error: eNovo } = await supabase.from('lancamentos').insert({
         tipo:            'receita',
         descricao,
         valor:           totalEfetivo,
@@ -116,6 +118,7 @@ async function recalcularFinanceiroVenda(vendaId: string) {
         data_pagamento:  hoje,
         origem:          null,
       });
+      if (eNovo) throw eNovo;
     }
   }
 
