@@ -404,6 +404,10 @@ export function Orcamentos() {
   }
 
   async function abrirDetalhe(o: Orcamento | null, tipoInicial?: 'placa') {
+    // Sempre começa sem item "em edição" — um índice sobrando de antes fazia o
+    // próximo item adicionado SUBSTITUIR um já existente em vez de entrar na lista.
+    setEditandoIdx(null);
+    setEditorContinuo(false);
     if (o) {
       // Pedido da loja virtual: ao abrir pela primeira vez, apaga o ponto vermelho.
       if (o.origem === 'loja' && !o.loja_visto_em) {
@@ -426,15 +430,16 @@ export function Orcamentos() {
     setView('detalhe');
   }
 
-  function fechar() { limparAlteracoesPendentes(); setView('lista'); setOrcId(null); setForm({ ...NOVO_ORC }); setItens([]); setShowEditor(false); setTipoItemNovo(null); }
+  function fechar() { limparAlteracoesPendentes(); setEditandoIdx(null); setEditorContinuo(false); setView('lista'); setOrcId(null); setForm({ ...NOVO_ORC }); setItens([]); setShowEditor(false); setTipoItemNovo(null); }
 
   function handleAdicionarItem(item: OrcamentoItem, opcoes?: { continuar?: boolean }) {
     marcarSujoOrc();
-    const editando = editandoIdx !== null;
+    const editando = editandoIdx !== null && itens[editandoIdx] !== undefined;
     if (editando) {
       setItens(p => p.map((it, i) => i === editandoIdx ? item : it));
       setEditandoIdx(null);
     } else {
+      setEditandoIdx(null);
       setItens(p => [...p, item]);
     }
     if (opcoes?.continuar && !editando) {
@@ -1217,7 +1222,7 @@ export function Orcamentos() {
                             <div className="flex gap-1 justify-center">
                               <button onClick={() => { setEditandoIdx(i); setTipoItemNovo(null); setShowEditor(true); }}
                                 className="text-gray-500 hover:text-blue-400 transition-colors"><Edit2 className="w-3.5 h-3.5" /></button>
-                              <button onClick={() => { setItens(p => p.filter((_, idx) => idx !== i)); marcarSujoOrc(); }}
+                              <button onClick={() => { setItens(p => p.filter((_, idx) => idx !== i)); if (editandoIdx !== null) { setEditandoIdx(null); setShowEditor(false); } marcarSujoOrc(); }}
                                 className="text-gray-500 hover:text-red-400 transition-colors">
                                 <X className="w-3.5 h-3.5" />
                               </button>
@@ -1233,7 +1238,7 @@ export function Orcamentos() {
             ) : !showEditor ? (
               <div className="text-center py-10 border-2 border-dashed border-gray-700 rounded-xl">
                 <p className="text-sm text-gray-600">Nenhum item adicionado.</p>
-                <button onClick={() => setShowEditor(true)}
+                <button onClick={() => { setEditandoIdx(null); setShowEditor(true); }}
                   className="mt-3 text-blue-400 hover:text-blue-300 text-xs font-bold underline flex items-center gap-1 mx-auto">
                   <Plus className="w-3.5 h-3.5" /> Adicionar primeiro item
                 </button>
@@ -1270,6 +1275,7 @@ export function Orcamentos() {
                 return (
                   <div className="mt-3">
                     <PlacaOrcEditor
+                      key={`placa-${editandoIdx ?? 'novo'}`}
                       editando={editandoItem}
                       onAdicionar={handleAdicionarItem}
                       onCancelar={cancelar}
@@ -1282,7 +1288,7 @@ export function Orcamentos() {
               return (
                 <div className="mt-3">
                   <ItemOrcEditor
-                    key={editorSeq}
+                    key={`${editorSeq}-${editandoIdx ?? 'novo'}`}
                     abaInicial={editorContinuo ? 'catalogo' : undefined}
                     focarBuscaAoAbrir={editorContinuo}
                     editando={editandoItem}
