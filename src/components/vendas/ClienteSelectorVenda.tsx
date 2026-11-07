@@ -268,7 +268,17 @@ export function ClienteSelectorVenda({ value, clienteId, onChange, hideLabel }: 
     itens: opcoes, aberto, abrir: abrirLista, fechar: () => setAberto(false), onSelecionar: selecionar, chave: busca,
   });
 
-  const dropdownLista = aberto && opcoes.length > 0 && dropRect ? createPortal(
+  // Texto digitado que ainda não é um cliente vinculado: oferece cadastrar com o nome já preenchido.
+  const textoNovo = busca.trim();
+  const podeCadastrar = textoNovo.length > 0 && !clienteId
+    && !opcoes.some(c => c.nome.trim().toLowerCase() === textoNovo.toLowerCase());
+  function abrirCadastroRapido() {
+    setAberto(false);
+    setShowNovo(true);
+    setNovoForm(f => ({ ...f, nome: textoNovo }));
+  }
+
+  const dropdownLista = aberto && (opcoes.length > 0 || podeCadastrar) && dropRect && !carregando ? createPortal(
     <div
       ref={listaRef}
       style={{
@@ -301,6 +311,17 @@ export function ClienteSelectorVenda({ value, clienteId, onChange, hideLabel }: 
           <ArrowRight className="text-gray-500" style={{ width: 14, height: 14, flexShrink: 0 }} />
         </button>
       ))}
+      {podeCadastrar && (
+        <button
+          type="button"
+          onMouseDown={e => { e.preventDefault(); abrirCadastroRapido(); }}
+          style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', cursor: 'pointer', textAlign: 'left' }}
+          className={`bg-blue-600/15 hover:bg-blue-600/25 text-blue-300 ${opcoes.length > 0 ? 'border-t border-gray-700/60' : ''}`}
+        >
+          <UserPlus style={{ width: 14, height: 14, flexShrink: 0 }} />
+          <span style={{ fontSize: 13, fontWeight: 700 }}>Cadastrar «{textoNovo}»</span>
+        </button>
+      )}
     </div>,
     document.body
   ) : null;
@@ -369,6 +390,13 @@ export function ClienteSelectorVenda({ value, clienteId, onChange, hideLabel }: 
           <UserPlus className="w-4 h-4" />
         </button>
       </div>
+
+      {podeCadastrar && !aberto && !showNovo && (
+        <p className="text-[11px] text-amber-400">
+          Esse nome não está cadastrado. Escolha um cliente da lista ou{' '}
+          <button type="button" onClick={abrirCadastroRapido} className="underline font-bold hover:text-amber-300">cadastrar «{textoNovo}»</button>.
+        </p>
+      )}
 
       {showNovo && (
         <div className="bg-[#111827] border border-blue-500/30 rounded-xl p-4 space-y-3">

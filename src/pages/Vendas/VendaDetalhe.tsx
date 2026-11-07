@@ -413,7 +413,13 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
     observacoes: form.observacoes,
   };
 
+  // Venda só salva com cliente cadastrado (vinculado) ou marcada como "Cliente sem cadastro".
+  const clienteOk = !!form.consumidor_final || !!form.cliente_id;
   async function handleSalvar() {
+    if (!clienteOk) {
+      toast.error('Escolha um cliente cadastrado, cadastre um novo ou marque "Cliente sem cadastro".');
+      return;
+    }
     if (salvandoRef.current) return;
     salvandoRef.current = true;
     setSalvandoTudo(true);
@@ -757,7 +763,8 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
             )}
             <button
               onClick={handleSalvar}
-              disabled={isSaving || salvandoTudo || !form.cliente_nome.trim()}
+              disabled={isSaving || salvandoTudo || !clienteOk}
+              title={!clienteOk ? 'Escolha ou cadastre o cliente (ou marque Cliente sem cadastro)' : undefined}
               className="bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white px-6 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2"
             >
               <Save className="w-4 h-4" /> {(isSaving || salvandoTudo) ? 'Salvando...' : 'Salvar'}

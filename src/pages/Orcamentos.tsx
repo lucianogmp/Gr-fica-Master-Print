@@ -496,7 +496,13 @@ export function Orcamentos() {
     setF('desconto', 0); // o ajuste já foi embutido no preço unitário — não precisa mais do desconto global
   }
 
+  // Orçamento só salva com cliente cadastrado (vinculado) ou marcado como "Cliente sem cadastro".
+  const clienteOk = !!form.cliente_id || semCliente;
   async function handleSalvar() {
+    if (!clienteOk) {
+      toast.error('Escolha um cliente cadastrado, cadastre um novo ou marque "Cliente sem cadastro".');
+      return;
+    }
     const payload = { ...form, total: totalFinal, desconto: descGlobal };
     const { id: _id, created_at: _c, updated_at: _u, ...clean } = { id: '', created_at: '', updated_at: '', ...payload };
     let salvo: any = null;
@@ -1077,7 +1083,7 @@ export function Orcamentos() {
           {jaConvertido && (
             <span className="px-4 py-2 rounded-xl text-sm font-bold bg-purple-500/20 text-purple-400 border border-purple-500/30">Convertido</span>
           )}
-          <button onClick={handleSalvar} disabled={isSaving || !form.cliente_nome.trim()}
+          <button onClick={handleSalvar} disabled={isSaving || !clienteOk}
             className="bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white px-5 py-2 rounded-xl font-bold text-sm transition-all">
             {isSaving ? 'Salvando...' : 'Salvar'}
           </button>
@@ -1390,7 +1396,7 @@ export function Orcamentos() {
                 </button>
               )}
 
-              <button onClick={handleSalvar} disabled={isSaving || !form.cliente_nome.trim()}
+              <button onClick={handleSalvar} disabled={isSaving || !clienteOk}
                 className="bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white px-6 py-2.5 rounded-xl font-bold text-sm transition-all flex-shrink-0">
                 {isSaving ? 'Salvando...' : 'Salvar Orçamento'}
               </button>
