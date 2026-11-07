@@ -228,7 +228,7 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
   const [filtroStatus, setFiltroStatus] = useState<FiltroStatus>('todos');
   const [busca, setBusca]               = useState('');
   const [mesLanc, setMesLanc]           = useState(() => new Date().toISOString().slice(0, 7));
-  const [ordenacao, setOrdenacao] = useState<Ordenacao | null>({ campo: 'data', direcao: 'desc' });
+  const [ordenacao, setOrdenacao] = useState<Ordenacao | null>(null);
   const [filtrosAv, setFiltrosAv] = useState<FiltrosAvancadosValor>({});
   const [filtroContaId, setFiltroContaId] = useState('');
   const [filtroCategoria, setFiltroCategoria] = useState('');
@@ -263,6 +263,13 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
       .filter(l => !filtroCategoria || l.categoria === filtroCategoria)
       .filter(l => !filtroForma || formasDe(l as LancamentoExibido).includes(filtroForma));
     const comFiltrosAv = aplicarFiltrosAvancados(basico, filtrosAv, l => l.data_vencimento, l => l.valor);
+    // Sem ordenação escolhida ("limpa"): vencimento mais próximo/antigo primeiro e, no
+    // mesmo dia, o lançado por último em cima. Estado inicial da tela.
+    if (!ordenacao) {
+      return [...comFiltrosAv].sort((x, y) =>
+        String(x.data_vencimento ?? '').localeCompare(String(y.data_vencimento ?? ''))
+        || String((y as any).created_at ?? '').localeCompare(String((x as any).created_at ?? '')));
+    }
     return aplicarOrdenacao(comFiltrosAv, ordenacao, {
       data:    l => l.data_vencimento,
       cliente: l => l.cliente_nome ?? '',
