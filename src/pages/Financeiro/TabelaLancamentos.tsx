@@ -121,7 +121,7 @@ export function calcStatusLanc(l: Lancamento): string {
 type FiltroStatus = 'todos' | 'pendente' | 'atrasado' | 'pago' | 'cancelado';
 
 /** Lançamento + os que vêm do Fluxo de Caixa, mesclados só pra exibição. */
-export type LancamentoExibido = Lancamento & { isDeCaixa?: boolean };
+export type LancamentoExibido = Lancamento & { isDeCaixa?: boolean; isPagamentoVenda?: boolean };
 
 type KpiExtra = {
   label: string;
@@ -151,9 +151,9 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
   const { data: pagamentosDestino = [] } = useQuery({
     queryKey: ['lancamentos', 'destino-pagamentos'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('pagamentos_venda').select('venda_id,conta_id,forma_pagamento');
+      const { data, error } = await supabase.from('pagamentos_venda').select('id,venda_id,valor,juros_pct,conta_id,forma_pagamento,data_pagamento,created_at');
       if (error) throw error;
-      return (data ?? []) as { venda_id: string; conta_id: string | null; forma_pagamento: string | null }[];
+      return (data ?? []) as { id: string; venda_id: string; valor: number; juros_pct: number | null; conta_id: string | null; forma_pagamento: string | null; data_pagamento: string | null; created_at: string | null }[];
     },
   });
   const formasPorVenda = useMemo(() => {
@@ -190,8 +190,44 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
     () => movsCaixa.filter(m => movimentoManual(m) && !m.venda_id),
     [movsCaixa]
   );
+  // Cada pagamento de uma venda vira uma linha própria (valor, forma e conta de CADA
+  // pagamento), pra conferir o caixa sem somar de cabeça. É só exibição: no banco continua
+  // um lançamento por venda. Se ainda falta receber, sobra uma linha pendente com o restante.
+  const todosExpandidos = useMemo<LancamentoExibido[]>(() => {
+    const pagsPorVenda = new Map<string, typeof pagamentosDestino>();
+    pagamentosDestino.forEach(p => { const l = pagsPorVenda.get(p.venda_id) ?? []; l.push(p); pagsPorVenda.set(p.venda_id, l); });
+    const liq = (p: { valor: number; juros_pct: number | null }) => Number(p.valor) - Math.round(Number(p.valor) * Number(p.juros_pct ?? 0)) / 100;
+    const out: LancamentoExibido[] = [];
+    for (const l of todos) {
+      const pags = l.venda_id && l.tipo === 'receita' && l.status !== 'cancelado' ? (pagsPorVenda.get(l.venda_id) ?? []) : [];
+      if (pags.length === 0) { out.push(l); continue; }
+      const ordenados = [...pags].sort((a, b) => String(a.created_at ?? '').localeCompare(String(b.created_at ?? '')));
+      let somaLiq = 0;
+      for (const p of ordenados) {
+        const v = Math.round(liq(p) * 100) / 100;
+        somaLiq += v;
+        out.push({
+          ...l,
+          id: `pg:${p.id}`,
+          valor: v,
+          status: 'pago',
+          data_vencimento: (p.data_pagamento ?? l.data_vencimento) as any,
+          data_pagamento: (p.data_pagamento ?? null) as any,
+          forma_pagamento: p.forma_pagamento ?? null,
+          conta_id: p.conta_id ?? null,
+          created_at: (p.created_at ?? l.created_at) as any,
+          isPagamentoVenda: true,
+        } as LancamentoExibido);
+      }
+      if (l.status === 'pendente') {
+        const resto = Math.round((Number(l.valor) - somaLiq) * 100) / 100;
+        if (resto > 0.01) out.push({ ...l, valor: resto });
+      }
+    }
+    return out;
+  }, [todos, pagamentosDestino]);
   const todosComCaixa = useMemo<LancamentoExibido[]>(() => [
-    ...todos,
+    ...todosExpandidos,
     ...movsCaixaReais.map((m): LancamentoExibido => ({
       id:              `caixa:${m.id}`,
       tipo:            m.tipo === 'entrada' ? 'receita' : 'despesa',
@@ -206,15 +242,17 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
       conta_id:        m.conta_id ?? contaCaixaPadraoId,
       isDeCaixa:       true,
     })),
-  ], [todos, movsCaixaReais, contaCaixaPadraoId]);
+  ], [todosExpandidos, movsCaixaReais, contaCaixaPadraoId]);
 
   // Contas (ids) de destino/origem de um lançamento
   const idsContaDe = (l: LancamentoExibido): string[] =>
-    l.venda_id ? (contasPorVenda.get(l.venda_id) ?? (l.conta_id ? [l.conta_id] : []))
+    l.isPagamentoVenda ? (l.conta_id ? [l.conta_id] : [])
+    : l.venda_id ? (contasPorVenda.get(l.venda_id) ?? (l.conta_id ? [l.conta_id] : []))
       : (l.conta_id ? [l.conta_id] : []);
   // Forma(s) de pagamento: nas vendas vem dos pagamentos registrados; nos demais, do próprio lançamento
   const formasDe = (l: LancamentoExibido): string[] =>
-    l.venda_id ? (formasPorVenda.get(l.venda_id) ?? (l.forma_pagamento ? [l.forma_pagamento] : []))
+    l.isPagamentoVenda ? (l.forma_pagamento ? [l.forma_pagamento] : [])
+    : l.venda_id ? (formasPorVenda.get(l.venda_id) ?? (l.forma_pagamento ? [l.forma_pagamento] : []))
       : (l.forma_pagamento ? [l.forma_pagamento] : []);
   const nomeConta = (id: string) => contas.find(c => c.id === id)?.nome?.trim() ?? 'Conta removida';
   const { confirmar, ConfirmModal } = useConfirm();
@@ -248,7 +286,7 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
     [base]);
   const opcoesForma = useMemo(() => {
     const set = new Set<string>();
-    base.forEach(l => (l.venda_id ? (formasPorVenda.get(l.venda_id) ?? []) : [l.forma_pagamento ?? '']).forEach(f => f && set.add(f)));
+    base.forEach(l => formasDe(l as LancamentoExibido).forEach(f => f && set.add(f)));
     return Array.from(set).sort((a, b) => a.localeCompare(b, 'pt-BR'));
   }, [base, formasPorVenda]);
   const filtrados = useMemo(() => {
@@ -284,7 +322,7 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
   // lançamentos aqui. Por isso o aviso de confirmação é mais forte quando
   // a seleção inclui algum desses.
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
-  const selecionaveis = filtrados.filter(l => !(l as LancamentoExibido).isDeCaixa);
+  const selecionaveis = filtrados.filter(l => !(l as LancamentoExibido).isDeCaixa && !(l as LancamentoExibido).isPagamentoVenda);
 
   function toggleSelecionado(id: string) {
     setSelecionados(prev => {
@@ -419,10 +457,11 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
               const isDeVenda = !!l.venda_id;
               const isDeCaixa = !!(l as LancamentoExibido).isDeCaixa;
               const marcado = selecionados.has(l.id);
+              const soExibicao = isDeCaixa || !!(l as LancamentoExibido).isPagamentoVenda;
               return (
                 <tr key={l.id} className={`border-b border-gray-800 hover:bg-gray-800/30 transition-colors ${marcado ? 'bg-blue-500/5' : ''}`}>
                   <td className="px-3 py-3 text-center">
-                    {!isDeCaixa && (
+                    {!soExibicao && (
                       <button onClick={() => toggleSelecionado(l.id)} className="text-gray-500 hover:text-blue-400 transition-colors">
                         {marcado ? <CheckSquare className="w-4 h-4 text-blue-400" /> : <Square className="w-4 h-4" />}
                       </button>
