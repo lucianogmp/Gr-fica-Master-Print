@@ -45,6 +45,7 @@ const ProdutosCategorias = lazy(() => import('../pages/Produtos/Categorias').the
 const ProdutosPrecos     = lazy(() => import('../pages/Produtos/TabelaPrecos').then(m => ({ default: m.TabelaPrecos })));
 const ProdutosKits       = lazy(() => import('../pages/Produtos/Kits').then(m => ({ default: m.Kits })));
 const ProdutosServicos   = lazy(() => import('../pages/Produtos/Servicos').then(m => ({ default: m.Servicos })));
+const ProdutosDatas      = lazy(() => import('../pages/Produtos/DatasComerciais').then(m => ({ default: m.DatasComerciais })));
 
 // ─── Estoque (sub-rotas) ─────────────────────────────────────────────────────
 const EstoqueAtual     = lazy(() => import('../pages/Estoque/EstoqueAtual').then(m => ({ default: m.EstoqueAtual })));
@@ -189,6 +190,7 @@ export function AppRoutes() {
           <Route path="produtos/precos"     element={<PR rota="/produtos/precos"><ProdutosPrecos /></PR>} />
           <Route path="produtos/kits"       element={<PR rota="/produtos/kits"><ProdutosKits /></PR>} />
           <Route path="produtos/servicos"   element={<PR rota="/produtos/servicos"><ProdutosServicos /></PR>} />
+          <Route path="produtos/datas-comerciais" element={<PR rota="/produtos/datas-comerciais"><ProdutosDatas /></PR>} />
 
           {/* ── Estoque ── */}
           <Route path="estoque" element={<Navigate to="/estoque/atual" replace />} />

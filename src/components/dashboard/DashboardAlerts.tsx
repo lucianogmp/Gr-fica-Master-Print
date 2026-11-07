@@ -1,6 +1,8 @@
-import { CheckCircle2, ArrowDownCircle, ArrowUpCircle, Globe } from 'lucide-react';
+import { CheckCircle2, ArrowDownCircle, ArrowUpCircle, Globe, CalendarHeart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { usePedidosSite } from '../../hooks/usePedidosSite';
+import { useAvisosDatasComerciais, ROTA_DATAS } from '../../hooks/useDatasComerciais';
+import { textoDias } from '../../lib/datasComerciais';
 
 type PedidosSiteDados = ReturnType<typeof usePedidosSite>['data'];
 
@@ -13,6 +15,7 @@ export function DashboardAlerts({ data, pedidosSite }: { data: any; pedidosSite?
   const oculto = useOcultarValores();
   const navigate = useNavigate();
   const novosSite = pedidosSite?.novos ?? [];
+  const campanhas = useAvisosDatasComerciais();   // datas comerciais perto (roxo, não conta como alerta)
   const totalAvisos = (data?.contasReceber?.length ?? 0) + (data?.contasPagar?.length ?? 0) + novosSite.length;
   return (
     <div className={`${CARD_BASE} lg:col-span-3 p-3`}>
@@ -24,13 +27,23 @@ export function DashboardAlerts({ data, pedidosSite }: { data: any; pedidosSite?
           </span>
         )}
       </div>
-      {totalAvisos === 0 ? (
+      {totalAvisos === 0 && campanhas.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center min-h-[120px] gap-2">
           <CheckCircle2 className="w-8 h-8 text-green-500" />
           <p className="text-xs text-gray-500 text-center">Tudo em dia! Sem avisos pendentes.</p>
         </div>
       ) : (
         <div className="flex-1 overflow-auto space-y-2">
+          {campanhas.slice(0, 3).map(c => (
+            <button key={c.id} onClick={() => navigate(`${ROTA_DATAS}?abrir=${c.id}`)}
+              className="w-full text-left text-[10px] flex items-start gap-2 p-2 bg-purple-500/10 border border-purple-500/30 rounded-lg hover:bg-purple-500/20 transition-colors">
+              <CalendarHeart className="w-3.5 h-3.5 text-purple-400 flex-shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <p className="font-bold text-purple-300">{c.nome} {textoDias(c.dias)}</p>
+                <p className="text-gray-500 truncate">{c.qtdProdutos > 0 ? `${c.qtdProdutos} produto(s) na campanha` : 'Monte a campanha: escolha o que oferecer'}</p>
+              </div>
+            </button>
+          ))}
           {novosSite.slice(0, 4).map(p => (
             <button key={p.id} onClick={() => navigate(`/orcamentos?abrir=${p.id}`)}
               className="w-full text-left text-[10px] flex items-start gap-2 p-2 bg-blue-500/10 border border-blue-500/30 rounded-lg hover:bg-blue-500/20 transition-colors">

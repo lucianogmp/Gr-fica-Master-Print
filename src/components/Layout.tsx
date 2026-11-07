@@ -31,7 +31,7 @@ import {
   Building2, UserCog, Printer, Plug, HardDrive,
   Boxes, GitCompare, TrendingUp, FileBarChart2,
   DollarSign as DollarSignIcon,
-  FileUp, PanelLeftClose, PanelLeftOpen,
+  FileUp, PanelLeftClose, PanelLeftOpen, CalendarHeart,
 } from 'lucide-react';
 
 const SIDEBAR_COLLAPSED_KEY = 'sidebarCollapsed';
@@ -129,6 +129,7 @@ const ALL_MENU: MenuItem[] = [
       { path: '/produtos/categorias', label: 'Categorias',      icon: Tag },
       { path: '/produtos/precos',     label: 'Tabela de Preços', icon: DollarSign },
       { path: '/produtos/servicos',   label: 'Terceirizados',  icon: Wrench },
+      { path: '/produtos/datas-comerciais', label: 'Datas Comerciais', icon: CalendarHeart },
     ],
   },
 

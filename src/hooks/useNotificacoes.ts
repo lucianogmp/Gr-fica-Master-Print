@@ -7,14 +7,16 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from './useAuth';
 import { useRole } from './useRole';
 import { useBackupStatus } from './useBackupStatus';
+import { buscarAvisosCampanhas, ROTA_DATAS } from './useDatasComerciais';
+import { textoDias } from '../lib/datasComerciais';
 
-export type TipoNotif = 'site' | 'pagar' | 'receber' | 'estoque' | 'entrega' | 'backup';
+export type TipoNotif = 'site' | 'pagar' | 'receber' | 'estoque' | 'entrega' | 'backup' | 'campanha';
 export interface Notificacao {
   key: string;            // identifica o aviso (muda se o aviso muda, ex.: passou de "vence" para "atrasado")
   tipo: TipoNotif;
   titulo: string;
   detalhe: string;
-  nivel: 'critico' | 'atencao' | 'info';
+  nivel: 'critico' | 'atencao' | 'info' | 'sugestao';   // sugestao = datas comerciais (roxo, fora do padrão de alerta)
   rota: string;
   quando: string;         // ISO, só para ordenar
 }
@@ -49,11 +51,12 @@ export function useNotificacoes() {
   const verReceber = pode('/financeiro/receber') || pode('/vendas/pedidos');
   const verEstoque = pode('/estoque/atual');
   const verEntregas = pode('/vendas/pedidos');
+  const verCampanhas = pode(ROTA_DATAS);
   const { isAdmin } = useRole();
   const { atrasado: backupAtrasado, diasDesdeUltimoBackup } = useBackupStatus();
 
   const { data: itens = [] } = useQuery({
-    queryKey: ['notificacoes', user?.id, verSite, verPagar, verReceber, verEstoque, verEntregas, isAdmin && backupAtrasado, diasDesdeUltimoBackup],
+    queryKey: ['notificacoes', user?.id, verSite, verPagar, verReceber, verEstoque, verEntregas, verCampanhas, isAdmin && backupAtrasado, diasDesdeUltimoBackup],
     enabled: !!user?.id,
     refetchInterval: 30_000,
     refetchOnWindowFocus: true,
@@ -71,7 +74,7 @@ export function useNotificacoes() {
           .lte('data_vencimento', limiteISO)
           .order('data_vencimento', { ascending: true }).limit(30);
 
-      const [site, pagar, receber, estoque, entregas] = await Promise.all([
+      const [site, pagar, receber, estoque, entregas, campanhas] = await Promise.all([
         verSite ? supabase.from('orcamentos')
           .select('id,numero,cliente_nome,total,created_at')
           .eq('origem', 'loja').is('loja_visto_em', null)
@@ -84,6 +87,7 @@ export function useNotificacoes() {
           .select('id,numero,cliente_nome,data_entrega,status')
           .lte('data_entrega', limiteISO).not('status', 'in', '(entregue,finalizado,cancelado)')
           .order('data_entrega', { ascending: true }).limit(20) : Promise.resolve({ data: [] as any[] }),
+        verCampanhas ? buscarAvisosCampanhas(hoje).catch(() => []) : Promise.resolve([]),
       ]);
 
       // Estoque: um aviso para zerados e outro para abaixo do mínimo (muda se a lista mudar).
@@ -113,6 +117,14 @@ export function useNotificacoes() {
         detalhe: diasDesdeUltimoBackup === null ? 'Nenhum backup registrado ainda.' : `Último backup há ${diasDesdeUltimoBackup} dias.`,
         rota: '/configuracoes/backup', quando: hoje });
 
+      // Datas comerciais que entraram na janela de aviso (a chave é por data+ano: lida some até o ano seguinte).
+      campanhas.forEach(c => out.push({
+        key: `campanha:${c.id}:${c.dataISO}`, tipo: 'campanha', nivel: 'sugestao',
+        titulo: `${c.nome} ${textoDias(c.dias)}`,
+        detalhe: c.qtdProdutos > 0 ? `${c.qtdProdutos} produto(s) na campanha` : 'Monte a campanha: escolha o que oferecer aos clientes',
+        rota: `${ROTA_DATAS}?abrir=${c.id}`, quando: c.dataISO,
+      }));
+
       (site.data ?? []).forEach((o: any) => out.push({
         key: `site:${o.id}`, tipo: 'site', nivel: 'info',
         titulo: `Novo pedido do site #${o.numero ?? '—'}`,
@@ -139,7 +151,7 @@ export function useNotificacoes() {
       (pagar.data ?? []).forEach((l: any) => montar(l, 'pagar'));
       (receber.data ?? []).forEach((l: any) => montar(l, 'receber'));
 
-      const peso = { critico: 0, atencao: 1, info: 2 } as const;
+      const peso = { critico: 0, atencao: 1, info: 2, sugestao: 3 } as const;
       return out.sort((a, b) => peso[a.nivel] - peso[b.nivel] || (a.quando < b.quando ? -1 : 1));
     },
   });

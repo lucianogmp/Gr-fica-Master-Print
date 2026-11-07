@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { createPortal } from 'react-dom';
-import { Bell, CheckCheck, Globe, ArrowDownCircle, ArrowUpCircle, CheckCircle2, Package, Truck, HardDrive } from 'lucide-react';
+import { Bell, CheckCheck, Globe, ArrowDownCircle, ArrowUpCircle, CheckCircle2, Package, Truck, HardDrive, CalendarHeart } from 'lucide-react';
 import { useNotificacoes, TipoNotif } from '../hooks/useNotificacoes';
 
-const ICONE: Record<TipoNotif, any> = { site: Globe, pagar: ArrowDownCircle, receber: ArrowUpCircle, estoque: Package, entrega: Truck, backup: HardDrive };
+const ICONE: Record<TipoNotif, any> = { site: Globe, pagar: ArrowDownCircle, receber: ArrowUpCircle, estoque: Package, entrega: Truck, backup: HardDrive, campanha: CalendarHeart };
 const COR = {
   critico: 'text-red-400 bg-red-500/10 border-red-500/30',
   atencao: 'text-amber-400 bg-amber-500/10 border-amber-500/30',
   info:    'text-blue-400 bg-blue-500/10 border-blue-500/30',
+  sugestao: 'text-purple-400 bg-purple-500/10 border-purple-500/30',   // datas comerciais
 } as const;
 
 export function NotificacoesSino() {
@@ -85,7 +86,7 @@ export function NotificacoesSino() {
                     <p className="text-xs font-bold truncate">{n.titulo}</p>
                     <p className="text-[11px] text-gray-400 truncate">{n.detalhe}</p>
                   </div>
-                  <span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0 mt-1" />
+                  <span className={`w-2 h-2 rounded-full flex-shrink-0 mt-1 ${n.nivel === 'sugestao' ? 'bg-purple-500' : 'bg-red-500'}`} />
                 </button>
               );
             })}

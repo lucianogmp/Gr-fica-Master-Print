@@ -50,6 +50,8 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   '/produtos/precos':     ['dono', 'admin', 'producao'],
   '/produtos/kits':       ['dono', 'admin', 'producao', 'vendedor'],
   '/produtos/servicos':   ['dono', 'admin', 'producao'],
+  // campanhas das datas comerciais (aviso no sino/Dashboard + produtos em destaque)
+  '/produtos/datas-comerciais': ['dono', 'admin'],
 
   // ── Estoque ──
   '/estoque':           ['dono', 'admin', 'producao'],

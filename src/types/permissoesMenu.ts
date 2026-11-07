@@ -47,6 +47,7 @@ export const PERMISSOES_MENU: GrupoPermissao[] = [
     { rota: '/produtos/categorias', label: 'Categorias' },
     { rota: '/produtos/precos',     label: 'Tabela de Preços' },
     { rota: '/produtos/servicos',   label: 'Terceirizados' },
+    { rota: '/produtos/datas-comerciais', label: 'Datas Comerciais' },
   ]},
   { grupo: 'Estoque', itens: [
     { rota: '/estoque',           label: 'Estoque (geral)' },
