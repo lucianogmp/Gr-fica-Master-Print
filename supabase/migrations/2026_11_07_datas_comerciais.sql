@@ -77,3 +77,26 @@ select * from (values
   ('Formaturas (fim de ano)', 'fixa', 12, 1, 'Convites, fotos, canecas, banners e lembranças', array['foto','caneca','banner','quadro','adesivo','marcador','imã','ima'], 'Data aproximada (temporada de formaturas) — ajuste se quiser.')
 ) as t(nome, regra, mes, dia, ideias, palavras_chave, observacoes)
 where not exists (select 1 from public.datas_comerciais);
+
+-- Permissão por usuário (aplicada em seguida): padrão só dono/admin; o dono libera outros
+-- (ex.: vendedor) em Configurações > Usuários > Permissões > Produtos > Datas Comerciais.
+INSERT INTO public.rota_permissoes_padrao (rota, role)
+SELECT '/produtos/datas-comerciais', r
+FROM (VALUES ('dono'), ('admin')) AS v(r)
+WHERE NOT EXISTS (
+  SELECT 1 FROM public.rota_permissoes_padrao
+  WHERE rota = '/produtos/datas-comerciais' AND role = v.r
+);
+
+DROP POLICY IF EXISTS datas_comerciais_all ON public.datas_comerciais;
+DROP POLICY IF EXISTS datas_comerciais_produtos_all ON public.datas_comerciais_produtos;
+
+CREATE POLICY datas_comerciais_all ON public.datas_comerciais
+  FOR ALL TO authenticated
+  USING (usuario_tem_permissao('/produtos/datas-comerciais'))
+  WITH CHECK (usuario_tem_permissao('/produtos/datas-comerciais'));
+
+CREATE POLICY datas_comerciais_produtos_all ON public.datas_comerciais_produtos
+  FOR ALL TO authenticated
+  USING (usuario_tem_permissao('/produtos/datas-comerciais'))
+  WITH CHECK (usuario_tem_permissao('/produtos/datas-comerciais'));

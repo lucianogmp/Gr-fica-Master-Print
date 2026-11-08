@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useProdutos } from '../../hooks/useProdutos';
+import { useRole } from '../../hooks/useRole';
 import { useDatasComerciais, useMaisVendidos, ProdutoDaData } from '../../hooks/useDatasComerciais';
 import {
   DataComercial, REGRAS, RegraData, proximaOcorrencia, janelaDeAviso, diasEntre, hojeISO, somarDias,
@@ -114,6 +115,7 @@ function CartaoData({ d, proxima, inicialAberto, produtosCatalogo, linhas, naLoj
 }) {
   useOcultarValores(); // re-renderiza quando o "ocultar valores" muda
   const { adicionarProdutos, removerProduto, alternarDestaque, publicarDestaques, retirarDestaques } = useDatasComerciais();
+  const { isAdmin } = useRole();   // destaque no site só dono/admin (a loja só aceita alteração deles)
   const [aberto, setAberto] = useState(inicialAberto);
   const [busca, setBusca] = useState('');
   const [fonte, setFonte] = useState<'ano_passado' | '90dias'>('ano_passado');
@@ -172,7 +174,7 @@ function CartaoData({ d, proxima, inicialAberto, produtosCatalogo, linhas, naLoj
             <div className="space-y-2">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h4 className="text-[11px] font-bold text-gray-300 uppercase">Produtos da campanha</h4>
-                <div className="flex gap-1.5">
+                {isAdmin && <div className="flex gap-1.5">
                   <button onClick={() => publicarDestaques.mutate(d.id)} disabled={qtdMarcadas === 0 || publicarDestaques.isPending}
                     title="Liga o destaque no site dos produtos com a estrela marcada"
                     className="flex items-center gap-1 text-[10px] font-bold bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white px-2.5 py-1.5 rounded-lg">
@@ -185,7 +187,7 @@ function CartaoData({ d, proxima, inicialAberto, produtosCatalogo, linhas, naLoj
                       Tirar do destaque
                     </button>
                   )}
-                </div>
+                </div>}
               </div>
               {linhas.length === 0 ? (
                 <p className="text-xs text-gray-500 py-2">Nenhum produto ainda. Adicione pela busca, pelas sugestões ou pelo que vendeu antes.</p>
@@ -195,11 +197,11 @@ function CartaoData({ d, proxima, inicialAberto, produtosCatalogo, linhas, naLoj
                     const noSite = naLoja[l.produto_id] !== undefined;
                     return (
                       <li key={l.id} className="flex items-center gap-2 bg-[#111827] border border-gray-700/60 rounded-lg px-2.5 py-1.5">
-                        <button onClick={() => noSite ? alternarDestaque.mutate({ id: l.id, valor: !l.destacar_no_site }) : toast('Este produto não está publicado no site.')}
+                        {isAdmin && <button onClick={() => noSite ? alternarDestaque.mutate({ id: l.id, valor: !l.destacar_no_site }) : toast('Este produto não está publicado no site.')}
                           title={noSite ? (l.destacar_no_site ? 'Vai ficar em destaque no site' : 'Marcar para destacar no site') : 'Não está publicado no site'}
                           className={`flex-shrink-0 ${!noSite ? 'opacity-30' : ''}`}>
                           <Star className={`w-4 h-4 ${l.destacar_no_site ? 'text-purple-400 fill-purple-400' : 'text-gray-500'}`} />
-                        </button>
+                        </button>}
                         <span className="text-xs text-white flex-1 min-w-0 truncate">{l.produto?.nome ?? 'Produto removido'}</span>
                         {noSite && naLoja[l.produto_id] && <span className="text-[9px] font-bold text-purple-300 flex-shrink-0">em destaque</span>}
                         <span className="text-[11px] text-gray-400 flex-shrink-0">{moeda(l.produto?.preco_venda)}{l.produto?.por_metro_quadrado ? '/m²' : ''}</span>
