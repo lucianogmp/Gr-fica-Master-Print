@@ -114,7 +114,7 @@ function CartaoData({ d, proxima, inicialAberto, produtosCatalogo, linhas, naLoj
   onEditar: () => void; onExcluir: () => void;
 }) {
   useOcultarValores(); // re-renderiza quando o "ocultar valores" muda
-  const { adicionarProdutos, removerProduto, alternarDestaque, publicarDestaques, retirarDestaques } = useDatasComerciais();
+  const { adicionarProdutos, removerProduto, alternarDestaque, publicarDestaques, retirarDestaques, alternarSite } = useDatasComerciais();
   const { isAdmin } = useRole();   // destaque no site só dono/admin (a loja só aceita alteração deles)
   const [aberto, setAberto] = useState(inicialAberto);
   const [busca, setBusca] = useState('');
@@ -157,6 +157,7 @@ function CartaoData({ d, proxima, inicialAberto, produtosCatalogo, linhas, naLoj
         </span>
         <span className="text-[10px] text-gray-500">avisa {d.dias_antecedencia} dias antes</span>
         <span className="ml-auto text-[10px] font-bold text-gray-400">{linhas.length} produto(s)</span>
+        {d.site_mostrar && <span className="text-[10px] font-bold text-purple-300 border border-purple-500/30 rounded px-1.5 flex items-center gap-1"><Globe className="w-3 h-3" />No site</span>}
         {!d.ativa && <span className="text-[10px] font-bold text-gray-500 border border-gray-700 rounded px-1.5">Desativada</span>}
       </button>
 
@@ -167,6 +168,18 @@ function CartaoData({ d, proxima, inicialAberto, produtosCatalogo, linhas, naLoj
               <Lightbulb className="w-3.5 h-3.5 text-purple-400 flex-shrink-0 mt-0.5" />
               <div>{d.ideias}{d.observacoes && <span className="block text-gray-500 mt-0.5">{d.observacoes}</span>}</div>
             </div>
+          )}
+
+          {isAdmin && (
+            <label className="flex flex-wrap items-center gap-x-3 gap-y-1 bg-purple-500/5 border border-purple-500/20 rounded-lg px-3 py-2 text-xs text-gray-300 cursor-pointer">
+              <input type="checkbox" checked={!!d.site_mostrar} disabled={alternarSite.isPending}
+                onChange={e => alternarSite.mutate({ id: d.id, valor: e.target.checked })} className="accent-purple-500" />
+              <span className="font-bold text-white">Mostrar no site como “Ofertas de {d.nome}”</span>
+              <span className="text-gray-500">
+                aparece {d.site_dias_antes ?? d.dias_antecedencia} dias antes da data, no topo da página inicial, só com produtos publicados no site.
+                Preço promocional e banner você define no admin da loja.
+              </span>
+            </label>
           )}
 
           <div className="grid lg:grid-cols-2 gap-4">

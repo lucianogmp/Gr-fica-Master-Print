@@ -129,6 +129,16 @@ export function useDatasComerciais() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  // Liga/desliga a campanha no site (a loja só mostra "Ofertas de ..." das campanhas ligadas e com produtos publicados)
+  const alternarSite = useMutation({
+    mutationFn: async ({ id, valor }: { id: string; valor: boolean }) => {
+      const { error } = await supabase.from('datas_comerciais').update({ site_mostrar: valor }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: (_r, v) => { refazer(); toast.success(v.valor ? 'Campanha ativada no site.' : 'Campanha tirada do site.'); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   // Desliga o destaque no site só dos produtos que a campanha ligou e que
   // nenhuma OUTRA campanha ainda está usando. Destaque manual nunca é mexido.
   async function desligarDestaques(linhas: ProdutoDaData[]) {
@@ -229,7 +239,7 @@ export function useDatasComerciais() {
     onError: (e: any) => toast.error(e.message),
   });
 
-  return { datas, produtosDasDatas, loja, salvarData, excluirData, adicionarProdutos, removerProduto, alternarDestaque, publicarDestaques, retirarDestaques };
+  return { datas, produtosDasDatas, loja, salvarData, alternarSite, excluirData, adicionarProdutos, removerProduto, alternarDestaque, publicarDestaques, retirarDestaques };
 }
 
 /** Produtos mais vendidos num período (por faturamento). */

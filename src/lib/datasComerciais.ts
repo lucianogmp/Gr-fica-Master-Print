@@ -18,6 +18,8 @@ export interface DataComercial {
   ideias: string | null;
   palavras_chave: string[];
   observacoes: string | null;
+  site_mostrar?: boolean;          // aparece no site como "Ofertas de ..." (desligado até ativar)
+  site_dias_antes?: number | null; // vazio = usa dias_antecedencia
 }
 
 export const REGRAS: { value: RegraData; label: string }[] = [

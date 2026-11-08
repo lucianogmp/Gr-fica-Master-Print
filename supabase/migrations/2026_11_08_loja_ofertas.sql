@@ -56,3 +56,7 @@ $$;
 revoke all on function public.loja_promocoes() from public;
 grant execute on function public.loja_promocoes() to anon, authenticated;
 -- Funções do pedido (loja-criar-pedido / loja-meus-pedidos): ver supabase/functions/.
+
+-- Oferta no site passa a ser opt-in: só aparece depois de ativada (no ERP ou na aba Ofertas do site).
+alter table public.datas_comerciais alter column site_mostrar set default false;
+update public.datas_comerciais set site_mostrar = false;
