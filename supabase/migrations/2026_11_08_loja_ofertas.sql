@@ -34,3 +34,25 @@ update storage.buckets
 set allowed_mime_types = array['image/jpeg','image/png','image/webp','image/gif'],
     file_size_limit = 8388608
 where id = 'loja-produtos';
+
+-- Promoção só no site (preço "de/por" ou %). O "de" é sempre o preço de venda do ERP.
+alter table public.loja_produtos
+  add column if not exists promo_tipo text check (promo_tipo in ('percentual','preco')),
+  add column if not exists promo_valor numeric;
+alter table public.loja_produtos drop constraint if exists loja_produtos_promo_ok;
+alter table public.loja_produtos add constraint loja_produtos_promo_ok check (
+  (promo_tipo is null and promo_valor is null)
+  or (promo_tipo = 'percentual' and promo_valor > 0 and promo_valor < 100)
+  or (promo_tipo = 'preco' and promo_valor > 0)
+);
+create or replace function public.loja_promocoes()
+returns table(produto_id uuid, tipo text, valor numeric)
+language sql stable security definer set search_path = public as $$
+  select lp.produto_id, lp.promo_tipo, lp.promo_valor
+  from public.loja_produtos lp
+  join public.produtos p on p.id = lp.produto_id
+  where lp.promo_tipo is not null and p.status = 'ativo' and p.publicar_no_catalogo
+$$;
+revoke all on function public.loja_promocoes() from public;
+grant execute on function public.loja_promocoes() to anon, authenticated;
+-- Funções do pedido (loja-criar-pedido / loja-meus-pedidos): ver supabase/functions/.
