@@ -100,6 +100,11 @@ export function resolverTaxaRascunho(r: Pick<PagamentoVenda, 'forma_pagamento' |
   return getTaxaParcela(forma, r.parcelas || 1);
 }
 
+function dataLocalHoje(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function novaParcelaBase(valor: number, formaPadrao: string, formas: FormasPagamentoConfig[] = [], dataPadrao?: string): RascunhoParcela {
   const nome  = formaPadrao || 'PIX';
   const forma = formas.find(f => f.nome === nome);
@@ -232,7 +237,10 @@ export function PainelFinanceiro({
   }
   function toggleStatus(id: string) {
     emitirRascunhos(rascunhosRef.current.map(r => r.id === id
-      ? { ...r, status: r.status === 'a_receber' ? 'recebido' : 'a_receber' }
+      ? (r.status === 'a_receber'
+          // Marcou como recebido: a data passa a ser a de HOJE (a que estava era só a previsão).
+          ? { ...r, status: 'recebido' as const, data_pagamento: dataLocalHoje() }
+          : { ...r, status: 'a_receber' as const })
       : r));
   }
 
