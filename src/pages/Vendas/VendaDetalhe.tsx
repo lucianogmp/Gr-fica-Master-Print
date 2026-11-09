@@ -6,6 +6,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useProdutos } from '../../hooks/useProdutos';
 import { prazoEstimadoDias, dataEntregaPrevista } from '../../lib/prazoEntrega';
 import { guardarRascunhoVenda, lerRascunhoVenda, limparRascunhoVenda } from '../../lib/rascunhoVenda';
+import { registrarRascunho } from '../../lib/rascunhosInatividade';
 import { useVendas, useVendaItens } from '../../hooks/useVendas';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { supabase } from '../../lib/supabase';
@@ -37,7 +38,7 @@ import { baixarPdfOrcamento } from '../../components/impressao/baixarPdf';
 import { DocumentoImpressaoData } from '../../components/impressao/DocumentoImpressao';
 import { imprimirDocumento } from '../../components/impressao/imprimirDocumento';
 import { DEFAULT_LAYOUT_VENDA } from '../../types/layoutImpressao';
-import { marcarAlteracoesPendentes, limparAlteracoesPendentes } from '../../lib/unsavedChangesGuard';
+import { marcarAlteracoesPendentes, limparAlteracoesPendentes, unsavedChangesGuard } from '../../lib/unsavedChangesGuard';
 
 const IN = "w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors";
 
@@ -262,6 +263,15 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
     vendedorPadraoAplicadoRef.current = true;
     setForm(f => (f.vendedor_id || f.vendedor?.trim()) ? f : { ...f, vendedor: user.name, vendedor_id: user.id });
   }, [isNovo, user]);
+
+  // Se a sessão expirar por inatividade com a venda suja, ela é guardada pra recuperar depois.
+  const instantaneoRef = useRef<any>(null);
+  instantaneoRef.current = { vendaId, form, itens, pagamentosRascunho, gastosRascunho };
+  useEffect(() => registrarRascunho('venda', () => {
+    if (!unsavedChangesGuard.mensagem) return null;
+    const d = instantaneoRef.current;
+    return { chave: d.vendaId, rotulo: `${d.vendaId === '__novo__' ? 'Nova venda' : 'Venda'}${d.form?.cliente_nome ? ' — ' + d.form.cliente_nome : ''}`, dados: d };
+  }), []);
 
   // Aplica o rascunho guardado antes de abrir o produto (roda por último na montagem, pra valer sobre os demais).
   useEffect(() => {

@@ -1,6 +1,9 @@
 import { AutoTextarea } from '../components/ui/AutoTextarea';
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { ModalMP } from '../components/estoque/ModalMP';
+import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
+import { registrarRascunho, lerRascunho, limparRascunho } from '../lib/rascunhosInatividade';
 import { useProdutos } from '../hooks/useProdutos';
 import { useCategorias } from '../hooks/useCategorias';
 import { useMateriasPrimas } from '../hooks/useEstoque';
@@ -67,119 +70,6 @@ function parseMaquinas(raw: string | null | undefined): string[] {
 }
 function stringifyMaquinas(arr: string[]): string {
   return arr.length === 0 ? '' : JSON.stringify(arr);
-}
-
-// ── Modal nova matéria-prima ───────────────────────────────────────────────
-function ModalNovaMateriaPrima({ open, onClose, onCriada }: {
-  open: boolean; onClose: () => void;
-  onCriada: (mp: { id: string; nome: string; unidade: string; custo_unitario: number }) => void;
-}) {
-  const VAZIO = { nome: '', categoria: '', unidade: 'un', custo_unitario: 0 as number, estoque_minimo: '', saldo_inicial: '' };
-  const [form, setForm]     = useState(VAZIO);
-  const [salvando, setSalvando] = useState(false);
-  const { data: categorias = [] } = useCategorias();
-  const { criar: criarMateriaPrima } = useMateriasPrimas();
-  const [modalCat, setModalCat] = useState(false);
-  function set(f: Exclude<keyof typeof VAZIO, 'custo_unitario'>, v: string) { setForm(p => ({ ...p, [f]: v })); }
-  function setCustoUnitario(v: number) { setForm(p => ({ ...p, custo_unitario: v })); }
-  async function handleSalvar() {
-    if (!form.nome.trim()) return;
-    setSalvando(true);
-    try {
-      // Usa o hook useMateriasPrimas() (em vez de inserir direto no Supabase)
-      // pra garantir que o cache do React Query seja invalidado — assim a
-      // matéria-prima aparece na hora em Estoque e em qualquer outra tela,
-      // sem precisar de F5.
-      const data = await criarMateriaPrima({
-        nome: form.nome.trim(),
-        categoria: form.categoria.trim() || null,
-        unidade: form.unidade,
-        custo_unitario: form.custo_unitario || 0,
-        estoque_minimo: parseFloat(form.estoque_minimo) || 0,
-        saldo_inicial: parseFloat(form.saldo_inicial) || 0,
-      } as any);
-      onCriada({
-        id: data.id,
-        nome: data.nome,
-        unidade: (data as any).unidade ?? form.unidade,
-        custo_unitario: Number((data as any).custo_unitario ?? form.custo_unitario ?? 0),
-      });
-      setForm(VAZIO);
-      onClose();
-    } catch (e: any) { toast.error(e.message); }
-    finally { setSalvando(false); }
-  }
-  return (
-    <>
-    <Modal open={open} onClose={onClose}
-      title={<span className="flex items-center gap-1.5"><Plus className="w-4 h-4 text-blue-400" /> Nova Matéria-Prima</span>}
-      maxWidth="480px"
-      actions={<>
-        <button onClick={onClose} className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-sm font-medium transition-all">Cancelar</button>
-        <button onClick={handleSalvar} disabled={salvando || !form.nome.trim()}
-          className="px-5 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white rounded-lg text-sm font-bold transition-all">
-          {salvando ? 'Salvando...' : 'Criar e adicionar'}
-        </button>
-      </>}>
-      <div className="space-y-4">
-        <div>
-          <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Nome *</label>
-          <input autoFocus value={form.nome} onChange={e => set('nome', e.target.value)} className={IN} placeholder="Ex: Papel Couchê 150g" />
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Categoria</label>
-            <div className="flex gap-2">
-              <DarkSelect
-                value={form.categoria}
-                onChange={v => set('categoria', v)}
-                placeholder="Sem categoria"
-                className="flex-1"
-                searchable
-                options={categorias.map(c => c.nome)}
-              />
-              <button onClick={() => setModalCat(true)} title="Criar nova categoria"
-                className="flex-shrink-0 w-10 h-10 bg-green-600/20 hover:bg-green-600/40 border border-green-500/30 text-green-400 rounded-lg flex items-center justify-center transition-all">
-                <Plus className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-          <div>
-            <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Unidade</label>
-            <DarkSelect
-              value={form.unidade}
-              onChange={v => set('unidade', v)}
-              allowEmpty={false}
-              options={UNIDADES_MP_OPCOES}
-            />
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Custo por Unidade (R$)</label>
-            <MoneyInput value={form.custo_unitario}
-              onChange={setCustoUnitario} className={IN} placeholder="0,00" />
-          </div>
-          <div>
-            <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Estoque Mínimo</label>
-            <QtdInput value={form.estoque_minimo}
-              onChange={v => set('estoque_minimo', v)} className={IN} placeholder="0" />
-          </div>
-        </div>
-        <div>
-          <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Saldo Inicial</label>
-          <QtdInput value={form.saldo_inicial}
-            onChange={v => set('saldo_inicial', v)} className={IN} placeholder="0" />
-        </div>
-        <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg px-3 py-2 text-xs text-blue-300">
-          Ficará disponível também no módulo Estoque.
-        </div>
-      </div>
-    </Modal>
-    <ModalNovaCategoria open={modalCat} onClose={() => setModalCat(false)}
-        onCriada={(id, nome) => { set('categoria', nome); setModalCat(false); }} />
-    </>
-  );
 }
 
 // ── Tempo de Produção: Horas : Minutos ──────────────────────────────────────
@@ -400,6 +290,7 @@ export function Produtos() {
   const [busca, setBusca]       = useState('');
   const [modalCat, setModalCat] = useState(false);
   const [modalMP, setModalMP]   = useState(false);
+  const { criar: criarMateriaPrima } = useMateriasPrimas();
   const [clonando, setClonando] = useState<string | null>(null);
 
   // Acabamentos form
@@ -499,6 +390,43 @@ export function Produtos() {
   }, [novoDaVenda]);
 
   function setF(field: string, val: any) { setForm(f => ({ ...f, [field]: val })); }
+
+  // ── Recuperar produto em edição quando a sessão expirou por inatividade ──
+  const { user: usuarioProd } = useAuth();
+  const locationProd = useLocation();
+  const instantaneoProdRef = useRef<any>(null);
+  instantaneoProdRef.current = { view, produtoId, form, maquinas, maquinasTempo, bom };
+  // foto do estado "limpo" (ao abrir / terminar de carregar) pra saber se há algo não salvo
+  const inicialProdRef = useRef<string | null>(null);
+  const recuperadoProdRef = useRef(false);
+  useEffect(() => {
+    if (view !== 'detalhe' || bomLoading) { inicialProdRef.current = null; return; }
+    const d = instantaneoProdRef.current;
+    // produto recuperado de rascunho continua "sujo" (nunca foi salvo)
+    inicialProdRef.current = recuperadoProdRef.current ? '__recuperado__' : JSON.stringify({ f: d.form, m: d.maquinas, t: d.maquinasTempo, b: d.bom });
+    recuperadoProdRef.current = false;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, produtoId, bomLoading]);
+  useEffect(() => registrarRascunho('produto', () => {
+    const d = instantaneoProdRef.current;
+    if (d.view !== 'detalhe' || inicialProdRef.current === null) return null;
+    if (JSON.stringify({ f: d.form, m: d.maquinas, t: d.maquinasTempo, b: d.bom }) === inicialProdRef.current) return null;
+    return { chave: d.produtoId ?? '__novo__', rotulo: `${d.produtoId === '__novo__' ? 'Novo produto' : 'Produto'}${d.form?.nome ? ' — ' + d.form.nome : ''}`, dados: { produtoId: d.produtoId, form: d.form, maquinas: d.maquinas, maquinasTempo: d.maquinasTempo, bom: d.bom } };
+  }), []);
+  useEffect(() => {
+    if (!(locationProd.state as any)?.recuperar || !usuarioProd?.id) return;
+    const r = lerRascunho(usuarioProd.id, 'produto');
+    navigate(locationProd.pathname, { replace: true, state: null });
+    if (!r) return;
+    limparRascunho(usuarioProd.id, 'produto');
+    const d = r.dados;
+    setProdutoId(d.produtoId); setForm(d.form); setMaquinas(d.maquinas ?? []); setMaquinasTempo(d.maquinasTempo ?? {}); setBom(d.bom ?? []);
+    setBomLoading(false);
+    recuperadoProdRef.current = true;
+    setView('detalhe');
+    toast.success('Produto recuperado.');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locationProd.state, usuarioProd?.id]);
 
   // Duplica um produto (dados + BOM/composição de materiais) e já abre a
   // cópia na tela de edição — útil pra cadastrar rápido uma variação de um
@@ -905,8 +833,10 @@ export function Produtos() {
     <>
       <ModalNovaCategoria open={modalCat} onClose={() => setModalCat(false)}
         onCriada={(id) => setF('categoria_id', id)} />
-      <ModalNovaMateriaPrima open={modalMP} onClose={() => setModalMP(false)}
-        onCriada={(mp) => {
+      {/* Mesmo cadastro de matéria-prima da tela de Estoque (um único formulário no sistema). */}
+      <ModalMP open={modalMP} editando={null} onClose={() => setModalMP(false)}
+        onSalvar={async dados => {
+          const mp: any = await criarMateriaPrima(dados);
           // já entra na lista de matérias-primas do produto, com quantidade 1 (ajuste na tabela abaixo)
           setBom(prev => prev.some(b => b.materia_id === mp.id) ? prev : [
             ...prev,
@@ -914,7 +844,7 @@ export function Produtos() {
               produto_id: '',
               materia_id: mp.id,
               quantidade: 1,
-              materias_primas: { id: mp.id, nome: mp.nome, unidade: mp.unidade, custo_unitario: mp.custo_unitario },
+              materias_primas: { id: mp.id, nome: mp.nome, unidade: mp.unidade ?? 'un', custo_unitario: Number(mp.custo_unitario ?? 0) },
             },
           ]);
           toast.success(`"${mp.nome}" criada e adicionada ao produto — ajuste a quantidade na lista.`);

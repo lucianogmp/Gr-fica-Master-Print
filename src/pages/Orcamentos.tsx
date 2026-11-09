@@ -9,10 +9,11 @@ import { DocumentoImpressaoData } from '../components/impressao/DocumentoImpress
 import { imprimirDocumento } from '../components/impressao/imprimirDocumento';
 import { baixarPdfOrcamento, baixarPdfCustos } from '../components/impressao/baixarPdf';
 import { DEFAULT_LAYOUT_ORCAMENTO } from '../types/layoutImpressao';
-import { marcarAlteracoesPendentes, limparAlteracoesPendentes } from '../lib/unsavedChangesGuard';
+import { marcarAlteracoesPendentes, limparAlteracoesPendentes, unsavedChangesGuard } from '../lib/unsavedChangesGuard';
 import { OrdenarMenu, aplicarOrdenacao, Ordenacao } from '../components/ui/OrdenarMenu';
 import { FiltrosAvancados, aplicarFiltrosAvancados, FiltrosAvancadosValor } from '../components/ui/FiltrosAvancados';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
+import { registrarRascunho, lerRascunho, limparRascunho } from '../lib/rascunhosInatividade';
 import { useQueryClient } from '@tanstack/react-query';
 import { useOrcamentos, useOrcamentoItens } from '../hooks/useOrcamentos';
 import { useAcabamentos } from '../hooks/useAcabamentos';
@@ -151,9 +152,44 @@ export function Orcamentos() {
     }
   }
 
+  // Itens que vieram de um rascunho recuperado valem mais que os do banco (só na 1ª carga).
+  const itensRecuperadosRef = useRef(false);
   useEffect(() => {
-    if (itensCarregados && !isNovo) setItens(itensCarregados);
+    if (itensCarregados && !isNovo) {
+      if (itensRecuperadosRef.current) { itensRecuperadosRef.current = false; return; }
+      setItens(itensCarregados);
+    }
   }, [itensCarregados, isNovo]);
+
+  // Sessão expirou por inatividade com o orçamento aberto e sem salvar → guarda pra recuperar.
+  const instantaneoOrcRef = useRef<any>(null);
+  instantaneoOrcRef.current = { view, orcId, form, itens };
+  useEffect(() => registrarRascunho('orcamento', () => {
+    const d = instantaneoOrcRef.current;
+    if (d.view !== 'detalhe' || !unsavedChangesGuard.mensagem) return null;
+    return { chave: d.orcId ?? '__novo__', rotulo: `${d.orcId === '__novo__' ? 'Novo orçamento' : 'Orçamento'}${d.form?.cliente_nome ? ' — ' + d.form.cliente_nome : ''}`, dados: { orcId: d.orcId, form: d.form, itens: d.itens } };
+  }), []);
+
+  // "Recuperar orçamento": reabre exatamente como estava quando o sistema fechou.
+  const locationOrc = useLocation();
+  useEffect(() => {
+    if (!(locationOrc.state as any)?.recuperar || !user?.id) return;
+    const r = lerRascunho(user.id, 'orcamento');
+    navigate(locationOrc.pathname, { replace: true, state: null });
+    if (!r) return;
+    limparRascunho(user.id, 'orcamento');
+    const d = r.dados;
+    itensRecuperadosRef.current = d.orcId !== '__novo__';
+    setEditandoIdx(null); setEditorContinuo(false); setShowEditor(false); setTipoItemNovo(null);
+    setOrcId(d.orcId);
+    setForm(d.form);
+    setItens(d.itens ?? []);
+    setView('detalhe');
+    carregandoRef.current = false;
+    marcarAlteracoesPendentes('Você tem alterações não salvas nesse orçamento. Sair mesmo assim?');
+    toast.success('Orçamento recuperado.');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locationOrc.state, user?.id]);
 
   const subtotal   = itens.reduce((s, i) => s + Number(i.total), 0);
   const descGlobal = Number(form.desconto ?? 0);

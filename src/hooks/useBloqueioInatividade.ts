@@ -6,6 +6,7 @@ import {
   registrarAtividade, motivoDeExpiracao, guardarMotivo, limparAtividade,
 } from '../lib/sessaoInatividade';
 import { limparAlteracoesPendentes } from '../lib/unsavedChangesGuard';
+import { salvarRascunhosPendentes } from '../lib/rascunhosInatividade';
 
 export function useBloqueioInatividade() {
   useEffect(() => {
@@ -21,6 +22,12 @@ export function useBloqueioInatividade() {
     async function verificar() {
       const motivo = motivoDeExpiracao();
       if (!motivo) return;
+      // Antes de fechar: guarda o que estava aberto e sem salvar (orçamento/venda/produto),
+      // pra poder recuperar ao entrar de novo.
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (data.session?.user?.id) salvarRascunhosPendentes(data.session.user.id);
+      } catch { /* segue sem guardar */ }
       guardarMotivo(motivo);
       limparAtividade();
       limparAlteracoesPendentes();

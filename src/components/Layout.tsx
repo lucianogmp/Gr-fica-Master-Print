@@ -18,6 +18,7 @@ import { useConfiguracoes } from '../hooks/useConfiguracoes';
 import { useRealtimeSync } from '../hooks/useRealtimeSync';
 import { podeSairSemSalvar } from '../lib/unsavedChangesGuard';
 import { TrocarSenhaModal } from './TrocarSenhaModal';
+import { RascunhosRecuperaveis } from './RascunhosRecuperaveis';
 import toast from 'react-hot-toast';
 import {
   LayoutDashboard, ShoppingCart, Users, Landmark, FileText,
@@ -581,6 +582,7 @@ export function Layout() {
         <main id="conteudo-principal" className="flex-1 overflow-y-auto bg-[#111827]">
           <Outlet />
         </main>
+        <RascunhosRecuperaveis />
       </div>
     </div>
   );
