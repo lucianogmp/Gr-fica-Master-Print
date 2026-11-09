@@ -301,12 +301,21 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
       .filter(l => !filtroCategoria || l.categoria === filtroCategoria)
       .filter(l => !filtroForma || formasDe(l as LancamentoExibido).includes(filtroForma));
     const comFiltrosAv = aplicarFiltrosAvancados(basico, filtrosAv, l => l.data_vencimento, l => l.valor);
-    // Sem ordenação escolhida ("limpa"): vencimento mais próximo/antigo primeiro e, no
-    // mesmo dia, o lançado por último em cima. Estado inicial da tela.
+    // Sem ordenação escolhida (estado inicial): o mais recente em cima — de hoje para
+    // o dia 1º do mês — e, no mesmo dia, o lançado por último primeiro. Lançamentos com
+    // vencimento FUTURO (ex.: a receber dia 30) ficam depois, do mais próximo ao mais distante,
+    // pra não empurrarem o que aconteceu hoje pra baixo.
     if (!ordenacao) {
-      return [...comFiltrosAv].sort((x, y) =>
-        String(x.data_vencimento ?? '').localeCompare(String(y.data_vencimento ?? ''))
-        || String((y as any).created_at ?? '').localeCompare(String((x as any).created_at ?? '')));
+      const d = new Date();
+      const hoje = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const dt = (x: any) => String(x.data_vencimento ?? '').slice(0, 10);
+      const cr = (x: any) => String(x.created_at ?? '');
+      return [...comFiltrosAv].sort((x, y) => {
+        const fx = dt(x) > hoje, fy = dt(y) > hoje;
+        if (fx !== fy) return fx ? 1 : -1;
+        if (fx && fy) return dt(x).localeCompare(dt(y)) || cr(y).localeCompare(cr(x));
+        return dt(y).localeCompare(dt(x)) || cr(y).localeCompare(cr(x));
+      });
     }
     return aplicarOrdenacao(comFiltrosAv, ordenacao, {
       data:    l => l.data_vencimento,
