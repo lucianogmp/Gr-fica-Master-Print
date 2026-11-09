@@ -104,6 +104,29 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
     },
   });
   const [pagamentosRascunho, setPagamentosRascunho] = useState<RascunhoParcela[]>([]);
+  // A data de pagamento das parcelas "a receber" acompanha a data de entrega (na maioria
+  // das vezes o cliente paga na entrega). Só mexe nas parcelas que ainda estão com a data
+  // "automática" (hoje ou a entrega anterior) — se a pessoa digitou outra data, respeita.
+  const entregaAnteriorRef = useRef<string | null>(null);
+  useEffect(() => {
+    const nova = form.data_entrega || null;
+    const antiga = entregaAnteriorRef.current;
+    entregaAnteriorRef.current = nova;
+    if (!nova) return;
+    const d = new Date();
+    const hoje = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    setPagamentosRascunho(prev => {
+      let mudou = false;
+      const novas = prev.map(r => {
+        if (r.status !== 'a_receber') return r;
+        const dt = String(r.data_pagamento ?? '').slice(0, 10);
+        if (dt === nova || (dt !== hoje && dt !== antiga)) return r;
+        mudou = true;
+        return { ...r, data_pagamento: nova };
+      });
+      return mudou ? novas : prev;
+    });
+  }, [form.data_entrega, pagamentosRascunho.length]);
   const [gastosRascunho, setGastosRascunho] = useState<Lancamento[]>([]);
   // Trava contra clique repetido em Salvar: enquanto a venda e os pagamentos
   // estão sendo gravados, um segundo clique não pode gravar tudo de novo
