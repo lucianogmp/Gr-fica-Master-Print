@@ -20,6 +20,9 @@ export interface OrcamentoItem {
   custo_unitario?: number | null;
   preco_unitario: number;
   total: number;
+  /** Desconto do item (em % e em R$). `total` já é o valor LÍQUIDO; bruto = total + desconto_valor. */
+  desconto?: number | null;
+  desconto_valor?: number | null;
   acabamento_id?: string | null;
   acabamento_nome?: string | null;
   acabamento_custo?: number | null;

@@ -65,6 +65,16 @@ const NOVO_ORC: Omit<Orcamento, 'id' | 'created_at' | 'updated_at'> = {
   cliente_nome: '', cliente_id: null, status: 'rascunho', desconto: 0, observacoes: '', total: 0, tipo: '',
 };
 
+// ── Desconto por item ──────────────────────────────────────────────────────
+// `total` do item é sempre o valor LÍQUIDO (já com desconto); o bruto é total + desconto_valor.
+const r2 = (n: number) => Math.round(n * 100) / 100;
+const brutoItem = (it: Partial<OrcamentoItem>) => r2(Number(it.total ?? 0) + Number(it.desconto_valor ?? 0));
+function aplicarDescontoItem<T extends OrcamentoItem>(it: T, descontoRs: number): T {
+  const bruto = brutoItem(it);
+  const desc = Math.min(Math.max(0, r2(descontoRs || 0)), Math.max(0, bruto));
+  return { ...it, desconto_valor: desc, desconto: bruto > 0 ? Number(((desc / bruto) * 100).toFixed(2)) : 0, total: r2(bruto - desc) };
+}
+
 export function Orcamentos() {
   const { data: orcamentos = [], isLoading, criar, atualizar, atualizarStatus, converterEmVenda, deletar, isSaving, isConvertendo } = useOrcamentos();
   const qc = useQueryClient();
@@ -193,6 +203,9 @@ export function Orcamentos() {
 
   const subtotal   = itens.reduce((s, i) => s + Number(i.total), 0);
   const descGlobal = Number(form.desconto ?? 0);
+  // Desconto geral em R$ (campo local, igual ao da venda): acompanha % e subtotal quando mudam por fora.
+  const [descGlobalRs, setDescGlobalRs] = useState(0);
+  useEffect(() => { setDescGlobalRs(subtotal > 0 ? subtotal * (descGlobal / 100) : 0); }, [descGlobal, subtotal]);
   const totalFinal = subtotal * (1 - descGlobal / 100);
 
   // Custo total do orçamento, separado por categoria (material, estrutura,
@@ -232,8 +245,8 @@ export function Orcamentos() {
         descricao: formatarDescricaoImpressaoPlaca(i.descricao, i.detalhe_placa),
         quantidade: Number(i.quantidade),
         unidade: undefined,
-        precoUnitario: Number(i.total) / (Number(i.quantidade) || 1),
-        desconto: 0,
+        precoUnitario: brutoItem(i) / (Number(i.quantidade) || 1),
+        desconto: Number(i.desconto ?? 0),
         total: Number(i.total),
       })),
       subtotal: subtotalRef,
@@ -472,7 +485,7 @@ export function Orcamentos() {
     marcarSujoOrc();
     const editando = editandoIdx !== null && itens[editandoIdx] !== undefined;
     if (editando) {
-      setItens(p => p.map((it, i) => i === editandoIdx ? item : it));
+      setItens(p => p.map((it, i) => i === editandoIdx ? aplicarDescontoItem({ ...item, desconto_valor: 0 }, Number(it.desconto_valor ?? 0)) : it));
       setEditandoIdx(null);
     } else {
       setEditandoIdx(null);
@@ -1216,6 +1229,7 @@ export function Orcamentos() {
                       <th className="px-3 py-2 text-center">Categoria</th>
                       <th className="px-3 py-2 text-right w-14">Qtd</th>
                       <th className="px-3 py-2 text-right w-24">Unit.</th>
+                      <th className="px-3 py-2 text-right w-24">Desconto</th>
                       {podeVerCustos && mostrarCusto && (
                         <th className="px-3 py-2 text-right w-24 text-red-400">Custo Unit.</th>
                       )}
@@ -1252,7 +1266,16 @@ export function Orcamentos() {
                           )}
                         </td>
                         <td className="px-3 py-2.5 text-right text-white">{it.quantidade}</td>
-                        <td className="px-3 py-2.5 text-right text-gray-300">{fmtBRL(Number(it.total) / (Number(it.quantidade) || 1))}</td>
+                        <td className="px-3 py-2.5 text-right text-gray-300">{fmtBRL(brutoItem(it) / (Number(it.quantidade) || 1))}</td>
+                        <td className="px-3 py-1.5 text-right">
+                          {jaConvertido
+                            ? (Number(it.desconto_valor ?? 0) > 0 ? <span className="text-red-400">−{fmtBRL(Number(it.desconto_valor))}</span> : <span className="text-gray-600">—</span>)
+                            : <MoneyInput value={Number(it.desconto_valor ?? 0)}
+                                onChange={v => { setItens(p => p.map((x, idx) => idx === i ? aplicarDescontoItem(x, v) : x)); marcarSujoOrc(); }}
+                                className="w-24 bg-[#111827] border border-gray-700 rounded-lg px-2 py-1 text-white text-xs text-right focus:outline-none focus:border-blue-500"
+                                placeholder="0,00" />}
+                          {Number(it.desconto ?? 0) > 0 && <span className="block text-[10px] text-red-400 mt-0.5">−{Number(it.desconto)}%</span>}
+                        </td>
                         {podeVerCustos && mostrarCusto && (
                           <td className="px-3 py-2.5 text-right text-red-300">
                             {custoUnit > 0 ? fmtBRL(custoUnit) : <span className="text-gray-600">—</span>}
@@ -1364,15 +1387,19 @@ export function Orcamentos() {
               <div className="w-px h-7 bg-gray-700 flex-shrink-0" />
 
               <div className="flex items-center gap-2">
-                <span className="text-[10px] text-gray-500 uppercase font-bold">Desconto (%)</span>
+                <span className="text-[10px] text-gray-500 uppercase font-bold">Desconto</span>
+                <MoneyInput
+                  value={descGlobalRs}
+                  onChange={v => { setDescGlobalRs(v); setF('desconto', subtotal > 0 ? Math.min(100, (v / subtotal) * 100) : 0); }}
+                  className="w-24 bg-[#111827] border border-gray-700 rounded-lg px-2 py-1 text-white text-sm text-right focus:outline-none focus:border-blue-500"
+                  placeholder="R$ 0,00"
+                />
                 <PctInput
                   value={Number(form.desconto ?? 0)}
-                  onChange={v => setF('desconto', v)}
-                  className="w-20 bg-[#111827] border border-gray-700 rounded-lg px-2 py-1 text-white text-sm text-right focus:outline-none focus:border-blue-500"
+                  onChange={v => { setF('desconto', v); setDescGlobalRs(subtotal > 0 ? subtotal * (v / 100) : 0); }}
+                  className="w-16 bg-[#111827] border border-gray-700 rounded-lg px-2 py-1 text-white text-sm text-right focus:outline-none focus:border-blue-500"
                 />
-                {descGlobal > 0 && (
-                  <span className="text-[10px] text-red-400">−{fmtBRL(subtotal * descGlobal / 100)}</span>
-                )}
+                <span className="text-[10px] text-gray-500 font-bold">%</span>
               </div>
 
               <div className="w-px h-7 bg-gray-700 flex-shrink-0" />
