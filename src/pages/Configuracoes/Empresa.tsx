@@ -58,6 +58,7 @@ export function Empresa() {
           <div><Lbl>Site</Lbl><input value={txt('empresa_site')} onChange={e => set('empresa_site', e.target.value)} className={IN} /></div>
           <div><Lbl>Endereço</Lbl><input value={txt('empresa_endereco')} onChange={e => set('empresa_endereco', e.target.value)} className={IN} /></div>
         </Row>
+        <div><Lbl>Link do QR Code (impressão)</Lbl><input value={txt('empresa_qr_link')} onChange={e => set('empresa_qr_link', e.target.value)} className={IN} placeholder="Vazio = usa o Site acima. Ative o QR em Configurações → Layout de Impressão" /></div>
         <UploadLogo
           value={txt('empresa_logo_url')}
           onChange={(url: string) => set('empresa_logo_url', url)}

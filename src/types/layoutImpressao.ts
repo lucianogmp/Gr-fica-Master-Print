@@ -31,6 +31,8 @@ export interface LayoutImpressaoConfig {
   /** Só faz sentido para orçamento */
   mostrarGarantia: boolean;
   mostrarAssinatura: boolean;
+  /** QR Code na ponta do rodapé (o link é configurado em Configurações → Empresa) */
+  mostrarQrCode?: boolean;
   /** Vazio = usa o rodapé padrão (empresa_rodape / orc_rodape) */
   textoRodape: string;
 }
@@ -50,6 +52,7 @@ export const DEFAULT_LAYOUT_VENDA: LayoutImpressaoConfig = {
   mostrarValidade: false,
   mostrarGarantia: false,
   mostrarAssinatura: true,
+  mostrarQrCode: false,
   textoRodape: '',
 };
 
@@ -69,6 +72,7 @@ export const DEFAULT_LAYOUT_ORCAMENTO: LayoutImpressaoConfig = {
   mostrarValidade: true,
   mostrarGarantia: true,
   mostrarAssinatura: false,
+  mostrarQrCode: false,
   textoRodape: '',
 };
 

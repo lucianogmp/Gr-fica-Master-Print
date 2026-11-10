@@ -12,6 +12,7 @@
 // nenhum efeito e o documento sairia sem estilo nenhum. Com estilo
 // inline, o visual é sempre idêntico, em qualquer contexto.
 
+import { QRCodeSVG } from 'qrcode.react';
 import type { CSSProperties } from 'react';
 import { LayoutImpressaoConfig } from '../../types/layoutImpressao';
 import type { Configuracoes } from '../../types/configuracoes';
@@ -71,6 +72,8 @@ interface DocumentoImpressaoProps {
 
 export function DocumentoImpressao({ layout, empresa, documento: doc, style }: DocumentoImpressaoProps) {
   const cor = layout.corDestaque || '#3b82f6';
+  const qrBruto = layout.mostrarQrCode ? (empresa.empresa_qr_link || empresa.empresa_site || '').trim() : '';
+  const qrLink = qrBruto && !/^[a-z][a-z0-9+.-]*:/i.test(qrBruto) ? `https://${qrBruto}` : qrBruto;
   const isOrcamento = doc.tipo === 'orcamento';
   const descontoGlobal = Number(doc.descontoGlobalPct ?? 0);
 
@@ -268,6 +271,11 @@ export function DocumentoImpressao({ layout, empresa, documento: doc, style }: D
           de verdade na paginação do Chrome, diferente de margin-top:auto,
           que só se aplica ao fluxo normal em tela e não durante a impressão). */}
       <div style={{ position: 'fixed', left: 32, right: 32, bottom: 24 }}>
+        {qrLink && (
+          <div style={{ position: 'absolute', right: 6, bottom: 4, zIndex: 2, background: '#fff', padding: 3, lineHeight: 0, border: '1px solid #e5e7eb' }}>
+            <QRCodeSVG value={qrLink} size={64} level="M" marginSize={0} />
+          </div>
+        )}
         <div style={{ position: 'relative', height: 32, display: 'flex', alignItems: 'center' }}>
           <div
             style={{

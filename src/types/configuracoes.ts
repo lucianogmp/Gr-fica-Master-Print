@@ -32,6 +32,8 @@ export interface Configuracoes {
   empresa_whatsapp?: string | null;
   empresa_email?: string | null;
   empresa_site?: string | null;
+  /** Link do QR Code impresso no rodapé — vazio usa empresa_site */
+  empresa_qr_link?: string | null;
   empresa_endereco?: string | null;
   empresa_logo_url?: string | null;
   empresa_rodape?: string | null;

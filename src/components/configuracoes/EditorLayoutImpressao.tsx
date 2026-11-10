@@ -118,6 +118,10 @@ export function EditorLayoutImpressao({ tipo, value, onChange, empresa }: Editor
               <input type="checkbox" checked={value.mostrarAssinatura} onChange={e => set('mostrarAssinatura', e.target.checked)} className={CHECKBOX} />
               Linha de assinatura
             </label>
+            <label className={CHECK}>
+              <input type="checkbox" checked={!!value.mostrarQrCode} onChange={e => set('mostrarQrCode', e.target.checked)} className={CHECKBOX} />
+              QR Code no rodapé
+            </label>
           </div>
         </div>
 
