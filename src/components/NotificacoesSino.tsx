@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { createPortal } from 'react-dom';
-import { Bell, CheckCheck, Globe, ArrowDownCircle, ArrowUpCircle, CheckCircle2, Package, Truck, HardDrive, CalendarHeart } from 'lucide-react';
+import { Bell, Check, CheckCheck, Globe, ArrowDownCircle, ArrowUpCircle, CheckCircle2, Package, Truck, HardDrive, CalendarHeart } from 'lucide-react';
 import { useNotificacoes, TipoNotif } from '../hooks/useNotificacoes';
 
 const ICONE: Record<TipoNotif, any> = { site: Globe, pagar: ArrowDownCircle, receber: ArrowUpCircle, estoque: Package, entrega: Truck, backup: HardDrive, campanha: CalendarHeart };
@@ -78,16 +78,21 @@ export function NotificacoesSino() {
             ) : notificacoes.map(n => {
               const Icon = ICONE[n.tipo];
               return (
-                <button key={n.key}
-                  onClick={() => { marcarLida(n.key); setAberto(false); navigate(n.rota, n.tipo === 'estoque' ? { state: { soAlertas: true, voltarPara: location.pathname + location.search } } : undefined); }}
-                  className={`w-full text-left flex items-start gap-2.5 p-2.5 rounded-lg border transition-colors hover:brightness-125 ${COR[n.nivel]}`}>
-                  <Icon className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-bold truncate">{n.titulo}</p>
-                    <p className="text-[11px] text-gray-400 truncate">{n.detalhe}</p>
-                  </div>
-                  <span className={`w-2 h-2 rounded-full flex-shrink-0 mt-1 ${n.nivel === 'sugestao' ? 'bg-purple-500' : 'bg-red-500'}`} />
-                </button>
+                <div key={n.key} className={`flex items-stretch gap-1 rounded-lg border transition-colors ${COR[n.nivel]}`}>
+                  <button
+                    onClick={() => { marcarLida(n.key); setAberto(false); navigate(n.rota, n.tipo === 'estoque' ? { state: { soAlertas: true, voltarPara: location.pathname + location.search } } : undefined); }}
+                    className="flex-1 min-w-0 text-left flex items-start gap-2.5 p-2.5 hover:brightness-125">
+                    <Icon className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-bold truncate">{n.titulo}</p>
+                      <p className="text-[11px] text-gray-400 truncate">{n.detalhe}</p>
+                    </div>
+                  </button>
+                  <button onClick={() => marcarLida(n.key)} title="Marcar só esta como lida"
+                    className="flex-shrink-0 px-2 flex items-center text-gray-400 hover:text-white hover:bg-white/10 rounded-r-lg">
+                    <Check className="w-4 h-4" />
+                  </button>
+                </div>
               );
             })}
           </div>

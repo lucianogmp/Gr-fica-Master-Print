@@ -37,8 +37,11 @@ const brl = (v: number) => Number(v ?? 0).toLocaleString('pt-BR', { style: 'curr
 function lerSet(chave: string): Set<string> {
   try { return new Set(JSON.parse(localStorage.getItem(chave) || '[]')); } catch { return new Set(); }
 }
+const EVENTO_SYNC = 'mp-notif-sync';
 function gravarSet(chave: string, s: Set<string>) {
   try { localStorage.setItem(chave, JSON.stringify([...s].slice(-500))); } catch { /* ignora */ }
+  // Avisa as outras telas (sino e dashboard) que usam este hook, para ficarem iguais na hora.
+  setTimeout(() => window.dispatchEvent(new Event(EVENTO_SYNC)), 0);
 }
 
 export function useNotificacoes() {
@@ -168,7 +171,13 @@ export function useNotificacoes() {
   const chaveLimpas = `mp-notif-limpas:${user?.id ?? ''}`;
   const [lidas, setLidas] = useState<Set<string>>(() => lerSet(chaveLidas));
   const [limpas, setLimpas] = useState<Set<string>>(() => lerSet(chaveLimpas));
-  useEffect(() => { setLidas(lerSet(chaveLidas)); setLimpas(lerSet(chaveLimpas)); }, [chaveLidas, chaveLimpas]);
+  useEffect(() => {
+    const sync = () => { setLidas(lerSet(chaveLidas)); setLimpas(lerSet(chaveLimpas)); };
+    sync();
+    window.addEventListener(EVENTO_SYNC, sync);
+    window.addEventListener('storage', sync);
+    return () => { window.removeEventListener(EVENTO_SYNC, sync); window.removeEventListener('storage', sync); };
+  }, [chaveLidas, chaveLimpas]);
 
   // Lida = some da lista na hora. Como a chave muda a cada dia, o que continuar pendente volta amanhã.
   const visiveis = useMemo(() => itens.filter(n => !lidas.has(n.key) && !limpas.has(n.key)), [itens, lidas, limpas]);
