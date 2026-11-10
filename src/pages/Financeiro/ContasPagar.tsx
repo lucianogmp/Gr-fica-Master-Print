@@ -26,7 +26,7 @@ export function ContasPagar() {
           {/* KPIs — encaixados na mesma linha do título, compactos */}
           <KpiCard compact label="Pendente" value={fmtBRL(pendentes)} icon={Clock}         color="text-yellow-400" />
           <KpiCard compact label="Atrasado"  value={fmtBRL(atrasadas)} icon={AlertCircle}   color="text-red-400" />
-          <KpiCard compact label="Pago"      value={fmtBRL(pago)}      icon={DollarSign}    color="text-green-400" />
+          <KpiCard compact label="Pago"      value={fmtBRL(pago)}      icon={DollarSign}    color="text-red-400" />
           <KpiCard compact label="Total"     value={fmtBRL(total)}     icon={ArrowUpCircle} color="text-blue-400" />
         </div>
       </div>

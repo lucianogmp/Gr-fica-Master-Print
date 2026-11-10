@@ -382,7 +382,7 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
       <div className="flex gap-2 flex-wrap items-center">
         <button
           onClick={() => { setEditandoLanc(null); setTipoInicial(fixarTipo ?? 'receita'); setModalOpen(true); }}
-          className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-1.5"
+          className={`${fixarTipo === 'despesa' ? 'bg-red-600 hover:bg-red-500' : 'bg-green-600 hover:bg-green-500'} text-white px-4 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-1.5`}
         >
           <ArrowUp className="w-4 h-4" />
           {fixarTipo === 'despesa' ? '+ Despesa' : '+ Entrada'}
@@ -553,7 +553,7 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
                             setFormaPag(l.forma_pagamento || FORMAS_PAGAMENTO[0]);
                             setContaPagId('');
                           }}
-                            className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg bg-green-500/15 text-green-400 hover:bg-green-500/25 border border-green-500/30 transition-all">
+                            className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg transition-all border ${l.tipo === 'despesa' ? 'bg-red-500/15 text-red-400 hover:bg-red-500/25 border-red-500/30' : 'bg-green-500/15 text-green-400 hover:bg-green-500/25 border-green-500/30'}`}>
                             <Check className="w-3 h-3" /> Pagar
                           </button>
                         )}
@@ -649,7 +649,7 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
                     });
                     setPagandoLanc(null);
                   }}
-                  className="px-4 py-1.5 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white rounded-lg text-xs font-bold">
+                  className={`px-4 py-1.5 ${pagandoLanc?.tipo === 'despesa' ? 'bg-red-600 hover:bg-red-500' : 'bg-green-600 hover:bg-green-500'} disabled:opacity-40 text-white rounded-lg text-xs font-bold`}>
                   {isPagando ? 'Confirmando...' : 'Confirmar'}
                 </button>
               </div>
