@@ -1,4 +1,5 @@
 // src/pages/Relatorios.tsx
+import { DarkSelect } from '../components/ui/DarkSelect';
 import { useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import {
@@ -239,10 +240,8 @@ export function Relatorios() {
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Status</label>
-                  <select value={rascV.status ?? ''} onChange={e => setRascV(f => ({ ...f, status: e.target.value || undefined }))} className={IN + ' w-full'}>
-                    <option value="">Todos</option>
-                    {Object.entries(STATUS_VENDA).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-                  </select>
+                  <DarkSelect size="sm" value={rascV.status ?? ''} onChange={x => setRascV(f => ({ ...f, status: x || undefined }))} allowEmpty placeholder="Todos"
+                    options={Object.entries(STATUS_VENDA).map(([k, v]) => ({ value: k, label: v.label }))} />
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Cliente</label>
@@ -396,20 +395,13 @@ export function Relatorios() {
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Tipo</label>
-                  <select value={rascF.tipo ?? ''} onChange={e => setRascF(f => ({ ...f, tipo: (e.target.value as any) || undefined }))} className={IN + ' w-full'}>
-                    <option value="">Todos</option>
-                    <option value="receita">Receita</option>
-                    <option value="despesa">Despesa</option>
-                  </select>
+                  <DarkSelect size="sm" value={rascF.tipo ?? ''} onChange={x => setRascF(f => ({ ...f, tipo: (x as any) || undefined }))} allowEmpty placeholder="Todos"
+                    options={[{ value: 'receita', label: 'Receita' }, { value: 'despesa', label: 'Despesa' }]} />
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Status</label>
-                  <select value={rascF.status ?? ''} onChange={e => setRascF(f => ({ ...f, status: e.target.value || undefined }))} className={IN + ' w-full'}>
-                    <option value="">Todos</option>
-                    <option value="pago">Pago</option>
-                    <option value="pendente">Pendente</option>
-                    <option value="atrasado">Atrasado</option>
-                  </select>
+                  <DarkSelect size="sm" value={rascF.status ?? ''} onChange={x => setRascF(f => ({ ...f, status: x || undefined }))} allowEmpty placeholder="Todos"
+                    options={[{ value: 'pago', label: 'Pago' }, { value: 'pendente', label: 'Pendente' }, { value: 'atrasado', label: 'Atrasado' }]} />
                 </div>
               </div>
               <div className="flex justify-end mt-3">

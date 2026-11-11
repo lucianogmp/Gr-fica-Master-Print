@@ -9,6 +9,7 @@
 // Ao clicar numa venda dentro da aba Vendas, abre o editor de venda na mesma
 // página com um estado "origem=financeiro". Ao fechar/salvar, volta para cá.
 
+import { MonthInput } from '../components/ui/MonthInput';
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLancamentos } from '../hooks/useLancamentos';
@@ -572,8 +573,7 @@ export function Financeiro() {
           <div className="space-y-5">
             {/* KPIs */}
             <div className="flex items-center gap-3 flex-wrap">
-              <input type="month" value={mesLanc} onChange={e => setMesLanc(e.target.value)}
-                className="bg-[#1f2937] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500" />
+              <MonthInput value={mesLanc} onChange={setMesLanc} className="bg-[#1f2937] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500" />
               <span className="text-gray-600 text-xs">KPIs do mês selecionado</span>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -847,8 +847,7 @@ export function Financeiro() {
         {subAba === 'fluxo' && (
           <div className="space-y-6">
             <div className="flex items-center gap-3 flex-wrap">
-              <input type="month" value={mesFx} onChange={e => setMesFx(e.target.value)}
-                className="bg-[#1f2937] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500" />
+              <MonthInput value={mesFx} onChange={setMesFx} className="bg-[#1f2937] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500" />
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
