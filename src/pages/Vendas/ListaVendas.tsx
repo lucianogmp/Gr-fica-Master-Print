@@ -15,7 +15,10 @@ import { useConfirm } from '../../components/ui/ConfirmModal';
 import { DollarSign, ClipboardList, X, LucideIcon, ChevronLeft, ChevronRight, Printer, CheckSquare, Square } from 'lucide-react';
 import { MonthInput } from '../../components/ui/MonthInput';
 import { OrdenarMenu, aplicarOrdenacao, Ordenacao } from '../../components/ui/OrdenarMenu';
-import { FiltrosAvancados, aplicarFiltrosAvancados, FiltrosAvancadosValor } from '../../components/ui/FiltrosAvancados';
+import { FiltroModal, CampoFiltro, FiltroValor, passaPeriodo, passaMulti, passaFaixa, passaSimNao, periodoAtivo, dataUsada } from '../../components/ui/FiltroModal';
+import { CabecalhoFiltro } from '../../components/ui/CabecalhoFiltro';
+import { useVendasFiltroDados } from '../../hooks/useVendasFiltroDados';
+import { useContasBancarias } from '../../hooks/useContasBancarias';
 import { useEffect } from 'react';
 import { DocumentoImpressaoData } from '../../components/impressao/DocumentoImpressao';
 import { imprimirDocumento } from '../../components/impressao/imprimirDocumento';
@@ -72,7 +75,9 @@ export function ListaVendas({
   // Ordenação e filtros avançados — padrão do sistema (ver OrdenarMenu.tsx
   // e FiltrosAvancados.tsx), reaproveitado em todas as listas.
   const [ordenacao, setOrdenacao] = useState<Ordenacao | null>({ campo: 'data', direcao: 'desc' });
-  const [filtrosAv, setFiltrosAv] = useState<FiltrosAvancadosValor>({});
+  const [filtrosAv, setFiltrosAv] = useState<FiltroValor>({});
+  const { itens: itensFiltro, pagamentos: pagsFiltro } = useVendasFiltroDados();
+  const { data: contas = [] } = useContasBancarias();
 
   // Filtro de mês: por padrão só mostra o mês atual, pra não empilhar vendas
   // antigas na tela sem necessidade — mas é fácil trocar de mês ou ver tudo.
@@ -106,20 +111,114 @@ export function ListaVendas({
   );
 
   const buscando = busca.trim() !== '';
+
+  // Dados por venda para os filtros (forma/conta vêm dos pagamentos; produto vem dos itens).
+  const formasPorVenda = useMemo(() => {
+    const m = new Map<string, Set<string>>();
+    pagsFiltro.forEach(p => { if (p.forma_pagamento) { (m.get(p.venda_id) ?? m.set(p.venda_id, new Set()).get(p.venda_id)!).add(p.forma_pagamento); } });
+    return m;
+  }, [pagsFiltro]);
+  const contasPorVenda = useMemo(() => {
+    const m = new Map<string, Set<string>>();
+    pagsFiltro.forEach(p => { if (p.conta_id) { (m.get(p.venda_id) ?? m.set(p.venda_id, new Set()).get(p.venda_id)!).add(p.conta_id); } });
+    return m;
+  }, [pagsFiltro]);
+  const produtosPorVenda = useMemo(() => {
+    const m = new Map<string, string>();
+    itensFiltro.forEach(i => m.set(i.venda_id, `${m.get(i.venda_id) ?? ''} | ${i.descricao ?? ''}`));
+    return m;
+  }, [itensFiltro]);
+  const formasDe = (v: Venda): string[] => {
+    const f = Array.from(formasPorVenda.get(v.id) ?? []);
+    if (f.length === 0 && v.forma_pagamento) f.push(v.forma_pagamento);
+    return f.length ? f : ['__nd__'];
+  };
+  const clientePorId = useMemo(() => new Map(clientes.map(c => [c.id, c])), [clientes]);
+  const hojeISO = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })();
+  const situacaoFin = (v: Venda) => {
+    const tot = Number(v.valor_total ?? v.total ?? 0), pago = Number(v.valor_pago ?? 0);
+    return tot > 0 && pago >= tot ? 'quitada' : pago > 0 ? 'parcial' : 'aberta';
+  };
+
+  const opcoesFiltro = useMemo(() => {
+    const uniq = (arr: (string | null | undefined)[]) =>
+      Array.from(new Set(arr.map(x => (x ?? '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    const op = (arr: string[]) => arr.map(x => ({ value: x, label: x }));
+    const statusLista = (statusPermitidos ?? (Object.keys(STATUS_VENDA) as StatusVenda[]));
+    const cidades = uniq(vendasBase.map(v => clientePorId.get(v.cliente_id ?? '')?.cidade));
+    const estados = uniq(vendasBase.map(v => clientePorId.get(v.cliente_id ?? '')?.estado));
+    return {
+      status: statusLista.map(s => ({ value: s, label: STATUS_VENDA[s]?.label ?? s })),
+      vendedores: op(uniq(vendasBase.map(v => v.vendedor))),
+      tipos: op(uniq(vendasBase.map(v => v.tipo))),
+      formas: [{ value: '__nd__', label: '— Não definida —' }, ...op(uniq([...pagsFiltro.map(p => p.forma_pagamento), ...vendasBase.map(v => v.forma_pagamento)]))],
+      contas: contas.map(c => ({ value: c.id, label: c.nome })),
+      cidades: op(cidades), estados: op(estados),
+    };
+  }, [vendasBase, pagsFiltro, contas, clientePorId, statusPermitidos]);
+
+  const camposFiltro = useMemo<CampoFiltro[]>(() => [
+    { tipo: 'periodo', chave: 'periodo', label: 'Data', datas: [
+      { value: 'data_venda', label: 'Data da venda' }, { value: 'data_entrega', label: 'Data de entrega' }, { value: 'created_at', label: 'Data de criação' }] },
+    { tipo: 'busca', chave: 'busca', label: 'Busca (cliente, nº, tipo, palavra-chave)', placeholder: 'Cód., cliente, tipo, palavra-chave...' },
+    { tipo: 'busca', chave: 'produto', label: 'Vendas com o produto / serviço', placeholder: 'Nome do item vendido' },
+    { tipo: 'busca', chave: 'obs', label: 'Buscar nas observações', placeholder: 'Texto das observações' },
+    { tipo: 'faixa', chave: 'valor', label: 'Valor da venda' },
+    { tipo: 'multi', chave: 'status', label: 'Situação', opcoes: opcoesFiltro.status },
+    { tipo: 'multi', chave: 'vendedor', label: 'Vendedor', opcoes: opcoesFiltro.vendedores },
+    { tipo: 'multi', chave: 'forma', label: 'Forma de pagamento', opcoes: opcoesFiltro.formas },
+    { tipo: 'multi', chave: 'conta', label: 'Conta destino', opcoes: opcoesFiltro.contas },
+    { tipo: 'multi', chave: 'tipo', label: 'Tipo', opcoes: opcoesFiltro.tipos },
+    { tipo: 'multi', chave: 'financeiro', label: 'Situação financeira', opcoes: [
+      { value: 'quitada', label: 'Quitada' }, { value: 'parcial', label: 'Parcialmente paga' }, { value: 'aberta', label: 'Sem pagamento' }] },
+    { tipo: 'multi', chave: 'estado', label: 'Estado (do cliente)', opcoes: opcoesFiltro.estados },
+    { tipo: 'multi', chave: 'cidade', label: 'Cidade (do cliente)', opcoes: opcoesFiltro.cidades },
+    { tipo: 'simnao', chave: 'atrasada', label: 'Entrega atrasada' },
+    { tipo: 'simnao', chave: 'semData', label: 'Sem data de entrega' },
+    { tipo: 'simnao', chave: 'orcamento', label: 'Veio de orçamento' },
+    { tipo: 'simnao', chave: 'cadastrado', label: 'Cliente cadastrado' },
+    { tipo: 'simnao', chave: 'desconto', label: 'Com desconto' },
+    { tipo: 'simnao', chave: 'frete', label: 'Com frete' },
+  ], [opcoesFiltro]);
+
   const filtradas = useMemo(() => {
+    const f = filtrosAv;
+    const usaPeriodo = periodoAtivo(f.periodo);
+    const campoData = dataUsada(f.periodo, 'data_venda');
+    const buscaModal = String(f.busca ?? '').trim();
+    const prod = String(f.produto ?? '').trim().toLowerCase();
+    const obs = String(f.obs ?? '').trim().toLowerCase();
     const base = vendasBase
       .filter(v => filtroExtra === 'todos' || v.status === filtroExtra)
-      // Pesquisando: ignora o mês (busca geral em todo o histórico do cliente)
-      .filter(v => buscando || !mes || (v.data_venda ?? '').startsWith(mes))
-      .filter(v => correspondeABuscaEmCampos([v.cliente_nome, v.numero, v.palavra_chave], busca));
-    const comFiltrosAv = aplicarFiltrosAvancados(base, filtrosAv, v => v.data_venda, v => v.valor_total);
-    return aplicarOrdenacao(comFiltrosAv, ordenacao, {
+      // Pesquisando (ou com período escolhido nos filtros): ignora o mês da navegação
+      .filter(v => buscando || usaPeriodo || !mes || (v.data_venda ?? '').startsWith(mes))
+      .filter(v => correspondeABuscaEmCampos([v.cliente_nome, v.numero, v.palavra_chave], busca))
+      .filter(v => passaPeriodo(f.periodo, (v as any)[campoData]))
+      .filter(v => !buscaModal || correspondeABuscaEmCampos([v.cliente_nome, v.numero, v.palavra_chave, v.tipo, v.vendedor], buscaModal))
+      .filter(v => !prod || (produtosPorVenda.get(v.id) ?? '').toLowerCase().includes(prod))
+      .filter(v => !obs || (v.observacoes ?? '').toLowerCase().includes(obs))
+      .filter(v => passaFaixa(f.valor, v.valor_total ?? v.total))
+      .filter(v => passaMulti(f.status, v.status))
+      .filter(v => passaMulti(f.vendedor, v.vendedor ?? ''))
+      .filter(v => passaMulti(f.forma, formasDe(v)))
+      .filter(v => passaMulti(f.conta, Array.from(contasPorVenda.get(v.id) ?? [])))
+      .filter(v => passaMulti(f.tipo, v.tipo ?? ''))
+      .filter(v => passaMulti(f.financeiro, situacaoFin(v)))
+      .filter(v => passaMulti(f.estado, clientePorId.get(v.cliente_id ?? '')?.estado ?? ''))
+      .filter(v => passaMulti(f.cidade, clientePorId.get(v.cliente_id ?? '')?.cidade ?? ''))
+      .filter(v => passaSimNao(f.atrasada, !!v.data_entrega && v.data_entrega < hojeISO && !['entregue', 'cancelado'].includes(v.status)))
+      .filter(v => passaSimNao(f.semData, !v.data_entrega))
+      .filter(v => passaSimNao(f.orcamento, !!v.orcamento_origem_id || !!v.orcamento_origem_numero))
+      .filter(v => passaSimNao(f.cadastrado, !!v.cliente_id))
+      .filter(v => passaSimNao(f.desconto, Number(v.desconto ?? 0) > 0 || Number(v.desconto_valor ?? 0) > 0))
+      .filter(v => passaSimNao(f.frete, Number(v.frete ?? 0) > 0));
+    return aplicarOrdenacao(base, ordenacao, {
       data:    v => v.data_venda,
       cliente: v => v.cliente_nome,
       valor:   v => Number(v.valor_total ?? 0),
       numero:  v => Number(v.numero ?? 0),
     });
-  }, [vendasBase, filtroExtra, mes, busca, buscando, filtrosAv, ordenacao]);
+  }, [vendasBase, filtroExtra, mes, busca, buscando, filtrosAv, ordenacao, produtosPorVenda, formasPorVenda, contasPorVenda, clientePorId, hojeISO]);
 
   // Impressão a partir da lista
   const [imprimindoId, setImprimindoId] = useState<string | null>(null);
@@ -336,7 +435,7 @@ export function ListaVendas({
               { key: 'numero',  label: 'Nº da venda' },
             ]}
           />
-          <FiltrosAvancados valor={filtrosAv} onChange={setFiltrosAv} mostrarData={false} labelValor="Valor da venda" />
+          <FiltroModal campos={camposFiltro} valor={filtrosAv} onChange={setFiltrosAv} titulo="Filtro avançado — Vendas" />
         </div>
 
         <div className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">
@@ -356,13 +455,24 @@ export function ListaVendas({
                 <th className="px-5 py-3 text-left">Data</th>
                 <th className="px-5 py-3 text-left">Entrega</th>
                 <th className="px-5 py-3 text-right">Valor</th>
-                <th className="px-5 py-3 text-center">Status</th>
+                <th className="px-5 py-3 text-left">
+                  <CabecalhoFiltro label="Vendedor" valor={filtrosAv.vendedor?.length === 1 ? filtrosAv.vendedor[0] : ''}
+                    opcoes={opcoesFiltro.vendedores} onChange={x => setFiltrosAv(p => ({ ...p, vendedor: x ? [x] : [] }))} />
+                </th>
+                <th className="px-5 py-3 text-left">
+                  <CabecalhoFiltro label="Pagamento" valor={filtrosAv.forma?.length === 1 ? filtrosAv.forma[0] : ''}
+                    opcoes={opcoesFiltro.formas} onChange={x => setFiltrosAv(p => ({ ...p, forma: x ? [x] : [] }))} />
+                </th>
+                <th className="px-5 py-3 text-center">
+                  <CabecalhoFiltro label="Status" align="center" valor={filtrosAv.status?.length === 1 ? filtrosAv.status[0] : ''}
+                    opcoes={opcoesFiltro.status} onChange={x => setFiltrosAv(p => ({ ...p, status: x ? [x] : [] }))} />
+                </th>
                 <th className="px-5 py-3 text-center">Ações</th>
               </tr>
             </thead>
             <tbody>
               {filtradas.length === 0 && (
-                <tr><td colSpan={8} className="px-5 py-12 text-center text-gray-600">{mensagemVazio}</td></tr>
+                <tr><td colSpan={10} className="px-5 py-12 text-center text-gray-600">{mensagemVazio}</td></tr>
               )}
               {filtradas.map(v => {
                 const st = STATUS_VENDA[v.status] ?? STATUS_VENDA.orcamento;
@@ -405,6 +515,10 @@ export function ListaVendas({
                         ? <div className="text-[9px] text-yellow-400">Pago: {fmtBRL(totalPago)}</div>
                         : null
                       }
+                    </td>
+                    <td className="px-5 py-3 text-gray-400 text-xs">{v.vendedor || '—'}</td>
+                    <td className="px-5 py-3 text-gray-400 text-xs">
+                      {formasDe(v).map(x => x === '__nd__' ? '—' : x).join(', ')}
                     </td>
                     <td className="px-5 py-3 text-center">
                       <span className={`px-2 py-1 rounded-full text-[10px] font-bold border ${st.cor}`}>{st.label}</span>

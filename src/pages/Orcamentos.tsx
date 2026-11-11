@@ -11,7 +11,8 @@ import { baixarPdfOrcamento, baixarPdfCustos } from '../components/impressao/bai
 import { DEFAULT_LAYOUT_ORCAMENTO } from '../types/layoutImpressao';
 import { marcarAlteracoesPendentes, limparAlteracoesPendentes, unsavedChangesGuard } from '../lib/unsavedChangesGuard';
 import { OrdenarMenu, aplicarOrdenacao, Ordenacao } from '../components/ui/OrdenarMenu';
-import { FiltrosAvancados, aplicarFiltrosAvancados, FiltrosAvancadosValor } from '../components/ui/FiltrosAvancados';
+import { FiltroModal, CampoFiltro, FiltroValor, passaPeriodo, passaMulti, passaFaixa, passaSimNao, dataUsada } from '../components/ui/FiltroModal';
+import { useOrcamentosFiltroItens } from '../hooks/useVendasFiltroDados';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { registrarRascunho, lerRascunho, limparRascunho } from '../lib/rascunhosInatividade';
 import { useQueryClient } from '@tanstack/react-query';
@@ -638,7 +639,35 @@ export function Orcamentos() {
   const valorTotal  = orcamentos.filter(o => o.status !== 'recusado' && o.status !== 'convertido').reduce((s, o) => s + Number(o.total ?? 0), 0);
 
   const [ordenacao, setOrdenacao] = useState<Ordenacao | null>({ campo: 'data', direcao: 'desc' });
-  const [filtrosAv, setFiltrosAv] = useState<FiltrosAvancadosValor>({});
+  const [filtrosAv, setFiltrosAv] = useState<FiltroValor>({});
+  const itensFiltro = useOrcamentosFiltroItens();
+  const produtosPorOrc = useMemo(() => {
+    const m = new Map<string, string>();
+    itensFiltro.forEach(i => m.set(i.orcamento_id, `${m.get(i.orcamento_id) ?? ''} | ${i.descricao ?? ''}`));
+    return m;
+  }, [itensFiltro]);
+  const camposFiltro = useMemo<CampoFiltro[]>(() => {
+    const uniq = (arr: (string | null | undefined)[]) =>
+      Array.from(new Set(arr.map(x => (x ?? '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR')).map(x => ({ value: x, label: x }));
+    const cli = (o: any) => clientes.find(c => c.id === o.cliente_id);
+    return [
+      { tipo: 'periodo', chave: 'periodo', label: 'Data', datas: [{ value: 'created_at', label: 'Data de criação' }, { value: 'updated_at', label: 'Última alteração' }] },
+      { tipo: 'busca', chave: 'busca', label: 'Busca (cliente, nº, tipo)', placeholder: 'Cód., cliente, tipo...' },
+      { tipo: 'busca', chave: 'produto', label: 'Orçamentos com o produto / serviço', placeholder: 'Nome do item' },
+      { tipo: 'busca', chave: 'obs', label: 'Buscar nas observações', placeholder: 'Texto das observações' },
+      { tipo: 'faixa', chave: 'valor', label: 'Valor do orçamento' },
+      { tipo: 'multi', chave: 'status', label: 'Situação', opcoes: Object.entries(STATUS_ORC).filter(([k]) => k !== 'convertido').map(([k, v]) => ({ value: k, label: v.label })) },
+      { tipo: 'multi', chave: 'vendedor', label: 'Vendedor', opcoes: uniq(orcamentos.map(o => o.vendedor)) },
+      { tipo: 'multi', chave: 'tipo', label: 'Tipo', opcoes: uniq(orcamentos.map(o => o.tipo)) },
+      { tipo: 'multi', chave: 'origem', label: 'Origem', opcoes: [{ value: 'erp', label: 'Criado no sistema' }, { value: 'loja', label: 'Loja virtual (site)' }] },
+      { tipo: 'multi', chave: 'estado', label: 'Estado (do cliente)', opcoes: uniq(orcamentos.map(o => cli(o)?.estado)) },
+      { tipo: 'multi', chave: 'cidade', label: 'Cidade (do cliente)', opcoes: uniq(orcamentos.map(o => cli(o)?.cidade)) },
+      { tipo: 'simnao', chave: 'desconto', label: 'Com desconto' },
+      { tipo: 'simnao', chave: 'convertido', label: 'Já virou venda' },
+      { tipo: 'simnao', chave: 'cadastrado', label: 'Cliente cadastrado' },
+      { tipo: 'simnao', chave: 'naoVisto', label: 'Pedido do site ainda não visto' },
+    ];
+  }, [orcamentos, clientes]);
   const filtrados = useMemo(() => {
     const base = orcamentos
       .filter(o => {
@@ -648,14 +677,35 @@ export function Orcamentos() {
         return filtro === 'todos' || o.status === filtro;
       })
       .filter(o => correspondeABuscaEmCampos([o.cliente_nome, o.tipo, o.numero], busca));
-    const comFiltrosAv = aplicarFiltrosAvancados(base, filtrosAv, o => o.created_at, o => o.total);
+    const f = filtrosAv;
+    const campoData = dataUsada(f.periodo, 'created_at');
+    const buscaModal = String(f.busca ?? '').trim();
+    const prod = String(f.produto ?? '').trim().toLowerCase();
+    const obs = String(f.obs ?? '').trim().toLowerCase();
+    const cli = (o: any) => clientes.find(c => c.id === o.cliente_id);
+    const comFiltrosAv = base
+      .filter(o => passaPeriodo(f.periodo, (o as any)[campoData]))
+      .filter(o => !buscaModal || correspondeABuscaEmCampos([o.cliente_nome, o.tipo, o.numero, o.vendedor], buscaModal))
+      .filter(o => !prod || (produtosPorOrc.get(o.id) ?? '').toLowerCase().includes(prod))
+      .filter(o => !obs || (o.observacoes ?? '').toLowerCase().includes(obs))
+      .filter(o => passaFaixa(f.valor, o.total))
+      .filter(o => passaMulti(f.status, o.status))
+      .filter(o => passaMulti(f.vendedor, o.vendedor ?? ''))
+      .filter(o => passaMulti(f.tipo, o.tipo ?? ''))
+      .filter(o => passaMulti(f.origem, o.origem ?? 'erp'))
+      .filter(o => passaMulti(f.estado, cli(o)?.estado ?? ''))
+      .filter(o => passaMulti(f.cidade, cli(o)?.cidade ?? ''))
+      .filter(o => passaSimNao(f.desconto, Number(o.desconto ?? 0) > 0))
+      .filter(o => passaSimNao(f.convertido, !!o.venda_id || o.status === 'convertido'))
+      .filter(o => passaSimNao(f.cadastrado, !!o.cliente_id))
+      .filter(o => passaSimNao(f.naoVisto, o.origem === 'loja' && !o.loja_visto_em));
     return aplicarOrdenacao(comFiltrosAv, ordenacao, {
       data:    o => o.created_at,
       cliente: o => o.cliente_nome,
       valor:   o => Number(o.total ?? 0),
       numero:  o => Number(o.numero ?? 0),
     });
-  }, [orcamentos, filtro, busca, filtrosAv, ordenacao]);
+  }, [orcamentos, filtro, busca, filtrosAv, ordenacao, produtosPorOrc, clientes]);
 
   if (isLoading) return <div className="p-8 text-blue-500 animate-pulse font-bold">Carregando Orçamentos...</div>;
 
@@ -913,7 +963,7 @@ export function Orcamentos() {
             { key: 'numero',  label: 'Nº do orçamento' },
           ]}
         />
-        <FiltrosAvancados valor={filtrosAv} onChange={setFiltrosAv} labelValor="Valor do orçamento" />
+        <FiltroModal campos={camposFiltro} valor={filtrosAv} onChange={setFiltrosAv} titulo="Filtro avançado — Orçamentos" />
       </div>
 
       <div className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">

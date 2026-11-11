@@ -15,70 +15,12 @@ import { ModalLancamento } from '../../components/financeiro/ModalLancamento';
 import { useConfirm } from '../../components/ui/ConfirmModal';
 import { OrdenarMenu, aplicarOrdenacao, Ordenacao } from '../../components/ui/OrdenarMenu';
 import { correspondeABuscaEmCampos } from '../../lib/buscaFlexivel';
-import { FiltrosAvancados, aplicarFiltrosAvancados, FiltrosAvancadosValor } from '../../components/ui/FiltrosAvancados';
+import { FiltroModal, CampoFiltro, FiltroValor, passaPeriodo, passaMulti, passaFaixa, passaSimNao, periodoAtivo, dataUsada } from '../../components/ui/FiltroModal';
 import { DarkSelect } from '../../components/ui/DarkSelect';
+import { CabecalhoFiltro } from '../../components/ui/CabecalhoFiltro';
 import {
   ArrowUp, ArrowDown, ChevronDown, Clock, AlertCircle, Check, X, ExternalLink, LucideIcon, CheckSquare, Square, Wallet, Landmark,
 } from 'lucide-react';
-
-// Título de coluna que vira filtro: botão com setinha que abre a lista de opções
-// (mesmo painel opaco dos outros seletores). Fica destacado quando há filtro ativo.
-function CabecalhoFiltro({ label, valor, opcoes, onChange, align = 'left' }: {
-  label: string; valor: string; opcoes: { value: string; label: string }[];
-  onChange: (v: string) => void; align?: 'left' | 'center';
-}) {
-  const [aberto, setAberto] = useState(false);
-  const [rect, setRect] = useState<DOMRect | null>(null);
-  const btnRef = useRef<HTMLButtonElement>(null);
-  const listaRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!aberto) return;
-    const fora = (e: MouseEvent) => {
-      const t = e.target as Node;
-      if (!btnRef.current?.contains(t) && !listaRef.current?.contains(t)) setAberto(false);
-    };
-    const reposicionar = (e?: Event) => {
-      if (e && listaRef.current && e.target instanceof Node && listaRef.current.contains(e.target)) return;
-      if (btnRef.current) setRect(btnRef.current.getBoundingClientRect());
-    };
-    document.addEventListener('mousedown', fora);
-    window.addEventListener('scroll', reposicionar, true);
-    window.addEventListener('resize', reposicionar);
-    return () => {
-      document.removeEventListener('mousedown', fora);
-      window.removeEventListener('scroll', reposicionar, true);
-      window.removeEventListener('resize', reposicionar);
-    };
-  }, [aberto]);
-  const ativo = !!valor;
-  const atual = opcoes.find(o => o.value === valor);
-  return (
-    <>
-      <button ref={btnRef} type="button"
-        onClick={() => { if (btnRef.current) setRect(btnRef.current.getBoundingClientRect()); setAberto(a => !a); }}
-        title={ativo ? `Filtrando: ${atual?.label}` : `Filtrar por ${label.toLowerCase()}`}
-        className={`inline-flex items-center gap-1 uppercase font-bold transition-colors ${ativo ? 'text-blue-400' : 'text-gray-400 hover:text-white'} ${align === 'center' ? 'mx-auto' : ''}`}>
-        {label}
-        {ativo && <span className="normal-case font-semibold text-[10px] bg-blue-500/20 border border-blue-500/30 rounded px-1 max-w-[90px] truncate">{atual?.label}</span>}
-        <ChevronDown className={`w-3 h-3 transition-transform ${aberto ? 'rotate-180' : ''}`} />
-      </button>
-      {aberto && rect && createPortal(
-        <div ref={listaRef} className="floating-panel"
-          style={{ position: 'fixed', top: rect.bottom + 4, left: Math.min(rect.left, window.innerWidth - 220), minWidth: 180, maxHeight: 300, overflowY: 'auto', zIndex: 99999 }}>
-          {[{ value: '', label: 'Todas' }, ...opcoes].map(o => (
-            <button key={o.value || 'todas'} type="button"
-              onMouseDown={e => { e.preventDefault(); onChange(o.value); setAberto(false); }}
-              className={`w-full text-left px-3 py-2 text-xs normal-case font-semibold border-b border-gray-700/50 last:border-0 transition-colors ${
-                o.value === valor ? 'bg-blue-900/40 text-blue-300' : 'text-white hover:bg-blue-900/20'}`}>
-              {o.label}
-            </button>
-          ))}
-        </div>,
-        document.body,
-      )}
-    </>
-  );
-}
 
 // Título de coluna que ordena: 1º clique = maior/mais recente primeiro, 2º inverte.
 function CabecalhoOrdem({ label, campo, ordenacao, onChange, center }: {
@@ -267,7 +209,7 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
   const [busca, setBusca]               = useState('');
   const [mesLanc, setMesLanc]           = useState(() => new Date().toISOString().slice(0, 7));
   const [ordenacao, setOrdenacao] = useState<Ordenacao | null>(null);
-  const [filtrosAv, setFiltrosAv] = useState<FiltrosAvancadosValor>({});
+  const [filtrosAv, setFiltrosAv] = useState<FiltroValor>({});
   const [filtroContaId, setFiltroContaId] = useState('');
   const [filtroCategoria, setFiltroCategoria] = useState('');
   const [filtroForma, setFiltroForma] = useState('');
@@ -275,9 +217,9 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
   // Aplica filtro de tipo fixo (se vier da tela pai)
   const base = useMemo(() => {
     let lista = fixarTipo ? todosComCaixa.filter(l => l.tipo === fixarTipo) : todosComCaixa;
-    if (mes && !busca.trim()) lista = lista.filter(l => (l.data_vencimento ?? l.created_at ?? '').startsWith(mes));
+    if (mes && !busca.trim() && !periodoAtivo(filtrosAv.periodo)) lista = lista.filter(l => (l.data_vencimento ?? l.created_at ?? '').startsWith(mes));
     return lista;
-  }, [todosComCaixa, fixarTipo, mes, busca]);
+  }, [todosComCaixa, fixarTipo, mes, busca, filtrosAv.periodo]);
 
   // Opções dos seletores vêm do que realmente existe nos lançamentos (antes eram listas fixas
   // e deixavam de fora categorias/formas que aparecem nas vendas).
@@ -289,6 +231,22 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
     base.forEach(l => formasDe(l as LancamentoExibido).forEach(f => f && set.add(f)));
     return Array.from(set).sort((a, b) => a.localeCompare(b, 'pt-BR'));
   }, [base, formasPorVenda]);
+  const camposFiltro = useMemo<CampoFiltro[]>(() => [
+    { tipo: 'periodo', chave: 'periodo', label: 'Data', datas: [
+      { value: 'data_vencimento', label: 'Vencimento' }, { value: 'data_pagamento', label: 'Data de pagamento' }, { value: 'created_at', label: 'Data de criação' }] },
+    { tipo: 'busca', chave: 'busca', label: 'Busca (descrição, cliente/fornecedor, categoria)', placeholder: 'Descrição, cliente, fornecedor...' },
+    { tipo: 'faixa', chave: 'valor', label: 'Valor' },
+    { tipo: 'multi', chave: 'status', label: 'Situação', opcoes: [
+      { value: 'pendente', label: 'Pendente' }, { value: 'atrasado', label: 'Atrasado' }, { value: 'pago', label: 'Pago' }, { value: 'cancelado', label: 'Cancelado' }] },
+    ...(!fixarTipo ? [{ tipo: 'multi' as const, chave: 'tipo', label: 'Tipo', opcoes: [{ value: 'receita', label: 'Receita' }, { value: 'despesa', label: 'Despesa' }] }] : []),
+    { tipo: 'multi', chave: 'categoria', label: 'Categoria', opcoes: opcoesCategoria.map(c => ({ value: c, label: c })) },
+    { tipo: 'multi', chave: 'conta', label: 'Conta financeira', opcoes: contas.map(c => ({ value: c.id, label: c.nome.trim() })) },
+    { tipo: 'multi', chave: 'forma', label: 'Forma de pagamento', opcoes: opcoesForma.map(f => ({ value: f, label: f })) },
+    { tipo: 'simnao', chave: 'venda', label: 'Vinculado a uma venda' },
+    { tipo: 'simnao', chave: 'caixa', label: 'Movimento manual de caixa' },
+    { tipo: 'simnao', chave: 'pago', label: 'Já pago/recebido' },
+    { tipo: 'simnao', chave: 'semConta', label: 'Sem conta financeira' },
+  ], [fixarTipo, opcoesCategoria, opcoesForma, contas]);
   const filtrados = useMemo(() => {
     const basico = base
       .map(l => ({ ...l, statusCalc: calcStatusLanc(l) }))
@@ -300,7 +258,24 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
       .filter(l => !filtroContaId || idsContaDe(l as LancamentoExibido).includes(filtroContaId))
       .filter(l => !filtroCategoria || l.categoria === filtroCategoria)
       .filter(l => !filtroForma || formasDe(l as LancamentoExibido).includes(filtroForma));
-    const comFiltrosAv = aplicarFiltrosAvancados(basico, filtrosAv, l => l.data_vencimento, l => l.valor);
+    const f = filtrosAv;
+    const campoData = dataUsada(f.periodo, 'data_vencimento');
+    const buscaModal = String(f.busca ?? '').trim();
+    const desc = String(f.descricao ?? '').trim().toLowerCase();
+    const comFiltrosAv = basico
+      .filter(l => passaPeriodo(f.periodo, (l as any)[campoData]))
+      .filter(l => !buscaModal || correspondeABuscaEmCampos([l.descricao, l.cliente_nome, l.categoria], buscaModal))
+      .filter(l => !desc || (l.descricao ?? '').toLowerCase().includes(desc))
+      .filter(l => passaFaixa(f.valor, l.valor))
+      .filter(l => passaMulti(f.status, l.statusCalc))
+      .filter(l => passaMulti(f.tipo, l.tipo))
+      .filter(l => passaMulti(f.categoria, l.categoria ?? ''))
+      .filter(l => passaMulti(f.conta, idsContaDe(l as LancamentoExibido)))
+      .filter(l => passaMulti(f.forma, formasDe(l as LancamentoExibido)))
+      .filter(l => passaSimNao(f.venda, !!l.venda_id))
+      .filter(l => passaSimNao(f.caixa, !!(l as LancamentoExibido).isDeCaixa))
+      .filter(l => passaSimNao(f.pago, l.status === 'pago'))
+      .filter(l => passaSimNao(f.semConta, idsContaDe(l as LancamentoExibido).length === 0));
     // Sem ordenação escolhida (estado inicial): o mais recente em cima — de hoje para
     // o dia 1º do mês — e, no mesmo dia, o lançado por último primeiro. Lançamentos com
     // vencimento FUTURO (ex.: a receber dia 30) ficam depois, do mais próximo ao mais distante,
@@ -409,7 +384,7 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
             { key: 'cliente', label: 'Cliente/Forn.', labelAsc: 'A → Z',              labelDesc: 'Z → A' },
           ]}
         />
-        <FiltrosAvancados valor={filtrosAv} onChange={setFiltrosAv} labelData="Vencimento" labelValor="Valor" />
+        <FiltroModal campos={camposFiltro} valor={filtrosAv} onChange={setFiltrosAv} titulo="Filtro avançado — Lançamentos" />
       </div>
 
       {/* Tabela */}
