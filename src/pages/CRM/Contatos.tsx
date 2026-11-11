@@ -10,6 +10,7 @@ import { TableSkeleton } from '../../components/ui/Skeleton';
 import { DateInput } from '../../components/ui/DateInput';
 import { DarkSelect } from '../../components/ui/DarkSelect';
 import { correspondeABuscaEmCampos } from '../../lib/buscaFlexivel';
+import { EmpresaSelector } from '../../components/crm/EmpresaSelector';
 import { BarraLista } from '../../components/ui/BarraLista';
 import { CampoFiltro, FiltroValor, passaPeriodo, passaMulti, passaSimNao } from '../../components/ui/FiltroModal';
 import { CabecalhoFiltro } from '../../components/ui/CabecalhoFiltro';
@@ -165,12 +166,8 @@ export function Contatos() {
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <div className="col-span-2 md:col-span-1">
                 <label className={LABEL}>Cliente / Empresa *</label>
-                <DarkSelect
-                  value={form.cliente_id}
-                  onChange={v => setF('cliente_id', v)}
-                  placeholder="Selecione o cliente..."
-                  options={clientes?.map(c => ({ value: c.id, label: c.nome })) ?? []}
-                />
+                <EmpresaSelector value={form.cliente_id} onChange={v => setF('cliente_id', v)}
+                  placeholder="Buscar cliente/empresa ou cadastrar nova..." />
               </div>
               <div>
                 <label className={LABEL}>Nome *</label>

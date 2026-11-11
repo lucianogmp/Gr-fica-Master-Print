@@ -20,6 +20,8 @@ export interface Cliente {
   como_conheceu?: string;
   produto_interesse?: string;
   data_nascimento?: string | null;
+  /** Empresa (outro cliente) à qual esta pessoa está vinculada */
+  empresa_id?: string | null;
   created_at?: string;
   updated_at?: string;
 }

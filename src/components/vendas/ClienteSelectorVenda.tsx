@@ -19,6 +19,10 @@ interface ClienteSimples {
   telefone?: string | null;
   email?: string | null;
   cpf_cnpj?: string | null;
+  empresa_id?: string | null;
+  /** Linha extra no resultado: "Funcionário de Network", "Contato (Thales) de Network"... */
+  rotulo?: string;
+  chave?: string;
 }
 
 interface Props {
@@ -82,12 +86,54 @@ export function ClienteSelectorVenda({ value, clienteId, onChange, hideLabel }: 
       const palavras = q.trim().split(/\s+/).filter(Boolean);
       let query = supabase
         .from('clientes')
-        .select('id, nome, telefone, email, cpf_cnpj');
+        .select('id, nome, telefone, email, cpf_cnpj, empresa_id');
       for (const palavra of palavras) {
         query = query.or(`nome.ilike.%${palavra}%,telefone.ilike.%${palavra}%,cpf_cnpj.ilike.%${palavra}%`);
       }
       const { data } = await query.order('nome').limit(8);
-      setOpcoes(data ?? []);
+      const base: ClienteSimples[] = (data ?? []).map(c => ({ ...c, chave: c.id }));
+
+      // Pessoas vinculadas a uma empresa que bateu com a busca (ex.: digitou "Network" → aparecem os funcionários dela)
+      const idsEmpresasAchadas = base.map(c => c.id);
+      let vinculados: ClienteSimples[] = [];
+      if (idsEmpresasAchadas.length > 0) {
+        const { data: v } = await supabase.from('clientes')
+          .select('id, nome, telefone, email, cpf_cnpj, empresa_id')
+          .in('empresa_id', idsEmpresasAchadas).order('nome').limit(8);
+        vinculados = (v ?? []).map(c => ({ ...c, chave: c.id }));
+      }
+
+      // Contatos do CRM (pessoas cadastradas só como contato de uma empresa): escolher um deles usa a empresa
+      let contatos: ClienteSimples[] = [];
+      try {
+        let qc = supabase.from('contatos').select('id, nome, cargo, telefone, email, cliente_id, clientes(nome)');
+        for (const palavra of palavras) qc = qc.or(`nome.ilike.%${palavra}%,telefone.ilike.%${palavra}%,email.ilike.%${palavra}%`);
+        const { data: ct } = await qc.order('nome').limit(5);
+        contatos = (ct ?? []).filter((c: any) => c.cliente_id && c.clientes?.nome).map((c: any) => ({
+          id: c.cliente_id, nome: c.clientes.nome, telefone: c.telefone, email: c.email,
+          rotulo: `Contato: ${c.nome}${c.cargo ? ` (${c.cargo})` : ''} — empresa ${c.clientes.nome}`,
+          chave: `contato:${c.id}`,
+        }));
+      } catch { /* sem contatos, segue só com clientes */ }
+
+      // Nome da empresa dos clientes vinculados
+      const idsEmp = Array.from(new Set([...base, ...vinculados].map(c => c.empresa_id).filter(Boolean))) as string[];
+      let nomesEmp = new Map<string, string>();
+      if (idsEmp.length > 0) {
+        const { data: emp } = await supabase.from('clientes').select('id, nome').in('id', idsEmp);
+        nomesEmp = new Map((emp ?? []).map(e => [e.id, e.nome]));
+      }
+      const comRotulo = (c: ClienteSimples): ClienteSimples =>
+        c.empresa_id && nomesEmp.get(c.empresa_id) ? { ...c, rotulo: `Empresa: ${nomesEmp.get(c.empresa_id)}` } : c;
+
+      const vistos = new Set<string>();
+      const final = [...base, ...vinculados, ...contatos].map(comRotulo).filter(c => {
+        const k = c.chave ?? c.id;
+        if (vistos.has(k)) return false;
+        vistos.add(k);
+        return true;
+      });
+      setOpcoes(final);
       setAberto(true);
     } finally {
       setCarregando(false);
@@ -289,7 +335,7 @@ export function ClienteSelectorVenda({ value, clienteId, onChange, hideLabel }: 
     >
       {opcoes.map((c, idx) => (
         <button
-          key={c.id}
+          key={c.chave ?? c.id}
           type="button"
           data-nav={idx}
           onMouseDown={e => { e.preventDefault(); selecionar(c); }}
@@ -307,6 +353,9 @@ export function ClienteSelectorVenda({ value, clienteId, onChange, hideLabel }: 
             <p className="text-gray-400" style={{ fontSize: 11, margin: '2px 0 0' }}>
               {[c.telefone, c.email, c.cpf_cnpj].filter(Boolean).join(' · ') || 'Sem contato'}
             </p>
+            {c.rotulo && (
+              <p className="text-blue-400" style={{ fontSize: 11, margin: '2px 0 0' }}>{c.rotulo}</p>
+            )}
           </div>
           <ArrowRight className="text-gray-500" style={{ width: 14, height: 14, flexShrink: 0 }} />
         </button>

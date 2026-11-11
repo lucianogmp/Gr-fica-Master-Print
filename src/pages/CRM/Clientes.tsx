@@ -7,10 +7,11 @@ import { TableSkeleton } from '../../components/ui/Skeleton';
 import { useConfirm } from '../../components/ui/ConfirmModal';
 import { buscarCNPJ, buscarCEP, formatarCNPJ, formatarCEP, apenasNumeros } from '../../utils/cnpjCep';
 import toast from 'react-hot-toast';
-import { Users2, Plus, X, AlertCircle, Phone, Mail, MapPin, Search, Loader2, CheckCircle2, Pencil } from 'lucide-react';
+import { Users2, Plus, X, AlertCircle, Phone, Mail, MapPin, Search, Loader2, CheckCircle2, Pencil, Building2 } from 'lucide-react';
 import { DarkSelect } from '../../components/ui/DarkSelect';
 import { DateInput } from '../../components/ui/DateInput';
 import { correspondeABuscaEmCampos } from '../../lib/buscaFlexivel';
+import { EmpresaSelector } from '../../components/crm/EmpresaSelector';
 import { BarraLista } from '../../components/ui/BarraLista';
 import { CampoFiltro, FiltroValor, passaPeriodo, passaMulti, passaSimNao } from '../../components/ui/FiltroModal';
 import { CabecalhoFiltro } from '../../components/ui/CabecalhoFiltro';
@@ -21,7 +22,7 @@ const NOVO: Omit<Cliente, 'id' | 'created_at' | 'updated_at'> = {
   nome: '', telefone: '', email: '', cpf_cnpj: '',
   razao_social: '', nome_fantasia: '', inscricao_estadual: '', situacao_cadastral: '',
   endereco: '', numero: '', bairro: '', cidade: '', estado: '', cep: '', cnae_principal: '',
-  observacoes: '', como_conheceu: '', produto_interesse: '',
+  observacoes: '', como_conheceu: '', produto_interesse: '', empresa_id: '',
 };
 
 const IN = "w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors";
@@ -61,12 +62,13 @@ export function Clientes() {
       { tipo: 'simnao', chave: 'nascimento', label: 'Tem data de aniversário' },
     ];
   }, [clientes]);
+  const nomeEmpresa = (c: Cliente) => (c.empresa_id ? clientes?.find(x => x.id === c.empresa_id)?.nome ?? '' : '');
   const filtrados = useMemo(() => {
     const f = filtros;
     const bm = String(f.busca ?? '').trim();
     const obs = String(f.obs ?? '').trim().toLowerCase();
     const lista = (clientes ?? [])
-      .filter(c => correspondeABuscaEmCampos([c.nome, c.email, c.telefone, c.cpf_cnpj], busca))
+      .filter(c => correspondeABuscaEmCampos([c.nome, c.email, c.telefone, c.cpf_cnpj, nomeEmpresa(c)], busca))
       .filter(c => passaPeriodo(f.periodo, c.created_at))
       .filter(c => !bm || correspondeABuscaEmCampos([c.nome, c.nome_fantasia, c.razao_social, c.email, c.telefone, c.cpf_cnpj], bm))
       .filter(c => !obs || (c.observacoes ?? '').toLowerCase().includes(obs))
@@ -90,9 +92,9 @@ export function Clientes() {
   async function handleSalvar(e: React.FormEvent) {
     e.preventDefault();
     if (editandoId) {
-      updateCliente({ id: editandoId, payload: { ...form, data_nascimento: form.data_nascimento || null } });
+      updateCliente({ id: editandoId, payload: { ...form, data_nascimento: form.data_nascimento || null, empresa_id: form.empresa_id || null } });
     } else {
-      await createCliente({ ...form, data_nascimento: form.data_nascimento || null });
+      await createCliente({ ...form, data_nascimento: form.data_nascimento || null, empresa_id: form.empresa_id || null });
     }
     setForm({ ...NOVO });
     setEditandoId(null);
@@ -224,6 +226,11 @@ export function Clientes() {
                 <label className={LABEL}>Aniversário</label>
                 <DateInput value={form.data_nascimento ?? ''} onChange={v => setF('data_nascimento', v)} className={IN} />
               </div>
+            </div>
+
+            <div>
+              <label className={LABEL}>Vinculado à empresa <span className="text-gray-600 normal-case font-normal">(opcional — para quem é funcionário/contato de uma empresa)</span></label>
+              <EmpresaSelector value={form.empresa_id} onChange={id => setForm(f => ({ ...f, empresa_id: id }))} excluirId={editandoId} />
             </div>
 
             {/* ── CNPJ com busca automática ── */}
@@ -393,6 +400,9 @@ export function Clientes() {
                     {c.nome}
                     {c.nome_fantasia && c.nome_fantasia !== c.nome && (
                       <div className="text-[10px] text-gray-500">{c.razao_social || c.nome_fantasia}</div>
+                    )}
+                    {c.empresa_id && (
+                      <div className="text-[10px] text-blue-400 flex items-center gap-1"><Building2 className="w-3 h-3" /> {clientes?.find(x => x.id === c.empresa_id)?.nome ?? 'Empresa'}</div>
                     )}
                     {c.produto_interesse && (
                       <div className="text-[10px] text-gray-500">Interesse: {c.produto_interesse}</div>
