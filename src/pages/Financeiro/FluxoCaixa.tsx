@@ -10,6 +10,10 @@ import { useRole } from '../../hooks/useRole';
 import { MoneyInput } from '../../components/ui/MoneyInput';
 import { DateInput } from '../../components/ui/DateInput';
 import { correspondeABuscaEmCampos } from '../../lib/buscaFlexivel';
+import { BarraLista } from '../../components/ui/BarraLista';
+import { CampoFiltro, FiltroValor, passaPeriodo, passaMulti, passaFaixa, passaSimNao } from '../../components/ui/FiltroModal';
+import { CabecalhoFiltro } from '../../components/ui/CabecalhoFiltro';
+import { aplicarOrdenacao, Ordenacao } from '../../components/ui/OrdenarMenu';
 import {
   TrendingUp, ArrowUp, ArrowDown, Wallet,
   Plus, X, Save, ChevronLeft, ChevronRight, CheckSquare, Square, Trash2, User, ArrowLeftRight, ExternalLink,
@@ -60,7 +64,8 @@ export function FluxoCaixa() {
   const [showTransfModal, setShowTransfModal] = useState(false);
   const [transf, setTransf] = useState({ origemId: '', destinoId: '', valor: 0, data: new Date().toISOString().split('T')[0], observacoes: '' });
   const [busca, setBusca]             = useState('');
-  const [filtroTipo, setFiltroTipo]       = useState<'' | 'entrada' | 'saida'>('');
+  const [filtros, setFiltros] = useState<FiltroValor>({});
+  const [ordenacao, setOrdenacao] = useState<Ordenacao | null>(null);
 
   function nomeDoAutor(m: CaixaMovimento) {
     const email = (m as any).criado_por_email as string | undefined;
@@ -114,9 +119,18 @@ export function FluxoCaixa() {
     const map: Record<string, typeof movDoMes> = {};
     // Mesmos filtros padrão do resto do financeiro (busca, conta, tipo) —
     // afetam só a listagem, não os KPIs de entradas/saídas/saldo do mês.
+    const f = filtros;
+    const bm = String(f.busca ?? '').trim();
     const filtrados = movDoMes
       .filter(m => correspondeABuscaEmCampos([m.descricao, m.cliente_nome], busca))
-      .filter(m => !filtroTipo || m.tipo === filtroTipo);
+      .filter(m => !bm || correspondeABuscaEmCampos([m.descricao, m.cliente_nome, m.observacoes], bm))
+      .filter(m => passaPeriodo(f.periodo, m.data))
+      .filter(m => passaFaixa(f.valor, m.valor))
+      .filter(m => passaMulti(f.tipo, m.tipo))
+      .filter(m => passaMulti(f.origem, m.origem ?? 'manual'))
+      .filter(m => passaSimNao(f.venda, !!m.venda_id))
+      .filter(m => passaSimNao(f.lancamento, !!(m as any).lancamento_id))
+      .filter(m => passaSimNao(f.obs, !!(m.observacoes ?? '').trim()));
     // Mais novo primeiro: por data, e dentro do mesmo dia por quando foi
     // lançado no sistema (created_at) — antes ficava na ordem que vinha do
     // banco, meio aleatória pra quem tinha vários movimentos no mesmo dia.
@@ -127,7 +141,22 @@ export function FluxoCaixa() {
         map[m.data].push(m);
       });
     return map;
-  }, [movDoMes, busca, filtroTipo]);
+  }, [movDoMes, busca, filtros]);
+
+  const camposFiltro = useMemo<CampoFiltro[]>(() => {
+    const uniq = (arr: (string | null | undefined)[]) =>
+      Array.from(new Set(arr.map(x => (x ?? '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR')).map(x => ({ value: x, label: x }));
+    return [
+      { tipo: 'periodo', chave: 'periodo', label: 'Data (dentro do mês)' },
+      { tipo: 'busca', chave: 'busca', label: 'Busca (descrição, cliente, observações)', placeholder: 'Descrição ou cliente...' },
+      { tipo: 'faixa', chave: 'valor', label: 'Valor' },
+      { tipo: 'multi', chave: 'tipo', label: 'Tipo', opcoes: [{ value: 'entrada', label: 'Entrada' }, { value: 'saida', label: 'Saída' }] },
+      { tipo: 'multi', chave: 'origem', label: 'Origem', opcoes: [{ value: 'manual', label: 'Manual' }, ...uniq(movDoMes.map(m => m.origem)).filter(o => o.value !== 'manual')] },
+      { tipo: 'simnao', chave: 'venda', label: 'Ligado a uma venda' },
+      { tipo: 'simnao', chave: 'lancamento', label: 'Ligado a um lançamento' },
+      { tipo: 'simnao', chave: 'obs', label: 'Tem observações' },
+    ];
+  }, [movDoMes]);
 
   const datas = Object.keys(porData).sort((a, b) => b.localeCompare(a));
 
@@ -506,17 +535,9 @@ export function FluxoCaixa() {
         {/* Filtros — busca + tipo (não tem filtro de conta: só existe o
             caixa físico aqui, não faz sentido escolher "qual conta") */}
         <div className="flex flex-wrap gap-2 items-center">
-          <input value={busca} onChange={e => setBusca(e.target.value)}
-            placeholder="Buscar por descrição ou cliente..."
-            className="flex-1 min-w-48 bg-[#1f2937] border border-gray-700 rounded-xl px-4 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500" />
-          <div className="w-36">
-            <DarkSelect
-              value={filtroTipo}
-              onChange={v => setFiltroTipo(v as '' | 'entrada' | 'saida')}
-              allowEmpty
-              placeholder="Todo tipo"
-              options={[{ value: 'entrada', label: 'Entrada' }, { value: 'saida', label: 'Saída' }]}
-            />
+          <div className="flex-1 min-w-48">
+            <BarraLista busca={busca} onBusca={setBusca} placeholder="Buscar por descrição ou cliente..."
+              camposFiltro={camposFiltro} filtros={filtros} onFiltros={setFiltros} titulo="Filtro avançado — Fluxo de Caixa" />
           </div>
         </div>
 

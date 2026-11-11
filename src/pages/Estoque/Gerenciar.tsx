@@ -1,11 +1,15 @@
 // src/pages/Estoque/Gerenciar.tsx
 import { useState, useMemo } from 'react';
 import { useMateriasPrimas } from '../../hooks/useEstoque';
-import { MateriaPrima } from '../../types/estoque';
+import { MateriaPrima, statusEstoque } from '../../types/estoque';
 import { ModalMP } from '../../components/estoque/ModalMP';
 import { useConfirm } from '../../components/ui/ConfirmModal';
 import { PackageSearch, Plus } from 'lucide-react';
 import { correspondeABuscaEmCampos } from '../../lib/buscaFlexivel';
+import { BarraLista } from '../../components/ui/BarraLista';
+import { CampoFiltro, FiltroValor, passaPeriodo, passaMulti, passaFaixa, passaSimNao } from '../../components/ui/FiltroModal';
+import { CabecalhoFiltro } from '../../components/ui/CabecalhoFiltro';
+import { aplicarOrdenacao, Ordenacao } from '../../components/ui/OrdenarMenu';
 
 const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -17,9 +21,47 @@ export function Gerenciar() {
   const [modalMP, setModalMP]   = useState(false);
   const [editando, setEditando] = useState<MateriaPrima | null>(null);
 
-  const filtradas = useMemo(() =>
-    mps.filter(m => correspondeABuscaEmCampos([m.nome, m.categoria], busca)),
-    [mps, busca]);
+  const [ordenacao, setOrdenacao] = useState<Ordenacao | null>(null);
+  const [filtros, setFiltros] = useState<FiltroValor>({});
+  const camposFiltro = useMemo<CampoFiltro[]>(() => {
+    const uniq = (arr: (string | null | undefined)[]) =>
+      Array.from(new Set(arr.map(x => (x ?? '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR')).map(x => ({ value: x, label: x }));
+    return [
+      { tipo: 'periodo', chave: 'periodo', label: 'Cadastrado em' },
+      { tipo: 'busca', chave: 'busca', label: 'Busca (nome, categoria)', placeholder: 'Nome ou categoria...' },
+      { tipo: 'faixa', chave: 'saldo', label: 'Saldo em estoque' },
+      { tipo: 'faixa', chave: 'custo', label: 'Custo por unidade' },
+      { tipo: 'faixa', chave: 'venda', label: 'Preço de venda por unidade' },
+      { tipo: 'multi', chave: 'status', label: 'Status do estoque', opcoes: [
+        { value: 'ok', label: 'OK' }, { value: 'baixo', label: 'Baixo' }, { value: 'zerado', label: 'Zerado' }, { value: 'sem_controle', label: 'Sem controle' }] },
+      { tipo: 'multi', chave: 'categoria', label: 'Categoria', opcoes: uniq(mps.map(m => m.categoria)), largo: true },
+      { tipo: 'multi', chave: 'unidade', label: 'Unidade', opcoes: uniq(mps.map(m => m.unidade)) },
+      { tipo: 'simnao', chave: 'controla', label: 'Controla estoque' },
+      { tipo: 'simnao', chave: 'minimo', label: 'Tem estoque mínimo definido' },
+      { tipo: 'simnao', chave: 'precoVenda', label: 'Tem preço de venda' },
+    ];
+  }, [mps]);
+  const filtradas = useMemo(() => {
+    const f = filtros;
+    const bm = String(f.busca ?? '').trim();
+    const lista = mps
+      .filter(m => correspondeABuscaEmCampos([m.nome, m.categoria], busca))
+      .filter(m => passaPeriodo(f.periodo, m.created_at))
+      .filter(m => !bm || correspondeABuscaEmCampos([m.nome, m.categoria], bm))
+      .filter(m => passaFaixa(f.saldo, m.saldo))
+      .filter(m => passaFaixa(f.custo, m.custo_unitario))
+      .filter(m => passaFaixa(f.venda, m.preco_venda))
+      .filter(m => passaMulti(f.status, statusEstoque(m).key))
+      .filter(m => passaMulti(f.categoria, m.categoria ?? ''))
+      .filter(m => passaMulti(f.unidade, m.unidade))
+      .filter(m => passaSimNao(f.controla, m.controla_estoque !== false))
+      .filter(m => passaSimNao(f.minimo, Number(m.estoque_minimo) > 0))
+      .filter(m => passaSimNao(f.precoVenda, Number(m.preco_venda ?? 0) > 0));
+    return aplicarOrdenacao(lista, ordenacao, {
+      nome: m => m.nome, categoria: m => m.categoria, saldo: m => Number(m.saldo), custo: m => Number(m.custo_unitario),
+    });
+  }, [mps, busca, filtros, ordenacao]);
+  const opcoesCategoria = (camposFiltro.find(c => c.chave === 'categoria') as any)?.opcoes ?? [];
 
   if (isLoading) return <div className="p-8 text-blue-500 animate-pulse font-bold">Carregando...</div>;
 
@@ -43,17 +85,26 @@ export function Gerenciar() {
         </div>
 
         <div className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">
-          <div className="p-4 border-b border-gray-700">
-            <input value={busca} onChange={e => setBusca(e.target.value)}
-              placeholder="Buscar por nome ou categoria..."
-              className="w-full bg-[#111827] border border-gray-700 rounded-lg px-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500" />
+          <div className="p-3 border-b border-gray-700">
+            <BarraLista busca={busca} onBusca={setBusca} placeholder="Buscar por nome ou categoria..."
+              camposOrdem={[
+                { key: 'nome', label: 'Nome', labelAsc: 'A → Z', labelDesc: 'Z → A' },
+                { key: 'categoria', label: 'Categoria', labelAsc: 'A → Z', labelDesc: 'Z → A' },
+                { key: 'saldo', label: 'Saldo', labelAsc: 'Menor primeiro', labelDesc: 'Maior primeiro' },
+                { key: 'custo', label: 'Custo', labelAsc: 'Menor primeiro', labelDesc: 'Maior primeiro' },
+              ]}
+              ordenacao={ordenacao} onOrdenar={setOrdenacao}
+              camposFiltro={camposFiltro} filtros={filtros} onFiltros={setFiltros} titulo="Filtro avançado — Matérias-primas" />
           </div>
           <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-gray-400 text-[10px] font-bold uppercase border-b border-gray-700 bg-gray-800/40">
                 <th className="px-5 py-3 text-left">Nome</th>
-                <th className="px-5 py-3 text-left">Categoria</th>
+                <th className="px-5 py-3 text-left">
+                  <CabecalhoFiltro label="Categoria" valor={filtros.categoria?.length === 1 ? filtros.categoria[0] : ''}
+                    opcoes={opcoesCategoria} onChange={x => setFiltros(p => ({ ...p, categoria: x ? [x] : [] }))} />
+                </th>
                 <th className="px-5 py-3 text-center">Unidade</th>
                 <th className="px-5 py-3 text-right">Custo/un</th>
                 <th className="px-5 py-3 text-right">Saldo atual</th>

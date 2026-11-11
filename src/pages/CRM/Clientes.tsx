@@ -1,5 +1,5 @@
 // src/pages/CRM/Clientes.tsx
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useClientes } from '../../hooks/useClientes';
 import { Cliente, COMO_CONHECEU_OPCOES } from '../../types/cliente';
 import { TableSkeleton } from '../../components/ui/Skeleton';
@@ -10,6 +10,10 @@ import { Users2, Plus, X, AlertCircle, Phone, Mail, MapPin, Search, Loader2, Che
 import { DarkSelect } from '../../components/ui/DarkSelect';
 import { DateInput } from '../../components/ui/DateInput';
 import { correspondeABuscaEmCampos } from '../../lib/buscaFlexivel';
+import { BarraLista } from '../../components/ui/BarraLista';
+import { CampoFiltro, FiltroValor, passaPeriodo, passaMulti, passaSimNao } from '../../components/ui/FiltroModal';
+import { CabecalhoFiltro } from '../../components/ui/CabecalhoFiltro';
+import { aplicarOrdenacao, Ordenacao } from '../../components/ui/OrdenarMenu';
 import { useRolarAoAbrir } from '../../hooks/useRolarAoAbrir';
 
 const NOVO: Omit<Cliente, 'id' | 'created_at' | 'updated_at'> = {
@@ -33,7 +37,54 @@ export function Clientes() {
   const [buscandoCnpj, setBuscandoCnpj] = useState(false);
   const [buscandoCep, setBuscandoCep] = useState(false);
 
-  const filtrados = clientes?.filter(c => correspondeABuscaEmCampos([c.nome, c.email, c.telefone], busca));
+  const [ordenacao, setOrdenacao] = useState<Ordenacao | null>(null);
+  const [filtros, setFiltros] = useState<FiltroValor>({});
+  const camposFiltro = useMemo<CampoFiltro[]>(() => {
+    const uniq = (arr: (string | null | undefined)[]) =>
+      Array.from(new Set(arr.map(x => (x ?? '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR')).map(x => ({ value: x, label: x }));
+    const lista = clientes ?? [];
+    return [
+      { tipo: 'periodo', chave: 'periodo', label: 'Cadastrado em' },
+      { tipo: 'busca', chave: 'busca', label: 'Busca (nome, CPF/CNPJ, e-mail, telefone)', placeholder: 'Nome, documento, contato...' },
+      { tipo: 'busca', chave: 'obs', label: 'Buscar nas observações', placeholder: 'Texto das observações' },
+      { tipo: 'multi', chave: 'estado', label: 'Estado', opcoes: uniq(lista.map(c => c.estado)) },
+      { tipo: 'multi', chave: 'cidade', label: 'Cidade', opcoes: uniq(lista.map(c => c.cidade)) },
+      { tipo: 'multi', chave: 'bairro', label: 'Bairro', opcoes: uniq(lista.map(c => c.bairro)) },
+      { tipo: 'multi', chave: 'conheceu', label: 'Como conheceu', opcoes: uniq(lista.map(c => c.como_conheceu)) },
+      { tipo: 'multi', chave: 'situacao', label: 'Situação cadastral', opcoes: uniq(lista.map(c => c.situacao_cadastral)) },
+      { tipo: 'simnao', chave: 'telefone', label: 'Tem telefone' },
+      { tipo: 'simnao', chave: 'email', label: 'Tem e-mail' },
+      { tipo: 'simnao', chave: 'documento', label: 'Tem CPF/CNPJ' },
+      { tipo: 'simnao', chave: 'cnpj', label: 'É empresa (CNPJ)' },
+      { tipo: 'simnao', chave: 'endereco', label: 'Tem endereço' },
+      { tipo: 'simnao', chave: 'nascimento', label: 'Tem data de aniversário' },
+    ];
+  }, [clientes]);
+  const filtrados = useMemo(() => {
+    const f = filtros;
+    const bm = String(f.busca ?? '').trim();
+    const obs = String(f.obs ?? '').trim().toLowerCase();
+    const lista = (clientes ?? [])
+      .filter(c => correspondeABuscaEmCampos([c.nome, c.email, c.telefone, c.cpf_cnpj], busca))
+      .filter(c => passaPeriodo(f.periodo, c.created_at))
+      .filter(c => !bm || correspondeABuscaEmCampos([c.nome, c.nome_fantasia, c.razao_social, c.email, c.telefone, c.cpf_cnpj], bm))
+      .filter(c => !obs || (c.observacoes ?? '').toLowerCase().includes(obs))
+      .filter(c => passaMulti(f.estado, c.estado ?? ''))
+      .filter(c => passaMulti(f.cidade, c.cidade ?? ''))
+      .filter(c => passaMulti(f.bairro, c.bairro ?? ''))
+      .filter(c => passaMulti(f.conheceu, c.como_conheceu ?? ''))
+      .filter(c => passaMulti(f.situacao, c.situacao_cadastral ?? ''))
+      .filter(c => passaSimNao(f.telefone, !!c.telefone))
+      .filter(c => passaSimNao(f.email, !!c.email))
+      .filter(c => passaSimNao(f.documento, !!c.cpf_cnpj))
+      .filter(c => passaSimNao(f.cnpj, apenasNumeros(c.cpf_cnpj ?? '').length === 14))
+      .filter(c => passaSimNao(f.endereco, !!(c.endereco || c.cep)))
+      .filter(c => passaSimNao(f.nascimento, !!c.data_nascimento));
+    return aplicarOrdenacao(lista, ordenacao, {
+      nome: c => c.nome, cidade: c => c.cidade, cadastro: c => c.created_at,
+    });
+  }, [clientes, busca, filtros, ordenacao]);
+  const opcoesEstado = (camposFiltro.find(c => c.chave === 'estado') as any)?.opcoes ?? [];
 
   async function handleSalvar(e: React.FormEvent) {
     e.preventDefault();
@@ -307,14 +358,15 @@ export function Clientes() {
         )}
 
         <div className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">
-          <div className="p-4 border-b border-gray-700">
-            <input
-              type="text"
-              placeholder="Buscar por nome, email ou telefone..."
-              value={busca}
-              onChange={e => setBusca(e.target.value)}
-              className="w-full bg-[#111827] border border-gray-700 rounded-lg px-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500"
-            />
+          <div className="p-3 border-b border-gray-700">
+            <BarraLista busca={busca} onBusca={setBusca} placeholder="Buscar por nome, CPF/CNPJ, email ou telefone..."
+              camposOrdem={[
+                { key: 'nome', label: 'Nome', labelAsc: 'A → Z', labelDesc: 'Z → A' },
+                { key: 'cidade', label: 'Cidade', labelAsc: 'A → Z', labelDesc: 'Z → A' },
+                { key: 'cadastro', label: 'Cadastro', labelAsc: 'Mais antigo primeiro', labelDesc: 'Mais recente primeiro' },
+              ]}
+              ordenacao={ordenacao} onOrdenar={setOrdenacao}
+              camposFiltro={camposFiltro} filtros={filtros} onFiltros={setFiltros} titulo="Filtro avançado — Clientes" />
           </div>
           <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -322,7 +374,10 @@ export function Clientes() {
               <tr className="text-gray-400 text-xs font-bold uppercase border-b border-gray-700">
                 <th className="px-5 py-3 text-left">Nome</th>
                 <th className="px-5 py-3 text-left">Contato</th>
-                <th className="px-5 py-3 text-left">Localização</th>
+                <th className="px-5 py-3 text-left">
+                  <CabecalhoFiltro label="Localização" valor={filtros.estado?.length === 1 ? filtros.estado[0] : ''}
+                    opcoes={opcoesEstado} onChange={x => setFiltros(p => ({ ...p, estado: x ? [x] : [] }))} />
+                </th>
                 <th className="px-5 py-3 text-left">CPF/CNPJ</th>
                 <th className="px-5 py-3 text-left"></th>
               </tr>

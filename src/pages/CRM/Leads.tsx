@@ -8,6 +8,10 @@ import { UserPlus, Plus, X, AlertCircle, ArrowRightCircle, Phone, Building2 } fr
 import { TableSkeleton } from '../../components/ui/Skeleton';
 import { DarkSelect } from '../../components/ui/DarkSelect';
 import { correspondeABuscaEmCampos } from '../../lib/buscaFlexivel';
+import { BarraLista } from '../../components/ui/BarraLista';
+import { CampoFiltro, FiltroValor, passaPeriodo, passaMulti, passaSimNao } from '../../components/ui/FiltroModal';
+import { CabecalhoFiltro } from '../../components/ui/CabecalhoFiltro';
+import { aplicarOrdenacao, Ordenacao } from '../../components/ui/OrdenarMenu';
 import { useRolarAoAbrir } from '../../hooks/useRolarAoAbrir';
 
 const NOVO = {
@@ -32,9 +36,42 @@ export function Leads() {
   // Só mostra leads que ainda NÃO foram convertidos
   const leadsAtivos = useMemo(() => (leads ?? []).filter(l => !l.cliente_id), [leads]);
 
-  const filtrados = useMemo(() => leadsAtivos
-    .filter(l => filtro === 'todos' || l.status === filtro)
-    .filter(l => correspondeABuscaEmCampos([l.nome, l.empresa, l.telefone], busca)), [leadsAtivos, filtro, busca]);
+  const [ordenacao, setOrdenacao] = useState<Ordenacao | null>(null);
+  const [filtros, setFiltros] = useState<FiltroValor>({});
+  const camposFiltro = useMemo<CampoFiltro[]>(() => {
+    const uniq = (arr: (string | null | undefined)[]) =>
+      Array.from(new Set(arr.map(x => (x ?? '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR')).map(x => ({ value: x, label: x }));
+    return [
+      { tipo: 'periodo', chave: 'periodo', label: 'Cadastrado em' },
+      { tipo: 'busca', chave: 'busca', label: 'Busca (nome, empresa, telefone)', placeholder: 'Nome, empresa, telefone...' },
+      { tipo: 'busca', chave: 'interesse', label: 'Produto de interesse', placeholder: 'Ex.: banner, adesivo...' },
+      { tipo: 'busca', chave: 'obs', label: 'Buscar nas observações', placeholder: 'Texto das observações' },
+      { tipo: 'multi', chave: 'status', label: 'Status', opcoes: Object.entries(STATUS_LEAD).map(([k, v]) => ({ value: k, label: v.label })) },
+      { tipo: 'multi', chave: 'origem', label: 'Origem (como conheceu)', opcoes: uniq([...COMO_CONHECEU_OPCOES, ...leadsAtivos.map(l => l.como_conheceu)]) },
+      { tipo: 'simnao', chave: 'telefone', label: 'Tem telefone' },
+      { tipo: 'simnao', chave: 'empresa', label: 'Tem empresa' },
+    ];
+  }, [leadsAtivos]);
+  const filtrados = useMemo(() => {
+    const f = filtros;
+    const bm = String(f.busca ?? '').trim();
+    const inte = String(f.interesse ?? '').trim().toLowerCase();
+    const obs = String(f.obs ?? '').trim().toLowerCase();
+    const lista = leadsAtivos
+      .filter(l => filtro === 'todos' || l.status === filtro)
+      .filter(l => correspondeABuscaEmCampos([l.nome, l.empresa, l.telefone], busca))
+      .filter(l => passaPeriodo(f.periodo, l.created_at))
+      .filter(l => !bm || correspondeABuscaEmCampos([l.nome, l.empresa, l.telefone, l.produto_interesse], bm))
+      .filter(l => !inte || (l.produto_interesse ?? '').toLowerCase().includes(inte))
+      .filter(l => !obs || (l.observacoes ?? '').toLowerCase().includes(obs))
+      .filter(l => passaMulti(f.status, l.status))
+      .filter(l => passaMulti(f.origem, l.como_conheceu ?? ''))
+      .filter(l => passaSimNao(f.telefone, !!l.telefone))
+      .filter(l => passaSimNao(f.empresa, !!l.empresa));
+    return aplicarOrdenacao(lista, ordenacao, { nome: l => l.nome, empresa: l => l.empresa, cadastro: l => l.created_at });
+  }, [leadsAtivos, filtro, busca, filtros, ordenacao]);
+  const opcoesOrigem = (camposFiltro.find(c => c.chave === 'origem') as any)?.opcoes ?? [];
+  const opcoesStatus = (camposFiltro.find(c => c.chave === 'status') as any)?.opcoes ?? [];
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -153,12 +190,16 @@ export function Leads() {
               </button>
             ))}
           </div>
-          <input
-            value={busca}
-            onChange={e => setBusca(e.target.value)}
-            placeholder="Buscar por nome, empresa ou telefone..."
-            className="flex-1 min-w-48 bg-[#1f2937] border border-gray-700 rounded-xl px-4 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500"
-          />
+          <div className="flex-1 min-w-48">
+            <BarraLista busca={busca} onBusca={setBusca} placeholder="Buscar por nome, empresa ou telefone..."
+              camposOrdem={[
+                { key: 'nome', label: 'Nome', labelAsc: 'A → Z', labelDesc: 'Z → A' },
+                { key: 'empresa', label: 'Empresa', labelAsc: 'A → Z', labelDesc: 'Z → A' },
+                { key: 'cadastro', label: 'Cadastro', labelAsc: 'Mais antigo primeiro', labelDesc: 'Mais recente primeiro' },
+              ]}
+              ordenacao={ordenacao} onOrdenar={setOrdenacao}
+              camposFiltro={camposFiltro} filtros={filtros} onFiltros={setFiltros} titulo="Filtro avançado — Leads" />
+          </div>
         </div>
 
         <div className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">
@@ -169,8 +210,14 @@ export function Leads() {
                 <th className="px-5 py-3 text-left">Nome</th>
                 <th className="px-5 py-3 text-left">Contato</th>
                 <th className="px-5 py-3 text-left">Interesse</th>
-                <th className="px-5 py-3 text-left">Origem</th>
-                <th className="px-5 py-3 text-center">Status</th>
+                <th className="px-5 py-3 text-left">
+                  <CabecalhoFiltro label="Origem" valor={filtros.origem?.length === 1 ? filtros.origem[0] : ''}
+                    opcoes={opcoesOrigem} onChange={x => setFiltros(p => ({ ...p, origem: x ? [x] : [] }))} />
+                </th>
+                <th className="px-5 py-3 text-center">
+                  <CabecalhoFiltro label="Status" align="center" valor={filtros.status?.length === 1 ? filtros.status[0] : ''}
+                    opcoes={opcoesStatus} onChange={x => setFiltros(p => ({ ...p, status: x ? [x] : [] }))} />
+                </th>
                 <th className="px-5 py-3 text-center">Ações</th>
               </tr>
             </thead>

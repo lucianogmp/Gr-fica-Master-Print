@@ -9,6 +9,10 @@ import { TableSkeleton } from '../../components/ui/Skeleton';
 import { DateInput } from '../../components/ui/DateInput';
 import { DarkSelect } from '../../components/ui/DarkSelect';
 import { correspondeABuscaEmCampos } from '../../lib/buscaFlexivel';
+import { BarraLista } from '../../components/ui/BarraLista';
+import { CampoFiltro, FiltroValor, passaPeriodo, passaMulti, passaSimNao } from '../../components/ui/FiltroModal';
+import { CabecalhoFiltro } from '../../components/ui/CabecalhoFiltro';
+import { aplicarOrdenacao, Ordenacao } from '../../components/ui/OrdenarMenu';
 import { useRolarAoAbrir } from '../../hooks/useRolarAoAbrir';
 
 const NOVO = { cliente_id: '', nome: '', cargo: '', telefone: '', whatsapp: '', email: '', data_nascimento: '', observacoes: '' };
@@ -33,9 +37,43 @@ export function Contatos() {
   // Hook genérico só para deletar — qualquer instância funciona, pois invalida 'contatos-todos'
   const { deletar } = useContatos(null);
 
-  const filtrados = useMemo(() => (contatos ?? []).filter(c =>
-    correspondeABuscaEmCampos([c.nome, c.clientes?.nome, c.telefone, c.cargo], busca)
-  ), [contatos, busca]);
+  const [ordenacao, setOrdenacao] = useState<Ordenacao | null>(null);
+  const [filtros, setFiltros] = useState<FiltroValor>({});
+  const camposFiltro = useMemo<CampoFiltro[]>(() => {
+    const uniq = (arr: (string | null | undefined)[]) =>
+      Array.from(new Set(arr.map(x => (x ?? '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR')).map(x => ({ value: x, label: x }));
+    const lista = contatos ?? [];
+    return [
+      { tipo: 'periodo', chave: 'periodo', label: 'Cadastrado em' },
+      { tipo: 'busca', chave: 'busca', label: 'Busca (nome, empresa, cargo, telefone)', placeholder: 'Nome, empresa, cargo...' },
+      { tipo: 'busca', chave: 'obs', label: 'Buscar nas observações', placeholder: 'Texto das observações' },
+      { tipo: 'multi', chave: 'empresa', label: 'Empresa / cliente', opcoes: uniq(lista.map(c => (c as any).clientes?.nome)) },
+      { tipo: 'multi', chave: 'cargo', label: 'Cargo', opcoes: uniq(lista.map(c => c.cargo)) },
+      { tipo: 'simnao', chave: 'telefone', label: 'Tem telefone' },
+      { tipo: 'simnao', chave: 'whatsapp', label: 'Tem WhatsApp' },
+      { tipo: 'simnao', chave: 'email', label: 'Tem e-mail' },
+      { tipo: 'simnao', chave: 'nascimento', label: 'Tem data de aniversário' },
+    ];
+  }, [contatos]);
+  const filtrados = useMemo(() => {
+    const f = filtros;
+    const bm = String(f.busca ?? '').trim();
+    const obs = String(f.obs ?? '').trim().toLowerCase();
+    const lista = (contatos ?? [])
+      .filter(c => correspondeABuscaEmCampos([c.nome, c.clientes?.nome, c.telefone, c.cargo], busca))
+      .filter(c => passaPeriodo(f.periodo, c.created_at))
+      .filter(c => !bm || correspondeABuscaEmCampos([c.nome, c.clientes?.nome, c.telefone, c.cargo, c.email], bm))
+      .filter(c => !obs || (c.observacoes ?? '').toLowerCase().includes(obs))
+      .filter(c => passaMulti(f.empresa, c.clientes?.nome ?? ''))
+      .filter(c => passaMulti(f.cargo, c.cargo ?? ''))
+      .filter(c => passaSimNao(f.telefone, !!c.telefone))
+      .filter(c => passaSimNao(f.whatsapp, !!c.whatsapp))
+      .filter(c => passaSimNao(f.email, !!c.email))
+      .filter(c => passaSimNao(f.nascimento, !!c.data_nascimento));
+    return aplicarOrdenacao(lista, ordenacao, { nome: c => c.nome, empresa: c => c.clientes?.nome, cargo: c => c.cargo, cadastro: c => c.created_at });
+  }, [contatos, busca, filtros, ordenacao]);
+  const opcoesEmpresa = (camposFiltro.find(c => c.chave === 'empresa') as any)?.opcoes ?? [];
+  const opcoesCargo = (camposFiltro.find(c => c.chave === 'cargo') as any)?.opcoes ?? [];
 
   function abrirNovo() {
     setEditandoId(null);
@@ -178,22 +216,30 @@ export function Contatos() {
         )}
 
         <div className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">
-          <div className="p-4 border-b border-gray-700">
-            <input
-              type="text"
-              placeholder="Buscar por nome, empresa, cargo ou telefone..."
-              value={busca}
-              onChange={e => setBusca(e.target.value)}
-              className="w-full bg-[#111827] border border-gray-700 rounded-lg px-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500"
-            />
+          <div className="p-3 border-b border-gray-700">
+            <BarraLista busca={busca} onBusca={setBusca} placeholder="Buscar por nome, empresa, cargo ou telefone..."
+              camposOrdem={[
+                { key: 'nome', label: 'Nome', labelAsc: 'A → Z', labelDesc: 'Z → A' },
+                { key: 'empresa', label: 'Empresa', labelAsc: 'A → Z', labelDesc: 'Z → A' },
+                { key: 'cargo', label: 'Cargo', labelAsc: 'A → Z', labelDesc: 'Z → A' },
+                { key: 'cadastro', label: 'Cadastro', labelAsc: 'Mais antigo primeiro', labelDesc: 'Mais recente primeiro' },
+              ]}
+              ordenacao={ordenacao} onOrdenar={setOrdenacao}
+              camposFiltro={camposFiltro} filtros={filtros} onFiltros={setFiltros} titulo="Filtro avançado — Contatos" />
           </div>
           <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-gray-400 text-xs font-bold uppercase border-b border-gray-700">
                 <th className="px-5 py-3 text-left">Nome</th>
-                <th className="px-5 py-3 text-left">Empresa</th>
-                <th className="px-5 py-3 text-left">Cargo</th>
+                <th className="px-5 py-3 text-left">
+                  <CabecalhoFiltro label="Empresa" valor={filtros.empresa?.length === 1 ? filtros.empresa[0] : ''}
+                    opcoes={opcoesEmpresa} onChange={x => setFiltros(p => ({ ...p, empresa: x ? [x] : [] }))} />
+                </th>
+                <th className="px-5 py-3 text-left">
+                  <CabecalhoFiltro label="Cargo" valor={filtros.cargo?.length === 1 ? filtros.cargo[0] : ''}
+                    opcoes={opcoesCargo} onChange={x => setFiltros(p => ({ ...p, cargo: x ? [x] : [] }))} />
+                </th>
                 <th className="px-5 py-3 text-left">Contato</th>
                 <th className="px-5 py-3 text-left">Aniversário</th>
                 <th className="px-5 py-3 text-center">Ações</th>

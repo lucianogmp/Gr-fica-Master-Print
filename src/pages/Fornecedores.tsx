@@ -1,5 +1,5 @@
 // src/pages/Fornecedores.tsx
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useFornecedores } from '../hooks/useFornecedores';
 import { Fornecedor, CATEGORIA_FORNECEDOR_OPCOES } from '../types/fornecedor';
 import { TableSkeleton } from '../components/ui/Skeleton';
@@ -8,6 +8,10 @@ import { buscarCNPJ, buscarCEP, formatarCEP, apenasNumeros } from '../utils/cnpj
 import toast from 'react-hot-toast';
 import { Truck, Plus, X, AlertCircle, Phone, Mail, MapPin, Search, Loader2, Pencil, PackageSearch } from 'lucide-react';
 import { correspondeABuscaEmCampos } from '../lib/buscaFlexivel';
+import { BarraLista } from '../components/ui/BarraLista';
+import { CampoFiltro, FiltroValor, passaPeriodo, passaMulti, passaSimNao } from '../components/ui/FiltroModal';
+import { CabecalhoFiltro } from '../components/ui/CabecalhoFiltro';
+import { aplicarOrdenacao, Ordenacao } from '../components/ui/OrdenarMenu';
 import { useRolarAoAbrir } from '../hooks/useRolarAoAbrir';
 
 const NOVO: Omit<Fornecedor, 'id' | 'created_at' | 'updated_at' | 'ativo'> = {
@@ -31,9 +35,49 @@ export function Fornecedores() {
   const [buscandoCnpj, setBuscandoCnpj] = useState(false);
   const [buscandoCep, setBuscandoCep] = useState(false);
 
-  const filtrados = fornecedores?.filter(f =>
-    correspondeABuscaEmCampos([f.nome, f.email, f.telefone, f.categoria, ...(f.categorias ?? [])], busca)
-  );
+  const [ordenacao, setOrdenacao] = useState<Ordenacao | null>(null);
+  const [filtros, setFiltros] = useState<FiltroValor>({});
+  const camposFiltro = useMemo<CampoFiltro[]>(() => {
+    const uniq = (arr: (string | null | undefined)[]) =>
+      Array.from(new Set(arr.map(x => (x ?? '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR')).map(x => ({ value: x, label: x }));
+    const lista = fornecedores ?? [];
+    const cats = Array.from(new Set([...CATEGORIA_FORNECEDOR_OPCOES, ...lista.flatMap(f => f.categorias ?? [])])).map(x => ({ value: x, label: x }));
+    return [
+      { tipo: 'periodo', chave: 'periodo', label: 'Cadastrado em' },
+      { tipo: 'busca', chave: 'busca', label: 'Busca (nome, CPF/CNPJ, e-mail, telefone)', placeholder: 'Nome, documento, contato...' },
+      { tipo: 'busca', chave: 'obs', label: 'Buscar nas observações', placeholder: 'Texto das observações' },
+      { tipo: 'multi', chave: 'categoria', label: 'Tipo de material / categoria', opcoes: cats, largo: true },
+      { tipo: 'multi', chave: 'estado', label: 'Estado', opcoes: uniq(lista.map(f => f.estado)) },
+      { tipo: 'multi', chave: 'cidade', label: 'Cidade', opcoes: uniq(lista.map(f => f.cidade)) },
+      { tipo: 'simnao', chave: 'ativo', label: 'Ativo' },
+      { tipo: 'simnao', chave: 'telefone', label: 'Tem telefone' },
+      { tipo: 'simnao', chave: 'email', label: 'Tem e-mail' },
+      { tipo: 'simnao', chave: 'documento', label: 'Tem CPF/CNPJ' },
+      { tipo: 'simnao', chave: 'semCategoria', label: 'Sem categoria' },
+    ];
+  }, [fornecedores]);
+  const filtrados = useMemo(() => {
+    const f = filtros;
+    const bm = String(f.busca ?? '').trim();
+    const obs = String(f.obs ?? '').trim().toLowerCase();
+    const cats = (x: Fornecedor) => (x.categorias?.length ? x.categorias : (x.categoria ? x.categoria.split(',').map(t => t.trim()).filter(Boolean) : []));
+    const lista = (fornecedores ?? [])
+      .filter(x => correspondeABuscaEmCampos([x.nome, x.email, x.telefone, x.categoria, ...(x.categorias ?? [])], busca))
+      .filter(x => passaPeriodo(f.periodo, x.created_at))
+      .filter(x => !bm || correspondeABuscaEmCampos([x.nome, x.nome_fantasia, x.razao_social, x.email, x.telefone, x.cpf_cnpj], bm))
+      .filter(x => !obs || (x.observacoes ?? '').toLowerCase().includes(obs))
+      .filter(x => passaMulti(f.categoria, cats(x)))
+      .filter(x => passaMulti(f.estado, x.estado ?? ''))
+      .filter(x => passaMulti(f.cidade, x.cidade ?? ''))
+      .filter(x => passaSimNao(f.ativo, x.ativo !== false))
+      .filter(x => passaSimNao(f.telefone, !!x.telefone))
+      .filter(x => passaSimNao(f.email, !!x.email))
+      .filter(x => passaSimNao(f.documento, !!x.cpf_cnpj))
+      .filter(x => passaSimNao(f.semCategoria, cats(x).length === 0));
+    return aplicarOrdenacao(lista, ordenacao, { nome: x => x.nome, cidade: x => x.cidade, cadastro: x => x.created_at });
+  }, [fornecedores, busca, filtros, ordenacao]);
+  const opcoesCat = (camposFiltro.find(c => c.chave === 'categoria') as any)?.opcoes ?? [];
+  const opcoesEstado = (camposFiltro.find(c => c.chave === 'estado') as any)?.opcoes ?? [];
 
   async function handleSalvar(e: React.FormEvent) {
     e.preventDefault();
@@ -286,23 +330,30 @@ export function Fornecedores() {
         )}
 
         <div className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">
-          <div className="p-4 border-b border-gray-700">
-            <input
-              type="text"
-              placeholder="Buscar por nome, email, telefone ou categoria..."
-              value={busca}
-              onChange={e => setBusca(e.target.value)}
-              className="w-full bg-[#111827] border border-gray-700 rounded-lg px-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500"
-            />
+          <div className="p-3 border-b border-gray-700">
+            <BarraLista busca={busca} onBusca={setBusca} placeholder="Buscar por nome, email, telefone ou categoria..."
+              camposOrdem={[
+                { key: 'nome', label: 'Nome', labelAsc: 'A → Z', labelDesc: 'Z → A' },
+                { key: 'cidade', label: 'Cidade', labelAsc: 'A → Z', labelDesc: 'Z → A' },
+                { key: 'cadastro', label: 'Cadastro', labelAsc: 'Mais antigo primeiro', labelDesc: 'Mais recente primeiro' },
+              ]}
+              ordenacao={ordenacao} onOrdenar={setOrdenacao}
+              camposFiltro={camposFiltro} filtros={filtros} onFiltros={setFiltros} titulo="Filtro avançado — Fornecedores" />
           </div>
           <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-gray-400 text-xs font-bold uppercase border-b border-gray-700">
                 <th className="px-5 py-3 text-left">Nome</th>
-                <th className="px-5 py-3 text-left">Categoria</th>
+                <th className="px-5 py-3 text-left">
+                  <CabecalhoFiltro label="Categoria" valor={filtros.categoria?.length === 1 ? filtros.categoria[0] : ''}
+                    opcoes={opcoesCat} onChange={x => setFiltros(p => ({ ...p, categoria: x ? [x] : [] }))} />
+                </th>
                 <th className="px-5 py-3 text-left">Contato</th>
-                <th className="px-5 py-3 text-left">Localização</th>
+                <th className="px-5 py-3 text-left">
+                  <CabecalhoFiltro label="Localização" valor={filtros.estado?.length === 1 ? filtros.estado[0] : ''}
+                    opcoes={opcoesEstado} onChange={x => setFiltros(p => ({ ...p, estado: x ? [x] : [] }))} />
+                </th>
                 <th className="px-5 py-3 text-left">CPF/CNPJ</th>
                 <th className="px-5 py-3 text-left"></th>
               </tr>
