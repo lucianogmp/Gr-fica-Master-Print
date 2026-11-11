@@ -152,13 +152,13 @@ export function FiltroModal({ campos, valor, onChange, titulo = 'Filtro avançad
       </button>
 
       {aberto && createPortal(
-        <div className="fixed inset-0 z-[9998] flex items-start justify-center p-4 overflow-y-auto bg-black/60" onMouseDown={e => { if (e.target === e.currentTarget) setAberto(false); }}>
-          <div className="w-full max-w-3xl my-6 bg-[#1f2937] border border-gray-700 rounded-xl shadow-2xl">
-            <div className="flex items-center justify-between px-4 py-3 bg-blue-600 rounded-t-xl">
-              <h3 className="text-sm font-black text-white">{titulo}</h3>
-              <button onClick={() => setAberto(false)} className="text-white/80 hover:text-white"><X className="w-4 h-4" /></button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onMouseDown={e => { if (e.target === e.currentTarget) setAberto(false); }}>
+          <div className="w-full max-w-3xl max-h-[90vh] flex flex-col bg-[#1f2937] border border-gray-700 rounded-2xl shadow-2xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700 flex-shrink-0">
+              <h3 className="font-bold text-white text-base">{titulo}</h3>
+              <button onClick={() => setAberto(false)} className="text-gray-400 hover:text-white w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-700 transition-all"><X className="w-4 h-4" /></button>
             </div>
-            <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
+            <div className="flex-1 overflow-y-auto px-6 py-5 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 content-start">
               {campos.map(c => {
                 const v = rascunho[c.chave];
                 const largo = (c.tipo === 'multi' || c.tipo === 'periodo') && c.largo;
@@ -229,7 +229,7 @@ export function FiltroModal({ campos, valor, onChange, titulo = 'Filtro avançad
                 );
               })}
             </div>
-            <div className="flex items-center justify-between gap-2 px-4 py-3 border-t border-gray-700">
+            <div className="flex items-center justify-between gap-2 px-6 py-4 border-t border-gray-700 flex-shrink-0">
               <button onClick={limpar} className="text-xs font-bold text-gray-400 hover:text-white px-3 py-2">Limpar tudo</button>
               <div className="flex gap-2">
                 <button onClick={() => setAberto(false)} className="text-xs font-bold text-gray-300 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg">Voltar</button>

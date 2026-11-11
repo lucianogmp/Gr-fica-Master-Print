@@ -561,8 +561,8 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
         const contasDaForma = contasCompativeis.filter(c => (c.formas_aceitas ?? []).includes(formaPag));
         const opcoesConta = contasDaForma.length > 0 ? contasDaForma : contasCompativeis;
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-            <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5 w-full max-w-sm space-y-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+            <div className="bg-[#1f2937] border border-gray-700 rounded-2xl shadow-2xl p-5 w-full max-w-sm space-y-4">
               <p className="text-sm font-bold text-white flex items-center gap-2">
                 <Landmark className="w-4 h-4 text-green-400" />
                 {pagandoLanc.tipo === 'receita' ? 'Confirmar recebimento' : 'Confirmar pagamento'}

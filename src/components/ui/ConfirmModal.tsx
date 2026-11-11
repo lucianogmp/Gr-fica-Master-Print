@@ -45,7 +45,7 @@ export function useConfirm() {
     if (!state.aberto) return null;
     return (
       <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-        <div className="bg-[#1a2332] border border-gray-700 rounded-2xl shadow-2xl w-full max-w-sm animate-fade-in">
+        <div className="bg-[#1f2937] border border-gray-700 rounded-2xl shadow-2xl w-full max-w-sm animate-fade-in">
           {/* Header */}
           <div className="flex items-center gap-3 px-6 pt-6 pb-4 border-b border-gray-700/60">
             <div className="w-9 h-9 rounded-xl bg-red-500/15 border border-red-500/30 flex items-center justify-center flex-shrink-0">

@@ -321,7 +321,7 @@ export function FluxoCaixa() {
       {/* ── Modal transferência entre contas ── */}
       {showTransfModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-[#1f2937] border border-gray-700 rounded-2xl p-6 w-full max-w-md space-y-4">
+          <div className="bg-[#1f2937] border border-gray-700 rounded-2xl shadow-2xl p-6 w-full max-w-md space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-black text-white flex items-center gap-2">
                 <ArrowLeftRight className="w-5 h-5 text-blue-400" /> Transferência entre contas

@@ -421,7 +421,7 @@ export function ItensEditor({ itens, onChange, onEditarProduto, onCriarProduto }
       </div>
 
       {abrirM2 && createPortal(
-        <div className="fixed inset-0 z-[9990] bg-black/70 flex items-start justify-center overflow-y-auto p-4"
+        <div className="fixed inset-0 z-[9990] bg-black/60 backdrop-blur-sm flex items-start justify-center overflow-y-auto p-4"
              onMouseDown={e => { if (e.target === e.currentTarget) setAbrirM2(false); }}>
           <div className="w-full max-w-2xl my-6">
             <div className="flex items-center justify-between mb-2">

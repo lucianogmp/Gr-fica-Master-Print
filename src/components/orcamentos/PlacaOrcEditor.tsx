@@ -632,8 +632,8 @@ export function PlacaOrcEditor({ editando, onAdicionar, onCancelar, mostrarCusto
       </div>
 
       {verCalculo && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50" onClick={() => setVerCalculo(false)}>
-          <div className="bg-[#1a2332] border border-gray-700 rounded-xl p-5 max-w-md w-full max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50" onClick={() => setVerCalculo(false)}>
+          <div className="bg-[#1f2937] border border-gray-700 rounded-2xl shadow-2xl p-5 max-w-md w-full max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-sm font-semibold text-white">Cálculo detalhado</h3>
               <button onClick={() => setVerCalculo(false)} className="text-gray-500 hover:text-white"><X size={18} /></button>
