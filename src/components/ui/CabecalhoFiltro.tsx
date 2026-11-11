@@ -45,13 +45,14 @@ export function CabecalhoFiltro({ label, valor, opcoes, onChange, align = 'left'
       </button>
       {aberto && rect && createPortal(
         <div ref={listaRef} className="floating-panel"
-          style={{ position: 'fixed', top: rect.bottom + 4, left: Math.min(rect.left, window.innerWidth - 220), minWidth: 180, maxHeight: 300, overflowY: 'auto', zIndex: 99999 }}>
+          style={{ position: 'fixed', top: rect.bottom + 4, left: Math.max(8, Math.min(rect.left, window.innerWidth - 240)), width: 'max-content', minWidth: 170, maxWidth: 260, maxHeight: 280, overflowY: 'auto', zIndex: 99999, padding: 4 }}>
           {[{ value: '', label: 'Todas' }, ...opcoes].map(o => (
             <button key={o.value || 'todas'} type="button"
               onMouseDown={e => { e.preventDefault(); onChange(o.value); setAberto(false); }}
-              className={`w-full text-left px-3 py-2 text-xs normal-case font-semibold border-b border-gray-700/50 last:border-0 transition-colors ${
-                o.value === valor ? 'bg-blue-900/40 text-blue-300' : 'text-white hover:bg-blue-900/20'}`}>
+              className={`w-full flex items-center justify-between gap-3 text-left px-2.5 py-1.5 rounded-md text-xs normal-case font-semibold whitespace-nowrap transition-colors ${
+                o.value === valor ? 'bg-blue-600/25 text-blue-300' : 'text-gray-200 hover:bg-white/10'}`}>
               {o.label}
+              {o.value === valor && <span className="text-blue-400">✓</span>}
             </button>
           ))}
         </div>,

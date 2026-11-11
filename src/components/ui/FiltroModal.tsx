@@ -10,6 +10,7 @@ import { createPortal } from 'react-dom';
 import { Filter, X, Search } from 'lucide-react';
 import { DateInput } from './DateInput';
 import { MoneyInput } from './MoneyInput';
+import { DarkSelect } from './DarkSelect';
 
 export type Opcao = { value: string; label: string };
 
@@ -169,16 +170,12 @@ export function FiltroModal({ campos, valor, onChange, titulo = 'Filtro avançad
                     <div key={c.chave} className={`sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2`}>
                       <div>
                         <label className={LBL}>{c.label}</label>
-                        <select value={p.preset ?? ''} onChange={e => set(c.chave, { ...p, preset: e.target.value })} className={IN}>
-                          {PRESETS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                        </select>
+                        <DarkSelect size="sm" value={p.preset ?? ''} onChange={x => set(c.chave, { ...p, preset: x })} options={PRESETS} />
                       </div>
                       {c.datas && c.datas.length > 1 ? (
                         <div>
                           <label className={LBL}>Data usada</label>
-                          <select value={p.usar ?? c.datas[0].value} onChange={e => set(c.chave, { ...p, usar: e.target.value })} className={IN}>
-                            {c.datas.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                          </select>
+                          <DarkSelect size="sm" value={p.usar ?? c.datas[0].value} onChange={x => set(c.chave, { ...p, usar: x })} options={c.datas} />
                         </div>
                       ) : <div />}
                       {p.preset === 'custom' && (
