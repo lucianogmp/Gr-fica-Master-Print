@@ -1,6 +1,7 @@
 // src/pages/Financeiro/TabelaLancamentos.tsx
 // Tabela reutilizável de lançamentos com filtros, KPIs e ações.
 // Usada por: Lancamentos.tsx (todos), ContasReceber.tsx (receitas), ContasPagar.tsx (despesas)
+import { usePersistente } from '../../hooks/usePersistente';
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -206,10 +207,10 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
   const [editandoLanc, setEditandoLanc] = useState<Lancamento | null>(null);
   const [tipoInicial, setTipoInicial]   = useState<'receita' | 'despesa'>(fixarTipo ?? 'despesa');
   const [filtroStatus, setFiltroStatus] = useState<FiltroStatus>('todos');
-  const [busca, setBusca]               = useState('');
+  const [busca, setBusca] = usePersistente('busca', '');
   const [mesLanc, setMesLanc]           = useState(() => new Date().toISOString().slice(0, 7));
   const [ordenacao, setOrdenacao] = useState<Ordenacao | null>(null);
-  const [filtrosAv, setFiltrosAv] = useState<FiltroValor>({});
+  const [filtrosAv, setFiltrosAv] = usePersistente<FiltroValor>('filtros', {});
   const [filtroContaId, setFiltroContaId] = useState('');
   const [filtroCategoria, setFiltroCategoria] = useState('');
   const [filtroForma, setFiltroForma] = useState('');

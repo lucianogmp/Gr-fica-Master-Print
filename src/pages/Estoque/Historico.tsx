@@ -1,4 +1,5 @@
 // src/pages/Estoque/Historico.tsx
+import { usePersistente } from '../../hooks/usePersistente';
 import { useState, useMemo } from 'react';
 import { useMovimentos } from '../../hooks/useEstoque';
 import { History, ArrowUp, ArrowDown } from 'lucide-react';
@@ -10,11 +11,11 @@ import { aplicarOrdenacao, Ordenacao } from '../../components/ui/OrdenarMenu';
 
 export function Historico() {
   const { data: movimentos = [], isLoading } = useMovimentos();
-  const [filtro, setFiltro] = useState('');
+  const [filtro, setFiltro] = usePersistente('busca', '');
   const [filtroTipo, setFiltroTipo] = useState<'todos' | 'entrada' | 'saida'>('todos');
 
   const [ordenacao, setOrdenacao] = useState<Ordenacao | null>(null);
-  const [filtros, setFiltros] = useState<FiltroValor>({});
+  const [filtros, setFiltros] = usePersistente<FiltroValor>('filtros', {});
   const camposFiltro = useMemo<CampoFiltro[]>(() => {
     const uniq = (arr: (string | null | undefined)[]) =>
       Array.from(new Set(arr.map(x => (x ?? '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR')).map(x => ({ value: x, label: x }));

@@ -1,4 +1,5 @@
 // src/pages/Produtos/TabelaPrecos.tsx
+import { usePersistente } from '../../hooks/usePersistente';
 import { useState, useMemo } from 'react';
 import { useProdutos } from '../../hooks/useProdutos';
 import { BarraLista } from '../../components/ui/BarraLista';
@@ -19,9 +20,9 @@ export function TabelaPrecos() {
   const { data: categorias = [] } = useCategorias();
   const { data: cfg } = useConfiguracoes();
   const ativosBase = produtos.filter(p => p.status === 'ativo');
-  const [busca, setBusca] = useState('');
+  const [busca, setBusca] = usePersistente('busca', '');
   const [ordenacao, setOrdenacao] = useState<Ordenacao | null>(null);
-  const [filtros, setFiltros] = useState<FiltroValor>({});
+  const [filtros, setFiltros] = usePersistente<FiltroValor>('filtros', {});
   const camposFiltro = useMemo<CampoFiltro[]>(() => [
     { tipo: 'busca', chave: 'busca', label: 'Busca (nome, SKU, descrição)', placeholder: 'Nome, SKU...' },
     { tipo: 'faixa', chave: 'preco', label: 'Preço de venda' },

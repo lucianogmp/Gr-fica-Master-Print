@@ -1,3 +1,4 @@
+import { usePersistente } from '../hooks/usePersistente';
 import { AutoTextarea } from '../components/ui/AutoTextarea';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { ModalMP } from '../components/estoque/ModalMP';
@@ -291,7 +292,7 @@ export function Produtos() {
   const [maquinasTempo, setMaquinasTempo] = useState<Record<string, number>>({});
   const [bom, setBom]           = useState<BomItem[]>([]);
   const [bomLoading, setBomLoading] = useState(false);
-  const [busca, setBusca]       = useState('');
+  const [busca, setBusca] = usePersistente('busca', '');
   const [modalCat, setModalCat] = useState(false);
   const [modalMP, setModalMP]   = useState(false);
   const { criar: criarMateriaPrima } = useMateriasPrimas();
@@ -528,7 +529,7 @@ export function Produtos() {
   }
 
   const [ordenacao, setOrdenacao] = useState<Ordenacao | null>(null);
-  const [filtros, setFiltros] = useState<FiltroValor>({});
+  const [filtros, setFiltros] = usePersistente<FiltroValor>('filtros', {});
   const camposFiltro = useMemo<CampoFiltro[]>(() => {
     const uniq = (arr: (string | null | undefined)[]) =>
       Array.from(new Set(arr.map(x => (x ?? '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR')).map(x => ({ value: x, label: x }));

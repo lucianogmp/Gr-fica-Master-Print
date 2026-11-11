@@ -1,4 +1,5 @@
 // src/pages/Financeiro/FluxoCaixa.tsx
+import { usePersistente } from '../../hooks/usePersistente';
 import { useState, useMemo, Fragment } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCaixaMovimentos, CaixaMovimento } from '../../hooks/useCaixaMovimentos';
@@ -63,8 +64,8 @@ export function FluxoCaixa() {
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const [showTransfModal, setShowTransfModal] = useState(false);
   const [transf, setTransf] = useState({ origemId: '', destinoId: '', valor: 0, data: new Date().toISOString().split('T')[0], observacoes: '' });
-  const [busca, setBusca]             = useState('');
-  const [filtros, setFiltros] = useState<FiltroValor>({});
+  const [busca, setBusca] = usePersistente('busca', '');
+  const [filtros, setFiltros] = usePersistente<FiltroValor>('filtros', {});
   const [ordenacao, setOrdenacao] = useState<Ordenacao | null>(null);
 
   function nomeDoAutor(m: CaixaMovimento) {

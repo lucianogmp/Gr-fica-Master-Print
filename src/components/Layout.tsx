@@ -1,4 +1,5 @@
 // src/components/Layout.tsx
+import { limparPersistentes } from '../hooks/usePersistente';
 import { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
@@ -297,7 +298,17 @@ export function Layout() {
     });
   }
 
+  // Trocou de tela pelo menu → zera as pesquisas lembradas. Se estava dentro de uma venda/orçamento
+  // (tela que não é item do menu) e está voltando pra lista, mantém a pesquisa daquela lista.
+  function aoTrocarDeTela(destino: string) {
+    const caminhos = new Set<string>();
+    ALL_MENU.forEach(i => { if (i.path) caminhos.add(i.path); i.children?.forEach(c => caminhos.add(c.path)); });
+    const emDetalhe = !caminhos.has(location.pathname);
+    limparPersistentes(emDetalhe ? destino : undefined);
+  }
+
   async function handleLogout() {
+    limparPersistentes();
     limparAtividade();
     await supabase.auth.signOut();
     toast.success('Até logo!');
@@ -417,7 +428,8 @@ export function Layout() {
                     to={item.path!}
                     onClick={e => {
                       if (isActive) { e.preventDefault(); return; }
-                      if (!podeSairSemSalvar()) e.preventDefault();
+                      if (!podeSairSemSalvar()) { e.preventDefault(); return; }
+                      aoTrocarDeTela(item.path!);
                     }}
                     title={collapsed ? item.label : undefined}
                     className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${collapsed ? 'md:justify-center md:px-2' : ''} ${
@@ -470,7 +482,8 @@ export function Layout() {
                           to={child.path}
                           onClick={e => {
                             if (isActive) { e.preventDefault(); return; }
-                            if (!podeSairSemSalvar()) e.preventDefault();
+                            if (!podeSairSemSalvar()) { e.preventDefault(); return; }
+                            aoTrocarDeTela(child.path);
                           }}
                           className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
                             isActive

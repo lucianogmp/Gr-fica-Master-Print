@@ -1,3 +1,4 @@
+import { usePersistente } from '../hooks/usePersistente';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { supabase } from '../lib/supabase';
@@ -118,7 +119,7 @@ export function Orcamentos() {
   const [editorSeq, setEditorSeq] = useState(0);
   const [editorContinuo, setEditorContinuo] = useState(false);
   const [filtro, setFiltro]           = useState<Filtro>('todos');
-  const [busca, setBusca]             = useState('');
+  const [busca, setBusca] = usePersistente('busca', '');
   const [posSalvar, setPosSalvar]     = useState<SnapshotOrcamento | null>(null);
 
   // Fecha sozinho o popup de "Orçamento salvo!" depois de 1 minuto parado na
@@ -639,7 +640,7 @@ export function Orcamentos() {
   const valorTotal  = orcamentos.filter(o => o.status !== 'recusado' && o.status !== 'convertido').reduce((s, o) => s + Number(o.total ?? 0), 0);
 
   const [ordenacao, setOrdenacao] = useState<Ordenacao | null>({ campo: 'data', direcao: 'desc' });
-  const [filtrosAv, setFiltrosAv] = useState<FiltroValor>({});
+  const [filtrosAv, setFiltrosAv] = usePersistente<FiltroValor>('filtros', {});
   const itensFiltro = useOrcamentosFiltroItens();
   const produtosPorOrc = useMemo(() => {
     const m = new Map<string, string>();

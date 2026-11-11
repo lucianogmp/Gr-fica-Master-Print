@@ -1,4 +1,5 @@
 // src/pages/CRM/Contatos.tsx
+import { usePersistente } from '../../hooks/usePersistente';
 import { useState, useMemo } from 'react';
 import { useContatosTodos, useContatos } from '../../hooks/useContatos';
 import { useClientes } from '../../hooks/useClientes';
@@ -26,7 +27,7 @@ export function Contatos() {
   const { data: clientes } = useClientes();
   const { confirmar, ConfirmModal } = useConfirm();
 
-  const [busca, setBusca] = useState('');
+  const [busca, setBusca] = usePersistente('busca', '');
   const [showForm, setShowForm] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null); // null = criando novo
   useRolarAoAbrir(showForm ? (editandoId ?? 'novo') : null);
@@ -38,7 +39,7 @@ export function Contatos() {
   const { deletar } = useContatos(null);
 
   const [ordenacao, setOrdenacao] = useState<Ordenacao | null>(null);
-  const [filtros, setFiltros] = useState<FiltroValor>({});
+  const [filtros, setFiltros] = usePersistente<FiltroValor>('filtros', {});
   const camposFiltro = useMemo<CampoFiltro[]>(() => {
     const uniq = (arr: (string | null | undefined)[]) =>
       Array.from(new Set(arr.map(x => (x ?? '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR')).map(x => ({ value: x, label: x }));

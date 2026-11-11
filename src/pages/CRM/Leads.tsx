@@ -1,4 +1,5 @@
 // src/pages/CRM/Leads.tsx
+import { usePersistente } from '../../hooks/usePersistente';
 import { useState, useMemo } from 'react';
 import { useLeads } from '../../hooks/useLeads';
 import { Lead, StatusLead, STATUS_LEAD } from '../../types/lead';
@@ -26,7 +27,7 @@ export function Leads() {
   const { data: leads, isLoading, error, criar, atualizarStatus, deletar, converter, isSaving, isConvertendo } = useLeads();
   const { confirmar, ConfirmModal } = useConfirm();
 
-  const [busca, setBusca] = useState('');
+  const [busca, setBusca] = usePersistente('busca', '');
   const [filtro, setFiltro] = useState<'todos' | StatusLead>('todos');
   const [showForm, setShowForm] = useState(false);
   useRolarAoAbrir(showForm);
@@ -37,7 +38,7 @@ export function Leads() {
   const leadsAtivos = useMemo(() => (leads ?? []).filter(l => !l.cliente_id), [leads]);
 
   const [ordenacao, setOrdenacao] = useState<Ordenacao | null>(null);
-  const [filtros, setFiltros] = useState<FiltroValor>({});
+  const [filtros, setFiltros] = usePersistente<FiltroValor>('filtros', {});
   const camposFiltro = useMemo<CampoFiltro[]>(() => {
     const uniq = (arr: (string | null | undefined)[]) =>
       Array.from(new Set(arr.map(x => (x ?? '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR')).map(x => ({ value: x, label: x }));

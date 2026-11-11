@@ -1,6 +1,7 @@
 // src/pages/Vendas/ListaVendas.tsx
 // Tabela de vendas reaproveitável — recebe quais status mostrar e título da página.
 // Usado por: Pedidos.tsx, Historico.tsx, EmProducao.tsx, Entregues.tsx
+import { usePersistente } from '../../hooks/usePersistente';
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useVendas, useVendaItens } from '../../hooks/useVendas';
@@ -70,12 +71,12 @@ export function ListaVendas({
   const { confirmar, ConfirmModal } = useConfirm();
   const { isVendedor } = useRole();
 
-  const [filtroExtra, setFiltroExtra] = useState<'todos' | StatusVenda>('todos');
-  const [busca, setBusca] = useState('');
+  const [filtroExtra, setFiltroExtra] = usePersistente<'todos' | StatusVenda>('aba', 'todos');
+  const [busca, setBusca] = usePersistente('busca', '');
   // Ordenação e filtros avançados — padrão do sistema (ver OrdenarMenu.tsx
   // e FiltrosAvancados.tsx), reaproveitado em todas as listas.
   const [ordenacao, setOrdenacao] = useState<Ordenacao | null>({ campo: 'data', direcao: 'desc' });
-  const [filtrosAv, setFiltrosAv] = useState<FiltroValor>({});
+  const [filtrosAv, setFiltrosAv] = usePersistente<FiltroValor>('filtros', {});
   const { itens: itensFiltro, pagamentos: pagsFiltro } = useVendasFiltroDados();
   const { data: contas = [] } = useContasBancarias();
 

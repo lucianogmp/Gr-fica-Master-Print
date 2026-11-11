@@ -1,4 +1,5 @@
 // src/pages/Fornecedores.tsx
+import { usePersistente } from '../hooks/usePersistente';
 import { useState, useMemo } from 'react';
 import { useFornecedores } from '../hooks/useFornecedores';
 import { Fornecedor, CATEGORIA_FORNECEDOR_OPCOES } from '../types/fornecedor';
@@ -27,7 +28,7 @@ const LABEL = "text-xs font-bold text-gray-400 uppercase block mb-1";
 export function Fornecedores() {
   const { data: fornecedores, isLoading, error, deleteFornecedor, createFornecedor, isCreating, updateFornecedor, isUpdating } = useFornecedores();
   const { confirmar, ConfirmModal } = useConfirm();
-  const [busca, setBusca] = useState('');
+  const [busca, setBusca] = usePersistente('busca', '');
   const [showForm, setShowForm] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
   useRolarAoAbrir(showForm ? (editandoId ?? 'novo') : null);
@@ -36,7 +37,7 @@ export function Fornecedores() {
   const [buscandoCep, setBuscandoCep] = useState(false);
 
   const [ordenacao, setOrdenacao] = useState<Ordenacao | null>(null);
-  const [filtros, setFiltros] = useState<FiltroValor>({});
+  const [filtros, setFiltros] = usePersistente<FiltroValor>('filtros', {});
   const camposFiltro = useMemo<CampoFiltro[]>(() => {
     const uniq = (arr: (string | null | undefined)[]) =>
       Array.from(new Set(arr.map(x => (x ?? '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR')).map(x => ({ value: x, label: x }));

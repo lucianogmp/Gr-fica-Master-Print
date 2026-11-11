@@ -1,4 +1,5 @@
 // src/pages/Estoque/EstoqueAtual.tsx
+import { usePersistente } from '../../hooks/usePersistente';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useMateriasPrimas, useMovimentos } from '../../hooks/useEstoque';
@@ -36,7 +37,7 @@ export function EstoqueAtual() {
   const [soAlertas, setSoAlertas] = useState(!!estadoNav.soAlertas);
   const movimentouRef = useRef(false);
 
-  const [busca, setBusca]       = useState('');
+  const [busca, setBusca] = usePersistente('busca', '');
   const [modalMP, setModalMP]   = useState(false);
   const [movTipo, setMovTipo]   = useState<'entrada' | 'saida'>('entrada');
   const [movMP, setMovMP]       = useState<MateriaPrima | null>(null);
@@ -45,7 +46,7 @@ export function EstoqueAtual() {
     mps.filter(m => ['zerado', 'baixo'].includes(statusEstoque(m).key)),
     [mps]);
   const [ordenacao, setOrdenacao] = useState<Ordenacao | null>(null);
-  const [filtros, setFiltros] = useState<FiltroValor>({});
+  const [filtros, setFiltros] = usePersistente<FiltroValor>('filtros', {});
   const camposFiltro = useMemo<CampoFiltro[]>(() => {
     const uniq = (arr: (string | null | undefined)[]) =>
       Array.from(new Set(arr.map(x => (x ?? '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR')).map(x => ({ value: x, label: x }));

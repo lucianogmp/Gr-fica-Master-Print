@@ -1,4 +1,5 @@
 // src/pages/Produtos/Servicos.tsx
+import { usePersistente } from '../../hooks/usePersistente';
 import { useState, useMemo } from 'react';
 import { useProdutos } from '../../hooks/useProdutos';
 import { BarraLista } from '../../components/ui/BarraLista';
@@ -14,9 +15,9 @@ export function Servicos() {
   const { data: produtos = [], isLoading } = useProdutos();
   // Serviços = produtos terceirizados ou da categoria "Serviço"
   const servicosBase = produtos.filter(p => p.terceirizado || (p as any).setor?.toLowerCase() === 'serviço');
-  const [busca, setBusca] = useState('');
+  const [busca, setBusca] = usePersistente('busca', '');
   const [ordenacao, setOrdenacao] = useState<Ordenacao | null>(null);
-  const [filtros, setFiltros] = useState<FiltroValor>({});
+  const [filtros, setFiltros] = usePersistente<FiltroValor>('filtros', {});
   const camposFiltro = useMemo<CampoFiltro[]>(() => [
     { tipo: 'periodo', chave: 'periodo', label: 'Cadastrado em' },
     { tipo: 'busca', chave: 'busca', label: 'Busca (nome, SKU, descrição)', placeholder: 'Nome, SKU...' },

@@ -1,4 +1,5 @@
 // src/pages/Estoque/Gerenciar.tsx
+import { usePersistente } from '../../hooks/usePersistente';
 import { useState, useMemo } from 'react';
 import { useMateriasPrimas } from '../../hooks/useEstoque';
 import { MateriaPrima, statusEstoque } from '../../types/estoque';
@@ -17,12 +18,12 @@ export function Gerenciar() {
   const { data: mps = [], isLoading, criar, atualizar, deletar } = useMateriasPrimas();
   const { confirmar, ConfirmModal } = useConfirm();
 
-  const [busca, setBusca]       = useState('');
+  const [busca, setBusca] = usePersistente('busca', '');
   const [modalMP, setModalMP]   = useState(false);
   const [editando, setEditando] = useState<MateriaPrima | null>(null);
 
   const [ordenacao, setOrdenacao] = useState<Ordenacao | null>(null);
-  const [filtros, setFiltros] = useState<FiltroValor>({});
+  const [filtros, setFiltros] = usePersistente<FiltroValor>('filtros', {});
   const camposFiltro = useMemo<CampoFiltro[]>(() => {
     const uniq = (arr: (string | null | undefined)[]) =>
       Array.from(new Set(arr.map(x => (x ?? '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR')).map(x => ({ value: x, label: x }));

@@ -3,6 +3,7 @@
 // Montado sozinho a partir do que o sistema já sabe (vendas e orçamentos) — nada de
 // registrar contato à mão. Serve pra responder: quem compra, quanto, quando foi a última
 // vez, quem está sumido (hora de chamar de volta) e o que cada cliente já fez com a gente.
+import { usePersistente } from '../../hooks/usePersistente';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useClientes } from '../../hooks/useClientes';
@@ -35,10 +36,10 @@ export function HistoricoAtendimento() {
   const { data: vendas = [], isLoading: l2 } = useVendas();
   const { data: orcamentos = [], isLoading: l3 } = useOrcamentos();
 
-  const [busca, setBusca] = useState('');
+  const [busca, setBusca] = usePersistente('busca', '');
   const [filtro, setFiltro] = useState<'' | Situacao>('');
   const [ordenacao, setOrdenacao] = useState<Ordenacao | null>({ campo: 'recente', direcao: 'desc' });
-  const [filtros, setFiltros] = useState<FiltroValor>({});
+  const [filtros, setFiltros] = usePersistente<FiltroValor>('filtros', {});
   const [aberto, setAberto] = useState<string | null>(null);
 
   const linhas = useMemo(() => {
