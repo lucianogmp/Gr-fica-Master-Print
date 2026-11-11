@@ -1,5 +1,11 @@
 // src/pages/Produtos/Servicos.tsx
+import { useState, useMemo } from 'react';
 import { useProdutos } from '../../hooks/useProdutos';
+import { BarraLista } from '../../components/ui/BarraLista';
+import { CampoFiltro, FiltroValor, passaPeriodo, passaMulti, passaFaixa } from '../../components/ui/FiltroModal';
+import { CabecalhoFiltro } from '../../components/ui/CabecalhoFiltro';
+import { aplicarOrdenacao, Ordenacao } from '../../components/ui/OrdenarMenu';
+import { correspondeABuscaEmCampos } from '../../lib/buscaFlexivel';
 import { Wrench } from 'lucide-react';
 
 const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -7,7 +13,27 @@ const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', cur
 export function Servicos() {
   const { data: produtos = [], isLoading } = useProdutos();
   // Serviços = produtos terceirizados ou da categoria "Serviço"
-  const servicos = produtos.filter(p => p.terceirizado || (p as any).setor?.toLowerCase() === 'serviço');
+  const servicosBase = produtos.filter(p => p.terceirizado || (p as any).setor?.toLowerCase() === 'serviço');
+  const [busca, setBusca] = useState('');
+  const [ordenacao, setOrdenacao] = useState<Ordenacao | null>(null);
+  const [filtros, setFiltros] = useState<FiltroValor>({});
+  const camposFiltro = useMemo<CampoFiltro[]>(() => [
+    { tipo: 'periodo', chave: 'periodo', label: 'Cadastrado em' },
+    { tipo: 'busca', chave: 'busca', label: 'Busca (nome, SKU, descrição)', placeholder: 'Nome, SKU...' },
+    { tipo: 'faixa', chave: 'preco', label: 'Preço' },
+    { tipo: 'multi', chave: 'status', label: 'Status', opcoes: [{ value: 'ativo', label: 'Ativo' }, { value: 'inativo', label: 'Inativo' }, { value: 'rascunho', label: 'Rascunho' }] },
+  ], []);
+  const servicos = useMemo(() => {
+    const f = filtros;
+    const bm = String(f.busca ?? '').trim();
+    const lista = servicosBase
+      .filter(p => correspondeABuscaEmCampos([p.nome, p.sku], busca))
+      .filter(p => passaPeriodo(f.periodo, p.created_at))
+      .filter(p => !bm || correspondeABuscaEmCampos([p.nome, p.sku, p.descricao], bm))
+      .filter(p => passaFaixa(f.preco, p.preco_venda))
+      .filter(p => passaMulti(f.status, p.status));
+    return aplicarOrdenacao(lista, ordenacao, { nome: p => p.nome, preco: p => Number(p.preco_venda), sku: p => p.sku });
+  }, [servicosBase, busca, filtros, ordenacao]);
 
   if (isLoading) return <div className="p-8 text-blue-500 animate-pulse font-bold">Carregando...</div>;
 
@@ -20,7 +46,18 @@ export function Servicos() {
         <p className="text-gray-500 text-sm">{servicos.length} serviço(s) terceirizado(s)</p>
       </div>
 
-      {servicos.length === 0 ? (
+      {servicosBase.length > 0 && (
+        <BarraLista busca={busca} onBusca={setBusca} placeholder="Buscar por nome ou SKU..."
+          camposOrdem={[
+            { key: 'nome', label: 'Nome', labelAsc: 'A → Z', labelDesc: 'Z → A' },
+            { key: 'preco', label: 'Preço', labelAsc: 'Menor primeiro', labelDesc: 'Maior primeiro' },
+            { key: 'sku', label: 'SKU', labelAsc: 'A → Z', labelDesc: 'Z → A' },
+          ]}
+          ordenacao={ordenacao} onOrdenar={setOrdenacao}
+          camposFiltro={camposFiltro} filtros={filtros} onFiltros={setFiltros} titulo="Filtro avançado — Terceirizados" />
+      )}
+
+      {servicosBase.length === 0 ? (
         <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-12 text-center space-y-3">
           <Wrench className="w-12 h-12 text-gray-700 mx-auto" />
           <p className="text-gray-400 font-bold">Nenhum serviço terceirizado cadastrado</p>
@@ -37,7 +74,10 @@ export function Servicos() {
               <tr className="text-gray-400 text-[10px] font-bold uppercase border-b border-gray-700 bg-gray-800/40">
                 <th className="px-5 py-3 text-left">Terceirizado</th>
                 <th className="px-5 py-3 text-left">SKU</th>
-                <th className="px-5 py-3 text-center">Status</th>
+                <th className="px-5 py-3 text-center">
+                  <CabecalhoFiltro label="Status" align="center" valor={filtros.status?.length === 1 ? filtros.status[0] : ''}
+                    opcoes={(camposFiltro[3] as any).opcoes} onChange={x => setFiltros(p => ({ ...p, status: x ? [x] : [] }))} />
+                </th>
                 <th className="px-5 py-3 text-right">Preço</th>
               </tr>
             </thead>

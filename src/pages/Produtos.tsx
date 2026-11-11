@@ -33,6 +33,10 @@ import {
   ClipboardList, Factory, Handshake, Briefcase, Save, X,
   Ruler, Copy,
 } from 'lucide-react';
+import { BarraLista } from '../components/ui/BarraLista';
+import { CampoFiltro, FiltroValor, passaPeriodo, passaMulti, passaFaixa, passaSimNao } from '../components/ui/FiltroModal';
+import { CabecalhoFiltro } from '../components/ui/CabecalhoFiltro';
+import { aplicarOrdenacao, Ordenacao } from '../components/ui/OrdenarMenu';
 import { useRolarAoAbrir } from '../hooks/useRolarAoAbrir';
 
 type View = 'lista' | 'detalhe' | 'acabamentos' | 'categorias';
@@ -523,9 +527,50 @@ export function Produtos() {
     } finally { setSalvandoCatLista(false); }
   }
 
-  const filtrados = useMemo(() =>
-    produtos.filter(p => correspondeABuscaEmCampos([p.nome, p.sku], busca)),
-    [produtos, busca]);
+  const [ordenacao, setOrdenacao] = useState<Ordenacao | null>(null);
+  const [filtros, setFiltros] = useState<FiltroValor>({});
+  const camposFiltro = useMemo<CampoFiltro[]>(() => {
+    const uniq = (arr: (string | null | undefined)[]) =>
+      Array.from(new Set(arr.map(x => (x ?? '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR')).map(x => ({ value: x, label: x }));
+    return [
+      { tipo: 'periodo', chave: 'periodo', label: 'Cadastrado em' },
+      { tipo: 'busca', chave: 'busca', label: 'Busca (nome, SKU, descrição)', placeholder: 'Nome, SKU...' },
+      { tipo: 'faixa', chave: 'preco', label: 'Preço de venda' },
+      { tipo: 'faixa', chave: 'prazo', label: 'Prazo de entrega (dias)' },
+      { tipo: 'multi', chave: 'status', label: 'Status', opcoes: [{ value: 'ativo', label: 'Ativo' }, { value: 'inativo', label: 'Inativo' }, { value: 'rascunho', label: 'Rascunho' }] },
+      { tipo: 'multi', chave: 'categoria', label: 'Categoria', opcoes: categorias.map(c => ({ value: c.id, label: c.nome })), largo: true },
+      { tipo: 'multi', chave: 'unidade', label: 'Unidade', opcoes: [{ value: 'unidade', label: 'Unidade (un)' }, { value: 'm2', label: 'Metro quadrado (m²)' }] },
+      { tipo: 'multi', chave: 'setor', label: 'Setor', opcoes: uniq(produtos.map(p => (p as any).setor)) },
+      { tipo: 'simnao', chave: 'terceirizado', label: 'Terceirizado' },
+      { tipo: 'simnao', chave: 'sku', label: 'Tem SKU' },
+      { tipo: 'simnao', chave: 'descricao', label: 'Tem descrição' },
+      { tipo: 'simnao', chave: 'maquina', label: 'Usa máquina cadastrada' },
+    ];
+  }, [produtos, categorias]);
+  const filtrados = useMemo(() => {
+    const f = filtros;
+    const bm = String(f.busca ?? '').trim();
+    const lista = produtos
+      .filter(p => correspondeABuscaEmCampos([p.nome, p.sku], busca))
+      .filter(p => passaPeriodo(f.periodo, p.created_at))
+      .filter(p => !bm || correspondeABuscaEmCampos([p.nome, p.sku, p.descricao], bm))
+      .filter(p => passaFaixa(f.preco, p.preco_venda))
+      .filter(p => passaFaixa(f.prazo, p.prazo_entrega_dias))
+      .filter(p => passaMulti(f.status, p.status))
+      .filter(p => passaMulti(f.categoria, p.categoria_id ?? ''))
+      .filter(p => passaMulti(f.unidade, p.unidade_medida))
+      .filter(p => passaMulti(f.setor, (p as any).setor ?? ''))
+      .filter(p => passaSimNao(f.terceirizado, !!p.terceirizado))
+      .filter(p => passaSimNao(f.sku, !!p.sku))
+      .filter(p => passaSimNao(f.descricao, !!p.descricao))
+      .filter(p => passaSimNao(f.maquina, parseMaquinas((p as any).maquina).length > 0));
+    return aplicarOrdenacao(lista, ordenacao, {
+      nome: p => p.nome, preco: p => Number(p.preco_venda), sku: p => p.sku, cadastro: p => p.created_at,
+      categoria: p => categorias.find(c => c.id === p.categoria_id)?.nome,
+    });
+  }, [produtos, busca, filtros, ordenacao, categorias]);
+  const opcoesCat = (camposFiltro.find(c => c.chave === 'categoria') as any)?.opcoes ?? [];
+  const opcoesStatus = (camposFiltro.find(c => c.chave === 'status') as any)?.opcoes ?? [];
 
   const ativos    = produtos.filter(p => p.status === 'ativo').length;
   const avgPreco  = produtos.length
@@ -747,9 +792,17 @@ export function Produtos() {
       </div>
 
       <div className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">
-        <div className="p-4 border-b border-gray-700">
-          <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar por nome ou SKU..."
-            className="w-full bg-[#111827] border border-gray-700 rounded-lg px-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500" />
+        <div className="p-3 border-b border-gray-700">
+          <BarraLista busca={busca} onBusca={setBusca} placeholder="Buscar por nome ou SKU..."
+            camposOrdem={[
+              { key: 'nome', label: 'Nome', labelAsc: 'A → Z', labelDesc: 'Z → A' },
+              { key: 'preco', label: 'Preço', labelAsc: 'Menor primeiro', labelDesc: 'Maior primeiro' },
+              { key: 'categoria', label: 'Categoria', labelAsc: 'A → Z', labelDesc: 'Z → A' },
+              { key: 'sku', label: 'SKU', labelAsc: 'A → Z', labelDesc: 'Z → A' },
+              { key: 'cadastro', label: 'Cadastro', labelAsc: 'Mais antigo primeiro', labelDesc: 'Mais recente primeiro' },
+            ]}
+            ordenacao={ordenacao} onOrdenar={setOrdenacao}
+            camposFiltro={camposFiltro} filtros={filtros} onFiltros={setFiltros} titulo="Filtro avançado — Produtos" />
         </div>
         <div className="overflow-x-auto">
         <table className="w-full text-sm">
@@ -757,11 +810,17 @@ export function Produtos() {
             <tr className="text-gray-400 text-[10px] font-bold uppercase border-b border-gray-700 bg-gray-800/40">
               <th className="px-5 py-3 text-left">Produto</th>
               <th className="px-5 py-3 text-left">SKU</th>
-              <th className="px-5 py-3 text-left">Categoria</th>
+              <th className="px-5 py-3 text-left">
+                <CabecalhoFiltro label="Categoria" valor={filtros.categoria?.length === 1 ? filtros.categoria[0] : ''}
+                  opcoes={opcoesCat} onChange={x => setFiltros(p => ({ ...p, categoria: x ? [x] : [] }))} />
+              </th>
               <th className="px-5 py-3 text-right">Preço</th>
               <th className="px-5 py-3 text-center">Unidade</th>
               <th className="px-5 py-3 text-center">Tipo</th>
-              <th className="px-5 py-3 text-center">Status</th>
+              <th className="px-5 py-3 text-center">
+                <CabecalhoFiltro label="Status" align="center" valor={filtros.status?.length === 1 ? filtros.status[0] : ''}
+                  opcoes={opcoesStatus} onChange={x => setFiltros(p => ({ ...p, status: x ? [x] : [] }))} />
+              </th>
               <th className="px-5 py-3 text-center">Ações</th>
             </tr>
           </thead>

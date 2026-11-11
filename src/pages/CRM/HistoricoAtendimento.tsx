@@ -13,6 +13,9 @@ import { History, Search, ChevronDown, ChevronRight, ShoppingBag, FileText, Exte
 import { TableSkeleton } from '../../components/ui/Skeleton';
 import { DarkSelect } from '../../components/ui/DarkSelect';
 import { correspondeABuscaEmCampos } from '../../lib/buscaFlexivel';
+import { BarraLista } from '../../components/ui/BarraLista';
+import { CampoFiltro, FiltroValor, passaMulti, passaFaixa, passaSimNao, passaPeriodo } from '../../components/ui/FiltroModal';
+import { Ordenacao } from '../../components/ui/OrdenarMenu';
 
 const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const fmtData = (d?: string | null) => d ? new Date(d.slice(0, 10) + 'T00:00:00').toLocaleDateString('pt-BR') : '—';
@@ -34,7 +37,8 @@ export function HistoricoAtendimento() {
 
   const [busca, setBusca] = useState('');
   const [filtro, setFiltro] = useState<'' | Situacao>('');
-  const [ordem, setOrdem] = useState<'recente' | 'gasto' | 'pedidos' | 'nome'>('recente');
+  const [ordenacao, setOrdenacao] = useState<Ordenacao | null>({ campo: 'recente', direcao: 'desc' });
+  const [filtros, setFiltros] = useState<FiltroValor>({});
   const [aberto, setAberto] = useState<string | null>(null);
 
   const linhas = useMemo(() => {
@@ -57,18 +61,50 @@ export function HistoricoAtendimento() {
     nunca: linhas.filter(l => l.sit === 'nunca').length,
   }), [linhas]);
 
+  const camposFiltro = useMemo<CampoFiltro[]>(() => {
+    const uniq = (arr: (string | null | undefined)[]) =>
+      Array.from(new Set(arr.map(x => (x ?? '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR')).map(x => ({ value: x, label: x }));
+    return [
+      { tipo: 'periodo', chave: 'periodo', label: 'Data da última compra' },
+      { tipo: 'busca', chave: 'busca', label: 'Busca (nome, telefone, e-mail)', placeholder: 'Nome, telefone, e-mail...' },
+      { tipo: 'faixa', chave: 'gasto', label: 'Total gasto' },
+      { tipo: 'faixa', chave: 'ticket', label: 'Ticket médio' },
+      { tipo: 'faixa', chave: 'pedidos', label: 'Quantidade de pedidos' },
+      { tipo: 'multi', chave: 'situacao', label: 'Situação', opcoes: (Object.keys(SIT) as Situacao[]).map(k => ({ value: k, label: SIT[k].label })) },
+      { tipo: 'multi', chave: 'estado', label: 'Estado', opcoes: uniq(clientes.map(c => c.estado)) },
+      { tipo: 'multi', chave: 'cidade', label: 'Cidade', opcoes: uniq(clientes.map(c => c.cidade)) },
+      { tipo: 'simnao', chave: 'orcAberto', label: 'Tem orçamento registrado' },
+      { tipo: 'simnao', chave: 'comprou', label: 'Já comprou' },
+    ];
+  }, [clientes]);
+
   const lista = useMemo(() => {
+    const fm = filtros;
+    const bm = String(fm.busca ?? '').trim();
     const f = linhas
       .filter(l => !filtro || l.sit === filtro)
-      .filter(l => correspondeABuscaEmCampos([l.c.nome, l.c.telefone, l.c.email], busca));
-    const cmp: Record<typeof ordem, (a: typeof f[0], b: typeof f[0]) => number> = {
-      recente: (a, b) => (b.ultima ?? '').localeCompare(a.ultima ?? ''),
-      gasto:   (a, b) => b.total - a.total,
-      pedidos: (a, b) => b.vs.length - a.vs.length,
+      .filter(l => correspondeABuscaEmCampos([l.c.nome, l.c.telefone, l.c.email], busca))
+      .filter(l => !bm || correspondeABuscaEmCampos([l.c.nome, l.c.telefone, l.c.email], bm))
+      .filter(l => passaPeriodo(fm.periodo, l.ultima))
+      .filter(l => passaFaixa(fm.gasto, l.total))
+      .filter(l => passaFaixa(fm.ticket, l.ticket))
+      .filter(l => passaFaixa(fm.pedidos, l.vs.length))
+      .filter(l => passaMulti(fm.situacao, l.sit))
+      .filter(l => passaMulti(fm.estado, l.c.estado ?? ''))
+      .filter(l => passaMulti(fm.cidade, l.c.cidade ?? ''))
+      .filter(l => passaSimNao(fm.orcAberto, l.os.length > 0))
+      .filter(l => passaSimNao(fm.comprou, l.vs.length > 0));
+    const ord = ordenacao ?? { campo: 'recente', direcao: 'desc' as const };
+    const sinal = ord.direcao === 'asc' ? 1 : -1;
+    const cmp: Record<string, (a: typeof f[0], b: typeof f[0]) => number> = {
+      recente: (a, b) => (a.ultima ?? '').localeCompare(b.ultima ?? ''),
+      gasto:   (a, b) => a.total - b.total,
+      pedidos: (a, b) => a.vs.length - b.vs.length,
+      ticket:  (a, b) => a.ticket - b.ticket,
       nome:    (a, b) => a.c.nome.localeCompare(b.c.nome, 'pt-BR'),
     };
-    return [...f].sort(cmp[ordem]);
-  }, [linhas, filtro, busca, ordem]);
+    return [...f].sort((a, b) => sinal * (cmp[ord.campo] ?? cmp.recente)(a, b));
+  }, [linhas, filtro, busca, ordenacao, filtros]);
 
   if (l1 || l2 || l3) return <div className="p-6"><TableSkeleton rows={8} cols={6} /></div>;
 
@@ -94,18 +130,16 @@ export function HistoricoAtendimento() {
         ))}
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="flex-1 flex items-center gap-2 bg-[#1f2937] border border-gray-700 rounded-xl px-3 py-2 focus-within:border-blue-500">
-          <Search className="w-4 h-4 text-gray-500" />
-          <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar cliente por nome, telefone ou e-mail"
-            className="flex-1 bg-transparent text-white text-sm placeholder-gray-600 focus:outline-none" />
-        </div>
-        <div className="w-full sm:w-56">
-          <DarkSelect value={ordem} onChange={v => setOrdem(v as typeof ordem)}
-            options={[{ value: 'recente', label: 'Última compra' }, { value: 'gasto', label: 'Mais gastou' },
-              { value: 'pedidos', label: 'Mais pedidos' }, { value: 'nome', label: 'Nome (A → Z)' }]} />
-        </div>
-      </div>
+      <BarraLista busca={busca} onBusca={setBusca} placeholder="Buscar cliente por nome, telefone ou e-mail"
+        camposOrdem={[
+          { key: 'recente', label: 'Última compra', labelAsc: 'Mais antiga primeiro', labelDesc: 'Mais recente primeiro' },
+          { key: 'gasto', label: 'Total gasto', labelAsc: 'Menos gastou', labelDesc: 'Mais gastou' },
+          { key: 'pedidos', label: 'Pedidos', labelAsc: 'Menos pedidos', labelDesc: 'Mais pedidos' },
+          { key: 'ticket', label: 'Ticket médio', labelAsc: 'Menor primeiro', labelDesc: 'Maior primeiro' },
+          { key: 'nome', label: 'Nome', labelAsc: 'A → Z', labelDesc: 'Z → A' },
+        ]}
+        ordenacao={ordenacao} onOrdenar={setOrdenacao}
+        camposFiltro={camposFiltro} filtros={filtros} onFiltros={setFiltros} titulo="Filtro avançado — Histórico de clientes" />
 
       <div className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">
         <div className="overflow-x-auto">

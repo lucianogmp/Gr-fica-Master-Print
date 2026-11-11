@@ -1,5 +1,11 @@
 // src/pages/Produtos/TabelaPrecos.tsx
+import { useState, useMemo } from 'react';
 import { useProdutos } from '../../hooks/useProdutos';
+import { BarraLista } from '../../components/ui/BarraLista';
+import { CampoFiltro, FiltroValor, passaPeriodo, passaMulti, passaFaixa, passaSimNao } from '../../components/ui/FiltroModal';
+import { CabecalhoFiltro } from '../../components/ui/CabecalhoFiltro';
+import { aplicarOrdenacao, Ordenacao } from '../../components/ui/OrdenarMenu';
+import { correspondeABuscaEmCampos } from '../../lib/buscaFlexivel';
 import { useCategorias } from '../../hooks/useCategorias';
 import { useConfiguracoes } from '../../hooks/useConfiguracoes';
 import { DollarSign, Printer } from 'lucide-react';
@@ -12,7 +18,31 @@ export function TabelaPrecos() {
   const { data: produtos = [], isLoading } = useProdutos();
   const { data: categorias = [] } = useCategorias();
   const { data: cfg } = useConfiguracoes();
-  const ativos = produtos.filter(p => p.status === 'ativo');
+  const ativosBase = produtos.filter(p => p.status === 'ativo');
+  const [busca, setBusca] = useState('');
+  const [ordenacao, setOrdenacao] = useState<Ordenacao | null>(null);
+  const [filtros, setFiltros] = useState<FiltroValor>({});
+  const camposFiltro = useMemo<CampoFiltro[]>(() => [
+    { tipo: 'busca', chave: 'busca', label: 'Busca (nome, SKU, descrição)', placeholder: 'Nome, SKU...' },
+    { tipo: 'faixa', chave: 'preco', label: 'Preço de venda' },
+    { tipo: 'multi', chave: 'categoria', label: 'Categoria', opcoes: categorias.map(c => ({ value: c.id, label: c.nome })), largo: true },
+    { tipo: 'multi', chave: 'unidade', label: 'Unidade', opcoes: [{ value: 'unidade', label: 'Unidade (un)' }, { value: 'm2', label: 'Metro quadrado (m²)' }] },
+    { tipo: 'simnao', chave: 'terceirizado', label: 'Terceirizado' },
+    { tipo: 'simnao', chave: 'sku', label: 'Tem SKU' },
+  ], [categorias]);
+  const ativos = useMemo(() => {
+    const f = filtros;
+    const bm = String(f.busca ?? '').trim();
+    const lista = ativosBase
+      .filter(p => correspondeABuscaEmCampos([p.nome, p.sku], busca))
+      .filter(p => !bm || correspondeABuscaEmCampos([p.nome, p.sku, p.descricao], bm))
+      .filter(p => passaFaixa(f.preco, p.preco_venda))
+      .filter(p => passaMulti(f.categoria, p.categoria_id ?? ''))
+      .filter(p => passaMulti(f.unidade, p.unidade_medida))
+      .filter(p => passaSimNao(f.terceirizado, !!p.terceirizado))
+      .filter(p => passaSimNao(f.sku, !!p.sku));
+    return aplicarOrdenacao(lista, ordenacao, { nome: p => p.nome, preco: p => Number(p.preco_venda), sku: p => p.sku });
+  }, [ativosBase, busca, filtros, ordenacao]);
 
   function handleImprimirCatalogo() {
     const categoriaPorId = new Map(categorias.map(c => [c.id, c.nome]));
@@ -49,6 +79,15 @@ export function TabelaPrecos() {
         </button>
       </div>
 
+      <BarraLista busca={busca} onBusca={setBusca} placeholder="Buscar por nome ou SKU..."
+        camposOrdem={[
+          { key: 'nome', label: 'Nome', labelAsc: 'A → Z', labelDesc: 'Z → A' },
+          { key: 'preco', label: 'Preço', labelAsc: 'Menor primeiro', labelDesc: 'Maior primeiro' },
+          { key: 'sku', label: 'SKU', labelAsc: 'A → Z', labelDesc: 'Z → A' },
+        ]}
+        ordenacao={ordenacao} onOrdenar={setOrdenacao}
+        camposFiltro={camposFiltro} filtros={filtros} onFiltros={setFiltros} titulo="Filtro avançado — Tabela de Preços" />
+
       <div className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
         <table className="w-full text-sm">
@@ -56,7 +95,10 @@ export function TabelaPrecos() {
             <tr className="text-gray-400 text-[10px] font-bold uppercase border-b border-gray-700 bg-gray-800/40">
               <th className="px-5 py-3 text-left">Produto</th>
               <th className="px-5 py-3 text-left">SKU</th>
-              <th className="px-5 py-3 text-center">Unidade</th>
+              <th className="px-5 py-3 text-center">
+                <CabecalhoFiltro label="Unidade" align="center" valor={filtros.unidade?.length === 1 ? filtros.unidade[0] : ''}
+                  opcoes={(camposFiltro[3] as any).opcoes} onChange={x => setFiltros(p => ({ ...p, unidade: x ? [x] : [] }))} />
+              </th>
               <th className="px-5 py-3 text-right">Preço de Venda</th>
             </tr>
           </thead>
