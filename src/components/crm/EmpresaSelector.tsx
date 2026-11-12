@@ -4,6 +4,7 @@
 // empresa nova na hora, sem sair da tela. Usado no cadastro de cliente e no de contato.
 
 import { useState, useRef, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Building2, Plus, X, Loader2 } from 'lucide-react';
@@ -28,16 +29,30 @@ export function EmpresaSelector({ value, onChange, excluirId, placeholder = 'Bus
   const [aberto, setAberto] = useState(false);
   const [criando, setCriando] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const listaRef = useRef<HTMLDivElement>(null);
+  const [rect, setRect] = useState<DOMRect | null>(null);
 
   const atual = clientes.find(c => c.id === value);
 
   useEffect(() => {
     function fora(e: MouseEvent) {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setAberto(false);
+      const alvo = e.target as Node;
+      if (wrapRef.current?.contains(alvo) || listaRef.current?.contains(alvo)) return;
+      setAberto(false);
     }
     document.addEventListener('mousedown', fora);
     return () => document.removeEventListener('mousedown', fora);
   }, []);
+
+  function atualizarRect() { if (inputRef.current) setRect(inputRef.current.getBoundingClientRect()); }
+  useEffect(() => {
+    if (!aberto) return;
+    atualizarRect();
+    window.addEventListener('scroll', atualizarRect, true);
+    window.addEventListener('resize', atualizarRect);
+    return () => { window.removeEventListener('scroll', atualizarRect, true); window.removeEventListener('resize', atualizarRect); };
+  }, [aberto, texto]);
 
   const opcoes = useMemo(() =>
     clientes
@@ -80,10 +95,12 @@ export function EmpresaSelector({ value, onChange, excluirId, placeholder = 'Bus
 
   return (
     <div ref={wrapRef} className="relative">
-      <input value={texto} onChange={e => { setTexto(e.target.value); setAberto(true); }} onFocus={() => setAberto(true)}
+      <input ref={inputRef} value={texto} onChange={e => { setTexto(e.target.value); setAberto(true); }} onFocus={() => { atualizarRect(); setAberto(true); }}
         placeholder={placeholder} className={IN} />
-      {aberto && (
-        <div className="absolute z-30 left-0 right-0 mt-1 bg-[#1f2937] border border-gray-700 rounded-lg shadow-2xl overflow-hidden max-h-64 overflow-y-auto">
+      {aberto && rect && createPortal(
+        // Portal + floating-panel: fundo 100% opaco por cima de qualquer campo do formulário
+        <div ref={listaRef} className="floating-panel"
+          style={{ position: 'fixed', top: rect.bottom + 4, left: rect.left, width: rect.width, zIndex: 99999, maxHeight: 256, overflowY: 'auto', overflowX: 'hidden' }}>
           {opcoes.map(c => (
             <button key={c.id} type="button" onClick={() => { onChange(c.id); setTexto(''); setAberto(false); }}
               className="w-full text-left px-3 py-2 text-sm text-white hover:bg-blue-900/30 flex items-center gap-2 border-b border-gray-800 last:border-0">
@@ -99,7 +116,8 @@ export function EmpresaSelector({ value, onChange, excluirId, placeholder = 'Bus
             </button>
           )}
           {opcoes.length === 0 && !nomeNovo && <p className="px-3 py-2 text-xs text-gray-500">Digite o nome da empresa.</p>}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

@@ -11,6 +11,7 @@ import toast from 'react-hot-toast';
 import { ArrowRight, UserPlus, Search, Loader2, Pencil } from 'lucide-react';
 import { buscarCNPJ, formatarCNPJ, apenasNumeros } from '../../utils/cnpjCep';
 import { Modal } from '../ui/Modal';
+import { EmpresaSelector } from '../crm/EmpresaSelector';
 import { useListaTeclado } from '../../hooks/useListaTeclado';
 
 interface ClienteSimples {
@@ -38,7 +39,7 @@ export function ClienteSelectorVenda({ value, clienteId, onChange, hideLabel }: 
   const [opcoes, setOpcoes]       = useState<ClienteSimples[]>([]);
   const [aberto, setAberto]       = useState(false);
   const [showNovo, setShowNovo]   = useState(false);
-  const [novoForm, setNovoForm]   = useState({ nome: '', telefone: '', email: '', cpf_cnpj: '', razao_social: '', nome_fantasia: '' });
+  const [novoForm, setNovoForm]   = useState({ nome: '', telefone: '', email: '', cpf_cnpj: '', razao_social: '', nome_fantasia: '', empresa_id: '' });
   const [salvando, setSalvando]   = useState(false);
   const [buscandoCnpj, setBuscandoCnpj] = useState(false);
   const [carregando, setCarregando] = useState(false);
@@ -195,13 +196,14 @@ export function ClienteSelectorVenda({ value, clienteId, onChange, hideLabel }: 
           cpf_cnpj:      novoForm.cpf_cnpj.trim() || null,
           razao_social:  novoForm.razao_social.trim() || null,
           nome_fantasia: novoForm.nome_fantasia.trim() || null,
+          empresa_id:    novoForm.empresa_id || null,
         })
         .select('id, nome, telefone, email, cpf_cnpj')
         .single();
       if (error) throw error;
       selecionar(data as ClienteSimples);
       setShowNovo(false);
-      setNovoForm({ nome: '', telefone: '', email: '', cpf_cnpj: '', razao_social: '', nome_fantasia: '' });
+      setNovoForm({ nome: '', telefone: '', email: '', cpf_cnpj: '', razao_social: '', nome_fantasia: '', empresa_id: '' });
       // insert feito direto no Supabase, por fora do useClientes() — invalida
       // o cache pra esse cliente aparecer na hora em qualquer lista/tela.
       queryClient.invalidateQueries();
@@ -500,6 +502,10 @@ export function ClienteSelectorVenda({ value, clienteId, onChange, hideLabel }: 
                   {buscandoCnpj ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                 </button>
               </div>
+            </div>
+            <div className="col-span-2">
+              <label className="text-[10px] text-gray-500 uppercase block mb-1">Vincular à empresa <span className="normal-case text-gray-600">(opcional — se for funcionário/contato de uma empresa)</span></label>
+              <EmpresaSelector value={novoForm.empresa_id} onChange={id => setNovoForm(f => ({ ...f, empresa_id: id }))} />
             </div>
           </div>
           <div className="flex gap-2 justify-end">
