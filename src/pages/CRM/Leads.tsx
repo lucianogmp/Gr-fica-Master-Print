@@ -7,6 +7,7 @@ import { COMO_CONHECEU_OPCOES } from '../../types/cliente';
 import { useConfirm } from '../../components/ui/ConfirmModal';
 import { UserPlus, Plus, X, AlertCircle, ArrowRightCircle, Phone, Building2 } from 'lucide-react';
 import { TableSkeleton } from '../../components/ui/Skeleton';
+import { AutoTextarea } from '../../components/ui/AutoTextarea';
 import { DarkSelect } from '../../components/ui/DarkSelect';
 import { correspondeABuscaEmCampos } from '../../lib/buscaFlexivel';
 import { BarraLista } from '../../components/ui/BarraLista';
@@ -20,7 +21,7 @@ const NOVO = {
   status: 'novo' as StatusLead, observacoes: '',
 };
 
-const IN = "w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors";
+const IN = "w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors";
 const LABEL = "text-xs font-bold text-gray-400 uppercase block mb-1";
 
 export function Leads() {
@@ -131,33 +132,35 @@ export function Leads() {
         </div>
 
         {showForm && (
-          <form onSubmit={handleCreate} className="bg-[#1f2937] border border-gray-700 rounded-xl p-5 space-y-4">
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <div>
+          <form onSubmit={handleCreate} className="bg-[#1f2937] border border-gray-700 rounded-xl p-4 space-y-3">
+            <div className="flex flex-wrap gap-3">
+              <div className="flex-1 min-w-[180px]">
                 <label className={LABEL}>Nome *</label>
                 <input required value={form.nome} onChange={e => setF('nome', e.target.value)} className={IN} />
               </div>
-              <div>
+              <div className="w-36">
                 <label className={LABEL}>Telefone</label>
                 <input value={form.telefone} onChange={e => setF('telefone', e.target.value)} className={IN} />
               </div>
-              <div>
+              <div className="flex-1 min-w-[160px]">
                 <label className={LABEL}>Empresa</label>
                 <input value={form.empresa} onChange={e => setF('empresa', e.target.value)} className={IN} />
               </div>
-              <div>
-                <label className={LABEL}>Como conheceu a gráfica</label>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <div className="w-52">
+                <label className={LABEL}>Como conheceu</label>
                 <DarkSelect
                   value={form.como_conheceu}
                   onChange={v => setF('como_conheceu', v)}
                   options={COMO_CONHECEU_OPCOES}
                 />
               </div>
-              <div>
+              <div className="flex-1 min-w-[180px]">
                 <label className={LABEL}>Produto de Interesse</label>
                 <input value={form.produto_interesse} onChange={e => setF('produto_interesse', e.target.value)} className={IN} />
               </div>
-              <div>
+              <div className="w-44">
                 <label className={LABEL}>Status</label>
                 <DarkSelect
                   value={form.status}
@@ -169,7 +172,7 @@ export function Leads() {
             </div>
             <div>
               <label className={LABEL}>Observações</label>
-              <textarea rows={2} value={form.observacoes} onChange={e => setF('observacoes', e.target.value)} className={IN + ' resize-none'} />
+              <AutoTextarea value={form.observacoes ?? ''} onChange={v => setF('observacoes', v)} className={IN + ' resize-none'} />
             </div>
             <div className="flex justify-end">
               <button type="submit" disabled={isSaving}

@@ -9,6 +9,7 @@ import { buscarCNPJ, buscarCEP, formatarCEP, apenasNumeros } from '../utils/cnpj
 import toast from 'react-hot-toast';
 import { Truck, Plus, X, AlertCircle, Phone, Mail, MapPin, Search, Loader2, Pencil, PackageSearch } from 'lucide-react';
 import { correspondeABuscaEmCampos } from '../lib/buscaFlexivel';
+import { AutoTextarea } from '../components/ui/AutoTextarea';
 import { BarraLista } from '../components/ui/BarraLista';
 import { CampoFiltro, FiltroValor, passaPeriodo, passaMulti, passaSimNao } from '../components/ui/FiltroModal';
 import { CabecalhoFiltro } from '../components/ui/CabecalhoFiltro';
@@ -22,7 +23,7 @@ const NOVO: Omit<Fornecedor, 'id' | 'created_at' | 'updated_at' | 'ativo'> = {
   categoria: '', categorias: [], observacoes: '',
 };
 
-const IN = "w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors";
+const IN = "w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors";
 const LABEL = "text-xs font-bold text-gray-400 uppercase block mb-1";
 
 export function Fornecedores() {
@@ -192,22 +193,22 @@ export function Fornecedores() {
         </div>
 
         {showForm && (
-          <form onSubmit={handleSalvar} className="bg-[#1f2937] border border-gray-700 rounded-xl p-5 space-y-4">
+          <form onSubmit={handleSalvar} className="bg-[#1f2937] border border-gray-700 rounded-xl p-4 space-y-3">
             {editandoId && (
               <div className="flex items-center gap-2 text-blue-400 text-xs font-bold uppercase">
                 <Pencil className="w-3.5 h-3.5" /> Editando fornecedor
               </div>
             )}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <div className="col-span-2 md:col-span-1">
+            <div className="flex flex-wrap gap-3">
+              <div className="flex-1 min-w-[180px]">
                 <label className={LABEL}>Nome *</label>
                 <input required value={form.nome} onChange={e => setF('nome', e.target.value)} className={IN} />
               </div>
-              <div>
+              <div className="w-36">
                 <label className={LABEL}>Telefone</label>
                 <input value={form.telefone} onChange={e => setF('telefone', e.target.value)} className={IN} />
               </div>
-              <div>
+              <div className="flex-1 min-w-[180px]">
                 <label className={LABEL}>Email</label>
                 <input type="email" value={form.email} onChange={e => setF('email', e.target.value)} className={IN} />
               </div>
@@ -229,50 +230,51 @@ export function Fornecedores() {
               </div>
             </div>
 
-            {/* ── CNPJ com busca automática ── */}
-            <div>
-              <label className={LABEL}>CPF / CNPJ</label>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <input
-                  value={form.cpf_cnpj}
-                  onChange={e => setF('cpf_cnpj', e.target.value)}
-                  placeholder="Digite o CNPJ e clique em buscar"
-                  className={IN}
-                />
-                <button
-                  type="button"
-                  onClick={handleBuscarCnpj}
-                  disabled={buscandoCnpj}
-                  className="bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-gray-200 px-4 rounded-lg transition-all flex items-center justify-center gap-2 flex-shrink-0 text-sm font-bold"
-                >
-                  {buscandoCnpj ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />} Buscar
-                </button>
-              </div>
-            </div>
-
-            {(form.razao_social || form.nome_fantasia) && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className={LABEL}>Razão Social</label>
-                  <input value={form.razao_social} onChange={e => setF('razao_social', e.target.value)} className={IN} />
-                </div>
-                <div>
-                  <label className={LABEL}>Nome Fantasia</label>
-                  <input value={form.nome_fantasia} onChange={e => setF('nome_fantasia', e.target.value)} className={IN} />
+            {/* CPF/CNPJ (com busca) e inscrição estadual na mesma linha */}
+            <div className="flex flex-wrap gap-3">
+              <div className="w-64">
+                <label className={LABEL}>CPF / CNPJ</label>
+                <div className="flex gap-1.5">
+                  <input
+                    value={form.cpf_cnpj}
+                    onChange={e => setF('cpf_cnpj', e.target.value)}
+                    placeholder="CPF ou CNPJ"
+                    className={IN}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleBuscarCnpj}
+                    disabled={buscandoCnpj}
+                    title="Buscar dados pelo CNPJ"
+                    className="bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-gray-200 px-2.5 rounded-lg transition-all flex items-center justify-center flex-shrink-0"
+                  >
+                    {buscandoCnpj ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                  </button>
                 </div>
               </div>
-            )}
-
-            <div>
-              <label className={LABEL}>Inscrição Estadual</label>
-              <input value={form.inscricao_estadual} onChange={e => setF('inscricao_estadual', e.target.value)} className={IN} />
+              <div className="w-36">
+                <label className={LABEL}>Inscrição Estadual</label>
+                <input value={form.inscricao_estadual} onChange={e => setF('inscricao_estadual', e.target.value)} className={IN} />
+              </div>
+              {(form.razao_social || form.nome_fantasia) && (
+                <>
+                  <div className="flex-1 min-w-[180px]">
+                    <label className={LABEL}>Razão Social</label>
+                    <input value={form.razao_social} onChange={e => setF('razao_social', e.target.value)} className={IN} />
+                  </div>
+                  <div className="flex-1 min-w-[180px]">
+                    <label className={LABEL}>Nome Fantasia</label>
+                    <input value={form.nome_fantasia} onChange={e => setF('nome_fantasia', e.target.value)} className={IN} />
+                  </div>
+                </>
+              )}
             </div>
 
-            {/* ── Endereço com busca automática por CEP ── */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div>
+            {/* Endereço inteiro numa linha só (CEP busca automático) */}
+            <div className="flex flex-wrap gap-3">
+              <div className="w-36">
                 <label className={LABEL}>CEP</label>
-                <div className="flex gap-2">
+                <div className="flex gap-1.5">
                   <input
                     value={form.cep}
                     onChange={e => setF('cep', formatarCEP(e.target.value))}
@@ -285,32 +287,29 @@ export function Fornecedores() {
                     onClick={handleBuscarCep}
                     disabled={buscandoCep}
                     title="Buscar CEP"
-                    className="bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-gray-200 px-3 rounded-lg transition-all flex items-center justify-center flex-shrink-0"
+                    className="bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-gray-200 px-2.5 rounded-lg transition-all flex items-center justify-center flex-shrink-0"
                   >
                     {buscandoCep ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
-              <div className="col-span-2 sm:col-span-1">
-                <label className={LABEL}>Número</label>
-                <input value={form.numero} onChange={e => setF('numero', e.target.value)} className={IN} />
-              </div>
-              <div className="col-span-2 sm:col-span-2">
-                <label className={LABEL}>Bairro</label>
-                <input value={form.bairro} onChange={e => setF('bairro', e.target.value)} className={IN} />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="col-span-2">
+              <div className="flex-1 min-w-[180px]">
                 <label className={LABEL}>Endereço</label>
                 <input value={form.endereco} onChange={e => setF('endereco', e.target.value)} className={IN} />
               </div>
-              <div>
+              <div className="w-20">
+                <label className={LABEL}>Número</label>
+                <input value={form.numero} onChange={e => setF('numero', e.target.value)} className={IN} />
+              </div>
+              <div className="w-40">
+                <label className={LABEL}>Bairro</label>
+                <input value={form.bairro} onChange={e => setF('bairro', e.target.value)} className={IN} />
+              </div>
+              <div className="w-36">
                 <label className={LABEL}>Cidade</label>
                 <input value={form.cidade} onChange={e => setF('cidade', e.target.value)} className={IN} />
               </div>
-              <div>
+              <div className="w-14">
                 <label className={LABEL}>UF</label>
                 <input maxLength={2} value={form.estado} onChange={e => setF('estado', e.target.value.toUpperCase())} className={IN} />
               </div>
@@ -318,7 +317,7 @@ export function Fornecedores() {
 
             <div>
               <label className={LABEL}>Observações</label>
-              <textarea rows={2} value={form.observacoes} onChange={e => setF('observacoes', e.target.value)} className={IN + ' resize-none'} />
+              <AutoTextarea value={form.observacoes ?? ''} onChange={v => setF('observacoes', v)} className={IN + ' resize-none'} />
             </div>
 
             <div className="flex justify-end">

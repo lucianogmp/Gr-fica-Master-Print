@@ -22,7 +22,7 @@ interface Props {
   placeholder?: string;
 }
 
-const IN = 'w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500 transition-colors';
+const IN = 'w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500 transition-colors';
 
 export function EmpresaSelector({ value, onChange, excluirId, placeholder = 'Buscar empresa ou cadastrar nova...' }: Props) {
   const qc = useQueryClient();
@@ -131,7 +131,7 @@ export function EmpresaSelector({ value, onChange, excluirId, placeholder = 'Bus
 
   if (atual) {
     return (
-      <div className="flex items-center gap-2 bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5">
+      <div className="flex items-center gap-2 bg-[#111827] border border-gray-700 rounded-lg px-3 py-2">
         <Building2 className="w-4 h-4 text-blue-400 flex-shrink-0" />
         <span className="flex-1 text-sm text-white truncate">{atual.nome}</span>
         <button type="button" onClick={abrirEdicao} title="Editar dados da empresa (CNPJ, razão social...)"

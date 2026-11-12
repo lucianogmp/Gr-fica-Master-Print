@@ -10,6 +10,7 @@ import { TableSkeleton } from '../../components/ui/Skeleton';
 import { DateInput } from '../../components/ui/DateInput';
 import { DarkSelect } from '../../components/ui/DarkSelect';
 import { correspondeABuscaEmCampos } from '../../lib/buscaFlexivel';
+import { AutoTextarea } from '../../components/ui/AutoTextarea';
 import { EmpresaSelector } from '../../components/crm/EmpresaSelector';
 import { BuscaClienteCadastrado } from '../../components/crm/BuscaClienteCadastrado';
 import { supabase } from '../../lib/supabase';
@@ -22,7 +23,7 @@ import { aplicarOrdenacao, Ordenacao } from '../../components/ui/OrdenarMenu';
 import { useRolarAoAbrir } from '../../hooks/useRolarAoAbrir';
 
 const NOVO = { cliente_id: '', nome: '', cargo: '', telefone: '', whatsapp: '', email: '', data_nascimento: '', observacoes: '' };
-const IN = "w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors";
+const IN = "w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors";
 const LABEL = "text-xs font-bold text-gray-400 uppercase block mb-1";
 
 const fmtData = (d?: string | null) => d ? new Date(d + 'T00:00:00').toLocaleDateString('pt-BR') : '—';
@@ -187,7 +188,7 @@ export function Contatos() {
         </div>
 
         {showForm && (
-          <form onSubmit={handleSubmit} className="bg-[#1f2937] border border-gray-700 rounded-xl p-5 space-y-4">
+          <form onSubmit={handleSubmit} className="bg-[#1f2937] border border-gray-700 rounded-xl p-4 space-y-3">
             {editandoId && (
               <p className="text-xs font-bold text-blue-400 flex items-center gap-1.5">
                 <Pencil className="w-3.5 h-3.5" /> Editando contato
@@ -199,40 +200,43 @@ export function Contatos() {
                 <BuscaClienteCadastrado onEscolher={aplicarClienteBuscado} />
               </div>
             )}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <div className="col-span-2 md:col-span-1">
+            {/* Linha 1: empresa e nome maiores; cargo médio; telefone/whatsapp/aniversário só do tamanho do conteúdo */}
+            <div className="flex flex-wrap gap-3">
+              <div className="flex-1 min-w-[220px]">
                 <label className={LABEL}>Cliente / Empresa *</label>
                 <EmpresaSelector value={form.cliente_id} onChange={v => setF('cliente_id', v)} excluirId={clienteBuscadoId}
                   placeholder="Buscar cliente/empresa ou cadastrar nova..." />
               </div>
-              <div>
+              <div className="flex-1 min-w-[180px]">
                 <label className={LABEL}>Nome *</label>
                 <input required value={form.nome} onChange={e => setF('nome', e.target.value)} className={IN} />
               </div>
-              <div>
+              <div className="w-40">
                 <label className={LABEL}>Cargo</label>
-                <input value={form.cargo} onChange={e => setF('cargo', e.target.value)} className={IN} placeholder="Ex: Financeiro, Compras..." />
+                <input value={form.cargo} onChange={e => setF('cargo', e.target.value)} className={IN} placeholder="Financeiro..." />
               </div>
-              <div>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <div className="w-36">
                 <label className={LABEL}>Telefone</label>
                 <input value={form.telefone} onChange={e => setF('telefone', e.target.value)} className={IN} />
               </div>
-              <div>
+              <div className="w-36">
                 <label className={LABEL}>WhatsApp</label>
                 <input value={form.whatsapp} onChange={e => setF('whatsapp', e.target.value)} className={IN} />
               </div>
-              <div>
+              <div className="flex-1 min-w-[180px]">
                 <label className={LABEL}>Email</label>
                 <input type="email" value={form.email} onChange={e => setF('email', e.target.value)} className={IN} />
               </div>
-              <div>
-                <label className={LABEL}>Data de Nascimento</label>
+              <div className="w-32">
+                <label className={LABEL}>Aniversário</label>
                 <DateInput value={form.data_nascimento} onChange={v => setF('data_nascimento', v)} className={IN} />
               </div>
             </div>
             <div>
               <label className={LABEL}>Observações</label>
-              <textarea rows={2} value={form.observacoes} onChange={e => setF('observacoes', e.target.value)} className={IN + ' resize-none'} />
+              <AutoTextarea value={form.observacoes} onChange={v => setF('observacoes', v)} className={IN + ' resize-none'} />
             </div>
             <div className="flex justify-end gap-2">
               {editandoId && (

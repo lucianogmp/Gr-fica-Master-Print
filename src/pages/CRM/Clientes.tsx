@@ -11,6 +11,7 @@ import { Users2, Plus, X, AlertCircle, Phone, Mail, MapPin, Search, Loader2, Che
 import { DarkSelect } from '../../components/ui/DarkSelect';
 import { DateInput } from '../../components/ui/DateInput';
 import { correspondeABuscaEmCampos } from '../../lib/buscaFlexivel';
+import { AutoTextarea } from '../../components/ui/AutoTextarea';
 import { EmpresaSelector } from '../../components/crm/EmpresaSelector';
 import { BarraLista } from '../../components/ui/BarraLista';
 import { CampoFiltro, FiltroValor, passaPeriodo, passaMulti, passaSimNao } from '../../components/ui/FiltroModal';
@@ -25,7 +26,7 @@ const NOVO: Omit<Cliente, 'id' | 'created_at' | 'updated_at'> = {
   observacoes: '', como_conheceu: '', produto_interesse: '', empresa_id: '',
 };
 
-const IN = "w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors";
+const IN = "w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors";
 const LABEL = "text-xs font-bold text-gray-400 uppercase block mb-1";
 
 export function Clientes() {
@@ -203,93 +204,94 @@ export function Clientes() {
         </div>
 
         {showForm && (
-          <form onSubmit={handleSalvar} className="bg-[#1f2937] border border-gray-700 rounded-xl p-5 space-y-4">
+          <form onSubmit={handleSalvar} className="bg-[#1f2937] border border-gray-700 rounded-xl p-4 space-y-3">
             {editandoId && (
               <div className="flex items-center gap-2 text-blue-400 text-xs font-bold uppercase">
                 <Pencil className="w-3.5 h-3.5" /> Editando cliente
               </div>
             )}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <div className="col-span-2 md:col-span-1">
+            {/* Linha 1: nome e e-mail maiores; telefone e aniversário só do tamanho do conteúdo */}
+            <div className="flex flex-wrap gap-3">
+              <div className="flex-1 min-w-[180px]">
                 <label className={LABEL}>Nome *</label>
                 <input required value={form.nome} onChange={e => setF('nome', e.target.value)} className={IN} />
               </div>
-              <div>
+              <div className="w-36">
                 <label className={LABEL}>Telefone</label>
                 <input value={form.telefone} onChange={e => setF('telefone', e.target.value)} className={IN} />
               </div>
-              <div>
+              <div className="flex-1 min-w-[180px]">
                 <label className={LABEL}>Email</label>
                 <input type="email" value={form.email} onChange={e => setF('email', e.target.value)} className={IN} />
               </div>
-              <div>
+              <div className="w-32">
                 <label className={LABEL}>Aniversário</label>
                 <DateInput value={form.data_nascimento ?? ''} onChange={v => setF('data_nascimento', v)} className={IN} />
               </div>
             </div>
 
-            <div>
-              <label className={LABEL}>Vinculado à empresa <span className="text-gray-600 normal-case font-normal">(opcional — para quem é funcionário/contato de uma empresa)</span></label>
-              <EmpresaSelector value={form.empresa_id} onChange={id => setForm(f => ({ ...f, empresa_id: id }))} excluirId={editandoId} />
+            {/* Linha 2: empresa, CPF/CNPJ (com busca), IE e CNAE */}
+            <div className="flex flex-wrap gap-3">
+              <div className="flex-1 min-w-[200px]">
+                <label className={LABEL}>Vinculado à empresa <span className="text-gray-600 normal-case font-normal">(opcional)</span></label>
+                <EmpresaSelector value={form.empresa_id} onChange={id => setForm(f => ({ ...f, empresa_id: id }))} excluirId={editandoId} />
+              </div>
+              <div className="w-56">
+                <label className={LABEL}>CPF / CNPJ</label>
+                <div className="flex gap-1.5">
+                  <input
+                    value={form.cpf_cnpj}
+                    onChange={e => setF('cpf_cnpj', apenasNumeros(e.target.value).length > 11 ? formatarCNPJ(e.target.value) : e.target.value)}
+                    placeholder="CPF ou CNPJ"
+                    className={IN}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleBuscarCnpj}
+                    disabled={buscandoCnpj}
+                    title="Buscar dados pelo CNPJ"
+                    className="bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-gray-200 px-2.5 rounded-lg transition-all flex items-center justify-center flex-shrink-0"
+                  >
+                    {buscandoCnpj ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              <div className="w-36">
+                <label className={LABEL}>Inscrição Estadual</label>
+                <input value={form.inscricao_estadual} onChange={e => setF('inscricao_estadual', e.target.value)} className={IN} />
+              </div>
+              <div className="flex-1 min-w-[160px]">
+                <label className={LABEL}>CNAE Principal</label>
+                <input value={form.cnae_principal} onChange={e => setF('cnae_principal', e.target.value)} className={IN} />
+              </div>
             </div>
 
-            {/* ── CNPJ com busca automática ── */}
-            <div>
-              <label className={LABEL}>CPF / CNPJ</label>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <input
-                  value={form.cpf_cnpj}
-                  onChange={e => setF('cpf_cnpj', apenasNumeros(e.target.value).length > 11 ? formatarCNPJ(e.target.value) : e.target.value)}
-                  placeholder="CPF ou CNPJ"
-                  className={IN + ' flex-1'}
-                />
-                <button
-                  type="button"
-                  onClick={handleBuscarCnpj}
-                  disabled={buscandoCnpj}
-                  className="bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-gray-200 px-4 py-2.5 rounded-lg font-bold text-sm transition-all flex items-center justify-center gap-2 whitespace-nowrap"
-                >
-                  {buscandoCnpj ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-                  Buscar CNPJ
-                </button>
+            {form.situacao_cadastral && (
+              <div className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
+                form.situacao_cadastral.toUpperCase() === 'ATIVA'
+                  ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                  : 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
+              }`}>
+                <CheckCircle2 className="w-3.5 h-3.5" /> Situação cadastral: {form.situacao_cadastral}
               </div>
-              {form.situacao_cadastral && (
-                <div className={`mt-2 inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full ${
-                  form.situacao_cadastral.toUpperCase() === 'ATIVA'
-                    ? 'bg-green-500/10 text-green-400 border border-green-500/20'
-                    : 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
-                }`}>
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Situação cadastral: {form.situacao_cadastral}
-                </div>
-              )}
-            </div>
+            )}
 
             {(form.razao_social || form.nome_fantasia) && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
+              <div className="flex flex-wrap gap-3">
+                <div className="flex-1 min-w-[200px]">
                   <label className={LABEL}>Razão Social</label>
                   <input value={form.razao_social} onChange={e => setF('razao_social', e.target.value)} className={IN} />
                 </div>
-                <div>
+                <div className="flex-1 min-w-[200px]">
                   <label className={LABEL}>Nome Fantasia</label>
                   <input value={form.nome_fantasia} onChange={e => setF('nome_fantasia', e.target.value)} className={IN} />
                 </div>
               </div>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div>
-                <label className={LABEL}>Inscrição Estadual</label>
-                <input value={form.inscricao_estadual} onChange={e => setF('inscricao_estadual', e.target.value)} className={IN} />
-              </div>
-              <div className="sm:col-span-2">
-                <label className={LABEL}>CNAE Principal</label>
-                <input value={form.cnae_principal} onChange={e => setF('cnae_principal', e.target.value)} className={IN} />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
+            {/* Linha 3: como conheceu + produto de interesse */}
+            <div className="flex flex-wrap gap-3">
+              <div className="w-52">
                 <label className={LABEL}>Como conheceu</label>
                 <DarkSelect
                   value={form.como_conheceu}
@@ -297,17 +299,17 @@ export function Clientes() {
                   options={COMO_CONHECEU_OPCOES}
                 />
               </div>
-              <div>
+              <div className="flex-1 min-w-[200px]">
                 <label className={LABEL}>Produto de Interesse</label>
                 <input value={form.produto_interesse} onChange={e => setF('produto_interesse', e.target.value)} className={IN} />
               </div>
             </div>
 
-            {/* ── Endereço com busca automática por CEP ── */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div>
+            {/* Linha 4: endereço inteiro numa linha só (CEP busca automático) */}
+            <div className="flex flex-wrap gap-3">
+              <div className="w-36">
                 <label className={LABEL}>CEP</label>
-                <div className="flex gap-2">
+                <div className="flex gap-1.5">
                   <input
                     value={form.cep}
                     onChange={e => setF('cep', formatarCEP(e.target.value))}
@@ -320,32 +322,29 @@ export function Clientes() {
                     onClick={handleBuscarCep}
                     disabled={buscandoCep}
                     title="Buscar CEP"
-                    className="bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-gray-200 px-3 rounded-lg transition-all flex items-center justify-center flex-shrink-0"
+                    className="bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-gray-200 px-2.5 rounded-lg transition-all flex items-center justify-center flex-shrink-0"
                   >
                     {buscandoCep ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
-              <div className="col-span-2 sm:col-span-1">
-                <label className={LABEL}>Número</label>
-                <input value={form.numero} onChange={e => setF('numero', e.target.value)} className={IN} />
-              </div>
-              <div className="col-span-2 sm:col-span-2">
-                <label className={LABEL}>Bairro</label>
-                <input value={form.bairro} onChange={e => setF('bairro', e.target.value)} className={IN} />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="col-span-2">
+              <div className="flex-1 min-w-[180px]">
                 <label className={LABEL}>Endereço</label>
                 <input value={form.endereco} onChange={e => setF('endereco', e.target.value)} className={IN} />
               </div>
-              <div>
+              <div className="w-20">
+                <label className={LABEL}>Número</label>
+                <input value={form.numero} onChange={e => setF('numero', e.target.value)} className={IN} />
+              </div>
+              <div className="w-40">
+                <label className={LABEL}>Bairro</label>
+                <input value={form.bairro} onChange={e => setF('bairro', e.target.value)} className={IN} />
+              </div>
+              <div className="w-36">
                 <label className={LABEL}>Cidade</label>
                 <input value={form.cidade} onChange={e => setF('cidade', e.target.value)} className={IN} />
               </div>
-              <div>
+              <div className="w-14">
                 <label className={LABEL}>UF</label>
                 <input maxLength={2} value={form.estado} onChange={e => setF('estado', e.target.value.toUpperCase())} className={IN} />
               </div>
@@ -353,7 +352,7 @@ export function Clientes() {
 
             <div>
               <label className={LABEL}>Observações</label>
-              <textarea rows={2} value={form.observacoes} onChange={e => setF('observacoes', e.target.value)} className={IN + ' resize-none'} />
+              <AutoTextarea value={form.observacoes ?? ''} onChange={v => setF('observacoes', v)} className={IN + ' resize-none'} />
             </div>
 
             <div className="flex justify-end">
