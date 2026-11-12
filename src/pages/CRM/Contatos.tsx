@@ -11,6 +11,10 @@ import { DateInput } from '../../components/ui/DateInput';
 import { DarkSelect } from '../../components/ui/DarkSelect';
 import { correspondeABuscaEmCampos } from '../../lib/buscaFlexivel';
 import { EmpresaSelector } from '../../components/crm/EmpresaSelector';
+import { BuscaClienteCadastrado } from '../../components/crm/BuscaClienteCadastrado';
+import { supabase } from '../../lib/supabase';
+import { useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import { BarraLista } from '../../components/ui/BarraLista';
 import { CampoFiltro, FiltroValor, passaPeriodo, passaMulti, passaSimNao } from '../../components/ui/FiltroModal';
 import { CabecalhoFiltro } from '../../components/ui/CabecalhoFiltro';
@@ -27,6 +31,9 @@ export function Contatos() {
   const { data: contatos, isLoading, error } = useContatosTodos();
   const { data: clientes } = useClientes();
   const { confirmar, ConfirmModal } = useConfirm();
+  const qc = useQueryClient();
+  // Cliente já cadastrado que foi escolhido na busca (para vincular à empresa ao salvar)
+  const [clienteBuscadoId, setClienteBuscadoId] = useState<string | null>(null);
 
   const [busca, setBusca] = usePersistente('busca', '');
   const [showForm, setShowForm] = useState(false);
@@ -79,6 +86,7 @@ export function Contatos() {
 
   function abrirNovo() {
     setEditandoId(null);
+    setClienteBuscadoId(null);
     setForm({ ...NOVO });
     setShowForm(true);
   }
@@ -99,6 +107,7 @@ export function Contatos() {
   }
 
   function fecharForm() {
+    setClienteBuscadoId(null);
     setShowForm(false);
     setEditandoId(null);
     setForm({ ...NOVO });
@@ -113,12 +122,33 @@ export function Contatos() {
       data_nascimento: resto.data_nascimento || null,
     };
 
+    // Vincula o cliente buscado à empresa escolhida (a mesma ligação do "Vinculado à empresa" em Clientes)
+    if (clienteBuscadoId && cliente_id && clienteBuscadoId !== cliente_id) {
+      const { error } = await supabase.from('clientes').update({ empresa_id: cliente_id }).eq('id', clienteBuscadoId);
+      if (error) toast.error('Contato salvo, mas não foi possível vincular o cliente à empresa.');
+      else qc.invalidateQueries({ queryKey: ['clientes'] });
+    }
+
     if (editandoId) {
       await atualizar({ id: editandoId, payload: { cliente_id, ...payload } });
     } else {
       await criar({ cliente_id, ...payload });
     }
     fecharForm();
+  }
+
+  // Escolheu um cliente já cadastrado: aproveita os dados dele; se já tem empresa vinculada, vem preenchida
+  function aplicarClienteBuscado(c: any) {
+    setClienteBuscadoId(c.id);
+    setForm(f => ({
+      ...f,
+      nome: c.nome ?? f.nome,
+      telefone: f.telefone || c.telefone || '',
+      whatsapp: f.whatsapp || c.whatsapp || '',
+      email: f.email || c.email || '',
+      data_nascimento: f.data_nascimento || c.data_nascimento || '',
+      cliente_id: c.empresa_id || f.cliente_id,
+    }));
   }
 
   function setF(campo: keyof typeof NOVO, valor: string) {
@@ -163,10 +193,16 @@ export function Contatos() {
                 <Pencil className="w-3.5 h-3.5" /> Editando contato
               </p>
             )}
+            {!editandoId && (
+              <div>
+                <label className={LABEL}>Buscar cliente já cadastrado <span className="text-gray-600 normal-case font-normal">(opcional — preenche os dados e a empresa dele)</span></label>
+                <BuscaClienteCadastrado onEscolher={aplicarClienteBuscado} />
+              </div>
+            )}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <div className="col-span-2 md:col-span-1">
                 <label className={LABEL}>Cliente / Empresa *</label>
-                <EmpresaSelector value={form.cliente_id} onChange={v => setF('cliente_id', v)}
+                <EmpresaSelector value={form.cliente_id} onChange={v => setF('cliente_id', v)} excluirId={clienteBuscadoId}
                   placeholder="Buscar cliente/empresa ou cadastrar nova..." />
               </div>
               <div>
