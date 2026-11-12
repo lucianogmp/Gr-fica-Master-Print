@@ -26,6 +26,8 @@ interface ClienteSimples {
   chave?: string;
   /** Nome da pessoa quando a opção é um contato do CRM */
   pessoa?: string;
+  /** Para pessoa vinculada a uma empresa: nome da empresa (que vira o cliente) */
+  empresaNome?: string;
 }
 
 interface Props {
@@ -129,7 +131,7 @@ export function ClienteSelectorVenda({ value, clienteId, onChange, hideLabel, on
         nomesEmp = new Map((emp ?? []).map(e => [e.id, e.nome]));
       }
       const comRotulo = (c: ClienteSimples): ClienteSimples =>
-        c.empresa_id && nomesEmp.get(c.empresa_id) ? { ...c, rotulo: `Empresa: ${nomesEmp.get(c.empresa_id)}` } : c;
+        c.empresa_id && nomesEmp.get(c.empresa_id) ? { ...c, empresaNome: nomesEmp.get(c.empresa_id), rotulo: `Pessoa da empresa ${nomesEmp.get(c.empresa_id)}` } : c;
 
       const vistos = new Set<string>();
       const final = [...base, ...vinculados, ...contatos].map(comRotulo).filter(c => {
@@ -156,6 +158,15 @@ export function ClienteSelectorVenda({ value, clienteId, onChange, hideLabel, on
   }, [onChange, buscarOpcoes]);
 
   function selecionar(c: ClienteSimples) {
+    // Pessoa vinculada a uma empresa: o cliente vira a empresa e a pessoa vira o solicitante
+    if (onSolicitante && c.empresa_id && c.empresaNome) {
+      setBusca(c.empresaNome);
+      onChange(c.empresaNome, c.empresa_id);
+      onSolicitante(c.nome);
+      setAberto(false);
+      setOpcoes([]);
+      return;
+    }
     setBusca(c.nome);
     onChange(c.nome, c.id);
     if (c.pessoa) onSolicitante?.(c.pessoa);

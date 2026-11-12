@@ -428,7 +428,8 @@ export function Financeiro() {
                     onChange={(nome, id) => { setFV('cliente_nome', nome); if ((id ?? null) !== formVenda.cliente_id) setFV('solicitante', ''); setFV('cliente_id', id ?? null); }}
                     onSolicitante={n => setFV('solicitante', n)}
                   />
-                  <SolicitanteInput value={formVenda.solicitante} clienteId={formVenda.cliente_id} onChange={n => setFV('solicitante', n)} />
+                  <SolicitanteInput value={formVenda.solicitante} clienteId={formVenda.cliente_id} onChange={n => setFV('solicitante', n)}
+                    onPessoa={p => { setFV('cliente_nome', p.empresaNome); setFV('cliente_id', p.empresaId); setFV('solicitante', p.nome); }} />
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Data da Venda</label>

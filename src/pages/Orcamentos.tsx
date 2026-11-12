@@ -1239,7 +1239,8 @@ export function Orcamentos() {
                   <div className="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-gray-600 italic">—</div>
                 ) : (
                   <SolicitanteInput hideLabel value={(form as any).solicitante ?? ''} clienteId={form.cliente_id}
-                    onChange={n => setF('solicitante' as any, n)} />
+                    onChange={n => setF('solicitante' as any, n)}
+                    onPessoa={p => { setF('cliente_nome', p.empresaNome); setF('cliente_id', p.empresaId); setF('solicitante' as any, p.nome); }} />
                 )}
               </div>
               <div>

@@ -673,7 +673,8 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
                     {form.consumidor_final ? (
                       <div className="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-gray-600 italic">—</div>
                     ) : (
-                      <SolicitanteInput hideLabel value={form.solicitante} clienteId={form.cliente_id} onChange={n => setF('solicitante', n)} />
+                      <SolicitanteInput hideLabel value={form.solicitante} clienteId={form.cliente_id} onChange={n => setF('solicitante', n)}
+                        onPessoa={p => { setF('cliente_nome', p.empresaNome); setF('cliente_id', p.empresaId); setF('solicitante', p.nome); }} />
                     )}
                   </div>
                   <div>
