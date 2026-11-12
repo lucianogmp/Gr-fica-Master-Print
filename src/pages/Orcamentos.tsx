@@ -36,6 +36,7 @@ import { ClienteSelectorVenda } from '../components/vendas/ClienteSelectorVenda'
 import { CalculadoraFolhas } from '../components/CalculadoraFolhas';
 import { KpiCard } from '../components/ui/KpiCard';
 import { MoneyInput } from '../components/ui/MoneyInput';
+import { QtdInput } from '../components/ui/QtdInput';
 import { PctInput } from '../components/ui/PctInput';
 import { DarkSelect } from '../components/ui/DarkSelect';
 import { useConfirm } from '../components/ui/ConfirmModal';
@@ -75,6 +76,16 @@ function aplicarDescontoItem<T extends OrcamentoItem>(it: T, descontoRs: number)
   const bruto = brutoItem(it);
   const desc = Math.min(Math.max(0, r2(descontoRs || 0)), Math.max(0, bruto));
   return { ...it, desconto_valor: desc, desconto: bruto > 0 ? Number(((desc / bruto) * 100).toFixed(2)) : 0, total: r2(bruto - desc) };
+}
+
+// Muda só a quantidade do item: o preço unitário (com acréscimo de arte, ajustes etc.) continua o
+// mesmo e o total é refeito. O desconto mantém o mesmo percentual sobre o novo valor.
+function aplicarQuantidadeItem<T extends OrcamentoItem>(it: T, qtd: number): T {
+  const unit = Number(it.preco_unitario) > 0 ? Number(it.preco_unitario) : brutoItem(it) / (Number(it.quantidade) || 1);
+  const bruto = r2(unit * qtd);
+  const pct = Number(it.desconto ?? 0);
+  const desc = Math.min(r2(bruto * (pct / 100)), bruto);
+  return { ...it, quantidade: qtd, preco_unitario: unit, desconto_valor: desc, total: r2(bruto - desc) };
 }
 
 export function Orcamentos() {
@@ -1316,7 +1327,13 @@ export function Orcamentos() {
                             </span>
                           )}
                         </td>
-                        <td className="px-3 py-2.5 text-right text-white">{it.quantidade}</td>
+                        <td className="px-3 py-1.5 text-right text-white">
+                          {jaConvertido || it.tipo_calculo === 'placa'
+                            ? it.quantidade
+                            : <QtdInput value={String(it.quantidade ?? '')}
+                                onChange={v => { setItens(p => p.map((x, idx) => idx === i ? aplicarQuantidadeItem(x, parseFloat(v) || 0) : x)); marcarSujoOrc(); }}
+                                className="w-20 bg-[#111827] border border-gray-700 rounded-lg px-2 py-1 text-white text-xs text-right focus:outline-none focus:border-blue-500" />}
+                        </td>
                         <td className="px-3 py-2.5 text-right text-gray-300">{fmtBRL(brutoItem(it) / (Number(it.quantidade) || 1))}</td>
                         <td className="px-3 py-1.5 text-right">
                           {jaConvertido
