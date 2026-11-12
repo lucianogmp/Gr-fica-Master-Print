@@ -7,7 +7,9 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Building2, Plus, X, Loader2 } from 'lucide-react';
+import { Building2, Plus, X, Loader2, Pencil, Search } from 'lucide-react';
+import { Modal } from '../ui/Modal';
+import { buscarCNPJ, formatarCNPJ, apenasNumeros } from '../../utils/cnpjCep';
 import { supabase } from '../../lib/supabase';
 import { useClientes } from '../../hooks/useClientes';
 import { correspondeABuscaEmCampos } from '../../lib/buscaFlexivel';
@@ -31,6 +33,10 @@ export function EmpresaSelector({ value, onChange, excluirId, placeholder = 'Bus
   const wrapRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const listaRef = useRef<HTMLDivElement>(null);
+  const [editando, setEditando] = useState(false);
+  const [salvandoEd, setSalvandoEd] = useState(false);
+  const [buscandoCnpj, setBuscandoCnpj] = useState(false);
+  const [ed, setEd] = useState({ nome: '', cpf_cnpj: '', razao_social: '', nome_fantasia: '', telefone: '', email: '' });
   const [rect, setRect] = useState<DOMRect | null>(null);
 
   const atual = clientes.find(c => c.id === value);
@@ -64,6 +70,47 @@ export function EmpresaSelector({ value, onChange, excluirId, placeholder = 'Bus
   const nomeNovo = texto.trim();
   const jaExiste = clientes.some(c => c.nome.trim().toLowerCase() === nomeNovo.toLowerCase());
 
+  function abrirEdicao() {
+    if (!atual) return;
+    setEd({
+      nome: atual.nome ?? '', cpf_cnpj: atual.cpf_cnpj ?? '', razao_social: atual.razao_social ?? '',
+      nome_fantasia: atual.nome_fantasia ?? '', telefone: atual.telefone ?? '', email: atual.email ?? '',
+    });
+    setEditando(true);
+  }
+
+  async function consultarCnpj() {
+    if (apenasNumeros(ed.cpf_cnpj).length !== 14) { toast.error('Digite um CNPJ com 14 números para buscar.'); return; }
+    setBuscandoCnpj(true);
+    try {
+      const r = await buscarCNPJ(ed.cpf_cnpj);
+      setEd(f => ({
+        ...f, cpf_cnpj: r.cnpj, razao_social: r.razaoSocial, nome_fantasia: r.nomeFantasia,
+        email: f.email.trim() ? f.email : r.email, telefone: f.telefone.trim() ? f.telefone : r.telefone,
+      }));
+      toast.success(`Empresa encontrada: ${r.razaoSocial || r.nomeFantasia}`);
+    } catch (e: any) {
+      toast.error(e?.message || 'Erro ao consultar o CNPJ.');
+    } finally { setBuscandoCnpj(false); }
+  }
+
+  async function salvarEdicao() {
+    if (!atual || !ed.nome.trim()) return;
+    setSalvandoEd(true);
+    try {
+      const { error } = await supabase.from('clientes').update({
+        nome: ed.nome.trim(), cpf_cnpj: ed.cpf_cnpj.trim() || null, razao_social: ed.razao_social.trim() || null,
+        nome_fantasia: ed.nome_fantasia.trim() || null, telefone: ed.telefone.trim() || null, email: ed.email.trim() || null,
+      }).eq('id', atual.id);
+      if (error) throw error;
+      await qc.invalidateQueries();
+      setEditando(false);
+      toast.success('Dados da empresa atualizados!');
+    } catch (e: any) {
+      toast.error(e?.message || 'Não foi possível salvar.');
+    } finally { setSalvandoEd(false); }
+  }
+
   async function criarEmpresa() {
     if (!nomeNovo || criando) return;
     setCriando(true);
@@ -87,8 +134,58 @@ export function EmpresaSelector({ value, onChange, excluirId, placeholder = 'Bus
       <div className="flex items-center gap-2 bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5">
         <Building2 className="w-4 h-4 text-blue-400 flex-shrink-0" />
         <span className="flex-1 text-sm text-white truncate">{atual.nome}</span>
+        <button type="button" onClick={abrirEdicao} title="Editar dados da empresa (CNPJ, razão social...)"
+          className="text-gray-500 hover:text-blue-400"><Pencil className="w-4 h-4" /></button>
         <button type="button" onClick={() => onChange('')} title="Trocar empresa"
           className="text-gray-500 hover:text-white"><X className="w-4 h-4" /></button>
+        {createPortal(
+          <Modal open={editando} onClose={() => setEditando(false)} maxWidth="480px"
+            title={<span className="flex items-center gap-1.5"><Pencil className="w-4 h-4 text-blue-400" /> Editar empresa</span>}
+            actions={<>
+              <button type="button" onClick={() => setEditando(false)}
+                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-sm font-medium transition-all">Cancelar</button>
+              <button type="button" onClick={salvarEdicao} disabled={salvandoEd || !ed.nome.trim()}
+                className="px-5 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white rounded-lg text-sm font-bold transition-all">
+                {salvandoEd ? 'Salvando...' : 'Salvar'}</button>
+            </>}>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-bold text-gray-400 uppercase block mb-1">Nome *</label>
+                <input value={ed.nome} onChange={e => setEd(f => ({ ...f, nome: e.target.value }))} className={IN} />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-400 uppercase block mb-1">CNPJ</label>
+                <div className="flex gap-2">
+                  <input value={ed.cpf_cnpj} placeholder="00.000.000/0000-00"
+                    onChange={e => setEd(f => ({ ...f, cpf_cnpj: apenasNumeros(e.target.value).length > 11 ? formatarCNPJ(e.target.value) : e.target.value }))} className={IN} />
+                  <button type="button" onClick={consultarCnpj} disabled={buscandoCnpj} title="Buscar dados pelo CNPJ"
+                    className="bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-gray-200 px-3 rounded-lg flex items-center justify-center flex-shrink-0">
+                    {buscandoCnpj ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-gray-400 uppercase block mb-1">Razão social</label>
+                  <input value={ed.razao_social} onChange={e => setEd(f => ({ ...f, razao_social: e.target.value }))} className={IN} />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-400 uppercase block mb-1">Nome fantasia</label>
+                  <input value={ed.nome_fantasia} onChange={e => setEd(f => ({ ...f, nome_fantasia: e.target.value }))} className={IN} />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-400 uppercase block mb-1">Telefone</label>
+                  <input value={ed.telefone} onChange={e => setEd(f => ({ ...f, telefone: e.target.value }))} className={IN} />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-400 uppercase block mb-1">E-mail</label>
+                  <input type="email" value={ed.email} onChange={e => setEd(f => ({ ...f, email: e.target.value }))} className={IN} />
+                </div>
+              </div>
+            </div>
+          </Modal>,
+          document.body
+        )}
       </div>
     );
   }
