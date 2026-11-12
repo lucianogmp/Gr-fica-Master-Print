@@ -17,7 +17,8 @@ import { useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { DarkSelect } from '../../components/ui/DarkSelect';
 import { TABELAS_IMPORTAVEIS, type TabelaImportavel } from './importConfig';
-import { sugerirMapeamento, normalizar } from './mapeamento';
+import { sugerirMapeamento, normalizar, detectarLinhaCabecalho } from './mapeamento';
+import { lerPlanilha, parseNumeroBR, parseDataBR, parseBooleano, vazio, type AbaPlanilha } from '../../lib/planilha';
 
 type Etapa = 'upload' | 'mapear' | 'revisar' | 'concluido';
 type StatusLinha = 'ok' | 'duplicado_forte' | 'duplicado_possivel' | 'erro';
@@ -41,12 +42,71 @@ function normalizarTelefone(v: string): string {
   return String(v ?? '').replace(/\D/g, '');
 }
 
+type Conv = { valor: any } | { erro: string };
+
+/** Converte o valor cru da célula para o tipo do campo (número BR, data, texto limpo...). */
+function converterCampo(campo: import('./importConfig').CampoImportavel | undefined, bruto: any): Conv {
+  if (!campo) return { valor: null };
+  if (vazio(bruto)) return { valor: null };
+  const rotulo = campo.label;
+
+  if (campo.tipo === 'numero') {
+    const n = parseNumeroBR(bruto);
+    if (n === null) return { valor: null };
+    if (Number.isNaN(n)) return { erro: `${rotulo}: "${bruto}" não é um número válido` };
+    return { valor: n };
+  }
+  if (campo.tipo === 'data') {
+    const d = parseDataBR(bruto);
+    if (d === null) return { valor: null };
+    if (d === undefined) return { erro: `${rotulo}: "${bruto}" não é uma data válida (use dd/mm/aaaa)` };
+    return { valor: d };
+  }
+  if (campo.tipo === 'booleano') {
+    const b = parseBooleano(bruto);
+    if (b === null) return { erro: `${rotulo}: "${bruto}" não é sim/não` };
+    return { valor: b };
+  }
+
+  let texto: string;
+  if (typeof bruto === 'number') {
+    // CPF/CNPJ e CEP lidos como número perdem o zero da frente
+    const inteiro = Number.isInteger(bruto) ? String(bruto) : String(bruto);
+    if (campo.chave === 'cpf_cnpj') texto = inteiro.length <= 11 ? inteiro.padStart(11, '0') : inteiro.padStart(14, '0');
+    else if (campo.chave === 'cep') texto = inteiro.padStart(8, '0');
+    else texto = inteiro;
+  } else if (bruto instanceof Date) {
+    texto = parseDataBR(bruto) ?? '';
+  } else {
+    texto = String(bruto).trim();
+  }
+  if (!texto) return { valor: null };
+
+  if (campo.transformar) {
+    const t = campo.transformar(texto);
+    if (t && typeof t === 'object' && 'erro' in t) return { erro: t.erro };
+    return { valor: t === '' ? null : t };
+  }
+  return { valor: texto };
+}
+
+function traduzirErro(msg: string): string {
+  if (/duplicate key|unique/i.test(msg)) return 'Já existe um registro igual (duplicado)';
+  if (/violates not-null/i.test(msg)) return 'Falta um campo obrigatório';
+  if (/invalid input syntax/i.test(msg)) return 'Algum valor está em formato inválido (número ou data)';
+  if (/row-level security|permission/i.test(msg)) return 'Sem permissão para gravar';
+  return msg;
+}
+
 export default function ImportarDadosPage() {
   const queryClient = useQueryClient();
   const [etapa, setEtapa] = useState<Etapa>('upload');
   const [tabelaEscolhida, setTabelaEscolhida] = useState<TabelaImportavel | null>(null);
 
   const [nomeArquivo, setNomeArquivo] = useState<string>('');
+  const [abas, setAbas] = useState<AbaPlanilha[]>([]);
+  const [abaIdx, setAbaIdx] = useState(0);
+  const [linhaCab, setLinhaCab] = useState(0); // índice (0-based) da linha de cabeçalho dentro da aba
   const [cabecalhos, setCabecalhos] = useState<string[]>([]);
   const [linhasBrutas, setLinhasBrutas] = useState<any[][]>([]);
   const [mapeamento, setMapeamento] = useState<Record<string, string>>({});
@@ -67,6 +127,24 @@ export default function ImportarDadosPage() {
 
   // ---------- Etapa 1: upload ----------
 
+  /** Monta cabeçalhos/linhas a partir da aba e da linha de cabeçalho escolhidas. */
+  function aplicarAba(lista: AbaPlanilha[], idx: number, cab: number) {
+    if (!tabelaEscolhida) return;
+    const linhas = lista[idx]?.linhas ?? [];
+    const brutos = (linhas[cab] ?? []).map((c) => String(c ?? '').trim());
+    // nomes únicos (duas colunas "Telefone" não podem se atropelar no mapeamento)
+    const vistos: Record<string, number> = {};
+    const cabecalhosUnicos = brutos.map((nome, i) => {
+      const base = nome || `Coluna ${i + 1}`;
+      vistos[base] = (vistos[base] ?? 0) + 1;
+      return vistos[base] > 1 ? `${base} (${vistos[base]})` : base;
+    });
+    const dados = linhas.slice(cab + 1).filter((l) => l.some((v) => !vazio(v)));
+    setCabecalhos(cabecalhosUnicos);
+    setLinhasBrutas(dados);
+    setMapeamento(sugerirMapeamento(cabecalhosUnicos, tabelaEscolhida.campos));
+  }
+
   async function handleArquivo(e: React.ChangeEvent<HTMLInputElement>) {
     const arquivo = e.target.files?.[0];
     if (!arquivo || !tabelaEscolhida) return;
@@ -75,28 +153,49 @@ export default function ImportarDadosPage() {
     setNomeArquivo(arquivo.name);
 
     try {
-      const buffer = await arquivo.arrayBuffer();
-      const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
-      const primeiraAba = workbook.SheetNames[0];
-      const planilha = workbook.Sheets[primeiraAba];
-
-      const linhas: any[][] = XLSX.utils.sheet_to_json(planilha, { header: 1, defval: '' });
-
-      if (linhas.length < 2) {
-        setErroGeral('A planilha não tem linhas de dados abaixo do cabeçalho.');
+      const lista = await lerPlanilha(arquivo);
+      if (lista.length === 0 || lista.every((a) => a.linhas.length < 2)) {
+        setErroGeral('Não encontrei linhas de dados nesse arquivo. Confira se há uma linha de cabeçalho e linhas abaixo dela.');
         return;
       }
-
-      const cabecalhosBrutos = (linhas[0] as any[]).map((c) => String(c ?? '').trim());
-      const dados = linhas.slice(1).filter((l) => l.some((v) => String(v ?? '').trim() !== ''));
-
-      setCabecalhos(cabecalhosBrutos);
-      setLinhasBrutas(dados);
-      setMapeamento(sugerirMapeamento(cabecalhosBrutos, tabelaEscolhida.campos));
+      // escolhe a aba que mais parece ter os dados (mais linhas, desempate por cabeçalho reconhecido)
+      let melhor = 0, melhorNota = -1;
+      lista.forEach((a, i) => {
+        const nota = a.linhas.length + detectarLinhaCabecalho(a.linhas, tabelaEscolhida.campos) * 0;
+        if (nota > melhorNota) { melhorNota = nota; melhor = i; }
+      });
+      const cab = detectarLinhaCabecalho(lista[melhor].linhas, tabelaEscolhida.campos);
+      setAbas(lista);
+      setAbaIdx(melhor);
+      setLinhaCab(cab);
+      aplicarAba(lista, melhor, cab);
       setEtapa('mapear');
-    } catch {
-      setErroGeral('Não consegui ler esse arquivo. Confirme se é um .xlsx válido.');
+    } catch (err: any) {
+      setErroGeral(`Não consegui ler esse arquivo (${err?.message ?? 'formato inválido'}). Use .xlsx, .xls ou .csv.`);
     }
+  }
+
+  function baixarModelo() {
+    if (!tabelaEscolhida) return;
+    const ws = XLSX.utils.aoa_to_sheet([tabelaEscolhida.campos.map((c) => c.label)]);
+    ws['!cols'] = tabelaEscolhida.campos.map((c) => ({ wch: Math.max(14, c.label.length + 4) }));
+    const dicas = [
+      ['Como preencher'],
+      ['Apague esta aba se quiser. Preencha a aba "Modelo" a partir da linha 2, uma linha por registro.'],
+      ['Campos com * na lista abaixo são obrigatórios.'],
+      [''],
+      ...tabelaEscolhida.campos.map((c) => [
+        `${c.label}${c.obrigatorio ? ' *' : ''}`,
+        c.tipo === 'numero' ? 'número (ex.: 1234,56)' : c.tipo === 'data' ? 'data (ex.: 31/12/2026)' : 'texto',
+        c.exemplo ? `ex.: ${c.exemplo}` : '',
+      ]),
+    ];
+    const wsDicas = XLSX.utils.aoa_to_sheet(dicas);
+    wsDicas['!cols'] = [{ wch: 48 }, { wch: 28 }, { wch: 30 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Modelo');
+    XLSX.utils.book_append_sheet(wb, wsDicas, 'Instruções');
+    XLSX.writeFile(wb, `modelo-importacao-${tabelaEscolhida.tabela}.xlsx`);
   }
 
   // ---------- Etapa 2: mapeamento ----------
@@ -115,7 +214,9 @@ export default function ImportarDadosPage() {
 
   const camposObrigatoriosMapeados = useMemo(() => {
     const chavesMapeadas = new Set(Object.values(mapeamento));
-    return camposDisponiveis.filter((c) => c.obrigatorio).every((c) => chavesMapeadas.has(c.chave));
+    return camposDisponiveis.filter((c) => c.obrigatorio).every((c) =>
+      chavesMapeadas.has(c.chave) ||
+      (c.chave === 'nome' && (chavesMapeadas.has('nome_fantasia') || chavesMapeadas.has('razao_social'))));
   }, [mapeamento, camposDisponiveis]);
 
   async function avancarParaRevisao() {
@@ -131,11 +232,19 @@ export default function ImportarDadosPage() {
 
       const linhasMontadas = linhasBrutas.map((linha, i) => {
         const dados: Record<string, any> = {};
+        const errosConv: string[] = [];
         for (const { idx, chave } of colunasComMapa) {
-          const valor = linha[idx];
-          dados[chave] = typeof valor === 'string' ? valor.trim() : valor;
+          const campo = tabelaEscolhida.campos.find((c) => c.chave === chave);
+          const conv = converterCampo(campo, linha[idx]);
+          if ('erro' in conv) errosConv.push(conv.erro);
+          else if (conv.valor !== null) dados[chave] = conv.valor;
         }
-        return { linhaOriginal: i + 2, dados };
+        // cliente/fornecedor sem coluna "Nome": usa fantasia ou razão social
+        if (vazio(dados.nome) && (dados.nome_fantasia || dados.razao_social)) {
+          dados.nome = dados.nome_fantasia || dados.razao_social;
+        }
+        // linhaOriginal = linha real na planilha (1-based), pra achar o erro lá
+        return { linhaOriginal: linhaCab + i + 2, dados, erroConversao: errosConv[0] };
       });
 
       const camposFortes = tabelaEscolhida.campos.filter((c) => c.chaveDuplicidade === 'forte');
@@ -171,7 +280,10 @@ export default function ImportarDadosPage() {
         return campoChave === 'telefone' ? normalizarTelefone(valor) : normalizar(String(valor ?? ''));
       }
 
-      const revisao: LinhaRevisao[] = linhasMontadas.map(({ linhaOriginal, dados }) => {
+      const revisao: LinhaRevisao[] = linhasMontadas.map(({ linhaOriginal, dados, erroConversao }) => {
+        if (erroConversao) {
+          return { linhaOriginal, dados, status: 'erro' as const, motivo: erroConversao };
+        }
         // 1) valida obrigatórios
         const campoFaltando = tabelaEscolhida.campos.find(
           (c) => c.obrigatorio && !String(dados[c.chave] ?? '').trim()
@@ -295,7 +407,12 @@ export default function ImportarDadosPage() {
           .insert(payload, { count: 'exact' });
 
         if (error) {
-          lote.forEach((l) => erros.push({ linha: l.linhaOriginal, motivo: error.message }));
+          // Uma linha ruim não pode derrubar o lote inteiro: tenta uma a uma e aponta só a que falhou.
+          for (const l of lote) {
+            const { error: e1 } = await supabase.from(tabelaEscolhida.tabela).insert(l.dados);
+            if (e1) erros.push({ linha: l.linhaOriginal, motivo: traduzirErro(e1.message) });
+            else inseridos += 1;
+          }
         } else {
           inseridos += count ?? payload.length;
         }
@@ -323,6 +440,9 @@ export default function ImportarDadosPage() {
     setNomeArquivo('');
     setCabecalhos([]);
     setLinhasBrutas([]);
+    setAbas([]);
+    setAbaIdx(0);
+    setLinhaCab(0);
     setMapeamento({});
     setLinhasRevisao([]);
     setDecisaoManual({});
@@ -336,7 +456,7 @@ export default function ImportarDadosPage() {
     <div className="max-w-4xl mx-auto p-6 text-gray-100">
       <h1 className="text-xl font-semibold mb-1">Importar dados</h1>
       <p className="text-sm text-gray-400 mb-6">
-        Traga clientes e outros cadastros do sistema antigo para cá, a partir de uma planilha .xlsx.
+        Traga clientes, fornecedores, estoque e contas do sistema antigo para cá, a partir de uma planilha (.xlsx, .xls ou .csv).
       </p>
 
       <Passos etapaAtual={etapa} />
@@ -361,17 +481,22 @@ export default function ImportarDadosPage() {
           {tabelaEscolhida && (
             <div>
               <label className="block text-sm font-medium mb-2">
-                Planilha (.xlsx) exportada do sistema antigo
+                Planilha exportada do sistema antigo
               </label>
               <input
                 type="file"
-                accept=".xlsx,.xls"
+                accept=".xlsx,.xls,.csv,.txt,.tsv"
                 onChange={handleArquivo}
                 className="block w-full text-sm text-gray-300 file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:bg-blue-600 file:text-white file:text-sm hover:file:bg-blue-500"
               />
               <p className="text-xs text-gray-500 mt-2">
-                A primeira linha da planilha deve conter os nomes das colunas.
+                O sistema acha sozinho a linha dos nomes das colunas (mesmo com títulos acima), aceita CSV com ; ou , e
+                converte datas (31/12/2026) e valores (1.234,56) automaticamente.
               </p>
+              <button type="button" onClick={baixarModelo}
+                className="mt-3 text-xs font-bold text-blue-400 hover:text-blue-300 underline underline-offset-2">
+                Baixar planilha modelo de {tabelaEscolhida.label.toLowerCase()} (já com as colunas certas)
+              </button>
             </div>
           )}
         </div>
@@ -384,10 +509,32 @@ export default function ImportarDadosPage() {
             linha(s) encontrada(s). Confira se cada coluna da planilha foi ligada ao campo certo do sistema.
           </p>
 
+          <div className="flex flex-wrap items-center gap-4 mb-4 text-xs text-gray-400">
+            {abas.length > 1 && (
+              <label className="flex items-center gap-2">Aba:
+                <select value={abaIdx}
+                  onChange={(e) => { const i = Number(e.target.value); const cab = detectarLinhaCabecalho(abas[i].linhas, camposDisponiveis); setAbaIdx(i); setLinhaCab(cab); aplicarAba(abas, i, cab); }}
+                  className="bg-[#111827] border border-gray-700 rounded px-2 py-1 text-gray-200">
+                  {abas.map((a, i) => <option key={a.nome} value={i}>{a.nome} ({a.linhas.length} linhas)</option>)}
+                </select>
+              </label>
+            )}
+            <label className="flex items-center gap-2">Os nomes das colunas estão na linha
+              <input type="number" min={1} max={Math.max(1, abas[abaIdx]?.linhas.length ?? 1)} value={linhaCab + 1}
+                onChange={(e) => { const n = Math.max(1, Number(e.target.value) || 1) - 1; setLinhaCab(n); aplicarAba(abas, abaIdx, n); }}
+                className="w-16 bg-[#111827] border border-gray-700 rounded px-2 py-1 text-gray-200 text-center" />
+            </label>
+          </div>
+
           <div className="border border-gray-800 rounded-md divide-y divide-gray-800">
-            {cabecalhos.map((coluna) => (
-              <div key={coluna} className="flex items-center gap-3 p-3">
-                <div className="w-1/2 text-sm text-gray-300 truncate">{coluna || '(sem nome)'}</div>
+            {cabecalhos.map((coluna, ci) => (
+              <div key={coluna + ci} className="flex items-center gap-3 p-3">
+                <div className="w-1/2 min-w-0">
+                  <p className="text-sm text-gray-300 truncate">{coluna || '(sem nome)'}</p>
+                  <p className="text-[11px] text-gray-600 truncate">
+                    {(() => { const ex = linhasBrutas.find((l) => !vazio(l[ci]))?.[ci]; return ex === undefined ? 'sem dados' : `ex.: ${ex instanceof Date ? ex.toLocaleDateString('pt-BR') : String(ex)}`; })()}
+                  </p>
+                </div>
                 <div className="w-1/2">
                   <DarkSelect
                     size="sm" value={mapeamento[coluna] ?? ''} allowEmpty placeholder="Ignorar esta coluna"

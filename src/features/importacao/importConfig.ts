@@ -22,6 +22,10 @@ export interface CampoImportavel {
    *   necessariamente que é a mesma pessoa (ex: nome igual, cliente diferente).
    */
   chaveDuplicidade?: 'forte' | 'fraca';
+  /** Ajuste final do texto já lido (ex.: UF em maiúsculo, tipo de conta). Pode devolver { erro } pra recusar a linha. */
+  transformar?: (valor: any) => any | { erro: string };
+  /** Exemplo mostrado na planilha modelo */
+  exemplo?: string;
 }
 
 export interface TabelaImportavel {
@@ -31,6 +35,19 @@ export interface TabelaImportavel {
   label: string;
   campos: CampoImportavel[];
 }
+
+const TIPOS_CONTA: Record<string, string> = {
+  caixa: 'caixa', dinheiro: 'caixa', caixafisico: 'caixa',
+  corrente: 'corrente', contacorrente: 'corrente', cc: 'corrente',
+  poupanca: 'poupanca', contapoupanca: 'poupanca',
+  cartao: 'cartao', cartaodecredito: 'cartao',
+  pix: 'pix', outro: 'outro', outros: 'outro',
+};
+function tipoConta(v: any) {
+  const k = String(v ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z]/g, '');
+  return TIPOS_CONTA[k] ?? { erro: `Tipo de conta "${v}" não reconhecido (use caixa, corrente, poupança, cartão, pix ou outro)` };
+}
+const ufMaiuscula = (v: any) => String(v ?? '').trim().toUpperCase().slice(0, 2);
 
 export const TABELAS_IMPORTAVEIS: TabelaImportavel[] = [
   {
@@ -45,7 +62,7 @@ export const TABELAS_IMPORTAVEIS: TabelaImportavel[] = [
       { chave: 'numero', label: 'Número' },
       { chave: 'bairro', label: 'Bairro' },
       { chave: 'cidade', label: 'Cidade' },
-      { chave: 'estado', label: 'Estado (UF)' },
+      { chave: 'estado', label: 'Estado (UF)', transformar: ufMaiuscula },
       { chave: 'cep', label: 'CEP' },
       { chave: 'data_nascimento', label: 'Data de nascimento', tipo: 'data' },
       { chave: 'razao_social', label: 'Razão social' },
@@ -55,6 +72,27 @@ export const TABELAS_IMPORTAVEIS: TabelaImportavel[] = [
       { chave: 'cnae_principal', label: 'CNAE principal' },
       { chave: 'como_conheceu', label: 'Como conheceu' },
       { chave: 'produto_interesse', label: 'Produto de interesse' },
+      { chave: 'observacoes', label: 'Observações' },
+    ],
+  },
+  {
+    tabela: 'fornecedores',
+    label: 'Fornecedores',
+    campos: [
+      { chave: 'nome', label: 'Nome', obrigatorio: true, chaveDuplicidade: 'fraca' },
+      { chave: 'cpf_cnpj', label: 'CPF / CNPJ', chaveDuplicidade: 'forte' },
+      { chave: 'email', label: 'E-mail', chaveDuplicidade: 'forte' },
+      { chave: 'telefone', label: 'Telefone', chaveDuplicidade: 'fraca' },
+      { chave: 'endereco', label: 'Endereço' },
+      { chave: 'numero', label: 'Número' },
+      { chave: 'bairro', label: 'Bairro' },
+      { chave: 'cidade', label: 'Cidade' },
+      { chave: 'estado', label: 'Estado (UF)', transformar: ufMaiuscula },
+      { chave: 'cep', label: 'CEP' },
+      { chave: 'razao_social', label: 'Razão social' },
+      { chave: 'nome_fantasia', label: 'Nome fantasia' },
+      { chave: 'inscricao_estadual', label: 'Inscrição estadual' },
+      { chave: 'categoria', label: 'Categoria' },
       { chave: 'observacoes', label: 'Observações' },
     ],
   },
@@ -76,7 +114,7 @@ export const TABELAS_IMPORTAVEIS: TabelaImportavel[] = [
     label: 'Contas bancárias',
     campos: [
       { chave: 'nome', label: 'Nome', obrigatorio: true, chaveDuplicidade: 'forte' },
-      { chave: 'tipo', label: 'Tipo (caixa/corrente/poupanca/cartao/pix/outro)' },
+      { chave: 'tipo', label: 'Tipo (caixa/corrente/poupanca/cartao/pix/outro)', transformar: tipoConta, exemplo: 'corrente' },
       { chave: 'banco', label: 'Banco' },
       { chave: 'agencia', label: 'Agência' },
       { chave: 'conta', label: 'Conta' },

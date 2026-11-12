@@ -1,9 +1,67 @@
 // src/pages/Configuracoes/Backup.tsx
-import { HardDrive, Download, Terminal, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { useState } from 'react';
+import { HardDrive, Download, Terminal, AlertTriangle, CheckCircle2, FileSpreadsheet, Loader2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { useBackupStatus } from '../../hooks/useBackupStatus';
+import { CONJUNTOS, GRUPOS, exportarPlanilha, type Periodo } from '../../lib/exportarPlanilhas';
+
+type PeriodoOpcao = 'tudo' | 'mes' | 'mes_passado' | 'ano' | 'ano_passado' | 'datas';
+
+function iso(d: Date) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+
+function calcularPeriodo(op: PeriodoOpcao, de: string, ate: string): Periodo {
+  const h = new Date();
+  if (op === 'mes') return { de: iso(new Date(h.getFullYear(), h.getMonth(), 1)), ate: iso(new Date(h.getFullYear(), h.getMonth() + 1, 0)) };
+  if (op === 'mes_passado') return { de: iso(new Date(h.getFullYear(), h.getMonth() - 1, 1)), ate: iso(new Date(h.getFullYear(), h.getMonth(), 0)) };
+  if (op === 'ano') return { de: `${h.getFullYear()}-01-01`, ate: `${h.getFullYear()}-12-31` };
+  if (op === 'ano_passado') return { de: `${h.getFullYear() - 1}-01-01`, ate: `${h.getFullYear() - 1}-12-31` };
+  if (op === 'datas') return { de: de || null, ate: ate || null };
+  return { de: null, ate: null };
+}
+
+const PERIODOS: { v: PeriodoOpcao; l: string }[] = [
+  { v: 'tudo', l: 'Tudo' }, { v: 'mes', l: 'Este mês' }, { v: 'mes_passado', l: 'Mês passado' },
+  { v: 'ano', l: 'Este ano' }, { v: 'ano_passado', l: 'Ano passado' }, { v: 'datas', l: 'Escolher datas' },
+];
 
 export function Backup() {
   const { ultimoBackupEm, diasDesdeUltimoBackup, atrasado, carregando, marcarBackupFeito } = useBackupStatus();
+  const [selecionados, setSelecionados] = useState<Set<string>>(new Set(CONJUNTOS.map(c => c.id)));
+  const [periodoOp, setPeriodoOp] = useState<PeriodoOpcao>('tudo');
+  const [de, setDe] = useState('');
+  const [ate, setAte] = useState('');
+  const [exportando, setExportando] = useState(false);
+  const [progresso, setProgresso] = useState('');
+
+  function alternar(id: string) {
+    setSelecionados(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  }
+  function alternarGrupo(grupo: string, marcar: boolean) {
+    setSelecionados(prev => {
+      const n = new Set(prev);
+      CONJUNTOS.filter(c => c.grupo === grupo).forEach(c => (marcar ? n.add(c.id) : n.delete(c.id)));
+      return n;
+    });
+  }
+
+  async function baixar(ids: string[], rotulo: string, completo = false) {
+    if (exportando) return;
+    setExportando(true);
+    setProgresso('Preparando...');
+    try {
+      const hoje = iso(new Date());
+      const periodo = calcularPeriodo(periodoOp, de, ate);
+      const r = await exportarPlanilha(ids, periodo, `GraficaMasterPrint_${rotulo}_${hoje}.xlsx`, setProgresso);
+      const total = r.abas.reduce((s, a) => s + a.linhas, 0);
+      toast.success(`Planilha gerada: ${r.abas.length} aba(s), ${total} registro(s).`);
+      if (completo && periodo.de === null && periodo.ate === null) marcarBackupFeito();
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Não foi possível gerar a planilha.');
+    } finally {
+      setExportando(false);
+      setProgresso('');
+    }
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -11,7 +69,7 @@ export function Backup() {
         <h1 className="text-2xl font-black text-white flex items-center gap-2">
           <HardDrive className="w-6 h-6 text-blue-400" /> Backup
         </h1>
-        <p className="text-gray-500 text-sm">Exportação e restauração de dados</p>
+        <p className="text-gray-500 text-sm">Planilhas Excel dos seus dados e backup completo do banco</p>
       </div>
 
       {/* Status real do plano — sem backup automático no Free */}
@@ -56,6 +114,97 @@ export function Backup() {
         >
           Marcar backup como feito hoje
         </button>
+      </div>
+
+      {/* ═══ Exportar em planilha (Excel) ═══ */}
+      <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5 space-y-4">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <h2 className="font-bold text-white flex items-center gap-2">
+              <FileSpreadsheet className="w-5 h-5 text-green-400" /> Baixar dados em planilha (Excel)
+            </h2>
+            <p className="text-gray-500 text-xs mt-1 max-w-2xl">
+              Gera um arquivo .xlsx legível, com uma aba para cada assunto (datas em dd/mm/aaaa, valores em R$, filtros nas colunas).
+              Dá pra abrir no Excel/Google Planilhas pra conferir qualquer coisa. As abas de Clientes, Fornecedores, Estoque Atual
+              e Contas Bancárias usam as mesmas colunas da importação — podem ser importadas de volta.
+            </p>
+          </div>
+          <button
+            onClick={() => baixar(CONJUNTOS.map(c => c.id), 'Backup_completo', true)}
+            disabled={exportando}
+            className="bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white text-sm font-bold px-4 py-2.5 rounded-xl flex items-center gap-2 transition-all flex-shrink-0"
+          >
+            {exportando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            Baixar tudo (backup completo)
+          </button>
+        </div>
+
+        {/* Período */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[10px] font-bold text-gray-500 uppercase mr-1">Período</span>
+          {PERIODOS.map(p => (
+            <button key={p.v} onClick={() => setPeriodoOp(p.v)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                periodoOp === p.v ? 'bg-blue-500/20 text-blue-400 border-blue-500/40' : 'bg-gray-800/60 text-gray-500 border-gray-700 hover:border-gray-600'}`}>
+              {p.l}
+            </button>
+          ))}
+          {periodoOp === 'datas' && (
+            <span className="flex items-center gap-1.5 text-xs text-gray-400">
+              <input type="date" value={de} onChange={e => setDe(e.target.value)} className="bg-[#111827] border border-gray-700 rounded-lg px-2 py-1 text-white text-xs" />
+              até
+              <input type="date" value={ate} onChange={e => setAte(e.target.value)} className="bg-[#111827] border border-gray-700 rounded-lg px-2 py-1 text-white text-xs" />
+            </span>
+          )}
+          <span className="text-[10px] text-gray-600 w-full">
+            Vale para vendas, pagamentos, orçamentos, lançamentos, fluxo de caixa e movimentos de estoque. Contas a pagar/receber mostram sempre o que está em aberto agora; cadastros saem completos.
+          </span>
+        </div>
+
+        {/* Abas por grupo */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          {GRUPOS.map(grupo => {
+            const itens = CONJUNTOS.filter(c => c.grupo === grupo);
+            const todos = itens.every(c => selecionados.has(c.id));
+            return (
+              <div key={grupo} className="bg-[#111827] border border-gray-700 rounded-xl p-3 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <label className="flex items-center gap-2 text-sm font-bold text-white cursor-pointer">
+                    <input type="checkbox" checked={todos} onChange={e => alternarGrupo(grupo, e.target.checked)} />
+                    {grupo}
+                  </label>
+                  <button
+                    onClick={() => baixar(itens.map(c => c.id), grupo.replace(/ /g, '_'))}
+                    disabled={exportando}
+                    className="text-[11px] font-bold text-blue-400 hover:text-blue-300 disabled:opacity-50"
+                  >
+                    Baixar só {grupo}
+                  </button>
+                </div>
+                <div className="space-y-1">
+                  {itens.map(c => (
+                    <label key={c.id} className="flex items-start gap-2 text-xs text-gray-300 cursor-pointer">
+                      <input type="checkbox" className="mt-0.5" checked={selecionados.has(c.id)} onChange={() => alternar(c.id)} />
+                      <span><strong className="text-gray-200">{c.aba}</strong> <span className="text-gray-500">— {c.descricao}</span></span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="flex items-center gap-3 flex-wrap">
+          <button
+            onClick={() => baixar(Array.from(selecionados), 'Selecionadas')}
+            disabled={exportando || selecionados.size === 0}
+            className="bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm font-bold px-4 py-2 rounded-xl flex items-center gap-2 transition-all"
+          >
+            {exportando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            Baixar abas marcadas ({selecionados.size})
+          </button>
+          {exportando && <span className="text-xs text-gray-400">{progresso}</span>}
+        </div>
       </div>
 
       <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-5">
