@@ -480,12 +480,12 @@ function LinhaRascunho({ indice, total, linha, contas, formas, onChange, onRemov
             options={Array.from({ length: maxParcelas }, (_, idx) => {
               const n = idx + 1;
               const t = getTaxaParcela(formaSelecionada, n);
-              return { value: String(n), label: `${n}x${t > 0 ? ` (taxa ${fmtPct(t)}%)` : ' sem taxa'}` };
+              return { value: String(n), label: `${n}x${t > 0 ? ` · maquininha cobra ${fmtPct(t)}% de você` : ' · sem taxa pra você'}` };
             })}
             className="w-44" />
           {taxaPct > 0 && (
             <span className="text-[10px] text-red-400">
-              taxa maquininha {fmtPct(taxaPct)}%: -{fmtBRL(taxaValor)} · líquido {fmtBRL(Number(linha.valor || 0) - taxaValor)}
+              maquininha cobra {fmtPct(taxaPct)}% de você: -{fmtBRL(taxaValor)} · você recebe {fmtBRL(Number(linha.valor || 0) - taxaValor)}
             </span>
           )}
         </div>
@@ -494,7 +494,7 @@ function LinhaRascunho({ indice, total, linha, contas, formas, onChange, onRemov
       {!(permiteParc && maxParcelas > 1) && taxaPct > 0 && (
         <div className="col-span-7 -mt-1 pl-[2.2rem]">
           <span className="text-[10px] text-red-400">
-            taxa maquininha {fmtPct(taxaPct)}%: -{fmtBRL(taxaValor)} · líquido {fmtBRL(Number(linha.valor || 0) - taxaValor)}
+            maquininha cobra {fmtPct(taxaPct)}% de você: -{fmtBRL(taxaValor)} · você recebe {fmtBRL(Number(linha.valor || 0) - taxaValor)}
           </span>
         </div>
       )}

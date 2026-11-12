@@ -121,7 +121,7 @@ function TabelaTaxasEditor({
           style={{ gridTemplateColumns: '70px 150px 1fr 170px' }}
         >
           <span>Parcelas</span>
-          <span className="text-right">Taxa (%)</span>
+          <span className="text-right">Taxa da maquininha (%)</span>
           <span className="px-3">Observação</span>
           <span className="text-right">Você recebe (de R$100)</span>
         </div>
@@ -164,8 +164,8 @@ function TabelaTaxasEditor({
                 <div className="px-3">
                   <span className={`text-[10px] ${isZero ? 'text-green-400' : 'text-yellow-400'}`}>
                     {isZero
-                      ? (t.parcelas === 1 ? 'Sem acréscimo' : 'Sem juros')
-                      : `+${taxa.toLocaleString('pt-BR', { maximumFractionDigits: 4 })}% sobre o total`}
+                      ? (t.parcelas === 1 ? 'Sem taxa pra você' : 'Sem taxa pra você (cliente paga a taxa)')
+                      : `Maquininha cobra ${taxa.toLocaleString('pt-BR', { maximumFractionDigits: 4 })}% de VOCÊ (cliente paga o valor cheio)`}
                   </span>
                 </div>
 
@@ -184,8 +184,9 @@ function TabelaTaxasEditor({
       <div className="flex items-start gap-2 bg-blue-500/10 border border-blue-500/20 rounded-lg p-2.5">
         <Info className="w-3.5 h-3.5 text-blue-400 flex-shrink-0 mt-0.5" />
         <p className="text-[10px] text-blue-300">
-          A taxa é <strong>descontada pela maquininha</strong> do que você recebe (você assume). Para as parcelas em que
-          o <strong>cliente paga a taxa</strong> (acima do limite sem juros), deixe <strong>0%</strong>: o sistema registra o valor cheio.
+          A taxa é o que a <strong>maquininha cobra de você</strong> — o cliente não paga nada a mais no sistema.
+          Nas parcelas em que o <strong>cliente paga a taxa no cartão dele</strong> (ex.: de 4x em diante), deixe <strong>0%</strong>:
+          você recebe o valor cheio.
         </p>
       </div>
     </div>
@@ -241,7 +242,7 @@ function FormaCard({
             )}
             {temTaxasConfiguradas && (
               <span className="text-[9px] font-bold bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 px-1.5 py-0.5 rounded-full">
-                com acréscimo
+                taxa da maquininha
               </span>
             )}
             {!formaNorm.ativo && (
