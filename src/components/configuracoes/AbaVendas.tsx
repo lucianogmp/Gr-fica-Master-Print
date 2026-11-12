@@ -86,11 +86,9 @@ function TabelaTaxasEditor({
   }
 
   function exemploParcela(n: number, taxa: number): string {
-    const totalComTaxa = 100 * (1 + taxa / 100);
-    const valorParcela = totalComTaxa / n;
-    return valorParcela.toLocaleString('pt-BR', {
-      style: 'currency', currency: 'BRL',
-    });
+    // A taxa é descontada pela maquininha: o líquido é o que cai pra você, no total e por parcela.
+    const liquido = 100 * (1 - taxa / 100);
+    return `${liquido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}${n > 1 ? ` (${(liquido / n).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/parc.)` : ''}`;
   }
 
   const maxOpcoes = [1,2,3,4,5,6,7,8,9,10,11,12,18,24,36,48];
@@ -120,12 +118,12 @@ function TabelaTaxasEditor({
         {/* Header */}
         <div
           className="grid text-[9px] font-bold text-gray-500 uppercase bg-gray-800/60 border-b border-gray-700 px-3 py-2"
-          style={{ gridTemplateColumns: '70px 150px 1fr 120px' }}
+          style={{ gridTemplateColumns: '70px 150px 1fr 170px' }}
         >
           <span>Parcelas</span>
           <span className="text-right">Taxa (%)</span>
           <span className="px-3">Observação</span>
-          <span className="text-right">Exemplo (R$100)</span>
+          <span className="text-right">Você recebe (de R$100)</span>
         </div>
 
         {/* Linhas */}
@@ -137,7 +135,7 @@ function TabelaTaxasEditor({
               <div
                 key={t.parcelas}
                 className="grid items-center px-3 py-2 hover:bg-gray-800/20 transition-colors"
-                style={{ gridTemplateColumns: '70px 150px 1fr 120px' }}
+                style={{ gridTemplateColumns: '70px 150px 1fr 170px' }}
               >
                 {/* Nº parcelas */}
                 <div className="flex items-center gap-2">
@@ -174,7 +172,7 @@ function TabelaTaxasEditor({
                 {/* Exemplo */}
                 <div className="text-right">
                   <span className="text-[10px] font-bold text-gray-300">
-                    {t.parcelas}x {exemploParcela(t.parcelas, taxa)}
+                    {exemploParcela(t.parcelas, taxa)}
                   </span>
                 </div>
               </div>
@@ -186,8 +184,8 @@ function TabelaTaxasEditor({
       <div className="flex items-start gap-2 bg-blue-500/10 border border-blue-500/20 rounded-lg p-2.5">
         <Info className="w-3.5 h-3.5 text-blue-400 flex-shrink-0 mt-0.5" />
         <p className="text-[10px] text-blue-300">
-          <strong>Exemplo</strong> mostra como ficaria um pedido de R$100,00.
-          Taxa 0% = sem acréscimo ao cliente.
+          A taxa é <strong>descontada pela maquininha</strong> do que você recebe (você assume). Para as parcelas em que
+          o <strong>cliente paga a taxa</strong> (acima do limite sem juros), deixe <strong>0%</strong>: o sistema registra o valor cheio.
         </p>
       </div>
     </div>
