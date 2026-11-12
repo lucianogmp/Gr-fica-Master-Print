@@ -59,6 +59,8 @@ export interface VendaItem {
   unidade?: string | null;
   area_m2?: number | null;
   total: number;
+  /** Quando o item foi adicionado à venda (preservado nos salvamentos seguintes) */
+  created_at?: string | null;
   /** Snapshot congelado — presente quando o item veio de um Orçamento de Placa. */
   detalhe_placa?: import('../lib/placaCalc').DetalhePlaca | null;
 }

@@ -328,7 +328,9 @@ export function ItensEditor({ itens, onChange, onEditarProduto, onCriarProduto }
                         {/* Detalhe vindo do orçamento: configuração da placa ou medidas do item (ex.: 5 × 5 cm) */}
                         {(() => {
                           const detalhe = it.detalhe_placa ? resumoPlacaLinha(it.detalhe_placa) : (it.obs ?? '');
-                          return detalhe ? <p className="text-[10px] text-gray-500 truncate" title={detalhe}>{detalhe}</p> : null;
+                          const quando = new Date(it.created_at ?? Date.now()).toLocaleDateString('pt-BR');
+                          const linha = [detalhe, `adicionado em ${quando}`].filter(Boolean).join(' · ');
+                          return <p className="text-[10px] text-gray-500 truncate" title={linha}>{linha}</p>;
                         })()}
                       </>
                     )}

@@ -30,6 +30,8 @@ function serializarItens(itens: VendaItem[]) {
     detalhe_placa:  i.detalhe_placa  ?? null,
     acabamento_id:  (i as any).acabamento_id ?? null,
     acabamento_qtd_estoque: (i as any).acabamento_qtd_estoque ?? null,
+    // mantém a data em que o item foi adicionado (item novo vai sem data e nasce com a de agora)
+    created_at:     i.created_at     ?? null,
   }));
 }
 
