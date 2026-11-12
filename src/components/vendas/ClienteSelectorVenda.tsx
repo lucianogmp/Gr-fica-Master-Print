@@ -24,6 +24,8 @@ interface ClienteSimples {
   /** Linha extra no resultado: "Funcionário de Network", "Contato (Thales) de Network"... */
   rotulo?: string;
   chave?: string;
+  /** Nome da pessoa quando a opção é um contato do CRM */
+  pessoa?: string;
 }
 
 interface Props {
@@ -31,9 +33,11 @@ interface Props {
   clienteId?: string | null;
   onChange: (nome: string, id?: string | null) => void;
   hideLabel?: boolean;
+  /** Chamado ao escolher um contato do CRM: quem está pedindo */
+  onSolicitante?: (nome: string) => void;
 }
 
-export function ClienteSelectorVenda({ value, clienteId, onChange, hideLabel }: Props) {
+export function ClienteSelectorVenda({ value, clienteId, onChange, hideLabel, onSolicitante }: Props) {
   const queryClient = useQueryClient();
   const [busca, setBusca]         = useState(value);
   const [opcoes, setOpcoes]       = useState<ClienteSimples[]>([]);
@@ -113,7 +117,7 @@ export function ClienteSelectorVenda({ value, clienteId, onChange, hideLabel }: 
         contatos = (ct ?? []).filter((c: any) => c.cliente_id && c.clientes?.nome).map((c: any) => ({
           id: c.cliente_id, nome: c.clientes.nome, telefone: c.telefone, email: c.email,
           rotulo: `Contato: ${c.nome}${c.cargo ? ` (${c.cargo})` : ''} — empresa ${c.clientes.nome}`,
-          chave: `contato:${c.id}`,
+          chave: `contato:${c.id}`, pessoa: c.nome,
         }));
       } catch { /* sem contatos, segue só com clientes */ }
 
@@ -154,6 +158,7 @@ export function ClienteSelectorVenda({ value, clienteId, onChange, hideLabel }: 
   function selecionar(c: ClienteSimples) {
     setBusca(c.nome);
     onChange(c.nome, c.id);
+    if (c.pessoa) onSolicitante?.(c.pessoa);
     setAberto(false);
     setOpcoes([]);
   }

@@ -51,6 +51,8 @@ export interface Orcamento {
   numero?: number | null;
   cliente_nome: string;
   cliente_id?: string | null;
+  /** Pessoa da empresa que fez o pedido */
+  solicitante?: string | null;
   status: StatusOrcamento;
   desconto?: number | null;
   observacoes?: string | null;

@@ -30,6 +30,7 @@ import {
 import { ModalLancamento } from '../components/financeiro/ModalLancamento';
 import { ItensEditor } from '../components/vendas/ItensEditor';
 import { ClienteSelectorVenda } from '../components/vendas/ClienteSelectorVenda';
+import { SolicitanteInput } from '../components/vendas/SolicitanteInput';
 import { VendedorSelector } from '../components/vendas/VendedorSelector';
 import { PainelFinanceiro } from '../components/vendas/PainelFinanceiro';
 import { KpiCard } from '../components/ui/KpiCard';
@@ -89,6 +90,7 @@ const IN = "w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 te
 const NOVA_VENDA_FORM = {
   cliente_nome:    '',
   cliente_id:      null as string | null,
+  solicitante:     '',
   status:          'orcamento' as StatusVenda,
   desconto:        0,
   frete:           0,
@@ -240,6 +242,7 @@ export function Financeiro() {
     setFormVenda({
       cliente_nome:    v.cliente_nome,
       cliente_id:      (v as any).cliente_id ?? null,
+      solicitante:     (v as any).solicitante ?? '',
       status:          v.status,
       desconto:        Number(v.desconto ?? 0),
       frete:           Number((v as any).frete ?? 0),
@@ -281,6 +284,7 @@ export function Financeiro() {
     const payload = {
       cliente_nome:    formVenda.cliente_nome,
       cliente_id:      formVenda.cliente_id,
+      solicitante:     formVenda.solicitante?.trim() || null,
       status:          formVenda.status,
       desconto:        formVenda.desconto,
       frete:           formVenda.frete,
@@ -337,6 +341,7 @@ export function Financeiro() {
     data: formVenda.data_venda ?? null,
     dataEntrega: formVenda.data_entrega ?? null,
     clienteNome: formVenda.cliente_nome,
+    solicitante: formVenda.solicitante || null,
     clienteTelefone: clientes.find(c => c.id === formVenda.cliente_id)?.telefone ?? null,
     clienteEmail: clientes.find(c => c.id === formVenda.cliente_id)?.email ?? null,
     clienteEndereco: formatarEnderecoCliente(clientes.find(c => c.id === formVenda.cliente_id)) || null,
@@ -420,8 +425,10 @@ export function Financeiro() {
                   <ClienteSelectorVenda
                     value={formVenda.cliente_nome}
                     clienteId={formVenda.cliente_id}
-                    onChange={(nome, id) => { setFV('cliente_nome', nome); setFV('cliente_id', id ?? null); }}
+                    onChange={(nome, id) => { setFV('cliente_nome', nome); if ((id ?? null) !== formVenda.cliente_id) setFV('solicitante', ''); setFV('cliente_id', id ?? null); }}
+                    onSolicitante={n => setFV('solicitante', n)}
                   />
+                  <SolicitanteInput value={formVenda.solicitante} clienteId={formVenda.cliente_id} onChange={n => setFV('solicitante', n)} />
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Data da Venda</label>

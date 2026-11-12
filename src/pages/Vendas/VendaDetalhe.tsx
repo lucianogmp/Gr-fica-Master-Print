@@ -21,6 +21,7 @@ import { formatarEnderecoCliente } from '../../types/cliente';
 import { useClientes } from '../../hooks/useClientes';
 import { ItensEditor, normalizarItem } from '../../components/vendas/ItensEditor';
 import { ClienteSelectorVenda } from '../../components/vendas/ClienteSelectorVenda';
+import { SolicitanteInput } from '../../components/vendas/SolicitanteInput';
 import { VendedorSelector } from '../../components/vendas/VendedorSelector';
 import { PainelFinanceiro, RascunhoParcela, resolverTaxaRascunho } from '../../components/vendas/PainelFinanceiro';
 import { useContasBancarias } from '../../hooks/useContasBancarias';
@@ -45,6 +46,7 @@ const IN = "w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 te
 const NOVA_VENDA = {
   cliente_nome:    '',
   cliente_id:      null as string | null,
+  solicitante:     '',
   status:          'producao' as StatusVenda,
   desconto:        0,
   frete:           0,
@@ -189,6 +191,7 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
       setForm({
         cliente_nome:    v.cliente_nome,
         cliente_id:      (v as any).cliente_id ?? null,
+        solicitante:     (v as any).solicitante ?? '',
         status:          v.status,
         desconto:        Number(v.desconto ?? 0),
         frete:           Number((v as any).frete ?? 0),
@@ -427,6 +430,7 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
     data: form.data_venda ?? null,
     dataEntrega: form.data_entrega ?? null,
     clienteNome: form.cliente_nome,
+    solicitante: form.solicitante || null,
     clienteTelefone: clienteSelecionado?.telefone ?? null,
     clienteEmail: clienteSelecionado?.email ?? null,
     clienteEndereco: formatarEnderecoCliente(clienteSelecionado) || null,
@@ -468,6 +472,7 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
     const payload = {
       cliente_nome:    form.cliente_nome,
       cliente_id:      form.cliente_id,
+      solicitante:     form.solicitante?.trim() || null,
       status:          form.status,
       desconto:        form.desconto,
       frete:           form.frete,
@@ -658,8 +663,14 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
                         hideLabel
                         value={form.cliente_nome}
                         clienteId={form.cliente_id}
-                        onChange={(nome, id) => { setF('cliente_nome', nome); setF('cliente_id', id ?? null); }}
+                        onChange={(nome, id) => { setF('cliente_nome', nome); if ((id ?? null) !== form.cliente_id) setF('solicitante', ''); setF('cliente_id', id ?? null); }}
+                        onSolicitante={n => setF('solicitante', n)}
                       />
+                    )}
+                    {!form.consumidor_final && (
+                      <div className="mt-2">
+                        <SolicitanteInput value={form.solicitante} clienteId={form.cliente_id} onChange={n => setF('solicitante', n)} />
+                      </div>
                     )}
                   </div>
                   <div>

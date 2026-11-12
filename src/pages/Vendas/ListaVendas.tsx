@@ -290,6 +290,7 @@ export function ListaVendas({
       data: vendaImprimir.data_venda ?? null,
       dataEntrega: vendaImprimir.data_entrega ?? null,
       clienteNome: vendaImprimir.cliente_nome,
+      solicitante: (vendaImprimir as any).solicitante ?? null,
       clienteTelefone: clientes.find(c => c.id === vendaImprimir.cliente_id)?.telefone ?? null,
       clienteEmail: clientes.find(c => c.id === vendaImprimir.cliente_id)?.email ?? null,
       clienteEndereco: formatarEnderecoCliente(clientes.find(c => c.id === vendaImprimir.cliente_id)) || null,

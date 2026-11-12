@@ -156,6 +156,7 @@ export function useOrcamentos() {
         .insert({
           cliente_nome:     orcSemCliente ? 'Cliente sem cadastro' : orc.cliente_nome,
           cliente_id:       orc.cliente_id ?? null,
+          solicitante:      (orc as any).solicitante ?? null,
           consumidor_final: orcSemCliente,
           status:       'aprovado',
           desconto:     orc.desconto ?? 0,

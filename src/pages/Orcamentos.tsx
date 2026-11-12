@@ -33,6 +33,7 @@ import { PlacaOrcEditor } from '../components/orcamentos/PlacaOrcEditor';
 import { VendedorSelector } from '../components/vendas/VendedorSelector';
 import { useAuth } from '../hooks/useAuth';
 import { ClienteSelectorVenda } from '../components/vendas/ClienteSelectorVenda';
+import { SolicitanteInput } from '../components/vendas/SolicitanteInput';
 import { CalculadoraFolhas } from '../components/CalculadoraFolhas';
 import { KpiCard } from '../components/ui/KpiCard';
 import { MoneyInput } from '../components/ui/MoneyInput';
@@ -251,6 +252,7 @@ export function Orcamentos() {
       data: orc.created_at ?? null,
       dataEntrega: null,
       clienteNome: orc.cliente_nome ?? '',
+      solicitante: (orc as any).solicitante ?? null,
       clienteTelefone,
       clienteEmail,
       clienteEndereco,
@@ -1225,9 +1227,16 @@ export function Orcamentos() {
                   <ClienteSelectorVenda
                     value={form.cliente_nome ?? ''}
                     clienteId={form.cliente_id}
-                    onChange={(nome, id) => { setF('cliente_nome', nome); setF('cliente_id', id ?? null); }}
+                    onChange={(nome, id) => { setF('cliente_nome', nome); if ((id ?? null) !== form.cliente_id) setF('solicitante' as any, ''); setF('cliente_id', id ?? null); }}
+                    onSolicitante={n => setF('solicitante' as any, n)}
                     hideLabel
                   />
+                )}
+                {!semCliente && (
+                  <div className="mt-2">
+                    <SolicitanteInput value={(form as any).solicitante ?? ''} clienteId={form.cliente_id}
+                      onChange={n => setF('solicitante' as any, n)} />
+                  </div>
                 )}
               </div>
               <div>

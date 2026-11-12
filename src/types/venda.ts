@@ -12,6 +12,8 @@ export interface Venda {
   numero?: number | null;
   cliente_nome: string;
   cliente_id?: string | null;
+  /** Pessoa da empresa que fez o pedido */
+  solicitante?: string | null;
   status: StatusVenda;
   orcamento_origem_id?: string | null;
   orcamento_origem_numero?: number | null;

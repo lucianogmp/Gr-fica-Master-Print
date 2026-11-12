@@ -35,6 +35,8 @@ export interface DocumentoImpressaoData {
   /** apenas Venda */
   dataEntrega?: string | null;
   clienteNome: string;
+  /** Pessoa da empresa que fez o pedido — sai como "A/C" abaixo do cliente */
+  solicitante?: string | null;
   /** NOVO — dados de contato do cliente, exibidos no bloco Cliente */
   clienteTelefone?: string | null;
   clienteEmail?: string | null;
@@ -160,6 +162,9 @@ export function DocumentoImpressao({ layout, empresa, documento: doc, style }: D
             Cliente
           </p>
           <p style={{ fontSize: 14, fontWeight: 700, margin: '6px 0 0' }}>{doc.clienteNome || '—'}</p>
+          {doc.solicitante?.trim() && (
+            <p style={{ fontSize: 12, color: '#374151', margin: '2px 0 0' }}>A/C: {doc.solicitante.trim()}</p>
+          )}
           <p style={{ fontSize: 12, color: '#4b5563', margin: '4px 0 0' }}>Telefone: {doc.clienteTelefone || ''}</p>
           <p style={{ fontSize: 12, color: '#4b5563', margin: '2px 0 0' }}>Email: {doc.clienteEmail || ''}</p>
           <p style={{ fontSize: 12, color: '#4b5563', margin: '2px 0 0' }}>Endereço: {doc.clienteEndereco || ''}</p>
