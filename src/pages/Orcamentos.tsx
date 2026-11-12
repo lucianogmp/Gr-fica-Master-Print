@@ -1208,7 +1208,7 @@ export function Orcamentos() {
           <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5">
             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Dados do Orçamento</h3>
             <div className="space-y-3">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
                 <div className="flex items-center justify-between mb-1.5 h-5">
                   <label className="text-xs font-bold text-gray-400 uppercase">Cliente</label>
@@ -1232,11 +1232,14 @@ export function Orcamentos() {
                     hideLabel
                   />
                 )}
-                {!semCliente && (
-                  <div className="mt-2">
-                    <SolicitanteInput value={(form as any).solicitante ?? ''} clienteId={form.cliente_id}
-                      onChange={n => setF('solicitante' as any, n)} />
-                  </div>
+              </div>
+              <div>
+                <div className="mb-1.5 h-5 flex items-center"><label className="text-xs font-bold text-gray-400 uppercase">Solicitante</label></div>
+                {semCliente ? (
+                  <div className="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-gray-600 italic">—</div>
+                ) : (
+                  <SolicitanteInput hideLabel value={(form as any).solicitante ?? ''} clienteId={form.cliente_id}
+                    onChange={n => setF('solicitante' as any, n)} />
                 )}
               </div>
               <div>

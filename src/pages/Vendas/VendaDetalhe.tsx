@@ -643,7 +643,7 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
           <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-4">
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1 min-w-0 space-y-2.5">
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <label className="text-[10px] font-bold text-gray-500 uppercase">Cliente</label>
@@ -667,10 +667,13 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
                         onSolicitante={n => setF('solicitante', n)}
                       />
                     )}
-                    {!form.consumidor_final && (
-                      <div className="mt-2">
-                        <SolicitanteInput value={form.solicitante} clienteId={form.cliente_id} onChange={n => setF('solicitante', n)} />
-                      </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Solicitante</label>
+                    {form.consumidor_final ? (
+                      <div className="bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-gray-600 italic">—</div>
+                    ) : (
+                      <SolicitanteInput hideLabel value={form.solicitante} clienteId={form.cliente_id} onChange={n => setF('solicitante', n)} />
                     )}
                   </div>
                   <div>
