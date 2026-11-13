@@ -1,4 +1,4 @@
-import { DollarSign, ShoppingCart, TrendingUp, Landmark, type LucideIcon, ArrowUp, ArrowDown } from 'lucide-react';
+import { DollarSign, ShoppingCart, TrendingUp, type LucideIcon, ArrowUp, ArrowDown } from 'lucide-react';
 import { LineChart, Line, ResponsiveContainer } from 'recharts';
 import { useContainerReady } from '../../hooks/useContainerReady';
 
@@ -58,11 +58,10 @@ function KpiCard({ title, value, pct, icon: Icon, cor, spark, invertPct = false,
 
 export function DashboardKpis({ data }: { data: KpiData | undefined }) {
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
       <KpiCard title="RECEITA TOTAL"   value={data?.receitaMes ?? 0}  pct={data?.pctReceita ?? 0}  icon={DollarSign}   cor="#10b981" spark={data?.sparkReceita ?? []} />
       <KpiCard title="DESPESAS TOTAIS" value={data?.despesaMes ?? 0}  pct={data?.pctDespesa ?? 0}  icon={ShoppingCart} cor="#ef4444" spark={data?.sparkDespesa ?? []} invertPct />
       <KpiCard title="LUCRO LÍQUIDO"   value={data?.lucroMes ?? 0}    pct={data?.pctLucro ?? 0}    icon={TrendingUp}   cor="#10b981" spark={data?.sparkLucro ?? []} />
-      <KpiCard title="SALDO EM CAIXA"  value={data?.saldoCaixaAtual ?? 0}    pct={0}                      icon={Landmark}     cor="#a855f7" spark={data?.sparkReceita ?? []} hideVar />
     </div>
   );
 }
