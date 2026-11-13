@@ -271,7 +271,8 @@ export function useDashboardData(mes: string) {
       // entrar de novo na margem. Retiradas de sócios e ajustes de saldo ficam fora.
       // Meses que têm linha no histórico do sistema anterior usam aquele total; os demais, os dados vivos.
       const histMap = new Map((histRes.data ?? []).map((h: any) => [h.mes as string, h]));
-      const CATS_VARIAVEIS = ['Fornecedor', 'Impostos'];
+      // Imposto do MEI (DAS) é valor fixo por mês, não percentual da receita: não é custo variável.
+      const CATS_VARIAVEIS = ['Fornecedor'];
       const mesesFechados = chart6.filter(c => c.mes < mesAtualReal && c.mes <= mes).slice(-6);
       let recM = 0, varM = 0;
       mesesFechados.forEach(c => {

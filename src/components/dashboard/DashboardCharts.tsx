@@ -127,7 +127,7 @@ export function DashboardCharts({ data }: { data: ChartData | undefined }) {
         <div className="flex flex-1 flex-col justify-between gap-1.5">
           {[
             { label: 'Receita Bruta',       valor: data?.receitaMes ?? 0,  cor: 'text-green-400', ajuda: 'Tudo que foi recebido no mês: pagamentos de vendas, receitas lançadas à mão e entradas do caixa. Conta pela data do recebimento, não da venda.' },
-            { label: '(-) Impostos',         valor: data?.impostosMes ?? 0, cor: 'text-red-400', ajuda: 'Despesas lançadas na categoria Impostos neste mês.' },
+            { label: '(-) Impostos',         valor: data?.impostosMes ?? 0, cor: 'text-red-400', ajuda: 'Despesas lançadas na categoria Impostos neste mês (ex.: guia DAS do MEI). É um valor fixo mensal, por isso não entra na margem de contribuição.' },
             { label: '(-) Custos Variáveis', valor: data?.variaveisMes ?? 0, cor: 'text-red-400', ajuda: 'Gastos ligados às vendas: despesas vinculadas a uma venda e compras de Fornecedor.' },
             { label: '(-) Despesas Fixas',   valor: data?.fixasMes ?? 0,    cor: 'text-red-400', ajuda: 'O resto das despesas do mês (aluguel, salários, manutenção, boletos de máquina, saídas do caixa...). Não depende de quanto você vendeu.' },
           ].map(r => (
