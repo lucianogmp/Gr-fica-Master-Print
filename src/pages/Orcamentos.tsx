@@ -690,7 +690,7 @@ export function Orcamentos() {
         if (o.status === 'convertido' && filtro !== 'convertido') return false;
         return filtro === 'todos' || o.status === filtro;
       })
-      .filter(o => correspondeABuscaEmCampos([o.cliente_nome, o.tipo, o.numero], busca));
+      .filter(o => correspondeABuscaEmCampos([o.cliente_nome, (o as any).solicitante, o.tipo, o.numero], busca));
     const f = filtrosAv;
     const campoData = dataUsada(f.periodo, 'created_at');
     const buscaModal = String(f.busca ?? '').trim();
@@ -699,7 +699,7 @@ export function Orcamentos() {
     const cli = (o: any) => clientes.find(c => c.id === o.cliente_id);
     const comFiltrosAv = base
       .filter(o => passaPeriodo(f.periodo, (o as any)[campoData]))
-      .filter(o => !buscaModal || correspondeABuscaEmCampos([o.cliente_nome, o.tipo, o.numero, o.vendedor], buscaModal))
+      .filter(o => !buscaModal || correspondeABuscaEmCampos([o.cliente_nome, (o as any).solicitante, o.tipo, o.numero, o.vendedor], buscaModal))
       .filter(o => !prod || (produtosPorOrc.get(o.id) ?? '').toLowerCase().includes(prod))
       .filter(o => !obs || (o.observacoes ?? '').toLowerCase().includes(obs))
       .filter(o => passaFaixa(f.valor, o.total))

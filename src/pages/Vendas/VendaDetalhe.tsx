@@ -832,6 +832,10 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
               ]);
               marcarAlteracoesPendentes('Você tem alterações não salvas nessa venda. Sair mesmo assim?');
             }}
+            onEditarRascunho={(id, dados) => {
+              setGastosRascunho(prev => prev.map(g => g.id === id ? ({ ...g, ...dados } as Lancamento) : g));
+              marcarAlteracoesPendentes('Você tem alterações não salvas nessa venda. Sair mesmo assim?');
+            }}
             onExcluirRascunho={id => {
               setGastosRascunho(prev => prev.filter(g => g.id !== id));
               marcarAlteracoesPendentes('Você tem alterações não salvas nessa venda. Sair mesmo assim?');

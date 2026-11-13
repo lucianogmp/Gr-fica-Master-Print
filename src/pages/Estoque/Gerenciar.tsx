@@ -6,7 +6,7 @@ import { MateriaPrima, statusEstoque } from '../../types/estoque';
 import { ModalMP } from '../../components/estoque/ModalMP';
 import { useConfirm } from '../../components/ui/ConfirmModal';
 import { PackageSearch, Plus, Tags } from 'lucide-react';
-import { CategoriasMaterialModal } from '../../components/estoque/CategoriasMaterialModal';
+import { CategoriasModal } from '../../components/CategoriasModal';
 import { correspondeABuscaEmCampos } from '../../lib/buscaFlexivel';
 import { BarraLista } from '../../components/ui/BarraLista';
 import { CampoFiltro, FiltroValor, passaPeriodo, passaMulti, passaFaixa, passaSimNao } from '../../components/ui/FiltroModal';
@@ -71,7 +71,7 @@ export function Gerenciar() {
   return (
     <>
       <ConfirmModal />
-      <CategoriasMaterialModal open={modalCats} onClose={() => setModalCats(false)} />
+      <CategoriasModal tipo="material" open={modalCats} onClose={() => setModalCats(false)} />
       <div className="p-6 space-y-6">
         <div className="flex items-start justify-between flex-wrap gap-3">
           <div>

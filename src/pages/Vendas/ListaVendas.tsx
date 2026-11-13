@@ -161,7 +161,7 @@ export function ListaVendas({
   const camposFiltro = useMemo<CampoFiltro[]>(() => [
     { tipo: 'periodo', chave: 'periodo', label: 'Data', datas: [
       { value: 'data_venda', label: 'Data da venda' }, { value: 'data_entrega', label: 'Data de entrega' }, { value: 'created_at', label: 'Data de criação' }] },
-    { tipo: 'busca', chave: 'busca', label: 'Busca (cliente, nº, tipo, palavra-chave)', placeholder: 'Cód., cliente, tipo, palavra-chave...' },
+    { tipo: 'busca', chave: 'busca', label: 'Busca (cliente, solicitante, nº, tipo, palavra-chave)', placeholder: 'Cód., cliente, solicitante, palavra-chave...' },
     { tipo: 'busca', chave: 'produto', label: 'Vendas com o produto / serviço', placeholder: 'Nome do item vendido' },
     { tipo: 'busca', chave: 'obs', label: 'Buscar nas observações', placeholder: 'Texto das observações' },
     { tipo: 'faixa', chave: 'valor', label: 'Valor da venda' },
@@ -193,9 +193,9 @@ export function ListaVendas({
       .filter(v => filtroExtra === 'todos' || v.status === filtroExtra)
       // Pesquisando (ou com período escolhido nos filtros): ignora o mês da navegação
       .filter(v => buscando || usaPeriodo || !mes || (v.data_venda ?? '').startsWith(mes))
-      .filter(v => correspondeABuscaEmCampos([v.cliente_nome, v.numero, v.palavra_chave], busca))
+      .filter(v => correspondeABuscaEmCampos([v.cliente_nome, (v as any).solicitante, v.numero, v.palavra_chave], busca))
       .filter(v => passaPeriodo(f.periodo, (v as any)[campoData]))
-      .filter(v => !buscaModal || correspondeABuscaEmCampos([v.cliente_nome, v.numero, v.palavra_chave, v.tipo, v.vendedor], buscaModal))
+      .filter(v => !buscaModal || correspondeABuscaEmCampos([v.cliente_nome, (v as any).solicitante, v.numero, v.palavra_chave, v.tipo, v.vendedor], buscaModal))
       .filter(v => !prod || (produtosPorVenda.get(v.id) ?? '').toLowerCase().includes(prod))
       .filter(v => !obs || (v.observacoes ?? '').toLowerCase().includes(obs))
       .filter(v => passaFaixa(f.valor, v.valor_total ?? v.total))
@@ -424,7 +424,7 @@ export function ListaVendas({
           <input
             value={busca}
             onChange={e => setBusca(e.target.value)}
-            placeholder="Buscar por cliente, nº ou palavra-chave..."
+            placeholder="Buscar por cliente, solicitante, nº ou palavra-chave..."
             className="flex-1 min-w-48 bg-[#1f2937] border border-gray-700 rounded-xl px-4 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500"
           />
           <OrdenarMenu

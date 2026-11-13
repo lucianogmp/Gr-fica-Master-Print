@@ -7,6 +7,7 @@ import { useAuth } from '../hooks/useAuth';
 import { registrarRascunho, lerRascunho, limparRascunho } from '../lib/rascunhosInatividade';
 import { useProdutos } from '../hooks/useProdutos';
 import { useCategorias } from '../hooks/useCategorias';
+import { CategoriasModal } from '../components/CategoriasModal';
 import { useMateriasPrimas } from '../hooks/useEstoque';
 import { useGestaoCustos } from '../hooks/useGestaoCustos';
 import { useCustosEquipamentos } from '../hooks/useEquipamentos';
@@ -40,7 +41,7 @@ import { CabecalhoFiltro } from '../components/ui/CabecalhoFiltro';
 import { aplicarOrdenacao, Ordenacao } from '../components/ui/OrdenarMenu';
 import { useRolarAoAbrir } from '../hooks/useRolarAoAbrir';
 
-type View = 'lista' | 'detalhe' | 'acabamentos' | 'categorias';
+type View = 'lista' | 'detalhe' | 'acabamentos';
 
 const STATUS_COR: Record<string, string> = {
   ativo:    'bg-green-500/15 text-green-400 border-green-500/30',
@@ -266,7 +267,8 @@ function MaquinasEditor({ maquinas, disponiveis, custos, tempoHoras, tempos, onC
 // ── Componente principal ───────────────────────────────────────────────────
 export function Produtos() {
   const { data: produtos = [], isLoading, criar, atualizar, deletar, isSaving } = useProdutos();
-  const { data: categorias  = [], criar: criarCat, atualizar: atualizarCat, deletar: deletarCat } = useCategorias();
+  const { data: categorias  = [] } = useCategorias();
+  const [modalCats, setModalCats] = useState(false);
   const { data: materias    = [] } = useMateriasPrimas();
   const { data: gc }               = useGestaoCustos();
   const { equipamentos: deprs, custos: custosEquip } = useCustosEquipamentos();
@@ -312,9 +314,6 @@ export function Produtos() {
     metro_linear: 'Por perímetro da placa (ex: fita dupla face, cantoneira)',
   };
 
-  // Categorias form
-  const [catNomeLista, setCatNomeLista]   = useState('');
-  const [salvandoCatLista, setSalvandoCatLista] = useState(false);
 
   const isNovo      = produtoId === '__novo__';
   const gcData      = gc ?? { depr: 0, fixos: 0, total: 0, porHora: 0, porHoraFixos: 0 };
@@ -519,15 +518,6 @@ export function Produtos() {
     } finally { setSalvandoAcab(false); }
   }
 
-  async function handleSalvarCatLista() {
-    if (!catNomeLista.trim()) return;
-    setSalvandoCatLista(true);
-    try {
-      await criarCat(catNomeLista.trim());
-      setCatNomeLista('');
-    } finally { setSalvandoCatLista(false); }
-  }
-
   const [ordenacao, setOrdenacao] = useState<Ordenacao | null>(null);
   const [filtros, setFiltros] = usePersistente<FiltroValor>('filtros', {});
   const camposFiltro = useMemo<CampoFiltro[]>(() => {
@@ -687,84 +677,10 @@ export function Produtos() {
     </div>
   );
 
-  // ── VIEW: CATEGORIAS ──────────────────────────────────────────────────────
-  if (view === 'categorias') return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center gap-4">
-        <button onClick={() => setView('lista')}
-          className="text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 w-9 h-9 rounded-lg flex items-center justify-center">
-          <ArrowLeft className="w-4 h-4" />
-        </button>
-        <div>
-          <h1 className="text-xl font-black text-white flex items-center gap-2"><Tags className="w-5 h-5 text-blue-400" /> Gerenciar Categorias</h1>
-          <p className="text-gray-500 text-sm">Categorias dos produtos (as do estoque ficam em Estoque → Gerenciar)</p>
-        </div>
-      </div>
-      <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5">
-        <h3 className="text-xs font-bold text-gray-400 uppercase mb-4 flex items-center gap-1.5"><Plus className="w-3.5 h-3.5" /> Nova Categoria</h3>
-        <div className="flex gap-3 items-end">
-          <div className="flex-1">
-            <label className="text-[10px] text-gray-500 uppercase block mb-1.5">Nome *</label>
-            <input value={catNomeLista} onChange={e => setCatNomeLista(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') handleSalvarCatLista(); }}
-              className={IN} placeholder="Ex: Papel, Impressão, Adesivo..." />
-          </div>
-          <button onClick={handleSalvarCatLista} disabled={salvandoCatLista || !catNomeLista.trim()}
-            className="bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all flex-shrink-0">
-            {salvandoCatLista ? 'Salvando...' : 'Adicionar'}
-          </button>
-        </div>
-      </div>
-      <div className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">
-        <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-gray-400 text-[10px] font-bold uppercase border-b border-gray-700 bg-gray-800/40">
-              <th className="px-5 py-3 text-left">Nome (Clique para editar)</th>
-              <th className="px-5 py-3 text-center w-24">Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {categorias.length === 0 && (
-              <tr><td colSpan={2} className="px-5 py-12 text-center text-gray-600">Nenhuma categoria cadastrada.</td></tr>
-            )}
-            {categorias.map(c => (
-              <tr key={c.id} className="border-b border-gray-800 hover:bg-gray-800/30">
-                <td className="px-5 py-3 font-medium text-white">
-                  <input
-                    defaultValue={c.nome}
-                    onBlur={(e) => {
-                      const val = e.target.value.trim();
-                      if (val && val !== c.nome) {
-                        atualizarCat({ id: c.id, nome: val });
-                      } else {
-                        e.target.value = c.nome;
-                      }
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') e.currentTarget.blur();
-                    }}
-                    className="bg-transparent border border-transparent hover:border-gray-700 rounded px-2 py-1 focus:outline-none focus:border-blue-500 text-white w-full max-w-sm transition-colors"
-                  />
-                </td>
-                <td className="px-5 py-3 text-center">
-                  <button onClick={async () => { if (await confirmar(`Remover "${c.nome}"? Pode causar erros se já estiver em uso.`)) deletarCat(c.id); }}
-                    className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-red-500/15 text-red-400 hover:bg-red-500/25 border border-red-500/30">
-                    Excluir
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        </div>
-      </div>
-    </div>
-  );
-
   // ── VIEW: LISTA ────────────────────────────────────────────────────────────
   if (view === 'lista') return (
     <div className="p-6 space-y-6">
+      <CategoriasModal tipo="produto" open={modalCats} onClose={() => setModalCats(false)} />
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <div>
           <h1 className="text-2xl font-black text-white flex items-center gap-2"><Package className="w-6 h-6 text-blue-400" /> Produtos</h1>
@@ -777,7 +693,7 @@ export function Produtos() {
           <KpiCard compact label="Preço médio"  value={fmtBRL(avgPreco)} icon={Tag}         color="text-yellow-400" />
           <KpiCard compact label="Acabamentos"  value={acabamentos.length} icon={Scissors}  color="text-purple-400" />
 
-          <button onClick={() => setView('categorias')}
+          <button onClick={() => setModalCats(true)}
             className="bg-gray-700 hover:bg-gray-600 text-gray-300 px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 whitespace-nowrap">
             <Tags className="w-4 h-4 flex-shrink-0" /> Categorias
           </button>

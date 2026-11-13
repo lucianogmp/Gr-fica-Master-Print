@@ -128,7 +128,6 @@ const ALL_MENU: MenuItem[] = [
     rota: '/produtos',
     children: [
       { path: '/produtos/catalogo',   label: 'Catálogo',        icon: BookOpen },
-      { path: '/produtos/categorias', label: 'Categorias',      icon: Tag },
       { path: '/produtos/precos',     label: 'Tabela de Preços', icon: DollarSign },
       { path: '/produtos/servicos',   label: 'Terceirizados',  icon: Wrench },
       { path: '/produtos/datas-comerciais', label: 'Datas Comerciais', icon: CalendarHeart },

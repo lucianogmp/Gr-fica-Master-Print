@@ -7,7 +7,7 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { PainelFlutuante } from '../ui/PainelFlutuante';
-import { Plus, Trash2, Truck, Receipt, X } from 'lucide-react';
+import { Plus, Trash2, Truck, Receipt, X, Pencil } from 'lucide-react';
 import { useLancamentos } from '../../hooks/useLancamentos';
 import { useFornecedores } from '../../hooks/useFornecedores';
 import { useContasBancarias } from '../../hooks/useContasBancarias';
@@ -32,10 +32,11 @@ interface Props {
   gastosRascunho?: Lancamento[];
   onAdicionarRascunho?: (gasto: Omit<Lancamento, 'id' | 'created_at'>) => void;
   onExcluirRascunho?: (id: string) => void;
+  onEditarRascunho?: (id: string, gasto: Partial<Lancamento>) => void;
 }
 
-export function GastosVenda({ vendaId, clienteNome, itens, gastosRascunho = [], onAdicionarRascunho, onExcluirRascunho }: Props) {
-  const { data: lancamentos = [], criar, deletar, isSaving } = useLancamentos();
+export function GastosVenda({ vendaId, clienteNome, itens, gastosRascunho = [], onAdicionarRascunho, onExcluirRascunho, onEditarRascunho }: Props) {
+  const { data: lancamentos = [], criar, atualizar, deletar, isSaving } = useLancamentos();
   const { data: fornecedores = [] } = useFornecedores();
   const { data: cfg } = useConfiguracoes();
   const { confirmar, ConfirmModal } = useConfirm();
@@ -58,6 +59,8 @@ export function GastosVenda({ vendaId, clienteNome, itens, gastosRascunho = [], 
   const [jaPago, setJaPago] = useState(false);
   const [formaPagamento, setFormaPagamento] = useState('');
   const [contaId, setContaId] = useState('');
+  const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [dataPagamento, setDataPagamento] = useState('');
 
   // Mesma regra do ModalLancamento: dinheiro só sai do caixa físico; as demais
   // formas saem das contas que a aceitam. Se só uma serve, já vem preenchida.
@@ -109,6 +112,23 @@ export function GastosVenda({ vendaId, clienteNome, itens, gastosRascunho = [], 
     setJaPago(false);
     setFormaPagamento('');
     setContaId('');
+    setEditandoId(null);
+    setDataPagamento('');
+  }
+
+  function iniciarEdicao(g: Lancamento) {
+    const a = g as any;
+    setEditandoId(g.id);
+    setFornecedorNome(a.cliente_nome ?? '');
+    setValor(Number(g.valor) || 0);
+    setDescricao(g.descricao ?? '');
+    setItemRelacionadoIdx('');
+    setDataVencimento(a.data_vencimento ?? new Date().toISOString().split('T')[0]);
+    setJaPago(g.status === 'pago');
+    setFormaPagamento(a.forma_pagamento ?? '');
+    setContaId(a.conta_id ?? '');
+    setDataPagamento(a.data_pagamento ?? '');
+    setMostrarForm(true);
   }
 
   async function handleAdicionar() {
@@ -123,12 +143,17 @@ export function GastosVenda({ vendaId, clienteNome, itens, gastosRascunho = [], 
       cliente_nome: fornecedorNome, // campo genérico de "contraparte", igual já é usado em contas a pagar
       descricao: descricao.trim() || `Gasto — Venda de ${clienteNome}`,
       data_vencimento: dataVencimento,
-      data_pagamento: jaPago ? dataLiquidacao : null,
+      data_pagamento: jaPago ? (editandoId ? (dataPagamento || dataLiquidacao) : dataLiquidacao) : null,
       forma_pagamento: jaPago ? formaPagamento : null,
       conta_id: jaPago ? contaId : null,
     } as Omit<Lancamento, 'id' | 'created_at'>;
 
-    if (isVendaNova) {
+    if (editandoId) {
+      // Edição: mantém o vínculo com a venda e sincroniza o caixa (o hook cuida do movimento).
+      const { venda_id: _v, tipo: _t, ...resto } = payload as any;
+      if (isVendaNova) onEditarRascunho?.(editandoId, resto);
+      else await atualizar({ id: editandoId, payload: resto });
+    } else if (isVendaNova) {
       onAdicionarRascunho?.(payload);
     } else {
       await criar(payload as any);
@@ -187,6 +212,9 @@ export function GastosVenda({ vendaId, clienteNome, itens, gastosRascunho = [], 
               </span>
               <div className="flex items-center gap-2.5 flex-shrink-0">
                 <span className="text-xs font-bold text-red-400">{fmtBRL(Number(g.valor))}</span>
+                <button onClick={() => iniciarEdicao(g)} className="text-gray-500 hover:text-blue-400" title="Editar gasto">
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
                 <button onClick={() => handleExcluir(g.id)} className="text-gray-600 hover:text-red-400" title="Excluir gasto">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
@@ -198,7 +226,8 @@ export function GastosVenda({ vendaId, clienteNome, itens, gastosRascunho = [], 
 
       {mostrarForm && (
         <div className="bg-[#111827] border border-gray-700 rounded-lg p-3 space-y-2.5">
-          <div className="flex justify-end">
+          <div className="flex justify-between items-center">
+            <span className="text-[10px] font-bold text-blue-400 uppercase">{editandoId ? 'Editando gasto' : 'Novo gasto'}</span>
             <button onClick={limparForm} className="text-gray-500 hover:text-white" title="Cancelar">
               <X className="w-4 h-4" />
             </button>
@@ -268,7 +297,13 @@ export function GastosVenda({ vendaId, clienteNome, itens, gastosRascunho = [], 
                 allowEmpty
                 options={formas.map(f => f.nome)}
               />
-              {formaSelecionada && (
+              {editandoId && (
+                <div className="mt-2">
+                  <label className="text-[10px] font-bold text-gray-500 uppercase block mb-1">Data do pagamento</label>
+                  <DateInput value={dataPagamento || dataLiquidacao} onChange={setDataPagamento} className={IN} />
+                </div>
+              )}
+              {formaSelecionada && !editandoId && (
                 <p className="text-[10px] text-gray-500 mt-1">
                   {(formaSelecionada.dias_uteis_liquidacao ?? 0) > 0
                     ? <>Compensa em {formaSelecionada.dias_uteis_liquidacao} dia(s) útil(eis) — <span className="text-yellow-400 font-bold">{new Date(dataLiquidacao + 'T00:00:00').toLocaleDateString('pt-BR')}</span></>
@@ -297,7 +332,7 @@ export function GastosVenda({ vendaId, clienteNome, itens, gastosRascunho = [], 
             <button onClick={limparForm} className="text-xs text-gray-400 hover:text-white px-3 py-2">Cancelar</button>
             <button onClick={handleAdicionar} disabled={isSaving || !fornecedorNome.trim() || valor <= 0 || (jaPago && (!formaPagamento || !contaId))}
               className="bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-1.5">
-              <Receipt className="w-3.5 h-3.5" /> {isSaving ? 'Salvando...' : 'Lançar Gasto'}
+              <Receipt className="w-3.5 h-3.5" /> {isSaving ? 'Salvando...' : editandoId ? 'Salvar alterações' : 'Lançar Gasto'}
             </button>
           </div>
         </div>
