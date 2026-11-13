@@ -1,6 +1,7 @@
 // src/hooks/useRelatorios.ts
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
+import { foraDoResultado } from '../lib/financeiroMes';
 
 export interface RelatorioVendasFiltros {
   data_inicio: string;
@@ -167,7 +168,10 @@ export function useRelatorioFinanceiro(filtros: RelatorioFinanceiroFiltros) {
       const { data, error } = await q;
       if (error) throw new Error(error.message);
 
-      const lancamentos = (data ?? []) as LancamentoRelatorio[];
+      // Ajuste de saldo e retirada de sócios não são receita/despesa do negócio: ficam fora dos totais
+      // (a menos que o filtro de categoria peça justamente por eles).
+      const lancamentos = ((data ?? []) as LancamentoRelatorio[])
+        .filter(l => filtros.categoria || !foraDoResultado(l as any));
 
       const resumo: ResumoFinanceiro = {
         total_receitas: 0, total_despesas: 0, saldo: 0,

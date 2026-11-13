@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { ehAjusteSaldo } from '../lib/financeiroMes';
+import { foraDoResultado as ehAjusteSaldo } from '../lib/financeiroMes';
 import { supabase } from '../lib/supabase';
 
 function mesRange(mes: string) {
@@ -33,6 +33,10 @@ export function useDashboardData(mes: string) {
     queryFn: async () => {
       const { start, end } = mesRange(mes);
       const meses6 = last6Months();
+      const hoje = new Date();
+      const mesAtualReal = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+      // Histórico mensal do sistema anterior: só alimenta a margem/ponto de equilíbrio.
+      const histRes = await supabase.from('historico_financeiro_mensal').select('mes,entradas,saidas_variaveis');
       const start6 = `${meses6[0]}-01`;
 
       const [
@@ -257,13 +261,23 @@ export function useDashboardData(mes: string) {
         // mesma regra da Gestão de Custos: (valor − residual) ÷ vida útil, só equipamentos ativos
         deprs.filter((d: any) => d.ativo !== false)
           .reduce((s, d: any) => s + (Math.max(0, Number(d.valor) - Number(d.valor_residual ?? 0)) / (Number(d.vida_util_anos) * 12)), 0);
-      // Margem estável: soma dos últimos 3 meses (até o mês escolhido) em vez de só o mês
-      // corrente. No começo do mês uma única despesa derrubava a margem e o ponto de
-      // equilíbrio ia pra dezenas de milhares; com 3 meses o número só se move de verdade.
-      const ult3 = chart6.filter(c => c.mes <= mes).slice(-3);
-      const rec3 = ult3.reduce((s, c) => s + c.receita, 0);
-      const desp3 = ult3.reduce((s, c) => s + c.despesa, 0);
-      const margem = rec3 > 0 ? ((rec3 - desp3) / rec3) * 100
+      // Margem de CONTRIBUIÇÃO (receita − só custos variáveis) ÷ receita, nos últimos 6 meses FECHADOS.
+      // Custo fixo já entra no numerador do ponto de equilíbrio (custoFixoTotal), então não pode
+      // entrar de novo na margem. Retiradas de sócios e ajustes de saldo ficam fora.
+      // Meses que têm linha no histórico do sistema anterior usam aquele total; os demais, os dados vivos.
+      const histMap = new Map((histRes.data ?? []).map((h: any) => [h.mes as string, h]));
+      const CATS_VARIAVEIS = ['Fornecedor', 'Impostos'];
+      const mesesFechados = chart6.filter(c => c.mes < mesAtualReal && c.mes <= mes).slice(-6);
+      let recM = 0, varM = 0;
+      mesesFechados.forEach(c => {
+        const h: any = histMap.get(c.mes);
+        if (h) { recM += Number(h.entradas); varM += Number(h.saidas_variaveis); return; }
+        const { start: ms, end: me } = mesRange(c.mes);
+        const ml = hist.filter(l => (l.data_vencimento ?? '') >= ms && (l.data_vencimento ?? '') <= me && l.tipo === 'despesa');
+        recM += c.receita;
+        varM += ml.filter(l => l.venda_id || CATS_VARIAVEIS.includes(String(l.categoria ?? ''))).reduce((x, l) => x + Number(l.valor), 0);
+      });
+      const margem = recM > 0 ? ((recM - varM) / recM) * 100
         : (receitaMes > 0 ? (lucroMes / receitaMes) * 100 : 0);
       const pontoEq = margem > 0 ? custoFixoTotal / (margem / 100) : 0;
 

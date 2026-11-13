@@ -128,6 +128,12 @@ export function ResumoFinanceiro() {
         <KpiCard compact label="Resultado"       value={fmtBRL(t.resultado)} icon={Scale}        color={t.resultado >= 0 ? 'text-blue-400' : 'text-red-400'} />
         <KpiCard compact label="Vendas do mês"   value={fmtBRL(totalVendas)} icon={ShoppingCart} color="text-purple-400" />
       </div>
+      {t.retiradas >= 0.01 && (
+        <p className="text-[11px] text-yellow-500/90 flex items-center gap-1.5">
+          <Info className="w-3.5 h-3.5 flex-shrink-0" />
+          {fmtBRL(t.retiradas)} em retiradas de sócios (divisão de lucro) saíram do caixa, mas ficam fora de Pago/Resultado porque não são despesa do negócio.
+        </p>
+      )}
       {Math.abs(t.ajustes) >= 0.01 && (
         <p className="text-[11px] text-yellow-500/90 flex items-center gap-1.5">
           <Info className="w-3.5 h-3.5 flex-shrink-0" />
