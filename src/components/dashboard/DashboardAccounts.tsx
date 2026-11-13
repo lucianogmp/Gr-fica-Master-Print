@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 
+import { HelpTooltip } from '../ui/HelpTooltip';
 import { moeda as fmtBRL, useOcultarValores, MASCARA } from '../../lib/privacidade';
 const fmtData = (d?: string | null) => d ? new Date(d + 'T00:00:00').toLocaleDateString('pt-BR') : '—';
 
@@ -31,7 +32,7 @@ export function DashboardAccounts({ data }: { data: any }) {
       {/* Contas a Receber */}
       <div className={`${CARD_BASE} lg:col-span-3 p-3`}>
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Contas a Receber</h3>
+          <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">Contas a Receber <HelpTooltip texto="Os 5 lançamentos de receita ainda não pagos com vencimento mais próximo. Atrasado = venceu e não foi pago. Use Ver todas para a lista completa." /></h3>
           <button onClick={() => navigate('/financeiro')} className="text-[10px] text-blue-400 hover:text-blue-300 font-bold transition-colors flex items-center gap-0.5">Ver todas <ArrowRight className="w-3 h-3" /></button>
         </div>
         <div className="flex-1 overflow-auto flex flex-col">
@@ -68,7 +69,7 @@ export function DashboardAccounts({ data }: { data: any }) {
       {/* Contas a Pagar */}
       <div className={`${CARD_BASE} lg:col-span-3 p-3`}>
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Contas a Pagar</h3>
+          <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">Contas a Pagar <HelpTooltip texto="As 5 despesas ainda não pagas com vencimento mais próximo. Atrasado = venceu e não foi pago. Use Ver todas para a lista completa." /></h3>
           <button onClick={() => navigate('/financeiro')} className="text-[10px] text-blue-400 hover:text-blue-300 font-bold transition-colors flex items-center gap-0.5">Ver todas <ArrowRight className="w-3 h-3" /></button>
         </div>
         <div className="flex-1 overflow-auto flex flex-col">

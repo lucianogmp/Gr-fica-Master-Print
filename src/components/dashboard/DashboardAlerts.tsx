@@ -1,3 +1,4 @@
+import { HelpTooltip } from '../ui/HelpTooltip';
 import { CheckCircle2, CheckCheck, Check, Globe, ArrowDownCircle, ArrowUpCircle, Package, Truck, HardDrive, CalendarHeart } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import type { usePedidosSite } from '../../hooks/usePedidosSite';
@@ -23,7 +24,7 @@ export function DashboardAlerts(_props: { data?: any; pedidosSite?: PedidosSiteD
     <div className={`${CARD_BASE} lg:col-span-3 p-3`}>
       <div className="flex items-center justify-between mb-2 gap-2 flex-shrink-0">
         <div className="flex items-center gap-2">
-          <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Avisos e Notificações</h3>
+          <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">Avisos e Notificações <HelpTooltip texto="Alertas que merecem atenção: contas a pagar e a receber, estoque zerado ou baixo, entregas atrasadas, backup atrasado, aniversários/campanhas e novos pedidos do site." /></h3>
           {naoLidas > 0 && (
             <span className="bg-red-500 text-white text-[9px] font-black min-w-4 h-4 px-1 rounded-full flex items-center justify-center">{naoLidas}</span>
           )}

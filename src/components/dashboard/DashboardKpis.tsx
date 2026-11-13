@@ -1,5 +1,6 @@
 import { DollarSign, ShoppingCart, TrendingUp, type LucideIcon, ArrowUp, ArrowDown } from 'lucide-react';
 import { LineChart, Line, ResponsiveContainer } from 'recharts';
+import { HelpTooltip } from '../ui/HelpTooltip';
 import { useContainerReady } from '../../hooks/useContainerReady';
 
 import { moeda as fmtBRL, useOcultarValores, MASCARA } from '../../lib/privacidade';
@@ -18,8 +19,8 @@ interface KpiData {
   saldoCaixaAtual: number;
 }
 
-function KpiCard({ title, value, pct, icon: Icon, cor, spark, invertPct = false, hideVar = false }: {
-  title: string; value: number; pct: number; icon: LucideIcon;
+function KpiCard({ title, ajuda, value, pct, icon: Icon, cor, spark, invertPct = false, hideVar = false }: {
+  title: string; ajuda?: string; value: number; pct: number; icon: LucideIcon;
   cor: string; spark: { v: number }[]; invertPct?: boolean; hideVar?: boolean;
 }) {
   const oculto = useOcultarValores();
@@ -29,7 +30,7 @@ function KpiCard({ title, value, pct, icon: Icon, cor, spark, invertPct = false,
     <div className="bg-[#1a2332] border border-gray-700/60 rounded-xl p-3 relative overflow-hidden">
       <div className="flex items-start justify-between mb-1.5">
         <div>
-          <p className="text-[9px] font-bold text-gray-500 uppercase tracking-wider mb-0.5">{title}</p>
+          <p className="text-[9px] font-bold text-gray-500 uppercase tracking-wider mb-0.5 flex items-center gap-1">{title}{ajuda && <HelpTooltip texto={ajuda} />}</p>
           <p className="text-lg font-black text-white">{fmtBRL(value)}</p>
           {!hideVar && (
             <p className={`text-[10px] font-bold mt-0.5 flex items-center gap-0.5 ${isPos ? 'text-green-400' : 'text-red-400'}`}>
@@ -59,9 +60,9 @@ function KpiCard({ title, value, pct, icon: Icon, cor, spark, invertPct = false,
 export function DashboardKpis({ data }: { data: KpiData | undefined }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-      <KpiCard title="RECEITA TOTAL"   value={data?.receitaMes ?? 0}  pct={data?.pctReceita ?? 0}  icon={DollarSign}   cor="#10b981" spark={data?.sparkReceita ?? []} />
-      <KpiCard title="DESPESAS TOTAIS" value={data?.despesaMes ?? 0}  pct={data?.pctDespesa ?? 0}  icon={ShoppingCart} cor="#ef4444" spark={data?.sparkDespesa ?? []} invertPct />
-      <KpiCard title="LUCRO LÍQUIDO"   value={data?.lucroMes ?? 0}    pct={data?.pctLucro ?? 0}    icon={TrendingUp}   cor="#10b981" spark={data?.sparkLucro ?? []} />
+      <KpiCard title="RECEITA TOTAL" ajuda="Todo o dinheiro que entrou no mês: pagamentos de vendas recebidos (pela data do recebimento), receitas lançadas à mão e entradas do Fluxo de Caixa. Transferências entre contas e ajustes de saldo não contam. A % compara com o mês anterior."   value={data?.receitaMes ?? 0}  pct={data?.pctReceita ?? 0}  icon={DollarSign}   cor="#10b981" spark={data?.sparkReceita ?? []} />
+      <KpiCard title="DESPESAS TOTAIS" ajuda="Todas as despesas lançadas com vencimento no mês (pagas ou não) mais as saídas manuais do Fluxo de Caixa. Retirada de sócios e ajustes de saldo não contam. A % compara com o mês anterior (queda é bom)." value={data?.despesaMes ?? 0}  pct={data?.pctDespesa ?? 0}  icon={ShoppingCart} cor="#ef4444" spark={data?.sparkDespesa ?? []} invertPct />
+      <KpiCard title="LUCRO LÍQUIDO" ajuda="Receita Total menos Despesas Totais do mês. Positivo = sobrou dinheiro; negativo = gastou mais do que recebeu. Um boleto de máquina pago no mês pesa aqui por inteiro."   value={data?.lucroMes ?? 0}    pct={data?.pctLucro ?? 0}    icon={TrendingUp}   cor="#10b981" spark={data?.sparkLucro ?? []} />
     </div>
   );
 }

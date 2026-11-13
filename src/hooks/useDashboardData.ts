@@ -217,6 +217,11 @@ export function useDashboardData(mes: string) {
         somaCaixa('saida', start, end);
 
       const lucroMes = receitaMes - despesaMes;
+      // Quebra da despesa do mês (mesma regra da margem): impostos, variáveis (ligadas a venda ou Fornecedor) e o resto = fixas.
+      const despLancMes = lanc.filter(l => l.tipo === 'despesa');
+      const impostosMes = despLancMes.filter(l => l.categoria === 'Impostos').reduce((x, l) => x + Number(l.valor), 0);
+      const variaveisMes = despLancMes.filter(l => l.categoria !== 'Impostos' && (l.venda_id || l.categoria === 'Fornecedor')).reduce((x, l) => x + Number(l.valor), 0);
+      const fixasMes = Math.max(0, despesaMes - impostosMes - variaveisMes);
 
       // ─── Mês anterior para % variação ───────────────────────────────────────
 
@@ -342,7 +347,7 @@ export function useDashboardData(mes: string) {
         pctDespesa: pct(despesaMes, despAnt),
         pctLucro:   pct(lucroMes, recAnt - despAnt),
         chart6, sparkReceita, sparkDespesa, sparkLucro,
-        custoFixoTotal, margemContrib: margem, pontoEq,
+        custoFixoTotal, margemContrib: margem, pontoEq, impostosMes, variaveisMes, fixasMes,
         situacao, totalVendas,
         contasReceber: recFut.data ?? [],
         contasPagar:   pagFut.data ?? [],
