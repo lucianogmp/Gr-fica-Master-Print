@@ -38,7 +38,7 @@ interface ModalMPProps {
 export function ModalMP({ open, editando, onClose, onSalvar }: ModalMPProps) {
   const [form, setForm] = useState<FormData>(EMPTY);
   const [salvando, setSalvando] = useState(false);
-  const { data: categorias = [], criar: criarCategoria } = useCategorias();
+  const { data: categorias = [], criar: criarCategoria } = useCategorias('material');
   const { registrar: registrarMovimento } = useMovimentos();
   const [modalCat, setModalCat] = useState(false);
   const [novaCatNome, setNovaCatNome] = useState('');

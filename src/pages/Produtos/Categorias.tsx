@@ -18,7 +18,7 @@ export function Categorias() {
     if (!nome.trim()) return;
     setSalvando(true);
     try {
-      await criar.mutateAsync(nome.trim());
+      await criar(nome.trim());
       setNome('');
     } catch (e: any) { toast.error(e.message); }
     finally { setSalvando(false); }

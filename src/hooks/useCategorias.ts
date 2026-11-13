@@ -3,15 +3,19 @@ import { supabase } from '../lib/supabase';
 import { Categoria } from '../types/produto';
 import toast from 'react-hot-toast';
 
-export function useCategorias() {
+/** Categorias têm duas listas independentes: 'produto' (catálogo/vendas) e 'material' (matérias-primas do estoque). */
+export type TipoCategoria = 'produto' | 'material';
+
+export function useCategorias(tipo: TipoCategoria = 'produto') {
   const qc = useQueryClient();
 
   const query = useQuery({
-    queryKey: ['categorias'],
+    queryKey: ['categorias', tipo],
     queryFn: async (): Promise<Categoria[]> => {
       const { data, error } = await supabase
         .from('categorias')
         .select('*')
+        .eq('tipo', tipo)
         .order('nome');
       if (error) throw error;
       return data ?? [];
@@ -22,7 +26,7 @@ export function useCategorias() {
     mutationFn: async (nome: string) => {
       const { data, error } = await supabase
         .from('categorias')
-        .insert({ nome: nome.trim() })
+        .insert({ nome: nome.trim(), tipo })
         .select()
         .single();
       if (error) throw error;
@@ -33,9 +37,16 @@ export function useCategorias() {
   });
 
   const atualizar = useMutation({
-    mutationFn: async ({ id, nome }: { id: string; nome: string }) => {
+    mutationFn: async ({ id, nome, nomeAnterior }: { id: string; nome: string; nomeAnterior?: string }) => {
       const { error } = await supabase.from('categorias').update({ nome }).eq('id', id);
       if (error) throw error;
+      // Matéria-prima guarda a categoria pelo NOME: ao renomear, acompanha para não perder o vínculo.
+      if (tipo === 'material' && nomeAnterior && nomeAnterior !== nome) {
+        const { error: e2 } = await supabase.from('materias_primas').update({ categoria: nome }).eq('categoria', nomeAnterior);
+        if (e2) throw e2;
+        qc.invalidateQueries({ queryKey: ['materias_primas'] });
+        qc.invalidateQueries({ queryKey: ['materias-primas'] });
+      }
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['categorias'] }); toast.success('Categoria salva!'); },
     onError:   (e: any) => toast.error(e.message),

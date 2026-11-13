@@ -697,7 +697,7 @@ export function Produtos() {
         </button>
         <div>
           <h1 className="text-xl font-black text-white flex items-center gap-2"><Tags className="w-5 h-5 text-blue-400" /> Gerenciar Categorias</h1>
-          <p className="text-gray-500 text-sm">Categorias de produtos e matérias-primas</p>
+          <p className="text-gray-500 text-sm">Categorias dos produtos (as do estoque ficam em Estoque → Gerenciar)</p>
         </div>
       </div>
       <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5">

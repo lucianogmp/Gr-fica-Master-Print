@@ -5,7 +5,8 @@ import { useMateriasPrimas } from '../../hooks/useEstoque';
 import { MateriaPrima, statusEstoque } from '../../types/estoque';
 import { ModalMP } from '../../components/estoque/ModalMP';
 import { useConfirm } from '../../components/ui/ConfirmModal';
-import { PackageSearch, Plus } from 'lucide-react';
+import { PackageSearch, Plus, Tags } from 'lucide-react';
+import { CategoriasMaterialModal } from '../../components/estoque/CategoriasMaterialModal';
 import { correspondeABuscaEmCampos } from '../../lib/buscaFlexivel';
 import { BarraLista } from '../../components/ui/BarraLista';
 import { CampoFiltro, FiltroValor, passaPeriodo, passaMulti, passaFaixa, passaSimNao } from '../../components/ui/FiltroModal';
@@ -20,6 +21,7 @@ export function Gerenciar() {
 
   const [busca, setBusca] = usePersistente('busca', '');
   const [modalMP, setModalMP]   = useState(false);
+  const [modalCats, setModalCats] = useState(false);
   const [editando, setEditando] = useState<MateriaPrima | null>(null);
 
   const [ordenacao, setOrdenacao] = useState<Ordenacao | null>(null);
@@ -69,6 +71,7 @@ export function Gerenciar() {
   return (
     <>
       <ConfirmModal />
+      <CategoriasMaterialModal open={modalCats} onClose={() => setModalCats(false)} />
       <div className="p-6 space-y-6">
         <div className="flex items-start justify-between flex-wrap gap-3">
           <div>
@@ -77,12 +80,18 @@ export function Gerenciar() {
             </h1>
             <p className="text-gray-500 text-sm">{mps.length} matéria(s)-prima(s) cadastrada(s)</p>
           </div>
+          <div className="flex gap-2">
+          <button onClick={() => setModalCats(true)}
+            className="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2">
+            <Tags className="w-4 h-4" /> Categorias
+          </button>
           <button
             onClick={() => { setEditando(null); setModalMP(true); }}
             className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg shadow-blue-900/30 flex items-center gap-2"
           >
             <Plus className="w-4 h-4" /> Nova Matéria-Prima
           </button>
+          </div>
         </div>
 
         <div className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">
