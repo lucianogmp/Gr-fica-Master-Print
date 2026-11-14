@@ -204,8 +204,8 @@ export function LojaVirtual() {
           <h1 className="text-2xl font-black text-white flex items-center gap-2">
             <Globe className="w-6 h-6 text-blue-400" /> Loja virtual
             {novos > 0 && (
-              <span className="bg-red-500 text-white text-[11px] font-black px-2 h-5 rounded-full flex items-center animate-pulse">
-                {novos} {novos === 1 ? 'novo' : 'novos'}
+              <span className="bg-red-500 text-white text-[11px] font-black px-2 h-5 rounded-full flex items-center gap-1 animate-pulse">
+                {novos}<span aria-hidden> </span>{novos === 1 ? 'novo' : 'novos'}
               </span>
             )}
           </h1>

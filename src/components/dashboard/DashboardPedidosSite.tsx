@@ -24,8 +24,8 @@ export function DashboardPedidosSite({ data, className = '' }: { data: Dados; cl
         <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
           <Globe className="w-3.5 h-3.5" /> Pedidos do Site
           {novos > 0 && (
-            <span className="bg-red-500 text-white text-[9px] font-black px-1.5 h-4 rounded-full flex items-center justify-center animate-pulse">
-              {novos} {novos === 1 ? 'novo' : 'novos'}
+            <span className="bg-red-500 text-white text-[9px] font-black px-1.5 h-4 rounded-full flex items-center justify-center gap-1 animate-pulse">
+              {novos}<span aria-hidden> </span>{novos === 1 ? 'novo' : 'novos'}
             </span>
           )}
         </h3>

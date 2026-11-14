@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { createPortal } from 'react-dom';
-import { Bell, Check, CheckCheck, Globe, ArrowDownCircle, ArrowUpCircle, CheckCircle2, Package, Truck, HardDrive, CalendarHeart } from 'lucide-react';
+import { Bell, Check, CheckCheck, ArrowDownCircle, ArrowUpCircle, CheckCircle2, Package, Truck, HardDrive, CalendarHeart } from 'lucide-react';
 import { useNotificacoes, TipoNotif } from '../hooks/useNotificacoes';
 
-const ICONE: Record<TipoNotif, any> = { site: Globe, pagar: ArrowDownCircle, receber: ArrowUpCircle, estoque: Package, entrega: Truck, backup: HardDrive, campanha: CalendarHeart };
+const ICONE: Record<TipoNotif, any> = { pagar: ArrowDownCircle, receber: ArrowUpCircle, estoque: Package, entrega: Truck, backup: HardDrive, campanha: CalendarHeart };
 const COR = {
   critico: 'text-red-400 bg-red-500/10 border-red-500/30',
   atencao: 'text-amber-400 bg-amber-500/10 border-amber-500/30',

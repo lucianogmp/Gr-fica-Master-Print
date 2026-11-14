@@ -1,5 +1,4 @@
-// Central de notificações do sino: junta os avisos do sistema (pedidos novos do site,
-// contas vencidas/vencendo) e guarda, por usuário neste aparelho, o que já foi lido ou limpo.
+// Central de notificações do sino: junta os avisos do sistema (contas vencidas/vencendo) e guarda, por usuário neste aparelho, o que já foi lido ou limpo.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'react-router-dom';
@@ -10,7 +9,7 @@ import { useBackupStatus } from './useBackupStatus';
 import { buscarAvisosCampanhas, ROTA_DATAS } from './useDatasComerciais';
 import { textoDias } from '../lib/datasComerciais';
 
-export type TipoNotif = 'site' | 'pagar' | 'receber' | 'estoque' | 'entrega' | 'backup' | 'campanha';
+export type TipoNotif = 'pagar' | 'receber' | 'estoque' | 'entrega' | 'backup' | 'campanha';
 export interface Notificacao {
   key: string;            // identifica o aviso (muda se o aviso muda, ex.: passou de "vence" para "atrasado")
   tipo: TipoNotif;
@@ -49,7 +48,6 @@ export function useNotificacoes() {
   const { pode } = useRole();
   const qc = useQueryClient();
   const { pathname } = useLocation();
-  const verSite    = pode('/loja-virtual');
   const verPagar   = pode('/financeiro/pagar');
   const verReceber = pode('/financeiro/receber') || pode('/vendas/pedidos');
   const verEstoque = pode('/estoque/atual');
@@ -59,7 +57,7 @@ export function useNotificacoes() {
   const { atrasado: backupAtrasado, diasDesdeUltimoBackup } = useBackupStatus();
 
   const { data: itens = [] } = useQuery({
-    queryKey: ['notificacoes', user?.id, verSite, verPagar, verReceber, verEstoque, verEntregas, verCampanhas, isAdmin && backupAtrasado, diasDesdeUltimoBackup],
+    queryKey: ['notificacoes', user?.id, verPagar, verReceber, verEstoque, verEntregas, verCampanhas, isAdmin && backupAtrasado, diasDesdeUltimoBackup],
     enabled: !!user?.id,
     refetchInterval: 30_000,
     refetchOnWindowFocus: true,
@@ -77,12 +75,7 @@ export function useNotificacoes() {
           .lte('data_vencimento', limiteISO)
           .order('data_vencimento', { ascending: true }).limit(30);
 
-      const [site, pagar, receber, estoque, entregas, campanhas] = await Promise.all([
-        verSite ? supabase.from('orcamentos')
-          .select('id,numero,cliente_nome,total,created_at')
-          .eq('origem', 'loja').is('loja_visto_em', null)
-          .not('status', 'in', '(convertido,recusado)')
-          .order('created_at', { ascending: false }).limit(20) : Promise.resolve({ data: [] as any[] }),
+      const [pagar, receber, estoque, entregas, campanhas] = await Promise.all([
         verPagar ? pendentes('despesa') : Promise.resolve({ data: [] as any[] }),
         verReceber ? pendentes('receita') : Promise.resolve({ data: [] as any[] }),
         verEstoque ? supabase.from('materias_primas').select('id,nome,saldo,estoque_minimo,unidade').gt('estoque_minimo', 0) : Promise.resolve({ data: [] as any[] }),
@@ -126,13 +119,6 @@ export function useNotificacoes() {
         titulo: `${c.nome} ${textoDias(c.dias)}`,
         detalhe: c.qtdProdutos > 0 ? `${c.qtdProdutos} produto(s) na campanha` : 'Monte a campanha: escolha o que oferecer aos clientes',
         rota: `${ROTA_DATAS}?abrir=${c.id}`, quando: c.dataISO,
-      }));
-
-      (site.data ?? []).forEach((o: any) => out.push({
-        key: `site:${o.id}`, tipo: 'site', nivel: 'info',
-        titulo: `Novo pedido do site #${o.numero ?? '—'}`,
-        detalhe: `${o.cliente_nome ?? 'Cliente'} · ${brl(o.total)}`,
-        rota: `/loja-virtual?abrir=${o.id}`, quando: o.created_at,
       }));
 
       const montar = (l: any, tipo: 'pagar' | 'receber') => {

@@ -14,6 +14,7 @@ import { useIniciarNaDashboard } from '../hooks/useIniciarNaDashboard';
 import { useTheme } from '../hooks/useTheme';
 import { limparAtividade } from '../lib/sessaoInatividade';
 import { NotificacoesSino } from './NotificacoesSino';
+import { usePedidosSiteNovos } from '../hooks/usePedidosSiteNovos';
 import { useBloqueioInatividade } from '../hooks/useBloqueioInatividade';
 import { useConfiguracoes } from '../hooks/useConfiguracoes';
 import { useRealtimeSync } from '../hooks/useRealtimeSync';
@@ -230,6 +231,7 @@ export function Layout() {
   const { user } = useAuth();
   useRealtimeSync(!!user); // telas se atualizam sozinhas quando algo muda no banco (sem F5)
   const { role, pode } = useRole();
+  const { data: siteNovos = 0 } = usePedidosSiteNovos(pode('/loja-virtual'));
   const { isDark, toggleTheme } = useTheme();
   const { data: cfg } = useConfiguracoes();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -446,8 +448,18 @@ export function Layout() {
                         : 'text-gray-300 hover:bg-gray-700/60 hover:text-white'
                     }`}
                   >
-                    <Icon className="w-[18px] h-[18px] flex-shrink-0" />
+                    <span className="relative flex-shrink-0">
+                      <Icon className="w-[18px] h-[18px]" />
+                      {item.path === '/loja-virtual' && siteNovos > 0 && (
+                        <span className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-red-500 shadow shadow-red-500/60 animate-pulse ${collapsed ? '' : 'md:hidden'}`} />
+                      )}
+                    </span>
                     <span className={`flex-1 ${collapsed ? 'md:hidden' : ''}`}>{item.label}</span>
+                    {item.path === '/loja-virtual' && siteNovos > 0 && (
+                      <span className={`bg-red-500 text-white text-[10px] font-black min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center animate-pulse ${collapsed ? 'md:hidden' : ''}`}>
+                        {siteNovos}
+                      </span>
+                    )}
                   </Link>
                 </div>
               );
