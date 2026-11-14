@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { VendaItem } from '../../types/venda';
 import { Produto } from '../../types/produto';
 import { useProdutos } from '../../hooks/useProdutos';
+import { useProdutosMaisVendidos } from '../../hooks/useProdutosMaisVendidos';
 import { loadBom, calcCustoBOM } from '../../hooks/useBom';
 import { useRole } from '../../hooks/useRole';
 import { X, Search, Pencil, Check, Ruler, PackagePlus, PackageSearch } from 'lucide-react';
@@ -80,6 +81,7 @@ export function ItensEditor({ itens, onChange, onEditarProduto, onCriarProduto }
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { data: produtos = [] } = useProdutos();
+  const { data: ranking } = useProdutosMaisVendidos();
   const { isAdmin } = useRole();
 
   useEffect(() => {
@@ -117,12 +119,17 @@ export function ItensEditor({ itens, onChange, onEditarProduto, onCriarProduto }
 
   const produtosAtivos = useMemo(() => produtos.filter(p => p.status === 'ativo'), [produtos]);
 
+  // Os mais vendidos (últimos dias) vêm primeiro, tanto com o campo vazio quanto durante a pesquisa.
+  // A pesquisa em si não muda: o ranking só desempata a ORDEM dos resultados.
   const produtosFiltrados = useMemo(() => {
-    if (!buscaProduto.trim()) return produtosAtivos.slice(0, 8);
-    return produtosAtivos
-      .filter(p => correspondeABuscaEmCampos([p.nome, p.sku], buscaProduto))
+    const base = buscaProduto.trim()
+      ? produtosAtivos.filter(p => correspondeABuscaEmCampos([p.nome, p.sku], buscaProduto))
+      : produtosAtivos;
+    const pos = (id: string) => ranking?.get(id) ?? Number.MAX_SAFE_INTEGER;
+    return [...base]
+      .sort((a, b) => pos(a.id) - pos(b.id) || a.nome.localeCompare(b.nome, 'pt-BR'))
       .slice(0, 8);
-  }, [produtosAtivos, buscaProduto]);
+  }, [produtosAtivos, buscaProduto, ranking]);
 
   async function adicionarDoCatalogo(produto: Produto) {
     const eM2 = produto.unidade_medida === 'm2';
@@ -392,7 +399,7 @@ export function ItensEditor({ itens, onChange, onEditarProduto, onCriarProduto }
             ref={buscaInputRef}
             value={buscaProduto}
             onChange={e => handleBuscaChange(e.target.value)}
-            onFocus={() => { atualizarRect(); if (buscaProduto.length > 0) setMostrar(true); }}
+            onFocus={() => { atualizarRect(); setMostrar(true); }}
             onKeyDown={handleBuscaKeyDown}
             placeholder="Adicionar produto: nome ou SKU (setas + Enter)"
             className="flex-1 bg-transparent text-white text-xs placeholder-gray-600 focus:outline-none"
