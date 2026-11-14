@@ -27,7 +27,7 @@ export const PERMISSOES_MENU: GrupoPermissao[] = [
     { rota: '/vendas/entregues', label: 'Entregues' },
   ]},
   { grupo: 'Loja virtual', itens: [
-    { rota: '/loja-virtual', label: 'Pedidos do site' },
+    { rota: '/loja-virtual', label: 'Pedidos e relatórios do site' },
   ]},
   { grupo: 'CRM', itens: [
     { rota: '/crm',                       label: 'CRM (geral)' },

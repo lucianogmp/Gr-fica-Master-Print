@@ -1,5 +1,5 @@
 import { HelpTooltip } from '../ui/HelpTooltip';
-import { CheckCircle2, CheckCheck, Check, Globe, ArrowDownCircle, ArrowUpCircle, Package, Truck, HardDrive, CalendarHeart } from 'lucide-react';
+import { CheckCircle2, CheckCheck, Check, ArrowDownCircle, ArrowUpCircle, Package, Truck, HardDrive, CalendarHeart } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import type { usePedidosSite } from '../../hooks/usePedidosSite';
 import { useNotificacoes, TipoNotif } from '../../hooks/useNotificacoes';
@@ -7,7 +7,7 @@ import { useNotificacoes, TipoNotif } from '../../hooks/useNotificacoes';
 type PedidosSiteDados = ReturnType<typeof usePedidosSite>['data'];
 
 const CARD_BASE = "bg-[#1a2332] border border-gray-700/60 rounded-xl h-full flex flex-col";
-const ICONE: Record<TipoNotif, any> = { site: Globe, pagar: ArrowDownCircle, receber: ArrowUpCircle, estoque: Package, entrega: Truck, backup: HardDrive, campanha: CalendarHeart };
+const ICONE: Record<TipoNotif, any> = { pagar: ArrowDownCircle, receber: ArrowUpCircle, estoque: Package, entrega: Truck, backup: HardDrive, campanha: CalendarHeart };
 const COR = {
   critico: 'text-red-400 bg-red-500/10 border-red-500/30',
   atencao: 'text-amber-400 bg-amber-500/10 border-amber-500/30',

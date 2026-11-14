@@ -13,8 +13,9 @@ export interface PedidoSite {
 }
 
 /** Pedidos vindos do site (orçamentos com origem 'loja'): resumo do mês + os ainda não vistos. */
-export function usePedidosSite(mes: string) {
+export function usePedidosSite(mes: string, ativo = true) {
   return useQuery({
+    enabled: ativo,
     queryKey: ['pedidos-site', mes],
     queryFn: async () => {
       const { data, error } = await supabase

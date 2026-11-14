@@ -13,13 +13,16 @@ import { DashboardRankings } from '../components/dashboard/DashboardRankings';
 import { DashboardIndicators } from '../components/dashboard/DashboardIndicators';
 import { DashboardPedidosSite } from '../components/dashboard/DashboardPedidosSite';
 import { usePedidosSite } from '../hooks/usePedidosSite';
+import { useRole } from '../hooks/useRole';
 import { VersiculoDoDia } from '../components/dashboard/VersiculoDoDia';
 
 export function Dashboard() {
   const [mes, setMes] = useState(() => new Date().toISOString().slice(0, 7));
   const { data, isLoading, isFetching, refetch } = useDashboardData(mes);
   const oculto = useOcultarValores();
-  const { data: pedidosSite } = usePedidosSite(mes);
+  const { pode } = useRole();
+  const verSite = pode('/loja-virtual');
+  const { data: pedidosSite } = usePedidosSite(mes, verSite);
 
   if (isLoading) return (
     <div className="p-5 space-y-4">
@@ -81,7 +84,7 @@ export function Dashboard() {
       {/* Row 3: Contas a Receber + Contas a Pagar + Avisos (5 colunas: 2+2+1) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
         <DashboardAccounts data={data} />
-        <DashboardPedidosSite data={pedidosSite} className="lg:col-span-3" />
+        {verSite && <DashboardPedidosSite data={pedidosSite} className="lg:col-span-3" />}
         <DashboardAlerts data={data} pedidosSite={pedidosSite} />
       </div>
 

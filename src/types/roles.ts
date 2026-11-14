@@ -23,7 +23,7 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   '/vendas/entregues': ['dono', 'admin', 'vendedor'],
 
   // ── Loja virtual (pedidos do site) ──
-  '/loja-virtual':     ['dono', 'admin', 'vendedor'],
+  '/loja-virtual':     ['dono', 'admin'],
 
   // ── CRM ──
   '/crm':                        ['dono', 'admin', 'vendedor'],
