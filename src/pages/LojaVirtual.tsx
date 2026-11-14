@@ -6,12 +6,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Globe, CheckCircle2, XCircle, ExternalLink, Search, CreditCard, ShoppingCart, Clock } from 'lucide-react';
+import { MessageCircle, Globe, CheckCircle2, XCircle, ExternalLink, Search, CreditCard, ShoppingCart, Clock } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Modal } from '../components/ui/Modal';
 import { useConfirm } from '../components/ui/ConfirmModal';
 import { correspondeABuscaEmCampos } from '../lib/buscaFlexivel';
 import { STATUS_VENDA } from '../types/venda';
+import { ContatoClienteModal } from './lojaVirtual/ContatoCliente';
 import { RelatorioLoja } from './lojaVirtual/RelatorioLoja';
 import { formaDoMetodoOnline, resumoPagamento, type PagamentoRegistrado } from './lojaVirtual/pagamentoLoja';
 
@@ -70,7 +71,7 @@ function usePedidosLoja() {
     queryFn: async (): Promise<Pedido[]> => {
       const { data, error } = await supabase
         .from('orcamentos')
-        .select('id,numero,cliente_nome,total,desconto,status,created_at,loja_visto_em,venda_id,observacoes')
+        .select('id,numero,cliente_id,cliente_nome,total,desconto,status,created_at,loja_visto_em,venda_id,observacoes')
         .eq('origem', 'loja')
         .order('created_at', { ascending: false })
         .limit(500);
@@ -133,6 +134,7 @@ export function LojaVirtual() {
   const [aba, setAba] = useState<Aba>('abertos');
   const [busca, setBusca] = useState('');
   const [abertoId, setAbertoId] = useState<string | null>(null);
+  const [contatoAberto, setContatoAberto] = useState(false);
   const { confirmar, ConfirmModal } = useConfirm();
 
   const aberto = pedidos.find(p => p.id === abertoId) ?? null;
@@ -334,6 +336,9 @@ export function LojaVirtual() {
           const s = situacaoDe(aberto);
           return (
             <>
+              <button onClick={() => setContatoAberto(true)} className="px-3 py-2 rounded-lg text-sm font-bold text-green-300 hover:text-green-200 hover:bg-green-600/10 border border-green-500/30 flex items-center gap-1.5">
+                <MessageCircle className="w-4 h-4" /> Falar com o cliente
+              </button>
               {s === 'venda' && aberto.venda_id && (
                 <button onClick={() => navigate(`/vendas/nova/${aberto.venda_id}`)} className="px-4 py-2 rounded-lg text-sm font-bold bg-blue-600 hover:bg-blue-500 text-white flex items-center gap-1.5">
                   <ExternalLink className="w-4 h-4" /> Abrir a venda #{aberto.venda?.numero ?? ''}
@@ -421,6 +426,17 @@ export function LojaVirtual() {
           </div>
         )}
       </Modal>
+      <ContatoClienteModal
+        aberto={contatoAberto && !!aberto}
+        onClose={() => setContatoAberto(false)}
+        itens={itens}
+        pedido={aberto ? {
+          numero: aberto.numero, cliente_nome: aberto.cliente_nome, total: aberto.total, observacoes: aberto.observacoes,
+          cliente_id: (aberto as any).cliente_id ?? null,
+          situacaoTexto: ROTULO[situacaoDe(aberto)].texto, pagamentoTexto: resumoPagamento(aberto.pagamentos),
+          vendaNumero: aberto.venda?.numero ?? null, vendaStatus: aberto.venda?.status ?? null,
+        } : null}
+      />
       <ConfirmModal />
     </div>
   );
