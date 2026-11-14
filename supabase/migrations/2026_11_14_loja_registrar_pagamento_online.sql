@@ -1,0 +1,4 @@
+-- Aplicada via apply_migration `loja_registrar_pagamento_online`.
+-- Função loja_registrar_pagamento_online(p_orcamento_id): lança no financeiro o pagamento online confirmado do site
+-- (pagamentos_venda com a forma detectada, entrada na conta Infinity Pay, lançamento quitado). Só service_role; idempotente.
+-- A definição completa está no banco (pg_get_functiondef) e é chamada pela edge function loja-webhook-pagamento (v3).

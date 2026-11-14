@@ -14,6 +14,8 @@ import { KpiCard } from '../components/ui/KpiCard';
 import { useConfirm } from '../components/ui/ConfirmModal';
 import { correspondeABuscaEmCampos } from '../lib/buscaFlexivel';
 import { STATUS_VENDA } from '../types/venda';
+import { RelatorioLoja } from './lojaVirtual/RelatorioLoja';
+import { formaDoMetodoOnline, resumoPagamento, type PagamentoRegistrado } from './lojaVirtual/pagamentoLoja';
 
 type Pedido = {
   id: string;
@@ -28,6 +30,8 @@ type Pedido = {
   observacoes: string | null;
   pagamento: { status: 'aguardando' | 'pago' | 'cancelado'; metodo: string | null; parcelas: number | null; comprovante_url: string | null; pago_em: string | null } | null;
   venda: { numero: number | null; status: string } | null;
+  /** Pagamentos já recebidos: online (InfinitePay) ou lançados no ERP quando o cliente paga direto com a gráfica. */
+  pagamentos: PagamentoRegistrado[];
 };
 
 type Situacao = 'novo' | 'aguardando' | 'pago' | 'venda' | 'recusado';
@@ -57,7 +61,7 @@ const ABAS: { id: Aba; rotulo: string; passa: (s: Situacao) => boolean }[] = [
   { id: 'todos',      rotulo: 'Todos',                passa: () => true },
 ];
 
-const METODOS: Record<string, string> = { credit_card: 'Cartão de crédito', debit_card: 'Cartão de débito', pix: 'Pix' };
+const METODOS: Record<string, string> = { credit_card: 'Cartão de crédito', debit_card: 'Cartão de débito', pix: 'Pix', boleto: 'Boleto' };
 const dataBR = (iso: string) => new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
 
 function usePedidosLoja() {
@@ -75,17 +79,28 @@ function usePedidosLoja() {
       if (lista.length === 0) return [];
       const ids = lista.map(o => o.id);
       const vendaIds = lista.map(o => o.venda_id).filter(Boolean);
-      const [pg, vd] = await Promise.all([
+      const [pg, vd, pv] = await Promise.all([
         supabase.from('loja_pagamentos').select('orcamento_id,status,metodo,parcelas,comprovante_url,pago_em').in('orcamento_id', ids),
         vendaIds.length ? supabase.from('vendas').select('id,numero,status').in('id', vendaIds) : Promise.resolve({ data: [] as any[] }),
+        vendaIds.length ? supabase.from('pagamentos_venda').select('venda_id,forma_pagamento,valor,parcelas,observacoes').in('venda_id', vendaIds) : Promise.resolve({ data: [] as any[] }),
       ]);
       const pgPor = new Map((pg.data ?? []).map((g: any) => [g.orcamento_id, g]));
       const vdPor = new Map((vd.data ?? []).map((v: any) => [v.id, v]));
-      return lista.map(o => ({
-        ...o,
-        pagamento: pgPor.get(o.id) ?? null,
-        venda: o.venda_id ? (vdPor.get(o.venda_id) ?? null) : null,
-      }));
+      const pvPor = new Map<string, PagamentoRegistrado[]>();
+      for (const x of (pv.data ?? []) as any[]) {
+        const l = pvPor.get(x.venda_id) ?? [];
+        l.push({ forma: x.forma_pagamento, valor: Number(x.valor), parcelas: x.parcelas, origem: String(x.observacoes ?? '').startsWith('loja_pagamento:') ? 'site' : 'loja' });
+        pvPor.set(x.venda_id, l);
+      }
+      return lista.map(o => {
+        const g: any = pgPor.get(o.id) ?? null;
+        // Venda já tem os pagamentos lançados (inclusive o do site); antes de virar venda, vale o pagamento online confirmado.
+        let pagamentos: PagamentoRegistrado[] = o.venda_id ? (pvPor.get(o.venda_id) ?? []) : [];
+        if (pagamentos.length === 0 && g?.status === 'pago') {
+          pagamentos = [{ forma: formaDoMetodoOnline(g.metodo), valor: Number(o.total ?? 0), parcelas: g.parcelas, origem: 'site' }];
+        }
+        return { ...o, pagamento: g, pagamentos, venda: o.venda_id ? (vdPor.get(o.venda_id) ?? null) : null };
+      });
     },
     staleTime: 0,
     refetchOnWindowFocus: true,
@@ -115,6 +130,7 @@ export function LojaVirtual() {
   const oculto = useOcultarValores();
   const [searchParams, setSearchParams] = useSearchParams();
   const { data: pedidos = [], isLoading } = usePedidosLoja();
+  const [visao, setVisao] = useState<'pedidos' | 'relatorios'>('pedidos');
   const [aba, setAba] = useState<Aba>('abertos');
   const [busca, setBusca] = useState('');
   const [abertoId, setAbertoId] = useState<string | null>(null);
@@ -217,6 +233,18 @@ export function LojaVirtual() {
         </div>
       </div>
 
+      <div className="flex gap-1 border-b border-gray-700">
+        {([['pedidos', 'Pedidos'], ['relatorios', 'Relatórios']] as const).map(([id, rot]) => (
+          <button key={id} onClick={() => setVisao(id)}
+            className={`px-4 py-2 text-sm font-bold border-b-2 -mb-px transition-all ${visao === id ? 'border-blue-500 text-white' : 'border-transparent text-gray-500 hover:text-gray-300'}`}>
+            {rot}
+          </button>
+        ))}
+      </div>
+
+      {visao === 'relatorios' && <RelatorioLoja pedidos={comSituacao.map(({ p, s }) => ({ ...p, situacao: s, situacaoTexto: ROTULO[s].texto, recebimento: linhaRecebimento(p.observacoes, 'Recebimento: ') }))} />}
+
+      {visao === 'pedidos' && (<>
       <div className="flex gap-2 flex-wrap items-center">
         <div className="flex gap-1 bg-[#1f2937] border border-gray-700 rounded-xl p-1 flex-wrap">
           {ABAS.map(a => (
@@ -241,14 +269,15 @@ export function LojaVirtual() {
               <th className="text-left px-4 py-2.5">Cliente</th>
               <th className="text-left px-4 py-2.5 hidden md:table-cell">Data</th>
               <th className="text-left px-4 py-2.5 hidden lg:table-cell">Recebimento</th>
+              <th className="text-left px-4 py-2.5 hidden md:table-cell">Pagamento</th>
               <th className="text-right px-4 py-2.5">Total</th>
               <th className="text-left px-4 py-2.5">Situação</th>
             </tr>
           </thead>
           <tbody>
-            {isLoading && <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-500 animate-pulse">Carregando...</td></tr>}
+            {isLoading && <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-500 animate-pulse">Carregando...</td></tr>}
             {!isLoading && filtrados.length === 0 && (
-              <tr><td colSpan={6} className="px-4 py-10 text-center text-gray-500">Nenhum pedido aqui.</td></tr>
+              <tr><td colSpan={7} className="px-4 py-10 text-center text-gray-500">Nenhum pedido aqui.</td></tr>
             )}
             {filtrados.map(({ p, s }) => (
               <tr key={p.id} onClick={() => abrir(p)} className="border-b border-gray-800 last:border-0 hover:bg-gray-700/30 cursor-pointer transition-colors">
@@ -261,6 +290,11 @@ export function LojaVirtual() {
                 <td className="px-4 py-3 text-gray-300 max-w-[220px] truncate">{oculto ? MASCARA : p.cliente_nome}</td>
                 <td className="px-4 py-3 text-gray-400 hidden md:table-cell whitespace-nowrap">{dataBR(p.created_at)}</td>
                 <td className="px-4 py-3 text-gray-400 hidden lg:table-cell max-w-[260px] truncate">{linhaRecebimento(p.observacoes, 'Recebimento: ') || '—'}</td>
+                <td className="px-4 py-3 hidden md:table-cell whitespace-nowrap text-xs">
+                  {resumoPagamento(p.pagamentos)
+                    ? <span className="text-green-400 font-semibold">{resumoPagamento(p.pagamentos)}</span>
+                    : <span className="text-gray-500">{s === 'aguardando' ? 'Aguardando' : 'A combinar'}</span>}
+                </td>
                 <td className="px-4 py-3 text-right font-bold text-white whitespace-nowrap">{valor(Number(p.total ?? 0))}</td>
                 <td className="px-4 py-3">
                   <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border whitespace-nowrap ${ROTULO[s].cor}`}>{ROTULO[s].texto}</span>
@@ -273,6 +307,7 @@ export function LojaVirtual() {
           </tbody>
         </table>
       </div>
+      </>)}
 
       <Modal
         open={!!aberto}
@@ -326,6 +361,11 @@ export function LojaVirtual() {
           <div className="space-y-4">
             <div className="flex items-center gap-2 flex-wrap">
               <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border ${ROTULO[situacaoDe(aberto)].cor}`}>{ROTULO[situacaoDe(aberto)].texto}</span>
+              {aberto.pagamentos.length > 0 && aberto.pagamento?.status !== 'pago' && (
+                <span className="text-xs text-green-400 flex items-center gap-1">
+                  <CreditCard className="w-3.5 h-3.5" /> Pago: {resumoPagamento(aberto.pagamentos)} (lançado na venda)
+                </span>
+              )}
               {aberto.pagamento?.status === 'pago' && (
                 <span className="text-xs text-green-400 flex items-center gap-1">
                   <CreditCard className="w-3.5 h-3.5" /> Pago online — {METODOS[aberto.pagamento.metodo ?? ''] ?? 'InfinitePay'}
