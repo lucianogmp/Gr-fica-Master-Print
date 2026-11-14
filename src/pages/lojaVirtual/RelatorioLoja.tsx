@@ -4,7 +4,6 @@ import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Download, Printer } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { moeda, useOcultarValores, MASCARA } from '../../lib/privacidade';
 import type { PagamentoRegistrado } from './pagamentoLoja';
 
 export type PedidoRel = {
@@ -35,11 +34,10 @@ function intervalo(p: Periodo, de: string, ate: string): [string, string] {
 const csv = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
 
 export function RelatorioLoja({ pedidos }: { pedidos: PedidoRel[] }) {
-  const oculto = useOcultarValores();
   const [periodo, setPeriodo] = useState<Periodo>('mes');
   const [de, setDe] = useState('');
   const [ate, setAte] = useState('');
-  const valor = (v: number) => (oculto ? `R$ ${MASCARA}` : moeda(v));
+  const valor = (v: number) => Number(v ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
   const lista = useMemo(() => {
     const [a, b] = intervalo(periodo, de, ate);
@@ -133,7 +131,7 @@ export function RelatorioLoja({ pedidos }: { pedidos: PedidoRel[] }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2">
+      <div className="grid grid-cols-2 md:grid-cols-3 2xl:grid-cols-6 gap-2">
         {[
           ['Pedidos', String(lista.length)],
           ['Valor dos pedidos', valor(totalValidos)],
@@ -142,7 +140,7 @@ export function RelatorioLoja({ pedidos }: { pedidos: PedidoRel[] }) {
           ['Pagos no site', String(pagosOnline)],
           ['Recusados', String(lista.length - validos.length)],
         ].map(([r, v]) => (
-          <div key={r} className={caixa}><p className={tit}>{r}</p><p className="text-lg font-black text-white">{v}</p></div>
+          <div key={r} className={caixa}><p className={tit}>{r}</p><p className="text-lg font-black text-white tabular-nums whitespace-nowrap">{v}</p></div>
         ))}
       </div>
 

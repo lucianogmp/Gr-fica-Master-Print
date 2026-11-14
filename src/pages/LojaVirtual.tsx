@@ -8,9 +8,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Globe, CheckCircle2, XCircle, ExternalLink, Search, CreditCard, ShoppingCart, Clock } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { moeda, useOcultarValores, MASCARA } from '../lib/privacidade';
 import { Modal } from '../components/ui/Modal';
-import { KpiCard } from '../components/ui/KpiCard';
 import { useConfirm } from '../components/ui/ConfirmModal';
 import { correspondeABuscaEmCampos } from '../lib/buscaFlexivel';
 import { STATUS_VENDA } from '../types/venda';
@@ -62,6 +60,8 @@ const ABAS: { id: Aba; rotulo: string; passa: (s: Situacao) => boolean }[] = [
 ];
 
 const METODOS: Record<string, string> = { credit_card: 'Cartão de crédito', debit_card: 'Cartão de débito', pix: 'Pix', boleto: 'Boleto' };
+// Valores desta tela sempre aparecem: o "ocultar valores" do Dashboard não vale aqui.
+const moeda = (v: number) => Number(v ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const dataBR = (iso: string) => new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
 
 function usePedidosLoja() {
@@ -127,7 +127,6 @@ function usePedidoItens(id: string | null) {
 export function LojaVirtual() {
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const oculto = useOcultarValores();
   const [searchParams, setSearchParams] = useSearchParams();
   const { data: pedidos = [], isLoading } = usePedidosLoja();
   const [visao, setVisao] = useState<'pedidos' | 'relatorios'>('pedidos');
@@ -208,7 +207,7 @@ export function LojaVirtual() {
   const emAberto = comSituacao.filter(x => ABAS[0].passa(x.s));
   const viraramVenda = comSituacao.filter(x => x.s === 'venda');
   const novos = comSituacao.filter(x => !x.p.loja_visto_em && (x.s === 'novo' || x.s === 'aguardando' || x.s === 'pago')).length;
-  const valor = (v: number) => (oculto ? `R$ ${MASCARA}` : moeda(v));
+  const valor = (v: number) => moeda(v);
 
   const linhaRecebimento = (obs: string | null, prefixo: string) =>
     (obs ?? '').split('\n').find(l => l.startsWith(prefixo))?.slice(prefixo.length) ?? '';
@@ -228,8 +227,22 @@ export function LojaVirtual() {
           <p className="text-xs text-gray-500">Pedidos feitos no site. Confira a arte e o pagamento e aprove para virar venda.</p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <KpiCard compact label="Em aberto" value={`${emAberto.length} · ${valor(soma(emAberto))}`} icon={Clock} color="text-amber-400" />
-          <KpiCard compact label="Viraram venda" value={`${viraramVenda.length} · ${valor(soma(viraramVenda))}`} icon={ShoppingCart} color="text-green-400" />
+          {([
+            ['Em aberto', emAberto.length, soma(emAberto), Clock, 'text-amber-400'],
+            ['Viraram venda', viraramVenda.length, soma(viraramVenda), ShoppingCart, 'text-green-400'],
+          ] as const).map(([rot, qtd, tot, Icone, cor]) => (
+            <div key={rot} className="bg-[#1f2937] border border-gray-700 rounded-lg px-3.5 py-2 min-w-[210px]">
+              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5 mb-1">
+                <Icone className={`w-3.5 h-3.5 ${cor}`} /> {rot}
+              </p>
+              <div className="grid grid-cols-[auto_1fr] gap-x-4 items-baseline">
+                <span className="text-[10px] text-gray-500">Pedidos</span>
+                <span className={`text-sm font-black text-right tabular-nums ${cor}`}>{qtd}</span>
+                <span className="text-[10px] text-gray-500">Valor</span>
+                <span className={`text-sm font-black text-right tabular-nums whitespace-nowrap ${cor}`}>{valor(tot)}</span>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -250,14 +263,18 @@ export function LojaVirtual() {
           {ABAS.map(a => (
             <button key={a.id} onClick={() => setAba(a.id)}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${aba === a.id ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'}`}>
-              {a.rotulo} <span className="opacity-60">{contagem(a.id)}</span>
+              <span className="inline-flex items-center gap-2">
+                {a.rotulo}
+                <span className={`min-w-[1.25rem] px-1.5 rounded-full text-[10px] leading-4 text-center tabular-nums ${aba === a.id ? 'bg-white/20' : 'bg-gray-700/70 text-gray-300'}`}>{contagem(a.id)}</span>
+              </span>
             </button>
           ))}
         </div>
         <div className="relative flex-1 min-w-48">
-          <Search className="w-4 h-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-gray-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar cliente, nº do pedido..."
-            className="w-full bg-[#1f2937] border border-gray-700 rounded-xl pl-9 pr-4 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500" />
+            style={{ paddingLeft: 40 }}
+            className="w-full bg-[#1f2937] border border-gray-700 rounded-xl pr-4 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500" />
         </div>
       </div>
 
@@ -287,7 +304,7 @@ export function LojaVirtual() {
                     #{p.numero ?? '—'}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-gray-300 max-w-[220px] truncate">{oculto ? MASCARA : p.cliente_nome}</td>
+                <td className="px-4 py-3 text-gray-300 max-w-[220px] truncate">{p.cliente_nome}</td>
                 <td className="px-4 py-3 text-gray-400 hidden md:table-cell whitespace-nowrap">{dataBR(p.created_at)}</td>
                 <td className="px-4 py-3 text-gray-400 hidden lg:table-cell max-w-[260px] truncate">{linhaRecebimento(p.observacoes, 'Recebimento: ') || '—'}</td>
                 <td className="px-4 py-3 hidden md:table-cell whitespace-nowrap text-xs">
@@ -379,8 +396,8 @@ export function LojaVirtual() {
 
             <div>
               <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Cliente</p>
-              <p className="text-white font-bold">{oculto ? MASCARA : aberto.cliente_nome}</p>
-              <pre className="mt-1 whitespace-pre-wrap font-sans text-xs text-gray-400 leading-relaxed">{oculto ? MASCARA : (aberto.observacoes ?? '')}</pre>
+              <p className="text-white font-bold">{aberto.cliente_nome}</p>
+              <pre className="mt-1 whitespace-pre-wrap font-sans text-xs text-gray-400 leading-relaxed">{aberto.observacoes ?? ''}</pre>
             </div>
 
             <div>
