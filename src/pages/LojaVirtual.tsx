@@ -80,7 +80,7 @@ function usePedidosLoja() {
       const ids = lista.map(o => o.id);
       const vendaIds = lista.map(o => o.venda_id).filter(Boolean);
       const [pg, vd, pv] = await Promise.all([
-        supabase.from('loja_pagamentos').select('orcamento_id,status,metodo,parcelas,comprovante_url,pago_em').in('orcamento_id', ids),
+        supabase.from('loja_pagamentos').select('orcamento_id,status,metodo,parcelas,comprovante_url,pago_em,pago_centavos,valor_centavos').in('orcamento_id', ids),
         vendaIds.length ? supabase.from('vendas').select('id,numero,status').in('id', vendaIds) : Promise.resolve({ data: [] as any[] }),
         vendaIds.length ? supabase.from('pagamentos_venda').select('venda_id,forma_pagamento,valor,parcelas,observacoes').in('venda_id', vendaIds) : Promise.resolve({ data: [] as any[] }),
       ]);
@@ -97,7 +97,7 @@ function usePedidosLoja() {
         // Venda já tem os pagamentos lançados (inclusive o do site); antes de virar venda, vale o pagamento online confirmado.
         let pagamentos: PagamentoRegistrado[] = o.venda_id ? (pvPor.get(o.venda_id) ?? []) : [];
         if (pagamentos.length === 0 && g?.status === 'pago') {
-          pagamentos = [{ forma: formaDoMetodoOnline(g.metodo), valor: Number(o.total ?? 0), parcelas: g.parcelas, origem: 'site' }];
+          pagamentos = [{ forma: formaDoMetodoOnline(g.metodo), valor: Number(g.pago_centavos ?? g.valor_centavos ?? 0) / 100, parcelas: g.parcelas, origem: 'site' }];
         }
         return { ...o, pagamento: g, pagamentos, venda: o.venda_id ? (vdPor.get(o.venda_id) ?? null) : null };
       });
