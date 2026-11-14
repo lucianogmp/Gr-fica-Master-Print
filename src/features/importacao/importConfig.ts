@@ -34,6 +34,8 @@ export interface TabelaImportavel {
   /** rótulo mostrado no seletor de "o que você quer importar" */
   label: string;
   campos: CampoImportavel[];
+  /** Marca os registros importados como "precisam de revisão" (coluna precisa_revisao). */
+  marcarRevisao?: boolean;
 }
 
 const TIPOS_CONTA: Record<string, string> = {
@@ -48,6 +50,12 @@ function tipoConta(v: any) {
   return TIPOS_CONTA[k] ?? { erro: `Tipo de conta "${v}" não reconhecido (use caixa, corrente, poupança, cartão, pix ou outro)` };
 }
 const ufMaiuscula = (v: any) => String(v ?? '').trim().toUpperCase().slice(0, 2);
+
+function unidadeProduto(v: any) {
+  const k = String(v ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+  if (['m2', 'metroquadrado', 'metrosquadrados', 'mq'].includes(k)) return 'm2';
+  return 'unidade';
+}
 
 export const TABELAS_IMPORTAVEIS: TabelaImportavel[] = [
   {
@@ -94,6 +102,25 @@ export const TABELAS_IMPORTAVEIS: TabelaImportavel[] = [
       { chave: 'inscricao_estadual', label: 'Inscrição estadual' },
       { chave: 'categoria', label: 'Categoria' },
       { chave: 'observacoes', label: 'Observações' },
+    ],
+  },
+  {
+    tabela: 'produtos',
+    label: 'Produtos (catálogo)',
+    marcarRevisao: true,
+    campos: [
+      { chave: 'nome', label: 'Nome', obrigatorio: true, chaveDuplicidade: 'forte' },
+      { chave: 'sku', label: 'SKU / Código', chaveDuplicidade: 'forte' },
+      // não é coluna: vira categoria_id (cria a categoria de produto se ainda não existir)
+      { chave: 'categoria', label: 'Categoria' },
+      { chave: 'descricao', label: 'Descrição' },
+      { chave: 'preco_venda', label: 'Preço de venda', tipo: 'numero' },
+      { chave: 'unidade_medida', label: 'Unidade (unidade ou m²)', transformar: unidadeProduto, exemplo: 'unidade' },
+      { chave: 'custo_mao_obra', label: 'Custo mão de obra', tipo: 'numero' },
+      { chave: 'custo_operacional', label: 'Custo operacional', tipo: 'numero' },
+      { chave: 'custo_acabamento', label: 'Custo acabamento', tipo: 'numero' },
+      { chave: 'prazo_entrega_dias', label: 'Prazo de entrega (dias)', tipo: 'numero' },
+      { chave: 'terceirizado', label: 'Terceirizado (sim/não)', tipo: 'booleano' },
     ],
   },
   {

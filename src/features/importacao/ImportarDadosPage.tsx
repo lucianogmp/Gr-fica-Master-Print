@@ -13,7 +13,7 @@
 //
 import { supabase } from '../../lib/supabase';
 import * as XLSX from 'xlsx';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { DarkSelect } from '../../components/ui/DarkSelect';
 import { TABELAS_IMPORTAVEIS, type TabelaImportavel } from './importConfig';
@@ -385,12 +385,41 @@ export default function ImportarDadosPage() {
     [linhasRevisao, decisaoManual, pularDuplicadosFortes, pularDuplicadosPossiveis]
   );
 
+  /** Ajustes finais antes de gravar (ex.: produtos: categoria por nome → categoria_id e marca "precisa revisão"). */
+  const cacheCategorias = useRef<Map<string, string> | null>(null);
+  async function prepararDados(dados: Record<string, any>): Promise<Record<string, any>> {
+    if (!tabelaEscolhida) return dados;
+    const d = { ...dados };
+    if (tabelaEscolhida.tabela === 'produtos') {
+      const nomeCat = String(d.categoria ?? '').trim();
+      delete d.categoria;
+      if (nomeCat) {
+        if (!cacheCategorias.current) {
+          const { data } = await supabase.from('categorias').select('id,nome').eq('tipo', 'produto');
+          cacheCategorias.current = new Map((data ?? []).map((c: any) => [String(c.nome).trim().toLowerCase(), c.id as string]));
+        }
+        const k = nomeCat.toLowerCase();
+        let id = cacheCategorias.current.get(k);
+        if (!id) {
+          const { data: nova, error } = await supabase.from('categorias').insert({ nome: nomeCat, tipo: 'produto' }).select('id').single();
+          if (error) throw error;
+          id = nova.id as string;
+          cacheCategorias.current.set(k, id);
+        }
+        d.categoria_id = id;
+      }
+    }
+    if (tabelaEscolhida.marcarRevisao) d.precisa_revisao = true;
+    return d;
+  }
+
   async function executarImportacao() {
     if (!tabelaEscolhida) return;
     setImportando(true);
     setProgresso(0);
     setErroGeral(null);
 
+    cacheCategorias.current = null;
     const linhasParaImportar = linhasRevisao.filter(vaiSerImportada);
     const ignoradas = linhasRevisao.length - linhasParaImportar.length;
 
@@ -400,7 +429,7 @@ export default function ImportarDadosPage() {
     try {
       for (let i = 0; i < linhasParaImportar.length; i += TAMANHO_LOTE) {
         const lote = linhasParaImportar.slice(i, i + TAMANHO_LOTE);
-        const payload = lote.map((l) => l.dados);
+        const payload = await Promise.all(lote.map((l) => prepararDados(l.dados)));
 
         const { error, count } = await supabase
           .from(tabelaEscolhida.tabela)
@@ -409,7 +438,7 @@ export default function ImportarDadosPage() {
         if (error) {
           // Uma linha ruim não pode derrubar o lote inteiro: tenta uma a uma e aponta só a que falhou.
           for (const l of lote) {
-            const { error: e1 } = await supabase.from(tabelaEscolhida.tabela).insert(l.dados);
+            const { error: e1 } = await supabase.from(tabelaEscolhida.tabela).insert(await prepararDados(l.dados));
             if (e1) erros.push({ linha: l.linhaOriginal, motivo: traduzirErro(e1.message) });
             else inseridos += 1;
           }
@@ -456,7 +485,7 @@ export default function ImportarDadosPage() {
     <div className="max-w-4xl mx-auto p-6 text-gray-100">
       <h1 className="text-xl font-semibold mb-1">Importar dados</h1>
       <p className="text-sm text-gray-400 mb-6">
-        Traga clientes, fornecedores, estoque e contas do sistema antigo para cá, a partir de uma planilha (.xlsx, .xls ou .csv).
+        Traga clientes, fornecedores, produtos, estoque e contas do sistema antigo para cá, a partir de uma planilha (.xlsx, .xls ou .csv).
       </p>
 
       <Passos etapaAtual={etapa} />
@@ -599,6 +628,15 @@ export default function ImportarDadosPage() {
             )}
           </div>
 
+          <div className="flex items-center gap-3 mb-2 text-xs">
+            <span className="text-gray-500">Escolha o que importar:</span>
+            <button onClick={() => setDecisaoManual(Object.fromEntries(linhasRevisao.filter(l => l.status !== 'erro').map(l => [l.linhaOriginal, true])))}
+              className="text-blue-400 hover:text-blue-300 font-medium">Marcar todas</button>
+            <button onClick={() => setDecisaoManual(Object.fromEntries(linhasRevisao.filter(l => l.status !== 'erro').map(l => [l.linhaOriginal, false])))}
+              className="text-blue-400 hover:text-blue-300 font-medium">Desmarcar todas</button>
+            <span className="text-gray-500 ml-auto">{totalSelecionadas} de {linhasRevisao.length} marcadas</span>
+          </div>
+
           <div className="max-h-96 overflow-y-auto border border-gray-800 rounded-md">
             <table className="w-full text-xs">
               <thead className="bg-gray-900 sticky top-0">
@@ -677,6 +715,13 @@ export default function ImportarDadosPage() {
                   Linha {e.linha}: {e.motivo}
                 </p>
               ))}
+            </div>
+          )}
+
+          {tabelaEscolhida?.marcarRevisao && resultado.inseridos > 0 && (
+            <div className="bg-amber-950 border border-amber-800 rounded-md p-3 mb-4 text-sm text-amber-200">
+              Os {resultado.inseridos} registro(s) importado(s) ficaram marcados com o selo <b>Revisar</b> na lista de Produtos.
+              Abra cada um para completar máquina, tempo e matérias-primas — o selo some quando você salva.
             </div>
           )}
 

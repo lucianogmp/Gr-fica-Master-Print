@@ -295,6 +295,8 @@ export function Produtos() {
   const [bom, setBom]           = useState<BomItem[]>([]);
   const [bomLoading, setBomLoading] = useState(false);
   const [busca, setBusca] = usePersistente('busca', '');
+  const [soRevisar, setSoRevisar] = useState(false);
+  const pendentesRevisao = useMemo(() => produtos.filter(p => (p as any).precisa_revisao).length, [produtos]);
   const [modalCat, setModalCat] = useState(false);
   const [modalMP, setModalMP]   = useState(false);
   const { criar: criarMateriaPrima } = useMateriasPrimas();
@@ -491,7 +493,7 @@ export function Produtos() {
           catch (e: any) { toast.error('Produto criado, mas falhou ao salvar BOM: ' + e.message); }
         }
       } else if (produtoId) {
-        await atualizar({ id: produtoId, payload: clean as any });
+        await atualizar({ id: produtoId, payload: { ...(clean as any), precisa_revisao: false } });
         try { await saveBom(produtoId, bom); }
         catch (e: any) { toast.error('Produto atualizado, mas falhou ao salvar BOM: ' + e.message); }
       }
@@ -542,6 +544,7 @@ export function Produtos() {
     const f = filtros;
     const bm = String(f.busca ?? '').trim();
     const lista = produtos
+      .filter(p => !soRevisar || (p as any).precisa_revisao)
       .filter(p => correspondeABuscaEmCampos([p.nome, p.sku], busca))
       .filter(p => passaPeriodo(f.periodo, p.created_at))
       .filter(p => !bm || correspondeABuscaEmCampos([p.nome, p.sku, p.descricao], bm))
@@ -708,6 +711,18 @@ export function Produtos() {
         </div>
       </div>
 
+      {pendentesRevisao > 0 && (
+        <div className="flex items-center justify-between gap-3 flex-wrap bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-2.5">
+          <p className="text-xs text-amber-300">
+            <b>{pendentesRevisao}</b> produto(s) importado(s) ainda precisam ser revisados (máquina, tempo, matérias-primas). O selo <b>Revisar</b> some quando você salva o produto.
+          </p>
+          <button onClick={() => setSoRevisar(v => !v)}
+            className="text-[11px] font-bold px-3 py-1 rounded-lg bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 border border-amber-500/40 whitespace-nowrap">
+            {soRevisar ? 'Ver todos' : 'Ver só os pendentes'}
+          </button>
+        </div>
+      )}
+
       <div className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">
         <div className="p-3 border-b border-gray-700">
           <BarraLista busca={busca} onBusca={setBusca} placeholder="Buscar por nome ou SKU..."
@@ -752,7 +767,13 @@ export function Produtos() {
               return (
                 <tr key={p.id} onClick={() => abrirDetalhe(p)}
                   className="border-b border-gray-800 hover:bg-gray-800/30 transition-colors cursor-pointer">
-                  <td className="px-5 py-3 font-medium text-white">{p.nome}</td>
+                  <td className="px-5 py-3 font-medium text-white">
+                    {p.nome}
+                    {(p as any).precisa_revisao && (
+                      <span title="Importado de outro sistema: abra e complete máquina, tempo e matérias-primas. O selo some ao salvar."
+                        className="ml-2 text-[9px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30 px-1.5 py-0.5 rounded-full align-middle">Revisar</span>
+                    )}
+                  </td>
                   <td className="px-5 py-3 text-gray-500 font-mono text-xs">{p.sku || '—'}</td>
                   <td className="px-5 py-3 text-gray-400 text-xs">{cat?.nome || '—'}</td>
                   <td className="px-5 py-3 text-right font-bold text-white">
@@ -827,6 +848,11 @@ export function Produtos() {
         }} />
 
       <div className="p-6 space-y-6">
+        {!isNovo && (produtos.find(x => x.id === produtoId) as any)?.precisa_revisao && (
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-2.5 text-xs text-amber-300">
+            Produto importado de outro sistema — complete a máquina, o tempo e as matérias-primas e salve. O aviso some ao salvar.
+          </div>
+        )}
         {/* Header */}
         <div className="flex items-center gap-4">
           <button onClick={fecharDetalhe}

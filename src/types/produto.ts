@@ -34,6 +34,8 @@ export interface Produto {
    */
   unidade_medida: UnidadeMedida;
   terceirizado?: boolean | null;
+  /** true = veio de importação e ainda não foi revisado. Volta a false ao salvar. */
+  precisa_revisao?: boolean;
   empresa_id?: string;
   created_at?: string;
   updated_at?: string;
