@@ -34,6 +34,7 @@ import {
   Boxes, GitCompare, TrendingUp, FileBarChart2,
   DollarSign as DollarSignIcon,
   FileUp, PanelLeftClose, PanelLeftOpen, CalendarHeart,
+  Globe,
 } from 'lucide-react';
 
 const SIDEBAR_COLLAPSED_KEY = 'sidebarCollapsed';
@@ -92,6 +93,14 @@ const ALL_MENU: MenuItem[] = [
       { path: '/vendas/nova',    label: 'Nova Venda', icon: PlusCircle },
       { path: '/vendas/pedidos', label: 'Pedidos',     icon: ClipboardList },
     ],
+  },
+
+  // ── Loja virtual (pedidos do site) ──
+  {
+    path: '/loja-virtual',
+    label: 'Loja virtual',
+    icon: Globe,
+    rota: '/loja-virtual',
   },
 
   // ── CRM ──

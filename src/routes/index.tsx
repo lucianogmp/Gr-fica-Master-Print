@@ -18,6 +18,7 @@ const AuditLog      = lazy(() => import('../pages/AuditLog').then(m => ({ defaul
 // ─── Vendas (sub-rotas) ──────────────────────────────────────────────────────
 // Histórico, EmProducao e Entregues foram descontinuadas — consolidadas
 // dentro de Pedidos.tsx (mesma base, ListaVendas, sem restringir status).
+const LojaVirtual      = lazy(() => import('../pages/LojaVirtual').then(m => ({ default: m.LojaVirtual })));
 const VendasNova      = lazy(() => import('../pages/Vendas/Nova').then(m => ({ default: m.Vendas })));
 const VendasPedidos   = lazy(() => import('../pages/Vendas/Pedidos').then(m => ({ default: m.Pedidos })));
 
@@ -163,6 +164,9 @@ export function AppRoutes() {
           <Route path="vendas/historico" element={<Navigate to="/vendas/pedidos" replace />} />
           <Route path="vendas/producao"  element={<Navigate to="/vendas/pedidos" replace />} />
           <Route path="vendas/entregues" element={<Navigate to="/vendas/pedidos" replace />} />
+
+          {/* ── Loja virtual (pedidos do site) ── */}
+          <Route path="loja-virtual" element={<PR rota="/loja-virtual"><LojaVirtual /></PR>} />
 
           {/* ── CRM ── */}
           <Route path="crm" element={<Navigate to="/crm/clientes" replace />} />

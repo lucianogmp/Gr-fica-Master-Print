@@ -647,10 +647,11 @@ export function Orcamentos() {
     setAcabEditId(null);
   }
 
-  const totalOrc    = orcamentos.filter(o => o.status !== 'convertido').length;
-  // Pedidos novos vindos do site que ninguém abriu ainda (bolinha vermelha no filtro).
-  const novosLoja   = orcamentos.filter(o => o.origem === 'loja' && !o.loja_visto_em && o.status !== 'convertido').length;
-  const valorTotal  = orcamentos.filter(o => o.status !== 'recusado' && o.status !== 'convertido').reduce((s, o) => s + Number(o.total ?? 0), 0);
+  // Pedidos do site (origem 'loja') têm aba própria — "Loja virtual" — e não entram na lista nem nos totais daqui.
+  // Continuam existindo como orçamento por baixo (o link "Veio do orçamento #N" da venda abre normalmente).
+  const orcamentosLista = useMemo(() => orcamentos.filter(o => o.origem !== 'loja'), [orcamentos]);
+  const totalOrc    = orcamentosLista.filter(o => o.status !== 'convertido').length;
+  const valorTotal  = orcamentosLista.filter(o => o.status !== 'recusado' && o.status !== 'convertido').reduce((s, o) => s + Number(o.total ?? 0), 0);
 
   const [ordenacao, setOrdenacao] = useState<Ordenacao | null>({ campo: 'data', direcao: 'desc' });
   const [filtrosAv, setFiltrosAv] = usePersistente<FiltroValor>('filtros', {});
@@ -673,19 +674,16 @@ export function Orcamentos() {
       { tipo: 'multi', chave: 'status', label: 'Situação', opcoes: Object.entries(STATUS_ORC).filter(([k]) => k !== 'convertido').map(([k, v]) => ({ value: k, label: v.label })) },
       { tipo: 'multi', chave: 'vendedor', label: 'Vendedor', opcoes: uniq(orcamentos.map(o => o.vendedor)) },
       { tipo: 'multi', chave: 'tipo', label: 'Tipo', opcoes: uniq(orcamentos.map(o => o.tipo)) },
-      { tipo: 'multi', chave: 'origem', label: 'Origem', opcoes: [{ value: 'erp', label: 'Criado no sistema' }, { value: 'loja', label: 'Loja virtual (site)' }] },
       { tipo: 'multi', chave: 'estado', label: 'Estado (do cliente)', opcoes: uniq(orcamentos.map(o => cli(o)?.estado)) },
       { tipo: 'multi', chave: 'cidade', label: 'Cidade (do cliente)', opcoes: uniq(orcamentos.map(o => cli(o)?.cidade)) },
       { tipo: 'simnao', chave: 'desconto', label: 'Com desconto' },
       { tipo: 'simnao', chave: 'convertido', label: 'Já virou venda' },
       { tipo: 'simnao', chave: 'cadastrado', label: 'Cliente cadastrado' },
-      { tipo: 'simnao', chave: 'naoVisto', label: 'Pedido do site ainda não visto' },
     ];
   }, [orcamentos, clientes]);
   const filtrados = useMemo(() => {
-    const base = orcamentos
+    const base = orcamentosLista
       .filter(o => {
-        if (filtro === 'loja') return o.origem === 'loja' && o.status !== 'convertido';
         // Convertidos só aparecem se o filtro for explicitamente 'convertido'
         if (o.status === 'convertido' && filtro !== 'convertido') return false;
         return filtro === 'todos' || o.status === filtro;
@@ -706,20 +704,18 @@ export function Orcamentos() {
       .filter(o => passaMulti(f.status, o.status))
       .filter(o => passaMulti(f.vendedor, o.vendedor ?? ''))
       .filter(o => passaMulti(f.tipo, o.tipo ?? ''))
-      .filter(o => passaMulti(f.origem, o.origem ?? 'erp'))
       .filter(o => passaMulti(f.estado, cli(o)?.estado ?? ''))
       .filter(o => passaMulti(f.cidade, cli(o)?.cidade ?? ''))
       .filter(o => passaSimNao(f.desconto, Number(o.desconto ?? 0) > 0))
       .filter(o => passaSimNao(f.convertido, !!o.venda_id || o.status === 'convertido'))
-      .filter(o => passaSimNao(f.cadastrado, !!o.cliente_id))
-      .filter(o => passaSimNao(f.naoVisto, o.origem === 'loja' && !o.loja_visto_em));
+      .filter(o => passaSimNao(f.cadastrado, !!o.cliente_id));
     return aplicarOrdenacao(comFiltrosAv, ordenacao, {
       data:    o => o.created_at,
       cliente: o => o.cliente_nome,
       valor:   o => Number(o.total ?? 0),
       numero:  o => Number(o.numero ?? 0),
     });
-  }, [orcamentos, filtro, busca, filtrosAv, ordenacao, produtosPorOrc, clientes]);
+  }, [orcamentosLista, filtro, busca, filtrosAv, ordenacao, produtosPorOrc, clientes]);
 
   if (isLoading) return <div className="p-8 text-blue-500 animate-pulse font-bold">Carregando Orçamentos...</div>;
 
@@ -953,15 +949,10 @@ export function Orcamentos() {
 
       <div className="flex gap-2 flex-wrap items-center">
         <div className="flex gap-1 bg-[#1f2937] border border-gray-700 rounded-xl p-1 flex-wrap">
-          {(['todos','loja','rascunho','enviado','aprovado','recusado','convertido'] as Filtro[]).map(f => (
+          {(['todos','rascunho','enviado','aprovado','recusado','convertido'] as Filtro[]).map(f => (
             <button key={f} onClick={() => setFiltro(f)}
               className={`relative px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${filtro === f ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'}`}>
-              {f === 'todos' ? 'Todos' : f === 'loja' ? 'Loja virtual' : STATUS_ORC[f as StatusOrcamento]?.label ?? f}
-              {f === 'loja' && novosLoja > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center shadow-lg shadow-red-500/40 animate-pulse">
-                  {novosLoja}
-                </span>
-              )}
+              {f === 'todos' ? 'Todos' : STATUS_ORC[f as StatusOrcamento]?.label ?? f}
             </button>
           ))}
         </div>

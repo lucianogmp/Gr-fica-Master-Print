@@ -29,7 +29,7 @@ export function DashboardPedidosSite({ data, className = '' }: { data: Dados; cl
             </span>
           )}
         </h3>
-        <button onClick={() => navigate('/orcamentos')}
+        <button onClick={() => navigate('/loja-virtual')}
           className="text-[10px] text-blue-400 hover:text-blue-300 font-bold transition-colors flex items-center gap-0.5 flex-shrink-0">
           Ver todos <ArrowRight className="w-3 h-3" />
         </button>
@@ -49,7 +49,7 @@ export function DashboardPedidosSite({ data, className = '' }: { data: Dados; cl
         {(data?.recentes ?? []).length === 0 ? (
           <p className="flex-1 flex items-center justify-center text-xs text-gray-600 py-3 text-center">Nenhum pedido do site neste mês</p>
         ) : (data?.recentes ?? []).map(p => (
-          <button key={p.id} onClick={() => navigate(`/orcamentos?abrir=${p.id}`)}
+          <button key={p.id} onClick={() => navigate(`/loja-virtual?abrir=${p.id}`)}
             className="w-full text-left text-[11px] flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-700/30 transition-colors">
             <span className="flex items-center gap-1.5 min-w-0">
               {!p.loja_visto_em && p.status !== 'convertido' && <span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0" />}

@@ -49,7 +49,7 @@ export function useNotificacoes() {
   const { pode } = useRole();
   const qc = useQueryClient();
   const { pathname } = useLocation();
-  const verSite    = pode('/orcamentos');
+  const verSite    = pode('/loja-virtual');
   const verPagar   = pode('/financeiro/pagar');
   const verReceber = pode('/financeiro/receber') || pode('/vendas/pedidos');
   const verEstoque = pode('/estoque/atual');
@@ -132,7 +132,7 @@ export function useNotificacoes() {
         key: `site:${o.id}`, tipo: 'site', nivel: 'info',
         titulo: `Novo pedido do site #${o.numero ?? '—'}`,
         detalhe: `${o.cliente_nome ?? 'Cliente'} · ${brl(o.total)}`,
-        rota: `/orcamentos?abrir=${o.id}`, quando: o.created_at,
+        rota: `/loja-virtual?abrir=${o.id}`, quando: o.created_at,
       }));
 
       const montar = (l: any, tipo: 'pagar' | 'receber') => {
