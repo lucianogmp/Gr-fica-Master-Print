@@ -273,8 +273,7 @@ export function LojaVirtual() {
         <div className="relative flex-1 min-w-48">
           <Search className="w-4 h-4 text-gray-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar cliente, nº do pedido..."
-            style={{ paddingLeft: 40 }}
-            className="w-full bg-[#1f2937] border border-gray-700 rounded-xl pr-4 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500" />
+            className="!pl-10 w-full bg-[#1f2937] border border-gray-700 rounded-xl pr-4 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500" />
         </div>
       </div>
 
