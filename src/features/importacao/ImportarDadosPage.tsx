@@ -54,6 +54,8 @@ function converterCampo(campo: import('./importConfig').CampoImportavel | undefi
     const n = parseNumeroBR(bruto);
     if (n === null) return { valor: null };
     if (Number.isNaN(n)) return { erro: `${rotulo}: "${bruto}" não é um número válido` };
+    // Limite do banco (numeric(12,4) no preço): valores gigantes quase sempre são coluna mapeada errada (código, código de barras...)
+    if (Math.abs(n) >= 1e8) return { erro: `${rotulo}: "${bruto}" é grande demais — confira se a coluna certa foi mapeada nesse campo` };
     return { valor: n };
   }
   if (campo.tipo === 'data') {
