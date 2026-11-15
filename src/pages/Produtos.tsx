@@ -562,7 +562,7 @@ export function Produtos() {
       nome: p => p.nome, preco: p => Number(p.preco_venda), sku: p => p.sku, cadastro: p => p.created_at,
       categoria: p => categorias.find(c => c.id === p.categoria_id)?.nome,
     });
-  }, [produtos, busca, filtros, ordenacao, categorias]);
+  }, [produtos, busca, filtros, ordenacao, categorias, soRevisar]);
   const opcoesCat = (camposFiltro.find(c => c.chave === 'categoria') as any)?.opcoes ?? [];
   const opcoesStatus = (camposFiltro.find(c => c.chave === 'status') as any)?.opcoes ?? [];
 
