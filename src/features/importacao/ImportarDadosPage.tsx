@@ -385,29 +385,38 @@ export default function ImportarDadosPage() {
     [linhasRevisao, decisaoManual, pularDuplicadosFortes, pularDuplicadosPossiveis]
   );
 
+  // Categorias resolvidas por nome. Guarda a PROMESSA (não só o id) porque o lote é gravado em paralelo:
+  // vários produtos com a mesma categoria nova não podem tentar criá-la ao mesmo tempo.
+  const cacheCategorias = useRef<Map<string, Promise<string>> | null>(null);
+  async function resolverCategoria(nomeCat: string): Promise<string> {
+    if (!cacheCategorias.current) {
+      const { data } = await supabase.from('categorias').select('id,nome').eq('tipo', 'produto');
+      cacheCategorias.current = new Map((data ?? []).map((c: any) => [String(c.nome).trim().toLowerCase(), Promise.resolve(c.id as string)]));
+    }
+    const k = nomeCat.toLowerCase();
+    let p = cacheCategorias.current.get(k);
+    if (!p) {
+      p = (async () => {
+        const { data: nova, error } = await supabase.from('categorias').insert({ nome: nomeCat, tipo: 'produto' }).select('id').single();
+        if (!error) return nova.id as string;
+        // já existe (outra aba, espaço/maiúscula diferente): usa a que existe em vez de falhar
+        const { data: ex } = await supabase.from('categorias').select('id').eq('tipo', 'produto').ilike('nome', nomeCat).limit(1);
+        if (ex?.[0]?.id) return ex[0].id as string;
+        throw error;
+      })();
+      cacheCategorias.current.set(k, p);
+    }
+    return p;
+  }
+
   /** Ajustes finais antes de gravar (ex.: produtos: categoria por nome → categoria_id e marca "precisa revisão"). */
-  const cacheCategorias = useRef<Map<string, string> | null>(null);
   async function prepararDados(dados: Record<string, any>): Promise<Record<string, any>> {
     if (!tabelaEscolhida) return dados;
     const d = { ...dados };
     if (tabelaEscolhida.tabela === 'produtos') {
       const nomeCat = String(d.categoria ?? '').trim();
       delete d.categoria;
-      if (nomeCat) {
-        if (!cacheCategorias.current) {
-          const { data } = await supabase.from('categorias').select('id,nome').eq('tipo', 'produto');
-          cacheCategorias.current = new Map((data ?? []).map((c: any) => [String(c.nome).trim().toLowerCase(), c.id as string]));
-        }
-        const k = nomeCat.toLowerCase();
-        let id = cacheCategorias.current.get(k);
-        if (!id) {
-          const { data: nova, error } = await supabase.from('categorias').insert({ nome: nomeCat, tipo: 'produto' }).select('id').single();
-          if (error) throw error;
-          id = nova.id as string;
-          cacheCategorias.current.set(k, id);
-        }
-        d.categoria_id = id;
-      }
+      if (nomeCat) d.categoria_id = await resolverCategoria(nomeCat);
     }
     if (tabelaEscolhida.marcarRevisao) d.precisa_revisao = true;
     return d;
