@@ -8,7 +8,7 @@
 import type { CampoImportavel } from './importConfig';
 
 const SINONIMOS: Record<string, string[]> = {
-  nome: ['nome', 'cliente', 'nomecliente', 'nomecompleto', 'nomedocliente', 'nomerazaosocial', 'nomefornecedor', 'fornecedor', 'descricao', 'produto', 'materiaprima', 'material', 'titular'],
+  nome: ['nome', 'ixprod', 'nomeproduto', 'cliente', 'nomecliente', 'nomecompleto', 'nomedocliente', 'nomerazaosocial', 'nomefornecedor', 'fornecedor', 'descricao', 'produto', 'materiaprima', 'material', 'titular'],
   cpf_cnpj: ['cpf', 'cnpj', 'cpfcnpj', 'cnpjcpf', 'documento', 'cpfoucnpj', 'cnpjoucpf', 'numerodocumento', 'doc', 'cpfcnpjcliente'],
   email: ['email', 'mail', 'emailcliente', 'correioeletronico'],
   telefone: ['telefone', 'fone', 'celular', 'whatsapp', 'tel', 'telefone1', 'fonecelular', 'foneresidencial', 'telefonecelular', 'contato'],
@@ -26,6 +26,7 @@ const SINONIMOS: Record<string, string[]> = {
   cnae_principal: ['cnae', 'cnaeprincipal'],
   como_conheceu: ['comoconheceu', 'origem'],
   produto_interesse: ['produtointeresse', 'interesse'],
+  descricao: ['descricao', 'anotacoes', 'detalhes'],
   observacoes: ['observacoes', 'obs', 'notas', 'observacao'],
   categoria: ['categoria', 'grupo', 'familia', 'tipo'],
   unidade: ['unidade', 'un', 'und', 'unidademedida', 'um'],

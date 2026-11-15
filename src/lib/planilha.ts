@@ -88,7 +88,14 @@ export async function lerPlanilha(arquivo: File): Promise<AbaPlanilha[]> {
     return [{ nome: 'Arquivo', linhas: limparLinhas(parseCSV(decodificarTexto(buffer))) }];
   }
 
-  const wb = XLSX.read(buffer, { type: 'array', cellDates: true });
+  // .xls de sistemas antigos costuma ser uma TABELA HTML disfarçada. O leitor, nesse caso, trata a vírgula como
+  // separador de milhar ("100,0000000000" virava 1000000000000). Lemos tudo como TEXTO e deixamos o parseNumeroBR
+  // interpretar. A codificação (Windows-1252) também é tratada.
+  const inicio = new TextDecoder('latin1').decode(buffer.slice(0, 2048)).toLowerCase();
+  const ehHtml = /<\s*(html|table|body)\b/.test(inicio);
+  const wb = ehHtml
+    ? XLSX.read(decodificarTexto(buffer), { type: 'string', raw: true, cellDates: true })
+    : XLSX.read(buffer, { type: 'array', cellDates: true });
   const abas: AbaPlanilha[] = [];
   for (const nome of wb.SheetNames) {
     const ws = wb.Sheets[nome];
