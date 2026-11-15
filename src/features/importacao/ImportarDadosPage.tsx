@@ -385,38 +385,42 @@ export default function ImportarDadosPage() {
     [linhasRevisao, decisaoManual, pularDuplicadosFortes, pularDuplicadosPossiveis]
   );
 
-  // Categorias resolvidas por nome. Guarda a PROMESSA (não só o id) porque o lote é gravado em paralelo:
-  // vários produtos com a mesma categoria nova não podem tentar criá-la ao mesmo tempo.
-  const cacheCategorias = useRef<Map<string, Promise<string>> | null>(null);
-  async function resolverCategoria(nomeCat: string): Promise<string> {
-    if (!cacheCategorias.current) {
-      const { data } = await supabase.from('categorias').select('id,nome').eq('tipo', 'produto');
-      cacheCategorias.current = new Map((data ?? []).map((c: any) => [String(c.nome).trim().toLowerCase(), Promise.resolve(c.id as string)]));
-    }
-    const k = nomeCat.toLowerCase();
-    let p = cacheCategorias.current.get(k);
-    if (!p) {
-      p = (async () => {
-        const { data: nova, error } = await supabase.from('categorias').insert({ nome: nomeCat, tipo: 'produto' }).select('id').single();
-        if (!error) return nova.id as string;
-        // já existe (outra aba, espaço/maiúscula diferente): usa a que existe em vez de falhar
-        const { data: ex } = await supabase.from('categorias').select('id').eq('tipo', 'produto').ilike('nome', nomeCat).limit(1);
-        if (ex?.[0]?.id) return ex[0].id as string;
-        throw error;
+  // Produtos: o que veio do sistema antigo só entra se combinar com o que já existe aqui.
+  //  - categoria: só se já houver uma categoria de produto com esse nome (nunca cria categoria nova);
+  //  - SKU: só se ninguém usa esse SKU ainda (no sistema ou antes nesta mesma importação).
+  // Quando não combina, fica em branco para o usuário preencher na revisão do produto.
+  const refProdutos = useRef<Promise<{ categorias: Map<string, string>; skus: Set<string> }> | null>(null);
+  function carregarRefProdutos() {
+    if (!refProdutos.current) {
+      refProdutos.current = (async () => {
+        const [{ data: cats }, { data: prods }] = await Promise.all([
+          supabase.from('categorias').select('id,nome').eq('tipo', 'produto'),
+          supabase.from('produtos').select('sku'),
+        ]);
+        return {
+          categorias: new Map((cats ?? []).map((c: any) => [String(c.nome).trim().toLowerCase(), c.id as string])),
+          skus: new Set((prods ?? []).map((p: any) => String(p.sku ?? '').trim().toLowerCase()).filter(Boolean)),
+        };
       })();
-      cacheCategorias.current.set(k, p);
     }
-    return p;
+    return refProdutos.current;
   }
 
-  /** Ajustes finais antes de gravar (ex.: produtos: categoria por nome → categoria_id e marca "precisa revisão"). */
+  /** Ajustes finais antes de gravar (ex.: produtos: categoria/SKU só se não conflitarem; marca "precisa revisão"). */
   async function prepararDados(dados: Record<string, any>): Promise<Record<string, any>> {
     if (!tabelaEscolhida) return dados;
     const d = { ...dados };
     if (tabelaEscolhida.tabela === 'produtos') {
-      const nomeCat = String(d.categoria ?? '').trim();
+      const ref = await carregarRefProdutos();
+      const nomeCat = String(d.categoria ?? '').trim().toLowerCase();
       delete d.categoria;
-      if (nomeCat) d.categoria_id = await resolverCategoria(nomeCat);
+      const catId = nomeCat ? ref.categorias.get(nomeCat) : undefined;
+      if (catId) d.categoria_id = catId;
+      const sku = String(d.sku ?? '').trim().toLowerCase();
+      if (sku) {
+        if (ref.skus.has(sku)) delete d.sku;
+        else ref.skus.add(sku);
+      }
     }
     if (tabelaEscolhida.marcarRevisao) d.precisa_revisao = true;
     return d;
@@ -428,7 +432,7 @@ export default function ImportarDadosPage() {
     setProgresso(0);
     setErroGeral(null);
 
-    cacheCategorias.current = null;
+    refProdutos.current = null;
     const linhasParaImportar = linhasRevisao.filter(vaiSerImportada);
     const ignoradas = linhasRevisao.length - linhasParaImportar.length;
 

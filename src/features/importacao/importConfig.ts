@@ -110,8 +110,9 @@ export const TABELAS_IMPORTAVEIS: TabelaImportavel[] = [
     marcarRevisao: true,
     campos: [
       { chave: 'nome', label: 'Nome', obrigatorio: true, chaveDuplicidade: 'forte' },
-      { chave: 'sku', label: 'SKU / Código', chaveDuplicidade: 'forte' },
-      // não é coluna: vira categoria_id (cria a categoria de produto se ainda não existir)
+      // SKU e categoria do sistema antigo só entram se não conflitarem com o que já existe aqui; senão ficam em branco.
+      { chave: 'sku', label: 'SKU / Código' },
+      // não é coluna: vira categoria_id só se já existir uma categoria de produto com esse nome
       { chave: 'categoria', label: 'Categoria' },
       { chave: 'descricao', label: 'Descrição' },
       { chave: 'preco_venda', label: 'Preço de venda', tipo: 'numero' },
