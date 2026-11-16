@@ -204,17 +204,34 @@ export function PainelFinanceiro({
     const somaRascunhos = atuais.reduce((s, r) => s + Number(r.valor || 0), 0);
     const diferenca = Math.round((valorRestante - somaRascunhos) * 100) / 100;
 
-    if (diferenca > 0.01 && atuais.length === 0) {
-      emitirRascunhos([novaParcelaBase(diferenca, formaPagamento, formas, vencimentoPadrao)]);
+    // O total mudou (item/desconto/frete/taxa): a diferença vai para a ÚLTIMA parcela "a receber".
+    // Parcelas já marcadas como "Recebido" não são mexidas. Se não houver nenhuma "a receber"
+    // e sobrou valor, nasce uma nova só com o que falta. Quando o total cai, o valor é tirado
+    // da última "a receber" para trás.
+    if (Math.abs(diferenca) <= 0.01) return;
+    const ultimaAberta = (() => { for (let i = atuais.length - 1; i >= 0; i--) if (atuais[i].status === 'a_receber') return i; return -1; })();
+
+    if (diferenca > 0.01) {
+      if (ultimaAberta >= 0) {
+        emitirRascunhos(atuais.map((r, i) => i === ultimaAberta
+          ? { ...r, valor: Number((Number(r.valor || 0) + diferenca).toFixed(2)) } : r));
+      } else {
+        emitirRascunhos([...atuais, novaParcelaBase(diferenca, atuais.length ? atuais[atuais.length - 1].forma_pagamento : formaPagamento, formas, vencimentoPadrao)]);
+      }
       return;
     }
-    // Se a diferença mudou (ex: adicionou item novo) e existe exatamente um
-    // rascunho ainda "a receber" sem edição manual de forma/conta, ajusta o
-    // valor dele sozinho, sem mexer no que já foi digitado quando há mais de um.
-    if (atuais.length === 1 && atuais[0].status === 'a_receber' && Math.abs(diferenca) > 0.01) {
-      const unico = atuais[0];
-      emitirRascunhos([{ ...unico, valor: Math.max(0, Number((unico.valor + diferenca).toFixed(2))) }]);
+
+    let sobra = -diferenca;
+    const novos = atuais.map(r => ({ ...r }));
+    for (let i = novos.length - 1; i >= 0 && sobra > 0.005; i--) {
+      if (novos[i].status !== 'a_receber') continue;
+      const tira = Math.min(Number(novos[i].valor || 0), sobra);
+      novos[i].valor = Number((Number(novos[i].valor || 0) - tira).toFixed(2));
+      sobra = Number((sobra - tira).toFixed(2));
     }
+    // parcela esvaziada pela redução some (menos quando é a única: fica zerada pra você preencher)
+    const mantidos = novos.filter(r => r.status !== 'a_receber' || Number(r.valor || 0) > 0.01);
+    emitirRascunhos(mantidos.length > 0 ? mantidos : novos);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [valorRestante, carregandoPagamentos]);
 
