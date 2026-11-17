@@ -34,6 +34,8 @@ interface MoneyInputProps {
   /** Disparado a cada dígito com o novo valor em reais (ex: 45.9). */
   onChange: (valorEmReais: number) => void;
   onBlur?: () => void;
+  /** Disparado ao apertar Enter (ex.: pular para o próximo campo). */
+  onEnter?: () => void;
   className?: string;
   style?: React.CSSProperties;
   placeholder?: string;
@@ -45,7 +47,7 @@ interface MoneyInputProps {
 }
 
 export function MoneyInput({
-  value, onChange, onBlur, className, style, placeholder, autoFocus, disabled, required, id, name,
+  value, onChange, onBlur, onEnter, className, style, placeholder, autoFocus, disabled, required, id, name,
 }: MoneyInputProps) {
   const [centavos, setCentavos] = useState<number>(() => reaisParaCentavos(value));
   const inputRef = useRef<HTMLInputElement>(null);
@@ -69,6 +71,7 @@ export function MoneyInput({
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (disabled) return;
+    if (e.key === 'Enter' && onEnter) { e.preventDefault(); onEnter(); return; }
 
     const el = e.currentTarget;
     // Tudo selecionado (Ctrl+A, duplo-clique, etc): o próximo dígito começa

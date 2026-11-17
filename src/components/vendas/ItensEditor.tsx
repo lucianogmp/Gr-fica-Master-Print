@@ -339,9 +339,6 @@ export function ItensEditor({ itens, onChange, onEditarProduto, onCriarProduto }
                           const linha = [detalhe, `adicionado em ${quando}`].filter(Boolean).join(' · ');
                           return <p className="text-[10px] text-gray-500 truncate" title={linha}>{linha}</p>;
                         })()}
-                        <input value={it.nome_arquivo ?? ''} placeholder="nome do arquivo"
-                          onChange={e => atualizarItem(i, 'nome_arquivo', e.target.value)}
-                          className="mt-0.5 w-full max-w-[220px] bg-transparent border-b border-gray-800 focus:border-blue-500 outline-none text-[10px] text-gray-400 placeholder-gray-700" />
                       </>
                     )}
                   </td>
@@ -353,11 +350,11 @@ export function ItensEditor({ itens, onChange, onEditarProduto, onCriarProduto }
                       className={IN_NUM + ' text-right px-2 min-w-0'} />
                   </td>
                   <td className="px-1 py-1">
-                    <MoneyInput value={it.preco_unitario}
+                    <MoneyInput value={it.preco_unitario} onEnter={() => buscaInputRef.current?.focus()}
                       onChange={v => atualizarItem(i, 'preco_unitario', v)} className={IN + ' text-right px-2 min-w-0'} />
                   </td>
                   <td className="px-1 py-1">
-                    <MoneyInput value={descontoEmReais(it as any)}
+                    <MoneyInput value={descontoEmReais(it as any)} onEnter={() => buscaInputRef.current?.focus()}
                       onChange={v => atualizarItem(i, 'desconto_valor' as any, v)} className={IN + ' text-right px-2 min-w-0'} placeholder="0,00" />
                   </td>
                   <td className="px-2 py-1 text-right font-bold text-white text-sm whitespace-nowrap">

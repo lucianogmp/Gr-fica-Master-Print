@@ -354,6 +354,7 @@ export function Financeiro() {
     descontoGlobalPct: formVenda.desconto,
     total: totalFinalV,
     valorPago: formVenda.valor_pago,
+    taxaMaquininha: (pagamentosVenda ?? []).reduce((s: number, p: any) => { const t = Number(p.juros_pct ?? 0); return s + (t > 0 ? Math.round(Number(p.valor) * t) / 100 : 0); }, 0),
     formaPagamento: formVenda.forma_pagamento,
     observacoes: formVenda.observacoes,
   } : null;

@@ -35,7 +35,8 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Modal } from '../../components/ui/Modal';
-import { baixarPdfOrcamento } from '../../components/impressao/baixarPdf';
+import { baixarPdfOrcamento, baixarPdfCustos } from '../../components/impressao/baixarPdf';
+import { tamanhoDoItem } from '../../lib/fechamentoFornecedor';
 import { DocumentoImpressaoData } from '../../components/impressao/DocumentoImpressao';
 import { imprimirDocumento } from '../../components/impressao/imprimirDocumento';
 import { DEFAULT_LAYOUT_VENDA } from '../../types/layoutImpressao';
@@ -417,7 +418,7 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
   const [posSalvar, setPosSalvar] = useState<{ id: string; doc: DocumentoImpressaoData } | null>(null);
 
   // Criar/editar produto só pra quem tem acesso ao Catálogo nas permissões.
-  const { pode } = useRole();
+  const { pode, podeVerCustos } = useRole();
   const podeProdutos = pode('/produtos/catalogo');
 
   const layoutVenda = { ...DEFAULT_LAYOUT_VENDA, ...(cfg?.layout_impressao_venda ?? {}) };
@@ -446,6 +447,7 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
     descontoGlobalPct: form.desconto,
     total: totalFinal,
     valorPago: form.valor_pago,
+    taxaMaquininha: (pagamentos ?? []).reduce((s, p: any) => { const t = Number(p.juros_pct ?? 0); return s + (t > 0 ? Math.round(Number(p.valor) * t) / 100 : 0); }, 0),
     formaPagamento: form.forma_pagamento,
     observacoes: form.observacoes,
   };
@@ -571,6 +573,30 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [posSalvar]);
+
+  // PDF interno de custos da venda (só quem tem a permissão de custos — dono/admin).
+  function baixarCustosVenda() {
+    if (!podeVerCustos) return;
+    const itensCusto = itens.map(i => {
+      const tam = i.detalhe_placa ? null : tamanhoDoItem(i);
+      const porM2 = !!tam && tam.areaTotal != null && !(i.unidade ?? '').toLowerCase().startsWith('m') && !!i.obs;
+      return {
+        produto_id: i.produto_id ?? null, descricao: i.descricao, tipo_calculo: (i.detalhe_placa ? 'placa' : 'livre') as any,
+        quantidade: Number(i.quantidade), custo_unitario: (i as any).custo_unitario ?? null,
+        preco_unitario: Number(i.preco_unitario), total: Number(i.total),
+        desconto: Number(i.desconto ?? 0), desconto_valor: i.desconto_valor ?? null,
+        area_m2: porM2 && Number(i.quantidade) > 0 ? tam!.areaTotal! / Number(i.quantidade) : (i.area_m2 ?? null),
+        detalhe_placa: i.detalhe_placa ?? null,
+      };
+    });
+    const id = toast.loading('Gerando PDF...');
+    baixarPdfCustos(cfg ?? {}, {
+      numero: (form as any).numero ?? null, data: form.data_venda ?? null, clienteNome: form.cliente_nome,
+      titulo: form.tipo ?? null, itens: itensCusto as any, descontoPct: Number(form.desconto ?? 0), observacoes: form.observacoes,
+    })
+      .then(() => toast.success('PDF baixado!', { id }))
+      .catch(e => { console.error(e); toast.error('Não foi possível gerar o PDF.', { id }); });
+  }
 
   function baixarPdfVenda(doc: DocumentoImpressaoData) {
     const id = toast.loading('Gerando PDF...');
@@ -807,6 +833,14 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
                 className="bg-gray-700 hover:bg-gray-600 text-gray-300 px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2"
               >
                 <Printer className="w-4 h-4" /> Imprimir
+              </button>
+            )}
+            {!isNovo && podeVerCustos && (
+              <button
+                onClick={baixarCustosVenda}
+                className="bg-gray-700 hover:bg-gray-600 text-gray-300 px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2"
+              >
+                <Download className="w-4 h-4" /> PDF de custos
               </button>
             )}
             <button

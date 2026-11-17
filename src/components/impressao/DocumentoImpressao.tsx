@@ -49,6 +49,8 @@ export interface DocumentoImpressaoData {
   descontoGlobalPct?: number | null;
   total: number;
   valorPago?: number | null;
+  /** Taxa da maquininha já descontada do valor pago (não conta como "falta pagar"). */
+  taxaMaquininha?: number | null;
   formaPagamento?: string | null;
   observacoes?: string | null;
 }
@@ -238,8 +240,8 @@ export function DocumentoImpressao({ layout, empresa, documento: doc, style }: D
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 900, fontSize: 14, marginTop: 4, paddingTop: 4, borderTop: `1px dashed #d1d5db` }}>
                 <span>Falta Pagar</span>
-                <span style={{ color: Math.max(0, doc.total - doc.valorPago) === 0 ? '#16a34a' : '#ea580c' }}>
-                  {Math.max(0, doc.total - doc.valorPago) === 0 ? 'QUITADO' : fmtBRL(Math.max(0, doc.total - doc.valorPago))}
+                <span style={{ color: Math.max(0, Math.round((doc.total - Number(doc.taxaMaquininha ?? 0) - doc.valorPago) * 100) / 100) === 0 ? '#16a34a' : '#ea580c' }}>
+                  {Math.max(0, Math.round((doc.total - Number(doc.taxaMaquininha ?? 0) - doc.valorPago) * 100) / 100) === 0 ? 'QUITADO' : fmtBRL(Math.max(0, Math.round((doc.total - Number(doc.taxaMaquininha ?? 0) - doc.valorPago) * 100) / 100))}
                 </span>
               </div>
             </>
