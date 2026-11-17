@@ -126,6 +126,7 @@ const ALL_MENU: MenuItem[] = [
       { path: '/financeiro/lancamentos',  label: 'Lançamentos',        icon: Receipt },
       { path: '/financeiro/receber',      label: 'Contas a Receber',   icon: ArrowDownCircle },
       { path: '/financeiro/pagar',        label: 'Contas a Pagar',     icon: ArrowUpCircle },
+      { path: '/financeiro/fornecedores-fechamento', label: 'Fechar Fornecedor', icon: Truck },
       { path: '/financeiro/fluxo-caixa',  label: 'Fluxo de Caixa',    icon: TrendingUp },
       { path: '/financeiro/resumo',       label: 'Resumo Financeiro',  icon: PieChart },
     ],

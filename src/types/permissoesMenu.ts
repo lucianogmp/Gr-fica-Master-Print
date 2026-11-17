@@ -42,6 +42,7 @@ export const PERMISSOES_MENU: GrupoPermissao[] = [
     { rota: '/financeiro/receber',      label: 'Contas a Receber' },
     { rota: '/financeiro/pagar',        label: 'Contas a Pagar' },
     { rota: '/financeiro/fluxo-caixa',  label: 'Fluxo de Caixa' },
+    { rota: '/financeiro/fornecedores-fechamento', label: 'Fechar Fornecedor' },
     { rota: '/financeiro/resumo',       label: 'Resumo Financeiro' },
   ]},
   { grupo: 'Produtos', itens: [

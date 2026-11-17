@@ -28,6 +28,8 @@ function serializarItens(itens: VendaItem[]) {
     custo_unitario: (i as any).custo_unitario ?? null,
     // não perder estes campos ao salvar de novo uma venda que já os tinha
     detalhe_placa:  i.detalhe_placa  ?? null,
+    nome_arquivo:   i.nome_arquivo   ?? null,
+    fechamento_id:  i.fechamento_id  ?? null,
     acabamento_id:  (i as any).acabamento_id ?? null,
     acabamento_qtd_estoque: (i as any).acabamento_qtd_estoque ?? null,
     // mantém a data em que o item foi adicionado (item novo vai sem data e nasce com a de agora)

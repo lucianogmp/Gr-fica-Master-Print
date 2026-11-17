@@ -59,6 +59,10 @@ export interface VendaItem {
   unidade?: string | null;
   area_m2?: number | null;
   total: number;
+  /** Nome do arquivo de arte (usado no fechamento de fornecedor) */
+  nome_arquivo?: string | null;
+  /** Fechamento de fornecedor em que o item já entrou (some da lista de pendentes) */
+  fechamento_id?: string | null;
   /** Quando o item foi adicionado à venda (preservado nos salvamentos seguintes) */
   created_at?: string | null;
   /** Snapshot congelado — presente quando o item veio de um Orçamento de Placa. */

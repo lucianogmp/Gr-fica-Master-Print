@@ -18,6 +18,7 @@ const AuditLog      = lazy(() => import('../pages/AuditLog').then(m => ({ defaul
 // ─── Vendas (sub-rotas) ──────────────────────────────────────────────────────
 // Histórico, EmProducao e Entregues foram descontinuadas — consolidadas
 // dentro de Pedidos.tsx (mesma base, ListaVendas, sem restringir status).
+const FechamentoFornecedor = lazy(() => import('../pages/Financeiro/FechamentoFornecedor').then(m => ({ default: m.FechamentoFornecedor })));
 const LojaVirtual      = lazy(() => import('../pages/LojaVirtual').then(m => ({ default: m.LojaVirtual })));
 const VendasNova      = lazy(() => import('../pages/Vendas/Nova').then(m => ({ default: m.Vendas })));
 const VendasPedidos   = lazy(() => import('../pages/Vendas/Pedidos').then(m => ({ default: m.Pedidos })));
@@ -184,6 +185,7 @@ export function AppRoutes() {
           <Route path="financeiro/pagar"       element={<PR rota="/financeiro/pagar"><FinanceiroPagar /></PR>} />
           <Route path="financeiro/fluxo-caixa" element={<PR rota="/financeiro/fluxo-caixa"><FinanceiroFluxo /></PR>} />
           <Route path="financeiro/conciliacao" element={<PR rota="/financeiro/conciliacao"><FinanceiroConciliacao /></PR>} />
+          <Route path="financeiro/fornecedores-fechamento" element={<PR rota="/financeiro/fornecedores-fechamento"><FechamentoFornecedor /></PR>} />
           <Route path="financeiro/resumo"      element={<PR rota="/financeiro/resumo"><FinanceiroResumo /></PR>} />
 
           {/* ── Produtos ── */}
