@@ -9,11 +9,25 @@ import { DateInput } from '../../components/ui/DateInput';
 import { Modal } from '../../components/ui/Modal';
 import { KpiCard } from '../../components/ui/KpiCard';
 import { useConfirm } from '../../components/ui/ConfirmModal';
+import { FiltroModal, CampoFiltro, FiltroValor, passaPeriodo, passaMulti, passaFaixa, passaSimNao, dataUsada } from '../../components/ui/FiltroModal';
+import { OrdenarMenu, aplicarOrdenacao, Ordenacao } from '../../components/ui/OrdenarMenu';
+import { CabecalhoFiltro } from '../../components/ui/CabecalhoFiltro';
+import { usePersistente } from '../../hooks/usePersistente';
+import { correspondeABuscaEmCampos } from '../../lib/buscaFlexivel';
 
 const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const fmtData = (d: string) => (d ? d.split('-').reverse().join('/') : '');
 const fmtNum = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
 const hoje = () => new Date().toISOString().slice(0, 10);
+
+/** Tipo do material, deduzido do nome do produto (Adesivo / Lona / Banner / Outros). */
+const grupoDe = (nome: string) => {
+  const n = nome.toLowerCase();
+  if (n.includes('lona')) return 'Lona';
+  if (n.includes('banner')) return 'Banner';
+  if (n.includes('adesivo')) return 'Adesivo';
+  return 'Outros';
+};
 
 const IN = 'bg-[#1f2937] border border-gray-700 rounded-lg px-2 py-1 text-white text-xs focus:outline-none focus:border-blue-500';
 
@@ -39,10 +53,11 @@ export function FechamentoFornecedor() {
   const { confirmar, ConfirmModal } = useConfirm();
 
   const [aba, setAba] = useState<'pendentes' | 'fechamentos'>('pendentes');
-  const [produtoFiltro, setProdutoFiltro] = useState('');
-  const [de, setDe] = useState('');
-  const [ate, setAte] = useState('');
-  const [busca, setBusca] = useState('');
+  const [busca, setBusca] = usePersistente('busca', '');
+  const [filtrosAv, setFiltrosAv] = usePersistente<FiltroValor>('filtros', {});
+  const [ordenacao, setOrdenacao] = useState<Ordenacao | null>(null);
+  const [filtroTipo, setFiltroTipo] = useState('');
+  const [filtroProduto, setFiltroProduto] = useState('');
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [modalForn, setModalForn] = useState(false);
   const [fornId, setFornId] = useState('');
@@ -53,17 +68,51 @@ export function FechamentoFornecedor() {
   const produtos = useMemo(() => {
     const m = new Map<string, string>();
     pendentes.forEach(p => m.set(p.produto_id, p.tipo));
-    return Array.from(m, ([value, label]) => ({ value, label }));
+    return Array.from(m, ([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'));
   }, [pendentes]);
+  const opcoesTipo = useMemo(
+    () => Array.from(new Set(pendentes.map(p => grupoDe(p.tipo)))).sort().map(v => ({ value: v, label: v })),
+    [pendentes]);
+  const opcoesCliente = useMemo(
+    () => Array.from(new Set(pendentes.map(p => p.cliente).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR')).map(v => ({ value: v, label: v })),
+    [pendentes]);
+
+  const camposFiltro = useMemo<CampoFiltro[]>(() => [
+    { tipo: 'periodo', chave: 'periodo', label: 'Data da venda' },
+    { tipo: 'busca', chave: 'busca', label: 'Busca (cliente, arquivo, produto, nº da venda)', placeholder: 'Cliente, arquivo, produto...' },
+    { tipo: 'multi', chave: 'tipo', label: 'Tipo (adesivo / lona / banner)', opcoes: opcoesTipo },
+    { tipo: 'multi', chave: 'produto', label: 'Produto', opcoes: produtos, largo: true },
+    { tipo: 'multi', chave: 'cliente', label: 'Cliente', opcoes: opcoesCliente, largo: true },
+    { tipo: 'faixa', chave: 'total', label: 'Total (R$)' },
+    { tipo: 'faixa', chave: 'qtd', label: 'Quantidade' },
+    { tipo: 'simnao', chave: 'arquivo', label: 'Tem nome de arquivo' },
+    { tipo: 'simnao', chave: 'semTamanho', label: 'Sem tamanho identificado' },
+    { tipo: 'simnao', chave: 'porM2', label: 'Vendido por m²' },
+  ], [opcoesTipo, produtos, opcoesCliente]);
 
   const linhas = useMemo(() => {
-    const q = busca.trim().toLowerCase();
-    return pendentes.filter(l =>
-      (!produtoFiltro || l.produto_id === produtoFiltro) &&
-      (!de || l.data >= de) && (!ate || l.data <= ate) &&
-      (!q || `${l.cliente} ${l.nome_arquivo} ${l.tipo} ${l.numero ?? ''}`.toLowerCase().includes(q)),
-    );
-  }, [pendentes, produtoFiltro, de, ate, busca]);
+    const f = filtrosAv;
+    const campoBusca = (l: LinhaFechamento) => [l.cliente, l.nome_arquivo, l.tipo, l.numero != null ? String(l.numero) : ''];
+    const buscaModal = String(f.busca ?? '').trim();
+    const filtradas = pendentes
+      .filter(l => !filtroTipo || grupoDe(l.tipo) === filtroTipo)
+      .filter(l => !filtroProduto || l.produto_id === filtroProduto)
+      .filter(l => correspondeABuscaEmCampos(campoBusca(l), busca))
+      .filter(l => passaPeriodo(f.periodo, l[dataUsada(f.periodo, 'data') as 'data']))
+      .filter(l => !buscaModal || correspondeABuscaEmCampos(campoBusca(l), buscaModal))
+      .filter(l => passaMulti(f.tipo, grupoDe(l.tipo)))
+      .filter(l => passaMulti(f.produto, l.produto_id))
+      .filter(l => passaMulti(f.cliente, l.cliente))
+      .filter(l => passaFaixa(f.total, l.total))
+      .filter(l => passaFaixa(f.qtd, l.quantidade))
+      .filter(l => passaSimNao(f.arquivo, !!l.nome_arquivo))
+      .filter(l => passaSimNao(f.semTamanho, l.area_total == null))
+      .filter(l => passaSimNao(f.porM2, l.por_m2));
+    if (!ordenacao) return [...filtradas].sort((a, b) => b.data.localeCompare(a.data));
+    return aplicarOrdenacao(filtradas, ordenacao, {
+      data: l => l.data, cliente: l => l.cliente, tipo: l => l.tipo, total: l => l.total,
+    });
+  }, [pendentes, filtrosAv, busca, ordenacao, filtroTipo, filtroProduto]);
 
   const marcadas = linhas.filter(l => sel.has(l.id));
   const totalMarcado = marcadas.reduce((s, l) => s + l.total, 0);
@@ -123,18 +172,26 @@ export function FechamentoFornecedor() {
 
       {aba === 'pendentes' && (
         <>
-          <div className="flex items-end gap-2 flex-wrap">
-            <div className="w-64">
-              <DarkSelect value={produtoFiltro} onChange={setProdutoFiltro} options={produtos}
-                placeholder="Todos os produtos" size="sm" searchable />
+          <div className="flex items-center gap-2 flex-wrap">
+            <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar por cliente, arquivo ou produto..."
+              className="flex-1 min-w-48 bg-[#1f2937] border border-gray-700 rounded-xl px-4 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500" />
+            <div className="w-40">
+              <DarkSelect value={filtroTipo} onChange={setFiltroTipo} options={opcoesTipo} placeholder="Todos os tipos" size="sm" />
             </div>
-            <DateInput value={de} onChange={setDe} placeholder="De" className={IN + ' w-28'} />
-            <DateInput value={ate} onChange={setAte} placeholder="Até" className={IN + ' w-28'} />
-            <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar cliente / arquivo" className={IN + ' w-52'} />
+            <OrdenarMenu valor={ordenacao} onChange={setOrdenacao} campos={[
+              { key: 'data', label: 'Data', labelAsc: 'Mais antigo primeiro', labelDesc: 'Mais recente primeiro' },
+              { key: 'total', label: 'Total', labelAsc: 'Menor primeiro', labelDesc: 'Maior primeiro' },
+              { key: 'cliente', label: 'Cliente', labelAsc: 'A → Z', labelDesc: 'Z → A' },
+              { key: 'tipo', label: 'Produto', labelAsc: 'A → Z', labelDesc: 'Z → A' },
+            ]} />
+            <FiltroModal campos={camposFiltro} valor={filtrosAv} onChange={setFiltrosAv} titulo="Filtro avançado — Fechamento de fornecedor" />
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {marcadas.length > 0 && (
+              <span className="text-xs text-gray-400">{marcadas.length} marcado(s) · <b className="text-white">{fmtBRL(totalMarcado)}</b></span>
+            )}
+            <span className="text-xs text-gray-500">{linhas.length} item(ns) · {fmtBRL(linhas.reduce((s, l) => s + l.total, 0))}</span>
             <div className="ml-auto flex items-center gap-2">
-              {marcadas.length > 0 && (
-                <span className="text-xs text-gray-400">{marcadas.length} marcado(s) · <b className="text-white">{fmtBRL(totalMarcado)}</b></span>
-              )}
               <button onClick={() => exportar('pendentes', marcadas.length ? marcadas : linhas)}
                 className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-semibold">
                 <FileSpreadsheet className="w-3.5 h-3.5" /> Planilha
@@ -151,7 +208,7 @@ export function FechamentoFornecedor() {
               <thead>
                 <tr className="text-gray-400 border-b border-gray-700 text-left">
                   <th className="px-3 py-2 w-8"><input type="checkbox" checked={todasMarcadas} onChange={alternarTodas} /></th>
-                  <th className="px-2 py-2">Data</th><th className="px-2 py-2">Tipo</th>
+                  <th className="px-2 py-2">Data</th><th className="px-2 py-2"><CabecalhoFiltro label="Tipo" valor={filtroProduto} onChange={setFiltroProduto} opcoes={produtos} /></th>
                   <th className="px-2 py-2">Cliente</th><th className="px-2 py-2">Nome do arquivo</th>
                   <th className="px-2 py-2 text-right">Qtd</th><th className="px-2 py-2">Tamanho</th>
                   <th className="px-2 py-2 text-right">R$/m²</th><th className="px-2 py-2 text-right">Total</th>
@@ -161,7 +218,7 @@ export function FechamentoFornecedor() {
                 {isLoading && <tr><td colSpan={9} className="px-3 py-6 text-center text-gray-500">Carregando…</td></tr>}
                 {!isLoading && linhas.length === 0 && (
                   <tr><td colSpan={9} className="px-3 py-8 text-center text-gray-500">
-                    Nenhum item pendente{produtoFiltro || de || ate || busca ? ' com esses filtros' : ''}. Só aparecem produtos marcados como terceirizados.
+                    Nenhum item pendente{busca || filtroTipo || filtroProduto || Object.keys(filtrosAv).length ? ' com esses filtros' : ''}. Só aparecem produtos marcados como terceirizados.
                   </td></tr>
                 )}
                 {linhas.map(l => (
