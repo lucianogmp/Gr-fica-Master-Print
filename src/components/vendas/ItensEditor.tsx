@@ -322,7 +322,14 @@ export function ItensEditor({ itens, onChange, onEditarProduto, onCriarProduto }
             </thead>
             <tbody>
               {itens.map((it, i) => (
-                <tr key={i} className="border-b border-gray-800 last:border-0 hover:bg-gray-800/20">
+                <tr key={i} className="border-b border-gray-800 last:border-0 hover:bg-gray-800/20"
+                  onKeyDownCapture={e => {
+                    // Enter em qualquer campo numérico da linha (qtd, preço, desconto) → volta pra busca do próximo item
+                    if (e.key === 'Enter' && editandoNome !== i && (e.target as HTMLElement).tagName === 'INPUT') {
+                      e.preventDefault(); e.stopPropagation();
+                      buscaInputRef.current?.focus();
+                    }
+                  }}>
                   <td className="px-2 py-2">
                     {editandoNome === i ? (
                       <input autoFocus value={it.descricao} className={IN}
