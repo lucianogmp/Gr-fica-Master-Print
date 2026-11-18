@@ -89,6 +89,14 @@ function aplicarQuantidadeItem<T extends OrcamentoItem>(it: T, qtd: number): T {
   return { ...it, quantidade: qtd, preco_unitario: unit, desconto_valor: desc, total: r2(bruto - desc) };
 }
 
+// Muda o preço unitário do item (edição direta na tabela): refaz o bruto e mantém o mesmo percentual de desconto.
+function aplicarPrecoUnitarioItem<T extends OrcamentoItem>(it: T, unit: number): T {
+  const bruto = r2(unit * (Number(it.quantidade) || 0));
+  const pct = Number(it.desconto ?? 0);
+  const desc = Math.min(r2(bruto * (pct / 100)), bruto);
+  return { ...it, preco_unitario: unit, desconto_valor: desc, total: r2(bruto - desc) };
+}
+
 export function Orcamentos() {
   const { data: orcamentos = [], isLoading, criar, atualizar, atualizarStatus, converterEmVenda, deletar, isSaving, isConvertendo } = useOrcamentos();
   const qc = useQueryClient();
@@ -1338,7 +1346,14 @@ export function Orcamentos() {
                                 onChange={v => { setItens(p => p.map((x, idx) => idx === i ? aplicarQuantidadeItem(x, parseFloat(v) || 0) : x)); marcarSujoOrc(); }}
                                 className="w-20 bg-[#111827] border border-gray-700 rounded-lg px-2 py-1 text-white text-xs text-right focus:outline-none focus:border-blue-500" />}
                         </td>
-                        <td className="px-3 py-2.5 text-right text-gray-300">{fmtBRL(brutoItem(it) / (Number(it.quantidade) || 1))}</td>
+                        <td className="px-3 py-1.5 text-right text-gray-300">
+                          {jaConvertido
+                            ? fmtBRL(brutoItem(it) / (Number(it.quantidade) || 1))
+                            : <MoneyInput value={r2(brutoItem(it) / (Number(it.quantidade) || 1))}
+                                onChange={v => { setItens(p => p.map((x, idx) => idx === i ? aplicarPrecoUnitarioItem(x, v) : x)); marcarSujoOrc(); }}
+                                className="w-24 bg-[#111827] border border-gray-700 rounded-lg px-2 py-1 text-white text-xs text-right focus:outline-none focus:border-blue-500"
+                                placeholder="0,00" />}
+                        </td>
                         <td className="px-3 py-1.5 text-right">
                           {jaConvertido
                             ? (Number(it.desconto_valor ?? 0) > 0 ? <span className="text-red-400">−{fmtBRL(Number(it.desconto_valor))}</span> : <span className="text-gray-600">—</span>)
