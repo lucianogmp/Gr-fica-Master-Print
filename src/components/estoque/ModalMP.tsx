@@ -5,7 +5,7 @@ import { Pencil, Plus } from 'lucide-react';
 import { DarkSelect } from '../ui/DarkSelect';
 import { MoneyInput } from '../ui/MoneyInput';
 import { QtdInput } from '../ui/QtdInput';
-import { useCategorias } from '../../hooks/useCategorias';
+import { CategoriaSelector } from '../ui/CategoriaSelector';
 import { useMovimentos } from '../../hooks/useEstoque';
 import toast from 'react-hot-toast';
 
@@ -38,11 +38,7 @@ interface ModalMPProps {
 export function ModalMP({ open, editando, onClose, onSalvar }: ModalMPProps) {
   const [form, setForm] = useState<FormData>(EMPTY);
   const [salvando, setSalvando] = useState(false);
-  const { data: categorias = [], criar: criarCategoria } = useCategorias('material');
   const { registrar: registrarMovimento } = useMovimentos();
-  const [modalCat, setModalCat] = useState(false);
-  const [novaCatNome, setNovaCatNome] = useState('');
-  const [salvandoCat, setSalvandoCat] = useState(false);
 
   useEffect(() => {
     if (editando) {
@@ -163,20 +159,7 @@ export function ModalMP({ open, editando, onClose, onSalvar }: ModalMPProps) {
 
         <div className="grid grid-cols-2 gap-4">
           <Field label="Categoria">
-            <div className="flex gap-2">
-              <DarkSelect
-                value={form.categoria}
-                onChange={v => set('categoria', v)}
-                placeholder="Sem categoria"
-                className="flex-1"
-                searchable
-                options={categorias.map(c => c.nome)}
-              />
-              <button onClick={() => setModalCat(true)} title="Criar nova categoria"
-                className="flex-shrink-0 w-10 h-10 bg-green-600/20 hover:bg-green-600/40 border border-green-500/30 text-green-400 rounded-lg flex items-center justify-center transition-all">
-                <Plus className="w-4 h-4" />
-              </button>
-            </div>
+            <CategoriaSelector tipo="material" value={form.categoria} onChange={v => set('categoria', v)} />
           </Field>
           <Field label="Unidade">
             <DarkSelect
@@ -255,31 +238,6 @@ export function ModalMP({ open, editando, onClose, onSalvar }: ModalMPProps) {
       </div>
       </Modal>
 
-      <Modal open={modalCat} onClose={() => setModalCat(false)}
-        title={<span className="flex items-center gap-1.5"><Plus className="w-4 h-4 text-green-400" /> Nova Categoria</span>}
-        maxWidth="360px"
-        actions={<>
-          <button onClick={() => setModalCat(false)} className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-sm font-medium transition-all">Cancelar</button>
-          <button onClick={async () => {
-            if (!novaCatNome.trim()) return;
-            setSalvandoCat(true);
-            try {
-              const cat = await criarCategoria(novaCatNome.trim());
-              set('categoria', cat.nome);
-              setNovaCatNome(''); setModalCat(false);
-            } catch (e: any) { toast.error(e.message); }
-            finally { setSalvandoCat(false); }
-          }} disabled={salvandoCat || !novaCatNome.trim()}
-            className="px-5 py-2 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white rounded-lg text-sm font-bold transition-all">
-            {salvandoCat ? 'Salvando...' : 'Criar'}
-          </button>
-        </>}>
-        <div>
-          <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Nome *</label>
-          <input autoFocus value={novaCatNome} onChange={e => setNovaCatNome(e.target.value)}
-            className={INPUT} placeholder="Ex: Impressão, Acabamento, Serviço..." />
-        </div>
-      </Modal>
     </>
   );
 }

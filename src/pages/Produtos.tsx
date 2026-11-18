@@ -8,6 +8,7 @@ import { registrarRascunho, lerRascunho, limparRascunho } from '../lib/rascunhos
 import { useProdutos } from '../hooks/useProdutos';
 import { useCategorias } from '../hooks/useCategorias';
 import { CategoriasModal } from '../components/CategoriasModal';
+import { CategoriaSelector } from '../components/ui/CategoriaSelector';
 import { useMateriasPrimas } from '../hooks/useEstoque';
 import { useGestaoCustos } from '../hooks/useGestaoCustos';
 import { useCustosEquipamentos } from '../hooks/useEquipamentos';
@@ -112,46 +113,6 @@ function TempoProducaoInput({ valor, onChange }: { valor: string; onChange: (v: 
         <span className="text-[9px] text-gray-500 block mt-0.5 text-center">minutos</span>
       </div>
     </div>
-  );
-}
-
-// ── Modal nova categoria ───────────────────────────────────────────────────
-function ModalNovaCategoria({ open, onClose, onCriada }: {
-  open: boolean; onClose: () => void;
-  onCriada: (id: string, nome: string) => void;
-}) {
-  const [nome, setNome]     = useState('');
-  const [salvando, setSalvando] = useState(false);
-  const { criar } = useCategorias();
-
-  async function handleSalvar() {
-    if (!nome.trim()) return;
-    setSalvando(true);
-    try {
-      const cat = await criar(nome.trim());
-      onCriada(cat.id, cat.nome);
-      setNome(''); onClose();
-    } catch (e: any) { toast.error(e.message); }
-    finally { setSalvando(false); }
-  }
-  return (
-    <Modal open={open} onClose={onClose}
-      title={<span className="flex items-center gap-1.5"><Plus className="w-4 h-4 text-green-400" /> Nova Categoria</span>}
-      maxWidth="360px"
-      actions={<>
-        <button onClick={onClose} className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-sm font-medium transition-all">Cancelar</button>
-        <button onClick={handleSalvar} disabled={salvando || !nome.trim()}
-          className="px-5 py-2 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white rounded-lg text-sm font-bold transition-all">
-          {salvando ? 'Salvando...' : 'Criar'}
-        </button>
-      </>}>
-      <div>
-        <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Nome *</label>
-        <input autoFocus value={nome} onChange={e => setNome(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') handleSalvar(); }}
-          className={IN} placeholder="Ex: Impressão, Acabamento, Serviço..." />
-      </div>
-    </Modal>
   );
 }
 
@@ -297,7 +258,6 @@ export function Produtos() {
   const [busca, setBusca] = usePersistente('busca', '');
   const [soRevisar, setSoRevisar] = useState(false);
   const pendentesRevisao = useMemo(() => produtos.filter(p => (p as any).precisa_revisao).length, [produtos]);
-  const [modalCat, setModalCat] = useState(false);
   const [modalMP, setModalMP]   = useState(false);
   const { criar: criarMateriaPrima } = useMateriasPrimas();
   const [clonando, setClonando] = useState<string | null>(null);
@@ -828,8 +788,6 @@ export function Produtos() {
   // ── VIEW: DETALHE ──────────────────────────────────────────────────────────
   return (
     <>
-      <ModalNovaCategoria open={modalCat} onClose={() => setModalCat(false)}
-        onCriada={(id) => setF('categoria_id', id)} />
       {/* Mesmo cadastro de matéria-prima da tela de Estoque (um único formulário no sistema). */}
       <ModalMP open={modalMP} editando={null} onClose={() => setModalMP(false)}
         onSalvar={async dados => {
@@ -894,20 +852,7 @@ export function Produtos() {
                 {/* Categoria */}
                 <div className="md:col-span-5">
                   <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Categoria</label>
-                  <div className="flex gap-2">
-                    <DarkSelect
-                      value={(form as any).categoria_id ?? ''}
-                      onChange={v => setF('categoria_id', v || null)}
-                      placeholder="Sem categoria"
-                      className="flex-1"
-                      searchable
-                      options={categorias.map(c => ({ value: c.id, label: c.nome }))}
-                    />
-                    <button onClick={() => setModalCat(true)} title="Criar nova categoria"
-                      className="flex-shrink-0 w-10 h-10 bg-green-600/20 hover:bg-green-600/40 border border-green-500/30 text-green-400 rounded-lg flex items-center justify-center transition-all">
-                      <Plus className="w-4 h-4" />
-                    </button>
-                  </div>
+                  <CategoriaSelector tipo="produto" value={(form as any).categoria_id ?? ''} onChange={v => setF('categoria_id', v || null)} />
                 </div>
                 <div className="md:col-span-4">
                   <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Status</label>
