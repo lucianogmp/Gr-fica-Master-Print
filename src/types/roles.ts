@@ -37,6 +37,7 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   // ── Financeiro ──
   '/financeiro':               ['dono', 'admin', 'financeiro'],
   '/financeiro/lancamentos':   ['dono', 'admin', 'financeiro'],
+  '/financeiro/simulador-impostos': ['dono', 'admin'],
   '/financeiro/fornecedores-fechamento': ['dono', 'admin', 'financeiro'],
   '/financeiro/receber':       ['dono', 'admin', 'financeiro'],
   '/financeiro/pagar':         ['dono', 'admin', 'financeiro'],

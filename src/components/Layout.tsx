@@ -36,7 +36,7 @@ import {
   Boxes, GitCompare, TrendingUp, FileBarChart2,
   DollarSign as DollarSignIcon,
   FileUp, PanelLeftClose, PanelLeftOpen, CalendarHeart,
-  Globe,
+  Globe, Calculator,
 } from 'lucide-react';
 
 const SIDEBAR_COLLAPSED_KEY = 'sidebarCollapsed';
@@ -127,6 +127,7 @@ const ALL_MENU: MenuItem[] = [
       { path: '/financeiro/lancamentos',  label: 'Lançamentos',        icon: Receipt },
       { path: '/financeiro/receber',      label: 'Contas a Receber',   icon: ArrowDownCircle },
       { path: '/financeiro/pagar',        label: 'Contas a Pagar',     icon: ArrowUpCircle },
+      { path: '/financeiro/simulador-impostos', label: 'Simulador de Impostos (teste)', icon: Calculator },
       { path: '/financeiro/fornecedores-fechamento', label: 'Fechar Fornecedor', icon: Truck },
       { path: '/financeiro/fluxo-caixa',  label: 'Fluxo de Caixa',    icon: TrendingUp },
       { path: '/financeiro/resumo',       label: 'Resumo Financeiro',  icon: PieChart },
