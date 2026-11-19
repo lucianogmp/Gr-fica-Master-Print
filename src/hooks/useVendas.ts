@@ -79,6 +79,8 @@ export function useVendas() {
     },
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ['vendas'] });
+      qc.invalidateQueries({ queryKey: ['vendas-filtro-pagamentos'] });
+      qc.invalidateQueries({ queryKey: ['vendas-filtro-itens'] });
       qc.invalidateQueries({ queryKey: ['dashboard-metrics'] });
       qc.invalidateQueries({ queryKey: ['lancamentos'] });
       qc.invalidateQueries({ queryKey: ['venda-itens', data.id] });
@@ -133,6 +135,8 @@ export function useVendas() {
     },
     onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: ['vendas'] });
+      qc.invalidateQueries({ queryKey: ['vendas-filtro-pagamentos'] });
+      qc.invalidateQueries({ queryKey: ['vendas-filtro-itens'] });
       qc.invalidateQueries({ queryKey: ['lancamentos'] });
       qc.invalidateQueries({ queryKey: ['dashboard-metrics'] });
       // Faltava isso: sem invalidar 'venda-itens', a tela continuava mostrando
@@ -154,6 +158,8 @@ export function useVendas() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['vendas'] });
+      qc.invalidateQueries({ queryKey: ['vendas-filtro-pagamentos'] });
+      qc.invalidateQueries({ queryKey: ['vendas-filtro-itens'] });
       qc.invalidateQueries({ queryKey: ['dashboard-metrics'] });
     },
     onError: (e: any) => toast.error(e.message),
@@ -173,6 +179,8 @@ export function useVendas() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['vendas'] });
+      qc.invalidateQueries({ queryKey: ['vendas-filtro-pagamentos'] });
+      qc.invalidateQueries({ queryKey: ['vendas-filtro-itens'] });
       qc.invalidateQueries({ queryKey: ['lancamentos'] });
       qc.invalidateQueries({ queryKey: ['dashboard-metrics'] });
       toast.success('Venda removida.');

@@ -227,6 +227,8 @@ export function usePagamentosVenda(vendaId: string | null) {
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ['pagamentos-venda', vars.venda_id] });
       qc.invalidateQueries({ queryKey: ['vendas'] });
+      qc.invalidateQueries({ queryKey: ['vendas-filtro-pagamentos'] });
+      qc.invalidateQueries({ queryKey: ['vendas-filtro-itens'] });
       qc.invalidateQueries({ queryKey: ['dashboard-metrics'] });
       qc.invalidateQueries({ queryKey: ['lancamentos'] });
       qc.invalidateQueries({ queryKey: ['caixa-movimentos'] });
@@ -252,6 +254,8 @@ export function usePagamentosVenda(vendaId: string | null) {
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ['pagamentos-venda', vars.vendaId] });
       qc.invalidateQueries({ queryKey: ['vendas'] });
+      qc.invalidateQueries({ queryKey: ['vendas-filtro-pagamentos'] });
+      qc.invalidateQueries({ queryKey: ['vendas-filtro-itens'] });
       qc.invalidateQueries({ queryKey: ['dashboard-metrics'] });
       qc.invalidateQueries({ queryKey: ['lancamentos'] });
       qc.invalidateQueries({ queryKey: ['caixa-movimentos'] });

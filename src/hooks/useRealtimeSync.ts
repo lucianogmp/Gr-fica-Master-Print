@@ -23,8 +23,8 @@ const TABELA_PARA_QUERIES: Record<string, string[]> = {
 
   // vendas / produção
   vendas:             ['vendas', 'relatorio-vendas', 'producao', 'dashboard-metrics'],
-  venda_itens:        ['venda-itens', 'vendas'],
-  pagamentos_venda:   ['pagamentos-venda', 'vendas', 'dashboard-metrics'],
+  venda_itens:        ['venda-itens', 'vendas', 'vendas-filtro-itens'],
+  pagamentos_venda:   ['pagamentos-venda', 'vendas', 'vendas-filtro-pagamentos', 'dashboard-metrics'],
   producao:           ['producao', 'dashboard-metrics'],
 
   // orçamentos
