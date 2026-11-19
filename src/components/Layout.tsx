@@ -2,6 +2,7 @@
 import { limparPersistentes } from '../hooks/usePersistente';
 import { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import { ConfirmHost } from './ui/ConfirmModal';
 import { useAuth } from '../hooks/useAuth';
 import { useRole } from '../hooks/useRole';
 import { ROLES, ROUTE_PERMISSIONS, Role } from '../types/roles';
@@ -615,6 +616,7 @@ export function Layout() {
         {/* Conteúdo */}
         <main id="conteudo-principal" className="flex-1 overflow-y-auto bg-[#111827]">
           <Outlet />
+          <ConfirmHost />
         </main>
         <RascunhosRecuperaveis />
       </div>
