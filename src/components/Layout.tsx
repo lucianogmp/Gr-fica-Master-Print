@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { ConfirmHost } from './ui/ConfirmModal';
 import { useAuth } from '../hooks/useAuth';
+import { versiculoDoDia } from '../lib/versiculos';
 import { useRole } from '../hooks/useRole';
 import { ROLES, ROUTE_PERMISSIONS, Role } from '../types/roles';
 import { supabase } from '../lib/supabase';
@@ -368,6 +369,12 @@ export function Layout() {
 
   const CurrentIcon = getCurrentPageIcon();
 
+  // Quem não tem acesso ao Dashboard não vê o versículo do dia lá; mostramos
+  // a saudação + versículo aqui na barra do topo (troca à meia-noite).
+  const semDashboard = !pode('/');
+  const primeiroNome = String(user?.name ?? '').split(/[\s@]/)[0];
+  const versiculoTopo = semDashboard ? versiculoDoDia() : null;
+
   // ── Render ──────────────────────────────────────────────────────────────
 
   return (
@@ -594,6 +601,16 @@ export function Layout() {
                 {getCurrentPageLabel()}
               </span>
             </div>
+            {versiculoTopo && (
+              <div
+                className="hidden lg:flex items-center gap-2 pl-3 ml-1 border-l border-gray-700 min-w-0 text-xs"
+                title={`“${versiculoTopo.texto}” — ${versiculoTopo.ref}`}
+              >
+                {primeiroNome && <span className="text-gray-200 font-semibold whitespace-nowrap">Olá, {primeiroNome}!</span>}
+                <span className="text-amber-300/90 italic truncate">“{versiculoTopo.texto}”</span>
+                <span className="text-amber-400 font-bold whitespace-nowrap">— {versiculoTopo.ref}</span>
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-4">
             <button
@@ -606,6 +623,14 @@ export function Layout() {
             <NotificacoesSino />
           </div>
         </header>
+
+        {versiculoTopo && (
+          <div className="lg:hidden bg-[#1f2937] border-b border-gray-700 px-4 py-1.5 text-xs leading-snug">
+            {primeiroNome && <span className="text-gray-200 font-semibold">Olá, {primeiroNome}! </span>}
+            <span className="text-amber-300/90 italic">“{versiculoTopo.texto}”</span>
+            <span className="text-amber-400 font-bold whitespace-nowrap"> — {versiculoTopo.ref}</span>
+          </div>
+        )}
 
         {/* Banner de alertas de estoque */}
         <EstoqueAlertBanner />
