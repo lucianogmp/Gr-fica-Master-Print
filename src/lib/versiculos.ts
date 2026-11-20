@@ -56,11 +56,15 @@ const BASE: Versiculo[] = [
   { ref: 'Deuteronômio 8:18', texto: 'Antes te lembrarás do Senhor teu Deus, porque é ele o que te dá força para adquirires riqueza.' },
 ];
 
+// Só entram versículos de ânimo, esperança, confiança, força e bênção.
+// Os que eram só instrução, advertência ou neutros ficam de fora.
+const EXCLUIDOS = new Set<string>(['Gênesis 1:1', 'Esdras 8:22', 'Jó 5:8', 'Jó 8:7', 'Salmos 19:14', 'Salmos 25:4', 'Salmos 33:4', 'Salmos 50:15', 'Salmos 86:5', 'Salmos 90:12', 'Salmos 92:1', 'Salmos 95:1', 'Salmos 100:4', 'Salmos 111:10', 'Salmos 115:1', 'Salmos 119:11', 'Salmos 150:6', 'Provérbios 1:7', 'Provérbios 2:6', 'Provérbios 3:27', 'Provérbios 4:7', 'Provérbios 6:6', 'Provérbios 10:9', 'Provérbios 11:3', 'Provérbios 11:14', 'Provérbios 11:24', 'Provérbios 12:1', 'Provérbios 13:20', 'Provérbios 14:26', 'Provérbios 14:29', 'Provérbios 15:1', 'Provérbios 15:16', 'Provérbios 16:1', 'Provérbios 18:21', 'Provérbios 19:17', 'Provérbios 20:7', 'Provérbios 22:1', 'Provérbios 22:6', 'Provérbios 27:17', 'Provérbios 28:20', 'Provérbios 29:25', 'Provérbios 31:30', 'Eclesiastes 9:10', 'Isaías 40:8', 'Isaías 55:8', 'Daniel 12:3', 'Oseias 6:3', 'Ageu 2:9', 'Malaquias 3:10', 'Mateus 4:4', 'Mateus 5:3', 'Mateus 7:12', 'Mateus 9:37', 'Lucas 16:10', 'João 1:5', 'João 13:34', 'João 14:6', 'Romanos 10:17', 'Romanos 12:2', '1 Coríntios 10:31', '2 Coríntios 5:7', '2 Coríntios 9:7', 'Efésios 2:8', 'Colossenses 3:2', 'Colossenses 4:2', '1 Timóteo 6:6', '2 Timóteo 4:7', 'Tito 2:7', 'Hebreus 11:6', 'Hebreus 12:1', 'Hebreus 13:8', 'Tiago 1:17', 'Tiago 4:8', 'Tiago 5:16', '1 Pedro 4:10', '2 Pedro 3:9', '1 João 1:9', '1 João 5:14', 'Apocalipse 3:20', 'Provérbios 22:29', 'Provérbios 10:4', 'Deuteronômio 8:18', 'Salmos 127:1', 'Provérbios 15:22', 'Provérbios 4:23', 'Josué 24:15']);
+
 // Lista completa = base + extras, sem repetir a mesma referência.
 import { VERSICULOS_EXTRA } from './versiculos_extra';
 export const VERSICULOS: Versiculo[] = (() => {
   const vistos = new Set<string>();
-  return [...BASE, ...VERSICULOS_EXTRA].filter(v => (vistos.has(v.ref) ? false : (vistos.add(v.ref), true)));
+  return [...BASE, ...VERSICULOS_EXTRA].filter(v => EXCLUIDOS.has(v.ref) ? false : (vistos.has(v.ref) ? false : (vistos.add(v.ref), true)));
 })();
 
 /** Versículo do dia: troca à meia-noite (data local), igual para todos os usuários. */
