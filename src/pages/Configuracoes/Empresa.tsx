@@ -98,14 +98,16 @@ export function Empresa() {
             <p className="text-[11px] text-gray-500 -mt-2">
               Exibido no lugar do texto "MASTER PRINT" na barra lateral. Envie uma versão para cada tema.
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2 gap-3">
+            <div className="space-y-3">
               <UploadLogo
                 label="Logo — Tema Escuro"
                 value={txt('sistema_logo_url')}
                 onChange={(url: string) => set('sistema_logo_url', url)}
               />
+              <div className="border-t border-gray-700/60" />
               <UploadLogo
                 label="Logo — Tema Claro"
+                claro
                 value={txt('sistema_logo_url_dark')}
                 onChange={(url: string) => set('sistema_logo_url_dark', url)}
               />

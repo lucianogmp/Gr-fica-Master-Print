@@ -9,9 +9,10 @@ interface UploadLogoProps {
   value: string;
   onChange: (url: string) => void;
   label?: string;
+  claro?: boolean;
 }
 
-export function UploadLogo({ value, onChange, label = 'Logo da Empresa' }: UploadLogoProps) {
+export function UploadLogo({ value, onChange, label = 'Logo da Empresa', claro = false }: UploadLogoProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [enviando, setEnviando] = useState(false);
 
@@ -54,8 +55,8 @@ export function UploadLogo({ value, onChange, label = 'Logo da Empresa' }: Uploa
   return (
     <div>
       <Lbl>{label}</Lbl>
-      <div className="flex items-center gap-4">
-        <div className="w-20 h-20 rounded-xl bg-[#111827] border border-gray-700 flex items-center justify-center overflow-hidden flex-shrink-0">
+      <div className="flex items-center gap-3">
+        <div className={`w-16 h-16 rounded-xl ${claro ? 'bg-white' : 'bg-[#111827]'} border border-gray-700 flex items-center justify-center overflow-hidden flex-shrink-0`}>
           {value ? (
             <img src={value} alt="Logo" className="w-full h-full object-contain" />
           ) : (
@@ -63,13 +64,13 @@ export function UploadLogo({ value, onChange, label = 'Logo da Empresa' }: Uploa
           )}
         </div>
 
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-1.5">
           <div className="flex gap-2">
             <button
               type="button"
               onClick={() => inputRef.current?.click()}
               disabled={enviando}
-              className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors"
+              className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-colors"
             >
               {enviando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
               {enviando ? 'Enviando...' : value ? 'Trocar logo' : 'Enviar logo'}
@@ -78,13 +79,13 @@ export function UploadLogo({ value, onChange, label = 'Logo da Empresa' }: Uploa
               <button
                 type="button"
                 onClick={() => onChange('')}
-                className="bg-gray-700 hover:bg-gray-600 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-1 transition-colors"
+                className="bg-gray-700 hover:bg-gray-600 text-white px-2.5 py-1.5 rounded-lg text-xs flex items-center gap-1 transition-colors"
               >
                 <X className="w-4 h-4" /> Remover
               </button>
             )}
           </div>
-          <p className="text-[11px] text-gray-500">PNG, JPG ou SVG · máx. 3MB · fundo transparente recomendado</p>
+          <p className="text-[11px] text-gray-500">PNG, JPG ou SVG · máx. 3MB · fundo transparente</p>
         </div>
 
         <input

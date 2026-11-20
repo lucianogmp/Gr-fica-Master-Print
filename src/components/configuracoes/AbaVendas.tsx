@@ -259,8 +259,8 @@ function FormaCard({
           <QtdInput
             value={String(formaNorm.dias_uteis_liquidacao ?? 0)}
             onChange={v => onChange({ ...formaNorm, dias_uteis_liquidacao: Math.max(0, Math.round(parseFloat(v) || 0)) })}
-            className="bg-[#0d1117] border border-gray-700 rounded-lg px-2 py-1 text-white text-xs text-center focus:outline-none focus:border-blue-500"
-            style={{ width: 60 }}
+            className="bg-[#0d1117] border border-gray-700 rounded-lg px-1 py-1 text-white text-sm text-center focus:outline-none focus:border-blue-500"
+            style={{ width: 72 }}
           />
           <span className="text-[10px] text-gray-500 whitespace-nowrap">dia(s) útil(eis)</span>
         </div>
@@ -289,8 +289,8 @@ function FormaCard({
               value={formaNorm.tabela_taxas[0]?.taxa_pct ?? 0}
               casasDecimais={4}
               onChange={v => onChange({ ...formaNorm, tabela_taxas: [{ parcelas: 1, taxa_pct: v }] })}
-              className="bg-[#0d1117] border border-gray-700 rounded-lg px-2 py-1 text-white text-xs text-center focus:outline-none focus:border-blue-500"
-              style={{ width: 84 }}
+              className="bg-[#0d1117] border border-gray-700 rounded-lg px-1 py-1 text-white text-sm text-center focus:outline-none focus:border-blue-500"
+              style={{ width: 96 }}
             />
             <span className="text-[10px] text-gray-500 whitespace-nowrap">%</span>
           </div>
