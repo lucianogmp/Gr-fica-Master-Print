@@ -13,7 +13,7 @@ export function Lbl({ children }: { children: React.ReactNode }) {
 
 export function Section({ title, icon: Icon, children }: { title: string; icon: LucideIcon; children: React.ReactNode }) {
   return (
-    <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5 space-y-4">
+    <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-4 space-y-3">
       <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
         <Icon className="w-4 h-4" />{title}
       </h3>

@@ -10,8 +10,8 @@ import { LayoutCatalogoConfig } from '../../types/layoutImpressao';
 import type { Configuracoes } from '../../types/configuracoes';
 import { DocumentoCatalogo, DocumentoCatalogoData } from '../impressao/DocumentoCatalogo';
 
-const IN = "w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors";
-const CHECK = "flex items-center gap-2 text-sm text-gray-300 cursor-pointer py-0.5";
+const IN = "w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors";
+const CHECK = "flex items-center gap-2 text-[13px] text-gray-300 cursor-pointer py-0.5";
 const CHECKBOX = "w-4 h-4 accent-blue-600";
 
 const MOCK_CATALOGO: DocumentoCatalogoData = {
@@ -35,31 +35,30 @@ export function EditorLayoutCatalogo({ value, onChange, empresa }: EditorLayoutC
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_520px] gap-4 items-start">
       {/* Formulário */}
-      <div className="space-y-3">
-        <div>
-          <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Título do documento</label>
-          <input value={value.tituloDocumento} onChange={e => set('tituloDocumento', e.target.value)} className={IN} />
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
+      <div className="space-y-2.5">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div>
-            <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Cor de destaque</label>
+            <label className="text-xs font-bold text-gray-400 uppercase block mb-1">Título do documento</label>
+            <input value={value.tituloDocumento} onChange={e => set('tituloDocumento', e.target.value)} className={IN} />
+          </div>
+          <div>
+            <label className="text-xs font-bold text-gray-400 uppercase block mb-1">Cor de destaque</label>
             <div className="flex gap-2">
               <input value={value.corDestaque} onChange={e => set('corDestaque', e.target.value)} className={IN} placeholder="#3b82f6" />
-              <div className="w-10 h-10 rounded-lg border border-gray-700 flex-shrink-0" style={{ backgroundColor: value.corDestaque }} />
+              <div className="w-8 h-8 rounded-lg border border-gray-700 flex-shrink-0" style={{ backgroundColor: value.corDestaque }} />
             </div>
           </div>
           <div>
-            <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Texto extra no cabeçalho</label>
+            <label className="text-xs font-bold text-gray-400 uppercase block mb-1">Texto extra no cabeçalho</label>
             <input value={value.textoCabecalhoExtra} onChange={e => set('textoCabecalhoExtra', e.target.value)} className={IN} placeholder="Opcional" />
           </div>
         </div>
 
-        <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-3">
-          <p className="text-[10px] font-bold text-gray-500 uppercase mb-2">Exibir no documento</p>
-          <div className="grid grid-cols-2 gap-x-3">
+        <div className="bg-[#1f2937] border border-gray-700 rounded-xl px-3 py-2">
+          <p className="text-[10px] font-bold text-gray-500 uppercase mb-1">Exibir no documento</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3">
             <label className={CHECK}>
               <input type="checkbox" checked={value.mostrarLogo} onChange={e => set('mostrarLogo', e.target.checked)} className={CHECKBOX} />
               Logo da empresa
@@ -79,9 +78,9 @@ export function EditorLayoutCatalogo({ value, onChange, empresa }: EditorLayoutC
           </div>
         </div>
 
-        <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-3">
-          <p className="text-[10px] font-bold text-gray-500 uppercase mb-2">Produtos</p>
-          <div className="grid grid-cols-2 gap-x-3">
+        <div className="bg-[#1f2937] border border-gray-700 rounded-xl px-3 py-2">
+          <p className="text-[10px] font-bold text-gray-500 uppercase mb-1">Produtos</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3">
             <label className={CHECK}>
               <input type="checkbox" checked={value.agruparPorCategoria} onChange={e => set('agruparPorCategoria', e.target.checked)} className={CHECKBOX} />
               Agrupar por categoria
@@ -102,7 +101,7 @@ export function EditorLayoutCatalogo({ value, onChange, empresa }: EditorLayoutC
         </div>
 
         <div>
-          <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Rodapé personalizado</label>
+          <label className="text-xs font-bold text-gray-400 uppercase block mb-1">Rodapé personalizado</label>
           <textarea
             rows={2}
             value={value.textoRodape}
@@ -118,10 +117,10 @@ export function EditorLayoutCatalogo({ value, onChange, empresa }: EditorLayoutC
         <p className="text-[10px] font-bold text-gray-500 uppercase mb-2">Pré-visualização (dados de exemplo)</p>
         <div
           className="bg-gray-700 rounded-xl overflow-hidden border border-gray-600"
-          style={{ width: 390 }}
+          style={{ width: 520 }}
         >
-          <div className="overflow-auto p-3" style={{ maxHeight: 540 }}>
-            <div style={{ transform: 'scale(0.45)', transformOrigin: 'top left', width: '210mm' }}>
+          <div className="overflow-auto p-3" style={{ maxHeight: 700 }}>
+            <div style={{ transform: 'scale(0.6)', transformOrigin: 'top left', width: '210mm' }}>
               <DocumentoCatalogo layout={value} empresa={empresa} documento={MOCK_CATALOGO} />
             </div>
           </div>

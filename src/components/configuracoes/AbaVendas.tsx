@@ -19,7 +19,7 @@ import { PctInput } from '../ui/PctInput';
 import { QtdInput } from '../ui/QtdInput';
 import { DarkSelect } from '../ui/DarkSelect';
 
-const IN   = "w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors";
+const IN   = "w-full bg-[#111827] border border-gray-700 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500 transition-colors";
 const IN_N = IN + " [appearance:textfield]";
 const IN_SM = "bg-[#0d1117] border border-gray-700 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500 transition-colors w-full text-right [appearance:textfield]";
 
@@ -228,7 +228,7 @@ function FormaCard({
       formaNorm.ativo ? 'bg-[#111827] border-gray-700' : 'bg-gray-800/20 border-gray-800'
     }`}>
       {/* Linha principal */}
-      <div className="flex items-center gap-3 px-4 py-3 flex-wrap">
+      <div className="flex items-center gap-x-3 gap-y-1.5 px-3 py-2 flex-wrap">
         {/* Nome + badges */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
@@ -381,16 +381,16 @@ export function AbaVendas({ form, set }: Props) {
     (form[field] as number | null | undefined) ?? '';
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
 
       {/* ── Padrões de Venda ── */}
-      <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5">
-        <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+      <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-4">
+        <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-2">
           <ShoppingCart className="w-4 h-4" /> Padrões de Venda
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">
+            <label className="text-xs font-bold text-gray-400 uppercase block mb-1">
               Frete padrão (R$)
             </label>
             <MoneyInput
@@ -401,7 +401,7 @@ export function AbaVendas({ form, set }: Props) {
             />
           </div>
           <div>
-            <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">
+            <label className="text-xs font-bold text-gray-400 uppercase block mb-1">
               Taxa adicional padrão (R$)
             </label>
             <MoneyInput
@@ -415,8 +415,8 @@ export function AbaVendas({ form, set }: Props) {
       </div>
 
       {/* ── Formas de Pagamento ── */}
-      <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-5">
-        <div className="mb-4">
+      <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-4">
+        <div className="mb-2">
           <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
             <CreditCard className="w-4 h-4" /> Formas de Pagamento
           </h3>
@@ -426,7 +426,7 @@ export function AbaVendas({ form, set }: Props) {
           </p>
         </div>
 
-        <div className="space-y-2 mb-4">
+        <div className="space-y-1.5 mb-3">
           {formas.map((f, idx) => (
             <FormaCard
               key={`${f.nome}-${idx}`}
@@ -444,12 +444,12 @@ export function AbaVendas({ form, set }: Props) {
             onChange={e => setNovaForma(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') adicionarForma(); }}
             placeholder="Nome da nova forma (ex: Crediário próprio)"
-            className="flex-1 bg-[#111827] border border-dashed border-gray-600 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500 transition-colors"
+            className="flex-1 bg-[#111827] border border-dashed border-gray-600 rounded-xl px-3 py-1.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500 transition-colors"
           />
           <button
             onClick={adicionarForma}
             disabled={!novaForma.trim()}
-            className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white rounded-xl font-bold text-sm transition-all flex-shrink-0"
+            className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white rounded-xl font-bold text-sm transition-all flex-shrink-0"
           >
             <Plus className="w-4 h-4" /> Adicionar
           </button>

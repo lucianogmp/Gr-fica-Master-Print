@@ -44,7 +44,7 @@ function NumeracaoCard({ tabela, label }: { tabela: 'vendas' | 'orcamentos'; lab
   }
 
   return (
-    <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-4 w-full max-w-[280px]">
+    <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-3 w-full max-w-[300px]">
       <ConfirmModal />
       <p className="text-xs font-bold text-gray-400 uppercase mb-2.5 flex items-center gap-1.5">
         <Hash className="w-3.5 h-3.5" /> Numeração de {label}
@@ -90,7 +90,7 @@ function MensagemWhatsAppEditor({ value, onChange }: { value: string; onChange: 
   });
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+    <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_520px] gap-4 items-start">
       <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-4 space-y-3">
         <div className="flex items-center justify-between">
           <p className="text-xs font-bold text-gray-400 uppercase">Texto enviado por WhatsApp (Orçamentos)</p>
@@ -102,7 +102,7 @@ function MensagemWhatsAppEditor({ value, onChange }: { value: string; onChange: 
           )}
         </div>
         <textarea
-          rows={16}
+          rows={14}
           value={value}
           onChange={e => onChange(e.target.value)}
           placeholder={MENSAGEM_WHATSAPP_ORC_DEFAULT}
@@ -153,16 +153,16 @@ export function Impressao() {
   if (isLoading) return <div className="p-8 text-blue-500 animate-pulse font-bold">Carregando...</div>;
 
   return (
-    <div className="p-6 space-y-5">
-      <div className="flex justify-between items-start flex-wrap gap-3">
+    <div className="p-4 space-y-3">
+      <div className="flex justify-between items-center flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-black text-white flex items-center gap-2">
-            <Printer className="w-6 h-6 text-blue-400" /> Impressão
+          <h1 className="text-xl font-black text-white flex items-center gap-2">
+            <Printer className="w-5 h-5 text-blue-400" /> Impressão
           </h1>
-          <p className="text-gray-500 text-sm">Layout e configurações de impressão de documentos</p>
+          <p className="text-gray-500 text-xs">Layout e configurações de impressão de documentos</p>
         </div>
         <button onClick={handleSalvar} disabled={isSaving || !dirty}
-          className="bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white px-6 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2">
+          className="bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white px-5 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-2">
           {dirty ? <Save className="w-4 h-4" /> : <Check className="w-4 h-4" />}
           {isSaving ? 'Salvando...' : dirty ? 'Salvar' : 'Salvo'}
         </button>
@@ -171,7 +171,7 @@ export function Impressao() {
       <div className="flex gap-2">
         {['venda', 'orcamento', 'catalogo', 'mensagem'].map(t => (
           <button key={t} onClick={() => setSubAba(t)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
               subAba === t ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'
             }`}>
             {t === 'venda' ? 'Venda' : t === 'orcamento' ? 'Orçamento' : t === 'catalogo' ? 'Catálogo' : 'Mensagem'}
@@ -184,7 +184,7 @@ export function Impressao() {
           <EditorLayoutImpressao tipo="venda"
             value={form.layout_impressao_venda ?? DEFAULT_LAYOUT_VENDA}
             onChange={v => set('layout_impressao_venda', v)} empresa={form} />
-          <div className="flex flex-wrap gap-4">
+          <div className="flex flex-wrap gap-3">
             <NumeracaoCard tabela="vendas" label="Vendas" />
           </div>
         </>
@@ -194,9 +194,9 @@ export function Impressao() {
           <EditorLayoutImpressao tipo="orcamento"
             value={form.layout_impressao_orcamento ?? DEFAULT_LAYOUT_ORCAMENTO}
             onChange={v => set('layout_impressao_orcamento', v)} empresa={form} />
-          <div className="flex flex-wrap gap-4">
+          <div className="flex flex-wrap gap-3">
             <NumeracaoCard tabela="orcamentos" label="Orçamentos" />
-            <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-4 w-full max-w-[280px]">
+            <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-3 w-full max-w-[300px]">
               <Lbl>Validade da proposta (dias)</Lbl>
               <QtdInput
                 value={String((form.orc_validade_dias as number | null | undefined) ?? '')}
