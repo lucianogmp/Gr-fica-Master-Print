@@ -5,6 +5,7 @@ import { Configuracoes as ConfigType } from '../../types/configuracoes';
 import { Building2, Save, Check, MonitorCog } from 'lucide-react';
 import { IN, Lbl, Section, Row } from './utils';
 import { UploadLogo } from './UploadLogo';
+import { QtdInput } from '../../components/ui/QtdInput';
 
 export function Empresa() {
   const { data: cfg, isLoading, salvar, isSaving } = useConfiguracoes();
@@ -64,6 +65,19 @@ export function Empresa() {
           onChange={(url: string) => set('empresa_logo_url', url)}
         />
         <div><Lbl>Rodapé padrão</Lbl><textarea rows={2} value={txt('empresa_rodape')} onChange={e => set('empresa_rodape', e.target.value)} className={IN + ' resize-none'} /></div>
+      </Section>
+
+      <Section title="Regras de venda" icon={Building2}>
+        <div className="max-w-[260px]">
+          <Lbl>Desconto máximo do vendedor (por item, %)</Lbl>
+          <QtdInput
+            value={String(form.desconto_max_vendedor_pct ?? '')}
+            onChange={v => set('desconto_max_vendedor_pct', v === '' ? null : Math.max(0, Math.min(100, parseFloat(v) || 0)))}
+            className={IN + ' w-24'} placeholder="20" />
+          <p className="text-[11px] text-gray-500 mt-1.5">
+            Acima disso o vendedor não consegue salvar a venda; dono e admin não têm limite. Deixe vazio para não limitar.
+          </p>
+        </div>
       </Section>
 
       <Section title="Logo do Sistema (Sidebar)" icon={MonitorCog}>

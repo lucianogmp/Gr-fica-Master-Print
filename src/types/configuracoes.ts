@@ -46,6 +46,8 @@ export interface Configuracoes {
   prec_energia_hora?: number | null;
   // Orçamentos
   orc_validade_dias?: number | null;
+  /** Desconto máximo por item que o vendedor pode dar (%). Vazio = sem limite. Dono/admin não têm limite. */
+  desconto_max_vendedor_pct?: number | null;
   orc_obs_padrao?: string | null;
   orc_garantia?: string | null;
   orc_rodape?: string | null;
