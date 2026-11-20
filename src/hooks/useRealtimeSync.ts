@@ -87,6 +87,16 @@ export function useRealtimeSync(ativo: boolean = true) {
       canal.on('postgres_changes', { event: '*', schema: 'public', table: tabela }, () => agendar(chaves));
     }
 
+    // O Realtime só entrega eventos das tabelas que o USUÁRIO pode ler (RLS). Se o canal entrar antes do
+    // token do login estar aplicado, ele fica "surdo" em silêncio — por isso aplica o token antes e de novo
+    // sempre que o login é renovado.
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session?.access_token) supabase.realtime.setAuth(data.session.access_token);
+    });
+    const { data: assinatura } = supabase.auth.onAuthStateChange((_evento, sessao) => {
+      if (sessao?.access_token) supabase.realtime.setAuth(sessao.access_token);
+    });
+
     canal.subscribe(status => {
       if (status === 'SUBSCRIBED') {
         // voltou depois de uma queda: pode ter perdido eventos — revalida tudo
@@ -100,6 +110,7 @@ export function useRealtimeSync(ativo: boolean = true) {
 
     return () => {
       if (timer) clearTimeout(timer);
+      assinatura.subscription.unsubscribe();
       supabase.removeChannel(canal);
     };
   }, [ativo, queryClient]);

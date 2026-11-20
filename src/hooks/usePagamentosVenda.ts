@@ -133,6 +133,7 @@ export function usePagamentosVenda(vendaId: string | null) {
   const query = useQuery({
     queryKey: ['pagamentos-venda', vendaId],
     enabled: !!vendaId && vendaId !== '__novo__',
+    staleTime: 15_000,
     queryFn: async (): Promise<PagamentoVenda[]> => {
       const { data, error } = await supabase
         .from('pagamentos_venda')
@@ -207,7 +208,7 @@ export function usePagamentosVenda(vendaId: string | null) {
 
       // 3. Registra entrada na conta financeira escolhida — antes só entrava em
       // dinheiro; agora toda forma de pagamento move o saldo da conta certa.
-      await supabase.from('caixa_movimentos').insert({
+      const { error: eCaixa } = await supabase.from('caixa_movimentos').insert({
         tipo:         'entrada',
         valor:        valorLiq,
         data:         pag.data_pagamento,
@@ -218,6 +219,12 @@ export function usePagamentosVenda(vendaId: string | null) {
         origem,
         observacoes:  obsPartes || null,
       });
+      if (eCaixa) {
+        // Sem a entrada no caixa o pagamento ficaria "meio salvo" (venda paga, saldo da conta sem o valor).
+        // Desfaz o pagamento e avisa de verdade em vez de falhar em silêncio.
+        await supabase.from('pagamentos_venda').delete().eq('id', (data as PagamentoVenda).id);
+        throw new Error(`Não foi possível lançar o pagamento no caixa: ${eCaixa.message}`);
+      }
 
       // 4. Recalcula financeiro (atualiza valor_total, valor_pago e lançamento)
       await recalcularFinanceiroVenda(pag.venda_id);

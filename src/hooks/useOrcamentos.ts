@@ -58,6 +58,8 @@ export function useOrcamentos() {
 
   const query = useQuery({
     queryKey: ['orcamentos'],
+    staleTime: 30_000,
+    refetchInterval: 60_000,
     queryFn: async (): Promise<Orcamento[]> => {
       const { data, error } = await supabase
         .from('orcamentos')
@@ -139,6 +141,15 @@ export function useOrcamentos() {
       // default do banco (true) e nascia marcada "Cliente sem cadastro"
       // mesmo quando o orçamento tinha um cliente real vinculado — o nome
       // aparecia certo no topo da tela, mas o checkbox vinha marcado errado.
+      // Confere no banco (e não na tela, que pode estar desatualizada): se outro usuário já converteu
+      // esse orçamento, não cria uma segunda venda.
+      const { data: atual } = await supabase.from('orcamentos').select('status,venda_id').eq('id', orc.id).maybeSingle();
+      if (atual?.status === 'convertido') {
+        qc.invalidateQueries({ queryKey: ['orcamentos'] });
+        qc.invalidateQueries({ queryKey: ['vendas'] });
+        throw new Error('Este orçamento já foi convertido em venda por outro usuário. Atualizei a lista.');
+      }
+
       const orcSemCliente = !orc.cliente_id;
 
       // Previsão de entrega pelos prazos dos produtos (média dos distintos)
@@ -204,11 +215,15 @@ export function useOrcamentos() {
       // (a ordem de produção na fila é criada automaticamente por um
       // gatilho no banco assim que a venda é inserida — funciona pra
       // qualquer caminho de criação de venda, não só esse aqui)
-      const { error: uErr } = await supabase
+      const { data: marcados, error: uErr } = await supabase
         .from('orcamentos')
         .update({ status: 'convertido', venda_id: vendaId })
-        .eq('id', orc.id);
+        .eq('id', orc.id)
+        .select('id');
       if (uErr) throw uErr;
+      if (!marcados || marcados.length === 0) {
+        throw new Error('A venda foi criada, mas não consegui marcar o orçamento como convertido (sem permissão?). Avise o administrador.');
+      }
 
       return vendaId;
     },

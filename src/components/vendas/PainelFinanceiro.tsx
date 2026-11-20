@@ -180,6 +180,12 @@ export function PainelFinanceiro({
   // alteram o estado no mesmo instante (evita uma sobrescrever a outra).
   const rascunhosRef = useRef(rascunhos);
   rascunhosRef.current = rascunhos;
+  // Quais parcelas estão "Recebido" (ids). Muda ao marcar/desmarcar uma parcela ou quando elas viram pagamento
+  // salvo e somem dos rascunhos — nesses momentos o que falta receber precisa ser reavaliado, mesmo que o
+  // "valorRestante" não tenha mudado ou tenha mudado antes da lista de rascunhos (corrida entre as duas
+  // atualizações, que dependia da velocidade da rede e fazia a parcela nova às vezes não nascer).
+  // Digitar valor ou apagar uma parcela em aberto NÃO entra aqui, então não briga com o que a pessoa faz.
+  const assinaturaFechadas = rascunhos.filter(r => r.status !== 'a_receber').map(r => r.id).join('|');
   function emitirRascunhos(novos: RascunhoParcela[]) {
     rascunhosRef.current = novos;
     onRascunhosChange(novos);
@@ -233,7 +239,7 @@ export function PainelFinanceiro({
     const mantidos = novos.filter(r => r.status !== 'a_receber' || Number(r.valor || 0) > 0.01);
     emitirRascunhos(mantidos.length > 0 ? mantidos : novos);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [valorRestante, carregandoPagamentos]);
+  }, [valorRestante, carregandoPagamentos, assinaturaFechadas]);
 
   function atualizarLinha(id: string, patch: Partial<RascunhoParcela>) {
     emitirRascunhos(rascunhosRef.current.map(r => r.id === id ? { ...r, ...patch } : r));

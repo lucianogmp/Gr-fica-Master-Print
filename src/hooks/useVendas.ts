@@ -42,6 +42,8 @@ export function useVendas() {
 
   const query = useQuery({
     queryKey: ['vendas'],
+    staleTime: 30_000,
+    refetchInterval: 60_000,
     queryFn: async (): Promise<Venda[]> => {
       const { data, error } = await supabase
         .from('vendas')
