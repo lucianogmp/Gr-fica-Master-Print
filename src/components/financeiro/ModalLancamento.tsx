@@ -3,6 +3,7 @@ import { Modal } from '../ui/Modal';
 import { Lancamento, CATEGORIAS_RECEITA, CATEGORIAS_DESPESA, FORMAS_PAGAMENTO } from '../../types/financeiro';
 import { useContasBancarias } from '../../hooks/useContasBancarias';
 import { Pencil, Plus, ArrowUp, ArrowDown } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { MoneyInput } from '../ui/MoneyInput';
 import { DateInput } from '../ui/DateInput';
 import { DarkSelect } from '../ui/DarkSelect';
@@ -24,10 +25,16 @@ type FormData = {
   conta_id: string;
 };
 
-const EMPTY: FormData = {
-  tipo: 'despesa', descricao: '', valor: 0, categoria: '',
-  data_vencimento: '', forma_pagamento: '', cliente_nome: '', observacoes: '', status: 'pendente', conta_id: '',
+const hojeISO = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
+
+// Padrão de lançamento novo: vencimento = hoje e já pago (quase tudo é lançado no dia em que acontece).
+const novoVazio = (): FormData => ({
+  tipo: 'despesa', descricao: '', valor: 0, categoria: '',
+  data_vencimento: hojeISO(), forma_pagamento: '', cliente_nome: '', observacoes: '', status: 'pago', conta_id: '',
+});
 
 interface ModalLancamentoProps {
   open: boolean;
@@ -38,7 +45,7 @@ interface ModalLancamentoProps {
 }
 
 export function ModalLancamento({ open, editando, tipoInicial, onClose, onSalvar }: ModalLancamentoProps) {
-  const [form, setForm]       = useState<FormData>(EMPTY);
+  const [form, setForm]       = useState<FormData>(novoVazio);
   const [salvando, setSalvando] = useState(false);
   const { data: contas = [] } = useContasBancarias();
   const contasAtivas = contas.filter(c => c.ativo);
@@ -70,7 +77,7 @@ export function ModalLancamento({ open, editando, tipoInicial, onClose, onSalvar
         conta_id:        editando.conta_id ?? '',
       });
     } else {
-      setForm({ ...EMPTY, tipo: tipoInicial ?? 'despesa' });
+      setForm({ ...novoVazio(), tipo: tipoInicial ?? 'despesa' });
     }
     carregandoRef.current = false;
   }, [editando, tipoInicial, open]);
@@ -101,7 +108,30 @@ export function ModalLancamento({ open, editando, tipoInicial, onClose, onSalvar
   function setValor(v: number) { setForm(p => ({ ...p, valor: v })); marcarSujo(); }
 
   const precisaConta = form.status === 'pago';
-  const podeSalvar = form.descricao.trim() && form.valor && (!precisaConta || form.conta_id);
+  const faltando = [
+    !form.descricao.trim() && 'Descrição',
+    !form.valor && 'Valor',
+    !form.data_vencimento && 'Vencimento',
+    !form.forma_pagamento && 'Forma de pagamento',
+    precisaConta && !form.conta_id && 'Conta financeira',
+  ].filter(Boolean) as string[];
+  const podeSalvar = faltando.length === 0;
+  const corpoRef = useRef<HTMLDivElement>(null);
+
+  // Enter nos campos de texto/valor/data: descrição → vai pro valor; nos demais salva
+  // (se faltar algo obrigatório, avisa o que falta em vez de salvar).
+  function onEnterCampo(e: React.KeyboardEvent<HTMLDivElement>) {
+    if (e.key !== 'Enter' || e.defaultPrevented) return;
+    const alvo = e.target as HTMLElement;
+    if (alvo.tagName !== 'INPUT' || alvo.closest('[data-no-enter-save]')) return;
+    e.preventDefault();
+    if (alvo.hasAttribute('data-descricao') && form.descricao.trim()) {
+      corpoRef.current?.querySelector<HTMLInputElement>('[data-valor] input')?.focus();
+      return;
+    }
+    if (!podeSalvar) { toast.error(`Falta preencher: ${faltando.join(', ')}`); return; }
+    handleSalvar();
+  }
 
   async function handleSalvar() {
     if (!podeSalvar) return;
@@ -144,7 +174,7 @@ export function ModalLancamento({ open, editando, tipoInicial, onClose, onSalvar
         </>
       }
     >
-      <div className="space-y-4">
+      <div className="space-y-4" ref={corpoRef} onKeyDown={onEnterCampo}>
         {/* Tipo */}
         <div className="flex gap-2">
           {(['receita', 'despesa'] as const).map(t => (
@@ -165,11 +195,11 @@ export function ModalLancamento({ open, editando, tipoInicial, onClose, onSalvar
 
         <div>
           <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Descrição *</label>
-          <input autoFocus value={form.descricao} onChange={e => set('descricao', e.target.value)} className={IN} placeholder="Ex: Fornecedor de papel" />
+          <input autoFocus data-descricao value={form.descricao} onChange={e => set('descricao', e.target.value)} className={IN} placeholder="Ex: Fornecedor de papel" />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          <div>
+          <div data-valor>
             <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Valor (R$) *</label>
             <MoneyInput value={form.valor} onChange={setValor} className={IN} placeholder="0,00" />
           </div>
@@ -200,14 +230,14 @@ export function ModalLancamento({ open, editando, tipoInicial, onClose, onSalvar
             />
           </div>
           <div>
-            <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Vencimento</label>
+            <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Vencimento *</label>
             <DateInput value={form.data_vencimento} onChange={v => set('data_vencimento', v)} className={IN} />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Forma de Pagamento</label>
+            <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">Forma de Pagamento *</label>
             <DarkSelect
               value={form.forma_pagamento}
               onChange={v => { set('forma_pagamento', v); setForm(f => ({ ...f, conta_id: '' })); }}
@@ -215,7 +245,7 @@ export function ModalLancamento({ open, editando, tipoInicial, onClose, onSalvar
               options={FORMAS_PAGAMENTO}
             />
           </div>
-          <div>
+          <div data-no-enter-save>
             <label className="text-xs font-bold text-gray-400 uppercase block mb-1.5">{form.tipo === 'receita' ? 'Cliente / Fornecedor' : 'Fornecedor / Cliente'}</label>
             <ClienteFornecedorSelector key={form.tipo} tipo={form.tipo} value={form.cliente_nome} onChange={v => set('cliente_nome', v)} />
           </div>

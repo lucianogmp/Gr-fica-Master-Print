@@ -25,6 +25,24 @@ export function Modal({ open, onClose, title, children, actions, maxWidth = '480
     return () => document.removeEventListener('keydown', handleKey);
   }, [open, onClose]);
 
+  const rodapeRef = useRef<HTMLDivElement>(null);
+
+  // Enter num campo de texto/número/data do popup = clicar no botão principal (o último do rodapé,
+  // normalmente "Salvar"). Não vale pra textarea (Enter = nova linha), nem pra campos de busca com
+  // lista (combobox) ou marcados com data-no-enter-save, nem se o próprio campo já tratou o Enter.
+  function enterSalva(e: React.KeyboardEvent<HTMLDivElement>) {
+    if (e.key !== 'Enter' || e.defaultPrevented || e.shiftKey || e.nativeEvent.isComposing) return;
+    const alvo = e.target as HTMLInputElement;
+    if (alvo.tagName !== 'INPUT' || alvo.readOnly || alvo.disabled) return;
+    if (['checkbox', 'radio', 'button', 'submit', 'file', 'search'].includes(alvo.type)) return;
+    if (alvo.getAttribute('role') === 'combobox' || alvo.hasAttribute('aria-autocomplete') || alvo.closest('[data-no-enter-save]')) return;
+    const botoes = rodapeRef.current?.querySelectorAll<HTMLButtonElement>('button');
+    const principal = botoes && botoes[botoes.length - 1];
+    if (!principal || principal.disabled) return;
+    e.preventDefault();
+    principal.click();
+  }
+
   if (!open) return null;
 
   return (
@@ -53,13 +71,13 @@ export function Modal({ open, onClose, title, children, actions, maxWidth = '480
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto px-6 py-5">
+        <div className="flex-1 overflow-y-auto px-6 py-5" onKeyDown={enterSalva}>
           {children}
         </div>
 
         {/* Footer */}
         {actions && (
-          <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-700 flex-shrink-0">
+          <div ref={rodapeRef} className="flex justify-end gap-3 px-6 py-4 border-t border-gray-700 flex-shrink-0">
             {actions}
           </div>
         )}

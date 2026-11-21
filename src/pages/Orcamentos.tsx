@@ -1332,11 +1332,13 @@ export function Orcamentos() {
                       return (
                       <tr key={i} className="border-b border-gray-800 hover:bg-gray-800/20"
                         onKeyDownCapture={e => {
-                          // Enter em qtd / preço unit. / desconto → abre o próximo item a lançar
-                          if (e.key === 'Enter' && !showEditor && !jaConvertido && (e.target as HTMLElement).tagName === 'INPUT') {
+                          // Enter em qtd / preço unit. / desconto → volta pra seleção de itens (busca do catálogo)
+                          if (e.key === 'Enter' && !jaConvertido && (e.target as HTMLElement).tagName === 'INPUT') {
                             e.preventDefault(); e.stopPropagation();
+                            const busca = document.querySelector<HTMLInputElement>('input[data-busca-item-orc]');
+                            if (busca) { busca.focus(); busca.scrollIntoView({ block: 'nearest' }); return; }
                             (e.target as HTMLElement).blur();
-                            setEditandoIdx(null); setTipoItemNovo(null); setEditorContinuo(false); setEditorSeq(n => n + 1); setShowEditor(true);
+                            setEditandoIdx(null); setTipoItemNovo(null); setEditorContinuo(true); setEditorSeq(n => n + 1); setShowEditor(true);
                           }
                         }}>
                         <td className="px-3 py-2.5">

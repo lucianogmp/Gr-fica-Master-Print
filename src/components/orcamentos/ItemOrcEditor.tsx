@@ -664,6 +664,7 @@ export function ItemOrcEditor({ onAdicionar, onCancelar, editando, mostrarCusto 
               <Search className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
               <input
                 ref={buscaRef}
+                data-busca-item-orc
                 value={buscaProd}
                 onChange={e => {
                   setBuscaProd(e.target.value); setIndiceAtivoProd(0);
