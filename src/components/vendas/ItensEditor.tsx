@@ -14,6 +14,7 @@ import { medidasDoItemOrcamento } from '../../lib/placaCalc';
 import { correspondeABuscaEmCampos } from '../../lib/buscaFlexivel';
 import { resumoPlacaLinha } from '../../lib/placaCalc';
 import { MoneyInput } from '../ui/MoneyInput';
+import { DetalheCustoItens } from '../custos/DetalheCustoItens';
 import { QtdInput } from '../ui/QtdInput';
 import { useRolarItemAtivo } from '../../hooks/useListaTeclado';
 
@@ -226,6 +227,7 @@ export function ItensEditor({ itens, onChange, onEditarProduto, onCriarProduto }
   useRolarItemAtivo(dropRef, indiceAtivo, mostrarSugestoes);
 
   const subtotal = itens.reduce((s, i) => s + Number(i.total), 0);
+  const [verCustoDet, setVerCustoDet] = useState(false);
   // Custo total dos itens — só admin/dono, nunca aparece em impressão/mensagem.
   const custoTotalItens = itens.reduce((s, i) => {
     const custo = Number((i as any).custo_unitario ?? 0);
@@ -470,8 +472,19 @@ export function ItensEditor({ itens, onChange, onEditarProduto, onCriarProduto }
               )}
             </span>
           )}
+          {isAdmin && custoTotalItens > 0 && (
+            <button type="button" onClick={() => setVerCustoDet(v => !v)}
+              className="text-[10px] font-bold text-red-400/70 hover:text-red-300 underline">
+              {verCustoDet ? 'Esconder detalhamento' : 'Ver detalhamento do custo'}
+            </button>
+          )}
           <span className="text-[11px] text-gray-500">{itens.length} item(s)</span>
           <span className="text-sm font-black text-white">{fmtBRL(subtotal)}</span>
+        </div>
+      )}
+      {isAdmin && verCustoDet && custoTotalItens > 0 && (
+        <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-2">
+          <DetalheCustoItens itens={itens as any} />
         </div>
       )}
     </div>

@@ -37,6 +37,7 @@ import { SolicitanteInput } from '../components/vendas/SolicitanteInput';
 import { CalculadoraFolhas } from '../components/CalculadoraFolhas';
 import { KpiCard } from '../components/ui/KpiCard';
 import { MoneyInput } from '../components/ui/MoneyInput';
+import { DetalheCustoItens } from '../components/custos/DetalheCustoItens';
 import { QtdInput } from '../components/ui/QtdInput';
 import { PctInput } from '../components/ui/PctInput';
 import { DarkSelect } from '../components/ui/DarkSelect';
@@ -1567,7 +1568,7 @@ export function Orcamentos() {
                 isso fica lá em cima, no cabeçalho de Itens do Orçamento. */}
             {podeVerCustos && mostrarCusto && custoTotalOrcamento > 0 && (
               <div className="mt-4 pt-4 border-t border-gray-800">
-                <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 max-w-sm">
+                <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 max-w-xl">
                   <div className="flex justify-between items-center">
                     <span className="text-[10px] font-bold text-red-400 uppercase flex items-center gap-1">
                       🔒 Custo Total (só você vê)
@@ -1584,7 +1585,7 @@ export function Orcamentos() {
 
                   <button onClick={() => setVerCustoDetalhado(v => !v)}
                     className="text-[9px] font-bold text-red-400/70 hover:text-red-300 underline mt-1.5">
-                    {verCustoDetalhado ? 'Esconder detalhamento' : 'Ver detalhamento por categoria'}
+                    {verCustoDetalhado ? 'Esconder detalhamento' : 'Ver detalhamento do custo'}
                   </button>
 
                   {verCustoDetalhado && (
@@ -1606,6 +1607,8 @@ export function Orcamentos() {
                           </span>
                         </div>
                       ))}
+                      <p className="text-[9px] font-bold text-gray-500 uppercase pt-2">Por item (o que compõe o custo)</p>
+                      <DetalheCustoItens itens={itens as any} />
                     </div>
                   )}
                 </div>
