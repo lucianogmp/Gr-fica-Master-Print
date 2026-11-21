@@ -60,3 +60,8 @@ export function lerRascunho(userId: string, tipo: TipoRascunho): RascunhoGuardad
 export function limparRascunho(userId: string, tipo: TipoRascunho) {
   try { localStorage.removeItem(chaveStorage(userId, tipo)); } catch { /* ignore */ }
 }
+
+/** Guarda um rascunho na hora (ex.: ao sair da tela para olhar o cadastro de um produto e voltar). */
+export function guardarRascunho(userId: string, tipo: TipoRascunho, r: InstantaneoRascunho) {
+  try { localStorage.setItem(chaveStorage(userId, tipo), JSON.stringify({ ...r, tipo, em: Date.now() } satisfies RascunhoGuardado)); } catch { /* ignore */ }
+}

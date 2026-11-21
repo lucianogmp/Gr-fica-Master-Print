@@ -2,7 +2,7 @@ import { usePersistente } from '../hooks/usePersistente';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { supabase } from '../lib/supabase';
-import { FileText, Zap, Banknote, Scissors, Plus, Edit2, Check, ArrowLeft, X, CornerDownRight, Ruler, Printer, Copy, MessageCircle, Eye, EyeOff, CheckSquare, Square, Layers } from 'lucide-react';
+import { FileText, Zap, Banknote, Scissors, Plus, Edit2, Check, ArrowLeft, X, CornerDownRight, Ruler, Printer, Copy, MessageCircle, Eye, EyeOff, CheckSquare, Square, Layers, PackageSearch } from 'lucide-react';
 import { Modal } from '../components/ui/Modal';
 import { useConfiguracoes } from '../hooks/useConfiguracoes';
 import { MENSAGEM_WHATSAPP_ORC_DEFAULT, preencherTemplateMensagem } from '../types/configuracoes';
@@ -15,7 +15,7 @@ import { OrdenarMenu, aplicarOrdenacao, Ordenacao } from '../components/ui/Orden
 import { FiltroModal, CampoFiltro, FiltroValor, passaPeriodo, passaMulti, passaFaixa, passaSimNao, dataUsada } from '../components/ui/FiltroModal';
 import { useOrcamentosFiltroItens } from '../hooks/useVendasFiltroDados';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { registrarRascunho, lerRascunho, limparRascunho } from '../lib/rascunhosInatividade';
+import { registrarRascunho, lerRascunho, limparRascunho, guardarRascunho } from '../lib/rascunhosInatividade';
 import { useQueryClient } from '@tanstack/react-query';
 import { useOrcamentos, useOrcamentoItens } from '../hooks/useOrcamentos';
 import { useAcabamentos } from '../hooks/useAcabamentos';
@@ -107,7 +107,7 @@ export function Orcamentos() {
   const { data: produtos = [] } = useProdutos();
   const { data: categorias = [] } = useCategorias();
   const { data: clientes = [] } = useClientes();
-  const { podeVerCustos } = useRole();
+  const { podeVerCustos, pode } = useRole();
   // Custo fica oculto por padrão, mesmo pra admin/dono — só aparece se
   // clicar no botão de mostrar. Não salva em lugar nenhum (nem localStorage);
   // ao atualizar a página ou reabrir a tela, volta a ficar oculto.
@@ -206,7 +206,8 @@ export function Orcamentos() {
   // "Recuperar orçamento": reabre exatamente como estava quando o sistema fechou.
   const locationOrc = useLocation();
   useEffect(() => {
-    if (!(locationOrc.state as any)?.recuperar || !user?.id) return;
+    const voltandoDoProduto = new URLSearchParams(locationOrc.search).get('voltando') === '1';
+    if (!((locationOrc.state as any)?.recuperar || voltandoDoProduto) || !user?.id) return;
     const r = lerRascunho(user.id, 'orcamento');
     navigate(locationOrc.pathname, { replace: true, state: null });
     if (!r) return;
@@ -220,9 +221,17 @@ export function Orcamentos() {
     setView('detalhe');
     carregandoRef.current = false;
     marcarAlteracoesPendentes('Você tem alterações não salvas nesse orçamento. Sair mesmo assim?');
-    toast.success('Orçamento recuperado.');
+    if (!voltandoDoProduto) toast.success('Orçamento recuperado.');
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [locationOrc.state, user?.id]);
+  }, [locationOrc.state, locationOrc.search, user?.id]);
+
+  // Abre o cadastro do produto (como o lápis do item na venda); ao salvar/fechar volta pra este orçamento como estava.
+  function abrirProdutoDoItem(it: OrcamentoItem) {
+    if (!it.produto_id || !user?.id) return;
+    guardarRascunho(user.id, 'orcamento', { chave: orcId ?? '__novo__', rotulo: `Orçamento${form.cliente_nome ? ' — ' + form.cliente_nome : ''}`, dados: { orcId, form, itens } });
+    limparAlteracoesPendentes();
+    navigate(`/produtos/catalogo?editar=${encodeURIComponent(it.produto_id)}&retorno=${encodeURIComponent('/orcamentos?voltando=1')}`);
+  }
 
   const subtotal   = itens.reduce((s, i) => s + Number(i.total), 0);
   const descGlobal = Number(form.desconto ?? 0);
@@ -1379,16 +1388,21 @@ export function Orcamentos() {
                         )}
                         <td className="px-3 py-2.5 text-right font-black text-white">{fmtBRL(it.total)}</td>
                         <td className="px-3 py-2.5">
-                          {!jaConvertido && (
-                            <div className="flex gap-1 justify-center">
+                          <div className="flex gap-1.5 justify-center items-center">
+                            {it.produto_id && !it.detalhe_placa && pode('/produtos/catalogo') && (
+                              <button title="Ver / editar o cadastro deste produto (ao fechar, volta pra este orçamento sem perder nada)"
+                                onClick={() => abrirProdutoDoItem(it)}
+                                className="text-blue-400/80 hover:text-blue-300 transition-colors"><PackageSearch className="w-4 h-4" /></button>
+                            )}
+                          {!jaConvertido && (<>
                               <button onClick={() => { setEditandoIdx(i); setTipoItemNovo(null); setShowEditor(true); }}
                                 className="text-gray-500 hover:text-blue-400 transition-colors"><Edit2 className="w-3.5 h-3.5" /></button>
                               <button onClick={() => { setItens(p => p.filter((_, idx) => idx !== i)); if (editandoIdx !== null) { setEditandoIdx(null); setShowEditor(false); } marcarSujoOrc(); }}
                                 className="text-gray-500 hover:text-red-400 transition-colors">
                                 <X className="w-3.5 h-3.5" />
                               </button>
-                            </div>
-                          )}
+                          </>)}
+                          </div>
                         </td>
                       </tr>
                       );
