@@ -1320,7 +1320,15 @@ export function Orcamentos() {
                       const area = (it as any).area_m2;
                       const custoUnit = custoBase > 0 ? custoBase * (area != null ? Number(area) : 1) : 0;
                       return (
-                      <tr key={i} className="border-b border-gray-800 hover:bg-gray-800/20">
+                      <tr key={i} className="border-b border-gray-800 hover:bg-gray-800/20"
+                        onKeyDownCapture={e => {
+                          // Enter em qtd / preço unit. / desconto → abre o próximo item a lançar
+                          if (e.key === 'Enter' && !showEditor && !jaConvertido && (e.target as HTMLElement).tagName === 'INPUT') {
+                            e.preventDefault(); e.stopPropagation();
+                            (e.target as HTMLElement).blur();
+                            setEditandoIdx(null); setTipoItemNovo(null); setEditorContinuo(false); setEditorSeq(n => n + 1); setShowEditor(true);
+                          }
+                        }}>
                         <td className="px-3 py-2.5">
                           <div className="font-medium text-white">{it.descricao}</div>
                           {it.acabamento_nome && it.acabamento_nome !== 'Sem acabamento' && (

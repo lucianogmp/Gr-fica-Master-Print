@@ -328,6 +328,7 @@ export function ItensEditor({ itens, onChange, onEditarProduto, onCriarProduto }
                     if (e.key === 'Enter' && editandoNome !== i && (e.target as HTMLElement).tagName === 'INPUT') {
                       e.preventDefault(); e.stopPropagation();
                       buscaInputRef.current?.focus();
+                      setTimeout(() => buscaInputRef.current?.focus(), 0);
                     }
                   }}>
                   <td className="px-2 py-2">
