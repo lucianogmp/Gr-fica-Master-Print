@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { MessageCircle, Globe, CheckCircle2, XCircle, ExternalLink, Search, CreditCard, ShoppingCart, Clock } from 'lucide-react';
+import { MessageCircle, Globe, CheckCircle2, XCircle, ExternalLink, Search, CreditCard, ShoppingCart, Clock, Truck } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Modal } from '../components/ui/Modal';
 import { useConfirm } from '../components/ui/ConfirmModal';
@@ -27,6 +27,7 @@ type Pedido = {
   loja_visto_em: string | null;
   venda_id: string | null;
   observacoes: string | null;
+  codigo_rastreio: string | null;
   pagamento: { status: 'aguardando' | 'pago' | 'cancelado'; metodo: string | null; parcelas: number | null; comprovante_url: string | null; pago_em: string | null } | null;
   venda: { numero: number | null; status: string } | null;
   /** Pagamentos já recebidos: online (InfinitePay) ou lançados no ERP quando o cliente paga direto com a gráfica. */
@@ -71,7 +72,7 @@ function usePedidosLoja() {
     queryFn: async (): Promise<Pedido[]> => {
       const { data, error } = await supabase
         .from('orcamentos')
-        .select('id,numero,cliente_id,cliente_nome,total,desconto,status,created_at,loja_visto_em,venda_id,observacoes')
+        .select('id,numero,cliente_id,cliente_nome,total,desconto,status,created_at,loja_visto_em,venda_id,observacoes,codigo_rastreio')
         .eq('origem', 'loja')
         .order('created_at', { ascending: false })
         .limit(500);
@@ -135,9 +136,12 @@ export function LojaVirtual() {
   const [busca, setBusca] = useState('');
   const [abertoId, setAbertoId] = useState<string | null>(null);
   const [contatoAberto, setContatoAberto] = useState(false);
+  const [modoContato, setModoContato] = useState<'pedido' | 'envio'>('pedido');
+  const [codigoRast, setCodigoRast] = useState('');
   const { confirmar, ConfirmModal } = useConfirm();
 
   const aberto = pedidos.find(p => p.id === abertoId) ?? null;
+  useEffect(() => { setCodigoRast(aberto?.codigo_rastreio ?? ''); }, [aberto?.id, aberto?.codigo_rastreio]);
   const { data: itens = [] } = usePedidoItens(abertoId);
 
   // Link do painel / do sino: ?abrir=<id>
@@ -169,6 +173,17 @@ export function LojaVirtual() {
     qc.invalidateQueries({ queryKey: ['vendas'] });
     qc.invalidateQueries({ queryKey: ['notificacoes'] });
   };
+
+  const salvarRastreio = useMutation({
+    mutationFn: async ({ id, codigo }: { id: string; codigo: string }) => {
+      const { error } = await supabase.from('orcamentos').update({ codigo_rastreio: codigo || null }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => { refresh(); toast.success('Código de rastreio salvo.'); },
+    onError: (e: any) => toast.error(e.message ?? 'Não foi possível salvar o código.'),
+  });
+  const codigoLimpo = codigoRast.replace(/\s/g, '').toUpperCase();
+  const codigoValido = /^[A-Z]{2}\d{9}[A-Z]{2}$/.test(codigoLimpo);
 
   const aprovar = useMutation({
     mutationFn: async (id: string) => {
@@ -336,7 +351,7 @@ export function LojaVirtual() {
           const s = situacaoDe(aberto);
           return (
             <>
-              <button onClick={() => setContatoAberto(true)} className="px-3 py-2 rounded-lg text-sm font-bold text-green-300 hover:text-green-200 hover:bg-green-600/10 border border-green-500/30 flex items-center gap-1.5">
+              <button onClick={() => { setModoContato('pedido'); setContatoAberto(true); }} className="px-3 py-2 rounded-lg text-sm font-bold text-green-300 hover:text-green-200 hover:bg-green-600/10 border border-green-500/30 flex items-center gap-1.5">
                 <MessageCircle className="w-4 h-4" /> Falar com o cliente
               </button>
               {s === 'venda' && aberto.venda_id && (
@@ -404,6 +419,29 @@ export function LojaVirtual() {
               <pre className="mt-1 whitespace-pre-wrap font-sans text-xs text-gray-400 leading-relaxed">{aberto.observacoes ?? ''}</pre>
             </div>
 
+            {situacaoDe(aberto) !== 'recusado' && (
+              <div>
+                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Rastreio (Correios)</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <input value={codigoRast} onChange={e => setCodigoRast(e.target.value.toUpperCase())} maxLength={13} placeholder="AA123456789BR" aria-label="Código de rastreio"
+                    className="!w-44 !py-1.5 bg-[#111827] border border-gray-700 rounded-lg text-white font-mono" />
+                  <button
+                    onClick={() => salvarRastreio.mutate({ id: aberto.id, codigo: codigoLimpo })}
+                    disabled={salvarRastreio.isPending || codigoLimpo === (aberto.codigo_rastreio ?? '') || (codigoLimpo !== '' && !codigoValido)}
+                    className="px-3 py-1.5 rounded-lg text-sm font-bold bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-50">Salvar código</button>
+                  <button
+                    onClick={() => { setModoContato('envio'); setContatoAberto(true); }}
+                    disabled={!aberto.codigo_rastreio || codigoLimpo !== aberto.codigo_rastreio}
+                    className="px-3 py-1.5 rounded-lg text-sm font-bold text-green-300 border border-green-500/30 hover:bg-green-600/10 disabled:opacity-40 flex items-center gap-1.5">
+                    <Truck className="w-4 h-4" /> Avisar envio no WhatsApp
+                  </button>
+                </div>
+                <p className="text-[11px] text-gray-500 mt-1">
+                  {codigoLimpo !== '' && !codigoValido ? 'O código tem 13 caracteres: 2 letras, 9 números e 2 letras (ex.: AA123456789BR).' : 'Quando salvar, o cliente já vê a linha do tempo no site. Use o botão do WhatsApp para avisar que foi enviado.'}
+                </p>
+              </div>
+            )}
+
             <div>
               <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Itens</p>
               <div className="border border-gray-700 rounded-lg overflow-hidden">
@@ -429,10 +467,11 @@ export function LojaVirtual() {
       <ContatoClienteModal
         aberto={contatoAberto && !!aberto}
         onClose={() => setContatoAberto(false)}
+        modo={modoContato}
         itens={itens}
         pedido={aberto ? {
           numero: aberto.numero, cliente_nome: aberto.cliente_nome, total: aberto.total, observacoes: aberto.observacoes,
-          cliente_id: (aberto as any).cliente_id ?? null,
+          cliente_id: (aberto as any).cliente_id ?? null, codigoRastreio: aberto.codigo_rastreio,
           situacaoTexto: ROTULO[situacaoDe(aberto)].texto, pagamentoTexto: resumoPagamento(aberto.pagamentos),
           vendaNumero: aberto.venda?.numero ?? null, vendaStatus: aberto.venda?.status ?? null,
         } : null}

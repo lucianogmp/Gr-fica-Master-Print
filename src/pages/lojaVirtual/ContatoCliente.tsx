@@ -9,6 +9,8 @@ import { Modal } from '../../components/ui/Modal';
 export type PedidoContato = {
   numero: number | null; cliente_nome: string; total: number | null; observacoes: string | null; cliente_id?: string | null;
   situacaoTexto: string; pagamentoTexto: string | null; vendaNumero: number | null; vendaStatus: string | null;
+  /** Código de rastreio dos Correios (quando já foi postado) */
+  codigoRastreio?: string | null;
 };
 type Item = { descricao: string; quantidade: number; total: number };
 
@@ -46,19 +48,37 @@ export function montarMensagemPedido(p: PedidoContato, itens: Item[]): string {
   ].filter((l, i, a) => !(l === '' && a[i - 1] === '')).join('\n');
 }
 
-export function ContatoClienteModal({ pedido, itens, aberto, onClose }: { pedido: PedidoContato | null; itens: Item[]; aberto: boolean; onClose: () => void }) {
+export const LINK_LOJA = 'https://loja-master-print.vercel.app';
+
+/** Aviso de envio: o cliente recebe o código e o link da página do pedido, com a linha do tempo dos Correios. */
+export function montarMensagemEnvio(p: PedidoContato): string {
+  const primeiro = (p.cliente_nome ?? '').trim().split(/\s+/)[0];
+  return [
+    `Olá${primeiro && primeiro !== 'Cliente' ? `, ${primeiro}` : ''}! Aqui é da Gráfica Master Print. 📦`,
+    `O seu pedido nº ${p.numero ?? '—'} foi enviado pelos Correios!`,
+    '',
+    `Código de rastreio: *${p.codigoRastreio ?? ''}*`,
+    '',
+    'Acompanhe o andamento aqui (é só entrar com a sua conta):',
+    `${LINK_LOJA}/pedidos/${p.numero ?? ''}`,
+    '',
+    'Qualquer dúvida, é só responder por aqui. 😊',
+  ].join('\n');
+}
+
+export function ContatoClienteModal({ pedido, itens, aberto, onClose, modo = 'pedido' }: { pedido: PedidoContato | null; itens: Item[]; aberto: boolean; onClose: () => void; modo?: 'pedido' | 'envio' }) {
   const [texto, setTexto] = useState('');
   const [fone, setFone] = useState('');
   const area = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (!aberto || !pedido) return;
-    setTexto(montarMensagemPedido(pedido, itens));
+    setTexto(modo === 'envio' ? montarMensagemEnvio(pedido) : montarMensagemPedido(pedido, itens));
     let vivo = true;
     telefoneDoPedido(pedido).then(t => { if (vivo) setFone(t); });
     return () => { vivo = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [aberto, pedido?.numero, itens.length]);
+  }, [aberto, pedido?.numero, itens.length, modo, pedido?.codigoRastreio]);
 
   // A caixa cresce e encolhe com o texto (sem barra de rolagem)
   useEffect(() => {
@@ -78,7 +98,7 @@ export function ContatoClienteModal({ pedido, itens, aberto, onClose }: { pedido
   }
 
   return (
-    <Modal open={aberto} onClose={onClose} maxWidth="560px" title={`Falar com o cliente — pedido #${pedido?.numero ?? ''}`}
+    <Modal open={aberto} onClose={onClose} maxWidth="560px" title={`${modo === 'envio' ? 'Avisar envio' : 'Falar com o cliente'} — pedido #${pedido?.numero ?? ''}`}
       actions={
         <>
           <button onClick={copiar} className="px-3 py-2 rounded-lg text-sm font-bold text-gray-300 hover:text-white hover:bg-gray-700 flex items-center gap-1.5"><Copy className="w-4 h-4" /> Copiar</button>
