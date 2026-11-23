@@ -52,6 +52,7 @@ const ProdutosDatas      = lazy(() => import('../pages/Produtos/DatasComerciais'
 // ─── Estoque (sub-rotas) ─────────────────────────────────────────────────────
 const EstoqueAtual     = lazy(() => import('../pages/Estoque/EstoqueAtual').then(m => ({ default: m.EstoqueAtual })));
 const EstoqueGerenciar = lazy(() => import('../pages/Estoque/Gerenciar').then(m => ({ default: m.Gerenciar })));
+const EstoqueListaCompras = lazy(() => import('../pages/Estoque/ListaCompras').then(m => ({ default: m.ListaCompras })));
 const EstoqueHistorico = lazy(() => import('../pages/Estoque/Historico').then(m => ({ default: m.Historico })));
 
 // ─── Gestão de Custos (sub-rotas) ────────────────────────────────────────────
@@ -203,6 +204,7 @@ export function AppRoutes() {
           <Route path="estoque" element={<Navigate to="/estoque/atual" replace />} />
           <Route path="estoque/atual"     element={<PR rota="/estoque/atual"><EstoqueAtual /></PR>} />
           <Route path="estoque/gerenciar" element={<PR rota="/estoque/gerenciar"><EstoqueGerenciar /></PR>} />
+          <Route path="estoque/lista-compras" element={<PR rota="/estoque/lista-compras"><EstoqueListaCompras /></PR>} />
           <Route path="estoque/historico" element={<PR rota="/estoque/historico"><EstoqueHistorico /></PR>} />
 
           {/* ── Produção ── */}

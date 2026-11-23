@@ -63,6 +63,7 @@ export const ROUTE_PERMISSIONS: Record<string, Role[]> = {
   '/estoque/atual':     ['dono', 'admin', 'producao'],
   '/estoque/gerenciar': ['dono', 'admin', 'producao'],
   '/estoque/historico': ['dono', 'admin', 'producao'],
+  '/estoque/lista-compras': ['dono', 'admin', 'producao'],
 
   // ── Produção ──
   '/producao': ['dono', 'admin', 'producao', 'vendedor'],

@@ -59,6 +59,7 @@ export const PERMISSOES_MENU: GrupoPermissao[] = [
     { rota: '/estoque/atual',     label: 'Estoque Atual' },
     { rota: '/estoque/gerenciar', label: 'Gerenciar' },
     { rota: '/estoque/historico', label: 'Histórico' },
+    { rota: '/estoque/lista-compras', label: 'Lista de Compras' },
     { rota: '/fornecedores',      label: 'Fornecedores' },
   ]},
   { grupo: 'Gestão de Custos', itens: [

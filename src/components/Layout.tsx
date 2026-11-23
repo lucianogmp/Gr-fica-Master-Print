@@ -156,6 +156,7 @@ const ALL_MENU: MenuItem[] = [
     children: [
       { path: '/estoque/atual',     label: 'Estoque Atual', icon: Boxes },
       { path: '/estoque/gerenciar', label: 'Gerenciar',     icon: PackageSearch },
+      { path: '/estoque/lista-compras', label: 'Lista de Compras', icon: ShoppingCart },
       { path: '/estoque/historico', label: 'Histórico',     icon: History },
       { path: '/fornecedores',      label: 'Fornecedores',  icon: Truck },
     ],
