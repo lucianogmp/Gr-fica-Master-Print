@@ -9,7 +9,7 @@ import { useBackupStatus } from './useBackupStatus';
 import { buscarAvisosCampanhas, ROTA_DATAS } from './useDatasComerciais';
 import { textoDias } from '../lib/datasComerciais';
 
-export type TipoNotif = 'pagar' | 'receber' | 'estoque' | 'entrega' | 'backup' | 'campanha';
+export type TipoNotif = 'pagar' | 'receber' | 'estoque' | 'compra' | 'entrega' | 'backup' | 'campanha';
 export interface Notificacao {
   key: string;            // identifica o aviso (muda se o aviso muda, ex.: passou de "vence" para "atrasado")
   tipo: TipoNotif;
@@ -51,13 +51,14 @@ export function useNotificacoes() {
   const verPagar   = pode('/financeiro/pagar');
   const verReceber = pode('/financeiro/receber') || pode('/vendas/pedidos');
   const verEstoque = pode('/estoque/atual');
+  const verCompras = pode('/estoque/lista-compras');
   const verEntregas = pode('/vendas/pedidos');
   const verCampanhas = pode(ROTA_DATAS);
   const { isAdmin } = useRole();
   const { atrasado: backupAtrasado, diasDesdeUltimoBackup } = useBackupStatus();
 
   const { data: itens = [] } = useQuery({
-    queryKey: ['notificacoes', user?.id, verPagar, verReceber, verEstoque, verEntregas, verCampanhas, isAdmin && backupAtrasado, diasDesdeUltimoBackup],
+    queryKey: ['notificacoes', user?.id, verPagar, verReceber, verEstoque, verCompras, verEntregas, verCampanhas, isAdmin && backupAtrasado, diasDesdeUltimoBackup],
     enabled: !!user?.id,
     refetchInterval: 30_000,
     refetchOnWindowFocus: true,
@@ -75,7 +76,7 @@ export function useNotificacoes() {
           .lte('data_vencimento', limiteISO)
           .order('data_vencimento', { ascending: true }).limit(30);
 
-      const [pagar, receber, estoque, entregas, campanhas] = await Promise.all([
+      const [pagar, receber, estoque, entregas, campanhas, compras] = await Promise.all([
         verPagar ? pendentes('despesa') : Promise.resolve({ data: [] as any[] }),
         verReceber ? pendentes('receita') : Promise.resolve({ data: [] as any[] }),
         verEstoque ? supabase.from('materias_primas').select('id,nome,saldo,estoque_minimo,unidade').gt('estoque_minimo', 0) : Promise.resolve({ data: [] as any[] }),
@@ -84,7 +85,20 @@ export function useNotificacoes() {
           .lte('data_entrega', limiteISO).not('status', 'in', '(entregue,finalizado,cancelado)')
           .order('data_entrega', { ascending: true }).limit(20) : Promise.resolve({ data: [] as any[] }),
         verCampanhas ? buscarAvisosCampanhas(hoje).catch(() => []) : Promise.resolve([]),
+        // Lista de compras: só avisa os itens que têm data marcada (sem data = sem aviso).
+        verCompras ? supabase.from('lista_compras').select('id,nome,quantidade,unidade,comprar_ate')
+          .eq('comprado', false).not('comprar_ate', 'is', null).lte('comprar_ate', limiteISO)
+          .order('comprar_ate', { ascending: true }).limit(30) : Promise.resolve({ data: [] as any[] }),
       ]);
+
+      (compras.data ?? []).forEach((c: any) => {
+        const dias = diasEntre(hoje, c.comprar_ate);
+        const estado = dias < 0 ? `atrasada ${-dias} ${-dias === 1 ? 'dia' : 'dias'}` : dias === 0 ? 'é hoje' : `em ${dias} ${dias === 1 ? 'dia' : 'dias'}`;
+        out.push({ key: `compra:${c.id}:${hoje}`, tipo: 'compra', nivel: dias < 0 ? 'critico' : 'atencao',
+          titulo: `Comprar ${estado}`,
+          detalhe: `${c.nome}${c.quantidade != null ? ` · ${Number(c.quantidade).toLocaleString('pt-BR')} ${c.unidade ?? ''}` : ''}`.trim(),
+          rota: '/estoque/lista-compras', quando: c.comprar_ate });
+      });
 
       // Estoque: um aviso para zerados e outro para abaixo do mínimo (muda se a lista mudar).
       const criticos = (estoque.data ?? []).filter((m: any) => Number(m.saldo) <= Number(m.estoque_minimo));

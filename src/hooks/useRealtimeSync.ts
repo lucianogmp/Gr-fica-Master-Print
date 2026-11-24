@@ -46,7 +46,7 @@ const TABELA_PARA_QUERIES: Record<string, string[]> = {
   metalon_tipos:      ['metalon-tipos'],
   materiais_impressao:['materiais-impressao'],
   materias_primas:    ['materias-primas', 'estoque-alerts', 'bom-item-orc', 'bom-item-placa'],
-  lista_compras:      ['lista-compras'],
+  lista_compras:      ['lista-compras', 'notificacoes'],
   estoque_movimentos: ['estoque-movimentos', 'materias-primas', 'estoque-alerts'],
   custos_fixos:       ['custos-fixos', 'gestao-custos-resumo', 'dashboard-metrics'],
   custos_variaveis:   ['custos-variaveis', 'gestao-custos-resumo'],

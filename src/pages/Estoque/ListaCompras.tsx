@@ -14,48 +14,46 @@ import { useConfirm } from '../../components/ui/ConfirmModal';
 const IN = 'bg-[#111827] border border-gray-700 rounded-lg px-2 py-1 text-white text-xs focus:outline-none focus:border-blue-500 transition-colors';
 const fmtN = (v: number) => v.toLocaleString('pt-BR', { maximumFractionDigits: 3 });
 const hojeISO = () => new Date().toLocaleDateString('en-CA');
-const fmtData = (d: string) => d.split('-').reverse().join('/');
+const diasAte = (iso: string) => Math.round((Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10)) - Date.UTC(+hojeISO().slice(0, 4), +hojeISO().slice(5, 7) - 1, +hojeISO().slice(8, 10))) / 86400000);
 
 function Linha({ it, mpPorId, atualizar, remover }: { it: ItemCompra; mpPorId: Map<string, MateriaPrima>; atualizar: (a: { id: string; dados: Partial<ItemCompra> }) => void; remover: (ids: string[]) => Promise<void> }) {
   const mp = it.materia_prima_id ? mpPorId.get(it.materia_prima_id) : undefined;
   const st = mp ? statusEstoque(mp) : null;
-  const atrasado = !it.comprado && it.comprar_ate && it.comprar_ate < hojeISO();
+  const dias = !it.comprado && it.comprar_ate ? diasAte(it.comprar_ate) : null;
+  const corData = dias === null ? '' : dias < 0 ? 'text-red-400' : dias <= 3 ? 'text-amber-300' : 'text-gray-500';
+  const txtData = dias === null ? '' : dias < 0 ? `atrasado ${-dias}d` : dias === 0 ? 'é hoje' : `em ${dias}d`;
   return (
-    <div className={`flex items-center gap-2 px-3 py-1.5 border-b border-gray-800 flex-wrap ${it.comprado ? 'opacity-60' : ''}`}>
-      <button
-        onClick={() => atualizar({ id: it.id, dados: { comprado: !it.comprado, comprado_em: !it.comprado ? new Date().toISOString() : null } })}
-        title={it.comprado ? 'Voltar para a lista' : 'Marcar como comprado'}
-        className={`w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 transition-all ${it.comprado ? 'bg-green-600 border-green-500' : 'border-gray-600 hover:border-green-500'}`}>
-        {it.comprado && <Check className="w-3.5 h-3.5 text-white" />}
-      </button>
-
-      <div className="min-w-[160px] flex-1">
-        <div className={`text-sm font-semibold ${it.comprado ? 'line-through text-gray-500' : 'text-white'}`}>{it.nome}</div>
-        <div className="text-[10px] text-gray-500">
-          {mp ? <>Em estoque: <span style={{ color: st?.corTexto }}>{fmtN(Number(mp.saldo))} {mp.unidade}</span>{Number(mp.estoque_minimo) > 0 && <> · mín. {fmtN(Number(mp.estoque_minimo))}</>}{st && (st.key === 'baixo' || st.key === 'zerado') && <span style={{ color: st.corTexto }}> · {st.label}</span>}</> : 'Item avulso (fora do estoque)'}
-        </div>
+    <div className={`rounded-xl border bg-[#1f2937] px-3 py-2 space-y-1.5 ${dias !== null && dias < 0 ? 'border-red-500/40' : 'border-gray-700'} ${it.comprado ? 'opacity-60' : ''}`}>
+      {/* linha 1: marcar + nome + estoque + remover */}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => atualizar({ id: it.id, dados: { comprado: !it.comprado, comprado_em: !it.comprado ? new Date().toISOString() : null } })}
+          title={it.comprado ? 'Voltar para a lista' : 'Marcar como comprado'}
+          className={`w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 transition-all ${it.comprado ? 'bg-green-600 border-green-500' : 'border-gray-600 hover:border-green-500'}`}>
+          {it.comprado && <Check className="w-3.5 h-3.5 text-white" />}
+        </button>
+        <span className={`text-sm font-semibold truncate ${it.comprado ? 'line-through text-gray-500' : 'text-white'}`}>{it.nome}</span>
+        <span className="text-[10px] text-gray-500 whitespace-nowrap ml-auto hidden sm:inline">
+          {mp ? <>Estoque: <span style={{ color: st?.corTexto }}>{fmtN(Number(mp.saldo))} {mp.unidade}</span>{Number(mp.estoque_minimo) > 0 && <> · mín. {fmtN(Number(mp.estoque_minimo))}</>}</> : 'avulso'}
+        </span>
+        <button onClick={() => remover([it.id])} title="Remover da lista" className="text-gray-600 hover:text-red-400 transition-colors flex-shrink-0"><Trash2 className="w-3.5 h-3.5" /></button>
       </div>
-
-      <div className="flex items-center gap-1">
+      {/* linha 2: qtd + data + observação */}
+      <div className="flex items-center gap-2 pl-7">
         <QtdInput value={it.quantidade != null ? String(it.quantidade) : ''} onChange={v => atualizar({ id: it.id, dados: { quantidade: v === '' ? null : Number(v) } })}
-          className={IN + ' w-16 text-center'} placeholder="Qtd" />
-        <span className="text-[10px] text-gray-500 w-8">{it.unidade ?? ''}</span>
+          className={IN + ' w-24 text-center'} placeholder="Qtd" />
+        <span className="text-[10px] text-gray-500 min-w-[22px]">{it.unidade ?? ''}</span>
+        <div className="w-[128px] flex-shrink-0" title="Comprar até (data) — avisa quando estiver chegando">
+          <DateInput value={it.comprar_ate ?? ''} onChange={v => atualizar({ id: it.id, dados: { comprar_ate: v || null } })} className={IN + ' w-full'} />
+        </div>
+        {txtData && <span className={`text-[10px] font-bold whitespace-nowrap ${corData}`}>{txtData}</span>}
+        <input defaultValue={it.observacao ?? ''} placeholder="Observação (fornecedor, marca…)"
+          onBlur={e => { const v = e.target.value.trim(); if (v !== (it.observacao ?? '')) atualizar({ id: it.id, dados: { observacao: v || null } }); }}
+          className={IN + ' flex-1 min-w-[120px]'} />
       </div>
-
-      <div className="w-[120px]" title="Comprar até (data)">
-        <DateInput value={it.comprar_ate ?? ''} onChange={v => atualizar({ id: it.id, dados: { comprar_ate: v || null } })} className={IN + ' w-full'} />
-      </div>
-      {atrasado && <span className="text-[10px] font-bold text-red-400 flex items-center gap-0.5"><AlertTriangle className="w-3 h-3" /> venceu {fmtData(it.comprar_ate!)}</span>}
-
-      <input defaultValue={it.observacao ?? ''} placeholder="Observação (fornecedor, marca…)"
-        onBlur={e => { const v = e.target.value.trim(); if (v !== (it.observacao ?? '')) atualizar({ id: it.id, dados: { observacao: v || null } }); }}
-        className={IN + ' w-56 max-w-full'} />
-
-      <button onClick={() => remover([it.id])} title="Remover da lista" className="text-gray-600 hover:text-red-400 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
     </div>
   );
 }
-
 
 export function ListaCompras() {
   const { data: mps = [] } = useMateriasPrimas();
@@ -124,7 +122,7 @@ export function ListaCompras() {
       </div>
 
       {/* Pesquisa / adicionar */}
-      <div className="relative max-w-xl">
+      <div className="relative">
         <div className="flex items-center gap-2 bg-[#1f2937] border border-blue-500/40 rounded-xl px-3 py-2 focus-within:border-blue-500">
           <Search className="w-4 h-4 text-blue-400 flex-shrink-0" />
           <input ref={inputRef} value={busca} placeholder="Pesquise a matéria-prima para marcar como comprar…"
@@ -165,9 +163,9 @@ export function ListaCompras() {
       </div>
 
       {/* Para comprar */}
-      <div className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-2">
         {pendentes.length === 0 ? (
-          <div className="text-center py-10 text-gray-500 text-sm">
+          <div className="xl:col-span-2 bg-[#1f2937] border border-gray-700 rounded-xl text-center py-10 text-gray-500 text-sm">
             <PackageSearch className="w-8 h-8 mx-auto mb-2 text-gray-600" />
             Nada marcado para comprar. Pesquise acima para adicionar.
           </div>
@@ -183,7 +181,7 @@ export function ListaCompras() {
             </button>
             <button onClick={limparComprados} className="text-[11px] text-gray-500 hover:text-red-400 underline">Limpar comprados</button>
           </div>
-          {verComprados && <div className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">{comprados.map(it => <Linha key={it.id} it={it} mpPorId={mpPorId} atualizar={atualizar} remover={remover} />)}</div>}
+          {verComprados && <div className="grid grid-cols-1 xl:grid-cols-2 gap-2">{comprados.map(it => <Linha key={it.id} it={it} mpPorId={mpPorId} atualizar={atualizar} remover={remover} />)}</div>}
         </div>
       )}
     </div>
