@@ -297,7 +297,7 @@ export function ListaVendas({
       itens: itensImprimir.map(i => ({
         descricao: formatarDescricaoImpressaoPlaca(i.descricao, i.detalhe_placa, i.obs), quantidade: Number(i.quantidade),
         unidade: i.unidade ?? 'un', precoUnitario: Number(i.preco_unitario),
-        desconto: Number(i.desconto ?? 0), total: Number(i.total),
+        desconto: Number(i.desconto ?? 0), descontoValor: (i as any).desconto_valor != null ? Number((i as any).desconto_valor) : null, total: Number(i.total),
       })),
       subtotal: itensImprimir.reduce((s, i) => s + Number(i.total), 0),
       descontoGlobalPct: Number(vendaImprimir.desconto ?? 0),

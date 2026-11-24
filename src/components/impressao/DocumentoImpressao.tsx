@@ -24,6 +24,8 @@ export interface ItemDocumentoImpressao {
   precoUnitario: number;
   /** percentual (0-100), ou null/undefined quando não se aplica */
   desconto?: number | null;
+  /** desconto do item em R$ (quando informado, é o que aparece na nota) */
+  descontoValor?: number | null;
   total: number;
 }
 
@@ -80,13 +82,17 @@ export function DocumentoImpressao({ layout, empresa, documento: doc, style }: D
   const qrLink = qrBruto && !/^[a-z][a-z0-9+.-]*:/i.test(qrBruto) ? `https://${qrBruto}` : qrBruto;
   const isOrcamento = doc.tipo === 'orcamento';
   const descontoGlobal = Number(doc.descontoGlobalPct ?? 0);
+  // Desconto de item aparece sempre que existir, mesmo se a coluna estiver desligada no layout.
+  const temDescontoItem = doc.itens.some(it => Number(it.descontoValor ?? 0) > 0 || Number(it.desconto ?? 0) > 0);
+  const mostrarColDesconto = layout.colunasItens.desconto || temDescontoItem;
+  const entregue = /entreg|finaliz/i.test(doc.situacao ?? '');
 
   const colSpanItens =
     1 +
     (layout.colunasItens.quantidade ? 1 : 0) +
     (layout.colunasItens.unidade ? 1 : 0) +
     (layout.colunasItens.precoUnitario ? 1 : 0) +
-    (layout.colunasItens.desconto ? 1 : 0) +
+    (mostrarColDesconto ? 1 : 0) +
     1;
 
   const labelStyle: CSSProperties = {
@@ -167,11 +173,10 @@ export function DocumentoImpressao({ layout, empresa, documento: doc, style }: D
           {doc.solicitante?.trim() && (
             <p style={{ fontSize: 12, color: '#374151', margin: '2px 0 0' }}>A/C: {doc.solicitante.trim()}</p>
           )}
-          <p style={{ fontSize: 12, color: '#4b5563', margin: '4px 0 0' }}>Telefone: {doc.clienteTelefone || ''}</p>
-          <p style={{ fontSize: 12, color: '#4b5563', margin: '2px 0 0' }}>Email: {doc.clienteEmail || ''}</p>
-          <p style={{ fontSize: 12, color: '#4b5563', margin: '2px 0 0' }}>Endereço: {doc.clienteEndereco || ''}</p>
+          {doc.clienteTelefone && <p style={{ fontSize: 12, color: '#4b5563', margin: '4px 0 0' }}>Telefone: {doc.clienteTelefone}</p>}
+          {doc.clienteEndereco && <p style={{ fontSize: 12, color: '#4b5563', margin: '2px 0 0' }}>Endereço: {doc.clienteEndereco}</p>}
           {doc.dataEntrega && (
-            <p style={{ fontSize: 12, color: '#4b5563', margin: '4px 0 0' }}>Entrega prevista: {fmtData(doc.dataEntrega)}</p>
+            <p style={{ fontSize: 12, color: '#4b5563', margin: '4px 0 0' }}>{entregue ? 'Entregue em' : 'Entrega prevista'}: {fmtData(doc.dataEntrega)}</p>
           )}
         </div>
         <div style={{ textAlign: 'right', fontSize: 12, color: '#4b5563', flexShrink: 0, paddingTop: 4 }}>
@@ -192,7 +197,7 @@ export function DocumentoImpressao({ layout, empresa, documento: doc, style }: D
             {layout.colunasItens.quantidade && <th style={{ textAlign: 'right', padding: 8, borderBottom: `1px solid ${cor}` }}>Qtd.</th>}
             {layout.colunasItens.unidade && <th style={{ textAlign: 'center', padding: 8, borderBottom: `1px solid ${cor}` }}>Un.</th>}
             {layout.colunasItens.precoUnitario && <th style={{ textAlign: 'right', padding: 8, borderBottom: `1px solid ${cor}` }}>Preço Unit.</th>}
-            {layout.colunasItens.desconto && <th style={{ textAlign: 'right', padding: 8, borderBottom: `1px solid ${cor}` }}>Desc.</th>}
+            {mostrarColDesconto && <th style={{ textAlign: 'right', padding: 8, borderBottom: `1px solid ${cor}` }}>Desc.</th>}
             <th style={{ textAlign: 'right', padding: 8, borderBottom: `1px solid ${cor}` }}>Total</th>
           </tr>
         </thead>
@@ -206,8 +211,12 @@ export function DocumentoImpressao({ layout, empresa, documento: doc, style }: D
               {layout.colunasItens.quantidade && <td style={{ padding: 8, textAlign: 'right' }}>{it.quantidade}</td>}
               {layout.colunasItens.unidade && <td style={{ padding: 8, textAlign: 'center' }}>{it.unidade || 'un'}</td>}
               {layout.colunasItens.precoUnitario && <td style={{ padding: 8, textAlign: 'right' }}>{fmtBRL(it.precoUnitario)}</td>}
-              {layout.colunasItens.desconto && (
-                <td style={{ padding: 8, textAlign: 'right' }}>{it.desconto ? `${it.desconto}%` : '—'}</td>
+              {mostrarColDesconto && (
+                <td style={{ padding: 8, textAlign: 'right', color: Number(it.descontoValor ?? it.desconto ?? 0) > 0 ? '#dc2626' : undefined }}>
+                  {Number(it.descontoValor ?? 0) > 0
+                    ? <>-{fmtBRL(Number(it.descontoValor))}{Number(it.desconto ?? 0) > 0 && <span style={{ display: 'block', fontSize: 10, color: '#9ca3af' }}>{it.desconto}%</span>}</>
+                    : Number(it.desconto ?? 0) > 0 ? `${it.desconto}%` : '—'}
+                </td>
               )}
               <td style={{ padding: 8, textAlign: 'right', fontWeight: 700 }}>{fmtBRL(it.total)}</td>
             </tr>
@@ -218,15 +227,17 @@ export function DocumentoImpressao({ layout, empresa, documento: doc, style }: D
       {/* Totais */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 24 }}>
         <div style={{ width: 224, fontSize: 14 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-            <span style={{ color: '#4b5563' }}>Subtotal</span>
-            <span>{fmtBRL(doc.subtotal)}</span>
-          </div>
           {descontoGlobal > 0 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#dc2626', marginBottom: 4 }}>
-              <span>Desconto ({descontoGlobal}%)</span>
-              <span>-{fmtBRL((doc.subtotal * descontoGlobal) / 100)}</span>
-            </div>
+            <>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                <span style={{ color: '#4b5563' }}>Subtotal</span>
+                <span>{fmtBRL(doc.subtotal)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#dc2626', marginBottom: 4 }}>
+                <span>Desconto ({descontoGlobal}%)</span>
+                <span>-{fmtBRL((doc.subtotal * descontoGlobal) / 100)}</span>
+              </div>
+            </>
           )}
           <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 900, fontSize: 16, paddingTop: 4, borderTop: `1px solid ${cor}` }}>
             <span>Total</span>

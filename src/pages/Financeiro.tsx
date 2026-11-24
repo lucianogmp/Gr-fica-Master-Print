@@ -348,7 +348,7 @@ export function Financeiro() {
     itens: itensVenda.map(i => ({
       descricao: i.descricao, quantidade: Number(i.quantidade),
       unidade: i.unidade ?? 'un', precoUnitario: Number(i.preco_unitario),
-      desconto: Number(i.desconto ?? 0), total: Number(i.total),
+      desconto: Number(i.desconto ?? 0), descontoValor: (i as any).desconto_valor != null ? Number((i as any).desconto_valor) : null, total: Number(i.total),
     })),
     subtotal: subtotalV,
     descontoGlobalPct: formVenda.desconto,

@@ -279,7 +279,7 @@ export function Orcamentos() {
         quantidade: Number(i.quantidade),
         unidade: undefined,
         precoUnitario: brutoItem(i) / (Number(i.quantidade) || 1),
-        desconto: Number(i.desconto ?? 0),
+        desconto: Number(i.desconto ?? 0), descontoValor: (i as any).desconto_valor != null ? Number((i as any).desconto_valor) : null,
         total: Number(i.total),
       })),
       subtotal: subtotalRef,
