@@ -8,14 +8,14 @@ import { MoneyInput } from '../../components/ui/MoneyInput';
 
 const fmtBRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const fmtPct = (v: number) => `${v.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%`;
-const IN = 'bg-[#111827] border border-gray-700 rounded-lg px-2 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500';
+const IN = 'bg-[#111827] border border-gray-700 rounded-lg px-2 py-1 text-white text-sm focus:outline-none focus:border-blue-500';
 
 function Campo({ label, dica, children }: { label: string; dica?: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="text-[11px] text-gray-400 block mb-1">{label}</label>
+      <label className="text-[11px] text-gray-400 block mb-0.5">{label}</label>
       {children}
-      {dica && <p className="text-[10px] text-gray-600 mt-0.5 max-w-[220px]">{dica}</p>}
+      {dica && <p className="text-[10px] leading-tight text-gray-600 mt-0.5">{dica}</p>}
     </div>
   );
 }
@@ -52,68 +52,76 @@ export function SimuladorImpostos() {
   const vendasPJ = faturamento * (pctPJ / 100);
   const creditoPerdidoCliente = vendasPJ * aliq;
 
+  const CARD = 'bg-[#1f2937] border border-gray-700 rounded-xl px-3 py-2.5 space-y-1';
   return (
-    <div className="p-6 space-y-5 max-w-5xl">
-      <div>
-        <h1 className="text-2xl font-black text-white flex items-center gap-2">
-          <Calculator className="w-6 h-6 text-blue-400" /> Simulador de impostos
+    <div className="p-4 space-y-3">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <h1 className="text-xl font-black text-white flex items-center gap-2">
+          <Calculator className="w-5 h-5 text-blue-400" /> Simulador de impostos
           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-yellow-900/40 text-yellow-400 flex items-center gap-1"><FlaskConical className="w-3 h-3" /> TESTE</span>
         </h1>
-        <p className="text-gray-500 text-sm">Só simula aqui na tela — não lê nem altera nada do sistema. Mexa nos números para entender.</p>
+        <p className="text-gray-500 text-xs">Só simula aqui na tela — não lê nem altera nada do sistema. Mexa nos números para entender.</p>
       </div>
 
-      <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-4 flex flex-wrap gap-4 items-start">
-        <Campo label="Faturamento mensal (todos os CNPJs)"><MoneyInput value={faturamento} onChange={setFaturamento} className={`${IN} w-32 text-right`} /></Campo>
-        <Campo label="Vendas para empresa (PJ)" dica="Cliente PJ costuma querer nota com crédito de imposto."><Numero value={pctPJ} onChange={setPctPJ} sufixo="%" /></Campo>
-        <Campo label="Compras de insumos no mês"><MoneyInput value={insumos} onChange={setInsumos} className={`${IN} w-32 text-right`} /></Campo>
-        <Campo label="Parte das compras que gera crédito" dica="Só conta se o fornecedor destaca CBS/IBS (não MEI/informal)."><Numero value={pctCredito} onChange={setPctCredito} sufixo="%" /></Campo>
-        <Campo label="DAS-MEI por CNPJ"><MoneyInput value={das} onChange={setDas} className={`${IN} w-24 text-right`} /></Campo>
-        <Campo label="Nº de CNPJs"><Numero value={cnpjs} onChange={v => setCnpjs(Math.max(1, Math.round(v)))} largura="w-16" /></Campo>
-        <Campo label="CBS (federal)" dica="Estimativa de referência, ainda não é a alíquota final."><Numero value={cbs} onChange={setCbs} sufixo="%" largura="w-20" /></Campo>
-        <Campo label="IBS (estados/municípios)" dica="Estimativa de referência; entra aos poucos até 2033."><Numero value={ibs} onChange={setIbs} sufixo="%" largura="w-20" /></Campo>
+      <div className="grid grid-cols-1 xl:grid-cols-[360px_minmax(0,1fr)] gap-3 items-start">
+        {/* Números (editáveis) */}
+        <div className={CARD + ' !space-y-0'}>
+          <h2 className="text-[11px] font-black text-gray-400 uppercase mb-2">Seus números</h2>
+          <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+            <Campo label="Faturamento mensal (todos os CNPJs)"><MoneyInput value={faturamento} onChange={setFaturamento} className={`${IN} w-full text-right`} /></Campo>
+            <Campo label="Compras de insumos no mês"><MoneyInput value={insumos} onChange={setInsumos} className={`${IN} w-full text-right`} /></Campo>
+            <Campo label="Vendas para empresa (PJ)" dica="PJ costuma querer nota com crédito."><Numero value={pctPJ} onChange={setPctPJ} sufixo="%" largura="w-full" /></Campo>
+            <Campo label="Compras que geram crédito" dica="Só se o fornecedor destaca CBS/IBS."><Numero value={pctCredito} onChange={setPctCredito} sufixo="%" largura="w-full" /></Campo>
+            <Campo label="DAS-MEI por CNPJ"><MoneyInput value={das} onChange={setDas} className={`${IN} w-full text-right`} /></Campo>
+            <Campo label="Nº de CNPJs"><Numero value={cnpjs} onChange={v => setCnpjs(Math.max(1, Math.round(v)))} largura="w-full" /></Campo>
+            <Campo label="CBS (federal)" dica="Estimativa; não é a final."><Numero value={cbs} onChange={setCbs} sufixo="%" largura="w-full" /></Campo>
+            <Campo label="IBS (estados/municípios)" dica="Estimativa; entra até 2033."><Numero value={ibs} onChange={setIbs} sufixo="%" largura="w-full" /></Campo>
+          </div>
+        </div>
+
+        {/* Resultados */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className={CARD}>
+            <h2 className="text-xs font-black text-white">Hoje: MEI (DAS fixo)</h2>
+            <div className="text-2xl font-black text-green-400 leading-none">{fmtBRL(dasTotal)}</div>
+            <p className="text-xs text-gray-400">Carga sobre o faturamento: <b className="text-white">{fmtPct(cargaMei)}</b> · mesmo valor vendendo pouco ou muito.</p>
+            <p className="text-[10px] text-gray-500">Nota p/ cliente final: sem destaque de CBS/IBS. Cliente PJ aproveita crédito limitado.</p>
+          </div>
+
+          <div className={CARD}>
+            <h2 className="text-xs font-black text-white">Se fosse regime regular (só CBS+IBS)</h2>
+            <div className="text-2xl font-black text-orange-400 leading-none">{fmtBRL(aPagarRegular)}</div>
+            <p className="text-xs text-gray-400">Débito {fmtBRL(debito)} − crédito {fmtBRL(credito)} · carga <b className="text-white">{fmtPct(cargaRegular)}</b></p>
+            <p className="text-xs text-gray-400">Diferença p/ MEI: <b className={aPagarRegular > dasTotal ? 'text-red-400' : 'text-green-400'}>{aPagarRegular > dasTotal ? '+' : '−'}{fmtBRL(Math.abs(aPagarRegular - dasTotal))}</b>/mês</p>
+            <p className="text-[10px] text-gray-500">Sem IRPJ/CSLL, ISS/ICMS nem folha — só a parte de consumo.</p>
+          </div>
+
+          <div className={CARD}>
+            <h2 className="text-xs font-black text-white">2026 — período de teste</h2>
+            <div className="text-2xl font-black text-white leading-none">{fmtBRL(teste2026)}</div>
+            <p className="text-xs text-gray-400">CBS 0,9% + IBS 0,1% sobre a nota; só informativo e compensável.</p>
+            <p className="text-[10px] text-gray-500">MEI no regime padrão não precisa destacar isso na nota.</p>
+          </div>
+
+          <div className={CARD}>
+            <h2 className="text-xs font-black text-white">Clientes empresa (PJ)</h2>
+            <div className="text-2xl font-black text-white leading-none">{fmtBRL(creditoPerdidoCliente)}</div>
+            <p className="text-xs text-gray-400">Vendas p/ PJ: {fmtBRL(vendasPJ)}/mês — crédito máximo que o cliente PJ aproveitaria no regime regular.</p>
+            <p className="text-[10px] text-gray-500">Teto teórico; alguns PJ podem preferir nota cheia. Decidir com o contador.</p>
+          </div>
+        </div>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-4">
-        <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-4 space-y-2">
-          <h2 className="text-sm font-black text-white">Hoje: MEI (DAS fixo)</h2>
-          <p className="text-xs text-gray-400">Você paga o mesmo valor todo mês, vendendo pouco ou muito.</p>
-          <div className="text-3xl font-black text-green-400">{fmtBRL(dasTotal)}</div>
-          <p className="text-xs text-gray-400">Carga sobre o faturamento: <b className="text-white">{fmtPct(cargaMei)}</b></p>
-          <p className="text-[11px] text-gray-500">Nota para cliente final: sem destaque de CBS/IBS. Para cliente PJ, o crédito que ele aproveita é limitado.</p>
+      <div className={CARD + ' text-xs text-gray-300'}>
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <h2 className="text-xs font-black text-white">O que a Receita publicou no GitHub e como isso entra no ERP</h2>
+          <a className="text-blue-400 hover:underline inline-flex items-center gap-1 text-[11px]" href="https://github.com/ReceitaFederal" target="_blank" rel="noreferrer">github.com/ReceitaFederal <ExternalLink className="w-3 h-3" /></a>
         </div>
-
-        <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-4 space-y-2">
-          <h2 className="text-sm font-black text-white">Se fosse regime regular (só CBS+IBS)</h2>
-          <p className="text-xs text-gray-400">Paga o imposto das vendas e abate o que pagou nas compras (crédito).</p>
-          <div className="text-3xl font-black text-orange-400">{fmtBRL(aPagarRegular)}</div>
-          <p className="text-xs text-gray-400">
-            Débito {fmtBRL(debito)} − crédito {fmtBRL(credito)} · carga <b className="text-white">{fmtPct(cargaRegular)}</b>
-          </p>
-          <p className="text-xs text-gray-400">Diferença para o MEI: <b className={aPagarRegular > dasTotal ? 'text-red-400' : 'text-green-400'}>{aPagarRegular > dasTotal ? '+' : '−'}{fmtBRL(Math.abs(aPagarRegular - dasTotal))}</b> por mês</p>
-          <p className="text-[11px] text-gray-500">Não inclui IRPJ/CSLL, ISS/ICMS nem folha. É só a parte de consumo, para ver a ordem de grandeza.</p>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-x-5 gap-y-1.5 pt-1">
+          <p>A Receita (com o Serpro) abriu o código da calculadora oficial da Reforma Tributária — licença MIT, 3 repositórios: regime regular, Simples Nacional e gerador de DANFSe.</p>
+          <p>É feita para <b>sistemas que emitem nota</b>. Pra você, hoje, <b>não muda nada</b>: como MEI não destaca CBS/IBS. Só vira útil se for pro Simples/regime regular ou se emitir nota pelo ERP.</p>
+          <p>Em ordem de valor: <b>1)</b> este simulador virar tela fixa com os números reais do mês; <b>2)</b> custo de produto considerar crédito das compras; <b>3)</b> só se mudar de regime: emitir nota com o cálculo oficial (Java/Go, serviço à parte).</p>
         </div>
-
-        <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-4 space-y-2">
-          <h2 className="text-sm font-black text-white">2026 — período de teste</h2>
-          <p className="text-xs text-gray-400">CBS 0,9% + IBS 0,1% sobre a nota; é só informativo e compensável.</p>
-          <div className="text-2xl font-black text-white">{fmtBRL(teste2026)}</div>
-          <p className="text-[11px] text-gray-500">MEI no regime padrão não precisa destacar isso na nota.</p>
-        </div>
-
-        <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-4 space-y-2">
-          <h2 className="text-sm font-black text-white">Clientes empresa (PJ)</h2>
-          <p className="text-xs text-gray-400">Vendas para PJ: {fmtBRL(vendasPJ)}/mês. No regime regular, o cliente PJ aproveitaria crédito de até:</p>
-          <div className="text-2xl font-black text-white">{fmtBRL(creditoPerdidoCliente)}</div>
-          <p className="text-[11px] text-gray-500">Teto teórico. Como MEI padrão dá crédito limitado, alguns clientes PJ podem preferir fornecedor com nota cheia — é o ponto para decidir com o contador.</p>
-        </div>
-      </div>
-
-      <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-4 text-sm text-gray-300 space-y-2">
-        <h2 className="text-sm font-black text-white">O que a Receita publicou no GitHub e como isso entra no ERP</h2>
-        <p>A Receita Federal (com o Serpro) abriu o código da calculadora oficial da Reforma Tributária — licença MIT, 3 repositórios: regime regular, Simples Nacional e gerador de DANFSe (nota de serviço).</p>
-        <p>É feita para <b>sistemas que emitem nota</b> usarem a mesma conta da Receita. Pra você, hoje, isso <b>não muda nada</b>: como MEI você não destaca CBS/IBS. Ela só vira útil se você (a) passar para o Simples Nacional/regime regular ou (b) quiser emitir nota pelo ERP com os tributos calculados.</p>
-        <p>O que daria para aplicar no sistema, em ordem de valor: <b>1)</b> este simulador virar uma tela fixa, com os números reais do mês (faturamento, compras e % de vendas para PJ); <b>2)</b> custo de produto passar a considerar crédito de imposto das compras; <b>3)</b> só se mudar de regime: emitir nota com o cálculo oficial (aí sim se usa o código deles, que é em Java/Go e rodaria como um serviço à parte).</p>
-        <a className="text-blue-400 hover:underline inline-flex items-center gap-1 text-xs" href="https://github.com/ReceitaFederal" target="_blank" rel="noreferrer">github.com/ReceitaFederal <ExternalLink className="w-3 h-3" /></a>
       </div>
     </div>
   );
