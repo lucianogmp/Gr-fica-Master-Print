@@ -585,7 +585,7 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
         quantidade: Number(i.quantidade), custo_unitario: (i as any).custo_unitario ?? null,
         preco_unitario: Number(i.preco_unitario), total: Number(i.total),
         desconto: Number(i.desconto ?? 0), descontoValor: (i as any).desconto_valor != null ? Number((i as any).desconto_valor) : null, desconto_valor: i.desconto_valor ?? null,
-        area_m2: porM2 && Number(i.quantidade) > 0 ? tam!.areaTotal! / Number(i.quantidade) : (i.area_m2 ?? null),
+        area_m2: i.area_m2 ?? null, // custo_unitario do item da venda já é por peça
         detalhe_placa: i.detalhe_placa ?? null,
       };
     });

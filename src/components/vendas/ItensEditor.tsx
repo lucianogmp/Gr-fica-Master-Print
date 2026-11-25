@@ -177,7 +177,9 @@ export function ItensEditor({ itens, onChange, onEditarProduto, onCriarProduto }
       obs: medidasDoItemOrcamento(oi),
       produto_id: oi.produto_id ?? null,
       total: oi.total,
-      ...(oi.custo_unitario != null && isAdmin ? { custo_unitario: oi.custo_unitario } as any : {}),
+      // custo POR PEÇA (no orçamento, o custo de item por m² vem × área da peça)
+      ...(oi.custo_unitario != null && isAdmin
+        ? { custo_unitario: Math.round(Number(oi.custo_unitario) * (oi.area_m2 != null ? Number(oi.area_m2) : 1) * 10000) / 10000 } as any : {}),
       ...(oi.acabamento_id ? { acabamento_id: oi.acabamento_id, acabamento_qtd_estoque: oi.acabamento_qtd_estoque ?? null } as any : {}),
     } as VendaItem, 0);
     // o total veio calculado (pode ter arredondamento manual): mantém exatamente o valor do editor

@@ -203,6 +203,10 @@ export function useOrcamentos() {
         acabamento_id:          i.acabamento_id          ?? null,
         acabamento_qtd_estoque: i.acabamento_qtd_estoque ?? null,
         detalhe_placa:          i.detalhe_placa          ?? null,
+        // custo por peça (orçamento guarda por m² quando tem área); sem isso o item chegava sem custo na venda
+        custo_unitario: i.custo_unitario != null
+          ? Math.round(Number(i.custo_unitario) * (i.area_m2 != null && i.tipo_calculo !== 'placa' ? Number(i.area_m2) : 1) * 10000) / 10000
+          : null,
       }));
 
       const { error: iErr } = await supabase.rpc('salvar_itens_venda', {
