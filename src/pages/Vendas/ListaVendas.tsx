@@ -500,7 +500,23 @@ export function ListaVendas({
                       ) : null}
                     </td>
                     <td className="px-5 py-3 text-gray-400 text-xs">{fmtData(v.data_venda)}</td>
-                    <td className="px-5 py-3 text-gray-400 text-xs">{fmtData(v.data_entrega)}</td>
+                    <td className="px-5 py-3 text-xs">
+                      {v.status === 'entregue' ? (
+                        <>
+                          <div className="text-gray-300">{fmtData(v.data_entrega)}</div>
+                          <div className="text-[9px] text-green-400 font-bold">ENTREGUE</div>
+                        </>
+                      ) : v.status === 'cancelado' ? (
+                        <div className="text-gray-600">{v.data_entrega ? fmtData(v.data_entrega) : '—'}</div>
+                      ) : v.data_entrega ? (
+                        <>
+                          <div className="text-gray-400">{fmtData(v.data_entrega)}</div>
+                          {v.data_entrega < hojeISO
+                            ? <div className="text-[9px] text-red-400 font-bold">ATRASADA</div>
+                            : <div className="text-[9px] text-yellow-400 font-bold">PREVISTA</div>}
+                        </>
+                      ) : <div className="text-gray-600">—</div>}
+                    </td>
                     <td className="px-5 py-3 text-right">
                       <div className="font-bold text-white">
                         {fmtBRL(v.valor_total ?? v.total)}
