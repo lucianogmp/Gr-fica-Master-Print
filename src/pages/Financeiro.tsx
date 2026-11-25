@@ -315,7 +315,10 @@ export function Financeiro() {
         return { atualizarStatus: null };
       });
       // Atualiza direto no supabase para não recarregar o hook
-      await supabase.from('vendas').update({ status: novoStatus, updated_at: new Date().toISOString() }).eq('id', vendaEditandoId);
+      const d = new Date();
+      const hojeISO = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      await supabase.from('vendas').update({ status: novoStatus, ...(novoStatus === 'entregue' ? { data_entrega: hojeISO } : {}), updated_at: new Date().toISOString() }).eq('id', vendaEditandoId);
+      if (novoStatus === 'entregue') setFV('data_entrega' as any, hojeISO);
       if (novoStatus === 'producao') {
         try {
           const v = vendas.find(x => x.id === vendaEditandoId);

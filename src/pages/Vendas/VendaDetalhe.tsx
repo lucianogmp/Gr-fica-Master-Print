@@ -388,6 +388,7 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
     if (novoStatus === 'entregue') {
       const d = new Date();
       dataEntregaHoje = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      entregaManualRef.current = true;
       setF('data_entrega', dataEntregaHoje);
     }
     if (vendaId && vendaId !== '__novo__') {
