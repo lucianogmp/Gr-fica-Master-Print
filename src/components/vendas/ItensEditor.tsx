@@ -79,6 +79,8 @@ export function ItensEditor({ itens, onChange, onEditarProduto, onCriarProduto }
   const [editandoNome, setEditandoNome] = useState<number | null>(null);
   // Janela "m² Material": mesmo editor do orçamento (largura × altura × quantidade)
   const [abrirM2, setAbrirM2] = useState(false);
+  // índice do item aberto no editor (lápis): mesmo editor de "adicionar", só que já preenchido
+  const [editandoM2, setEditandoM2] = useState<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { data: produtos = [] } = useProdutos();
@@ -163,6 +165,52 @@ export function ItensEditor({ itens, onChange, onEditarProduto, onCriarProduto }
     } as VendaItem, 0)]);
     setBuscaProduto('');
     setMostrar(false);
+  }
+
+  // Medidas "L × A cm" gravadas em obs → cm (null se não houver).
+  function medidasDeObs(obs?: string | null): { l: number; a: number } | null {
+    const m = (obs ?? '').match(/([0-9]+[.,]?[0-9]*)\s*[x×]\s*([0-9]+[.,]?[0-9]*)\s*cm/i);
+    if (!m) return null;
+    const n = (v: string) => parseFloat(v.replace(',', '.'));
+    return { l: n(m[1]), a: n(m[2]) };
+  }
+
+  // Item da venda → formato do editor (largura/altura/quantidade/preço já preenchidos).
+  function itemParaEditor(it: VendaItem): OrcamentoItem | null {
+    if (it.detalhe_placa || !it.produto_id) return null;
+    const prod = produtos.find(p => p.id === it.produto_id);
+    const med = medidasDeObs(it.obs);
+    const porM2 = prod?.unidade_medida === 'm2';
+    if (!med && !porM2) return null;
+    const desc = descontoEmReais(it as any);
+    const base: OrcamentoItem = {
+      descricao: it.descricao, produto_id: it.produto_id, quantidade: Number(it.quantidade),
+      preco_unitario: Number(it.preco_unitario), total: Number(it.total),
+      desconto: Number(it.desconto ?? 0), desconto_valor: desc,
+      largura_cm: med?.l ?? null, altura_cm: med?.a ?? null,
+      area_m2: med ? (med.l / 100) * (med.a / 100) : null,
+      acabamento_id: (it as any).acabamento_id ?? null,
+      acabamento_qtd_estoque: (it as any).acabamento_qtd_estoque ?? null,
+      tipo_calculo: (med && porM2 ? 'metro' : 'livre') as any,
+    };
+    return base;
+  }
+
+  function aplicarEdicaoM2(idx: number, oi: OrcamentoItem) {
+    const antigo = itens[idx];
+    const novo = normalizarItem({
+      ...antigo,
+      descricao: oi.descricao, quantidade: oi.quantidade, preco_unitario: oi.preco_unitario,
+      obs: medidasDoItemOrcamento(oi) ?? antigo.obs ?? null,
+      produto_id: oi.produto_id ?? antigo.produto_id ?? null,
+      total: oi.total,
+      ...(oi.custo_unitario != null && isAdmin
+        ? { custo_unitario: Math.round(Number(oi.custo_unitario) * (oi.area_m2 != null ? Number(oi.area_m2) : 1) * 10000) / 10000 } as any : {}),
+      ...(oi.acabamento_id ? { acabamento_id: oi.acabamento_id, acabamento_qtd_estoque: oi.acabamento_qtd_estoque ?? null } as any : {}),
+    } as VendaItem, Number(oi.desconto_valor ?? descontoEmReais(antigo as any)));
+    novo.total = Number(oi.total);
+    onChange(itens.map((it, i) => (i === idx ? novo : it)));
+    setEditandoM2(null);
   }
 
   // Item calculado no editor de m² entra na venda igual a um item vindo de orçamento:
@@ -383,8 +431,8 @@ export function ItensEditor({ itens, onChange, onEditarProduto, onCriarProduto }
                         </button>
                       )}
                       <button
-                        title="Editar a descrição deste item na venda"
-                        onClick={() => setEditandoNome(editandoNome === i ? null : i)}
+                        title={itemParaEditor(it) ? 'Editar o item (tamanho, quantidade, preço…) — igual a adicionar, já preenchido' : 'Editar a descrição deste item na venda'}
+                        onClick={() => { if (itemParaEditor(it)) setEditandoM2(i); else setEditandoNome(editandoNome === i ? null : i); }}
                         className="text-gray-500 hover:text-blue-400 transition-colors inline-flex">
                         {editandoNome === i ? <Check className="w-3.5 h-3.5" /> : <Pencil className="w-3.5 h-3.5" />}
                       </button>
@@ -441,21 +489,23 @@ export function ItensEditor({ itens, onChange, onEditarProduto, onCriarProduto }
         )}
       </div>
 
-      {abrirM2 && createPortal(
+      {(abrirM2 || editandoM2 !== null) && createPortal(
         <div className="fixed inset-0 z-[9990] bg-black/60 backdrop-blur-sm flex items-start justify-center overflow-y-auto p-4"
-             onMouseDown={e => { if (e.target === e.currentTarget) setAbrirM2(false); }}>
+             onMouseDown={e => { if (e.target === e.currentTarget) { setAbrirM2(false); setEditandoM2(null); } }}>
           <div className="w-full max-w-2xl my-6">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-black text-white">Item por m² / material</h3>
-              <button onClick={() => setAbrirM2(false)} className="text-gray-400 hover:text-white" title="Fechar">
+              <h3 className="text-sm font-black text-white">{editandoM2 !== null ? 'Editar item' : 'Item por m² / material'}</h3>
+              <button onClick={() => { setAbrirM2(false); setEditandoM2(null); }} className="text-gray-400 hover:text-white" title="Fechar">
                 <X className="w-4 h-4" />
               </button>
             </div>
             <ItemOrcEditor
+              key={editandoM2 ?? 'novo'}
               abaInicial="metro"
               mostrarCusto={isAdmin}
-              onAdicionar={adicionarDoEditorM2}
-              onCancelar={() => setAbrirM2(false)}
+              editando={editandoM2 !== null ? itemParaEditor(itens[editandoM2]) : null}
+              onAdicionar={oi => (editandoM2 !== null ? aplicarEdicaoM2(editandoM2, oi) : adicionarDoEditorM2(oi))}
+              onCancelar={() => { setAbrirM2(false); setEditandoM2(null); }}
             />
           </div>
         </div>,
