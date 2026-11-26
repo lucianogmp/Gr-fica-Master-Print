@@ -19,8 +19,9 @@ import { correspondeABuscaEmCampos } from '../../lib/buscaFlexivel';
 import { FiltroModal, CampoFiltro, FiltroValor, passaPeriodo, passaMulti, passaFaixa, passaSimNao, periodoAtivo, dataUsada } from '../../components/ui/FiltroModal';
 import { DarkSelect } from '../../components/ui/DarkSelect';
 import { CabecalhoFiltro } from '../../components/ui/CabecalhoFiltro';
+import { ModalTransferencia } from '../../components/financeiro/ModalTransferencia';
 import {
-  ArrowUp, ArrowDown, ChevronDown, Clock, AlertCircle, Check, X, ExternalLink, LucideIcon, CheckSquare, Square, Wallet, Landmark,
+  ArrowUp, ArrowDown, ArrowLeftRight, ChevronDown, Clock, AlertCircle, Check, X, ExternalLink, LucideIcon, CheckSquare, Square, Wallet, Landmark,
 } from 'lucide-react';
 
 // Título de coluna que ordena: 1º clique = maior/mais recente primeiro, 2º inverte.
@@ -204,6 +205,7 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
   const [formaPag, setFormaPag]       = useState('');
   const [contaPagId, setContaPagId]   = useState('');
   const [modalOpen, setModalOpen]       = useState(false);
+  const [transfAberta, setTransfAberta]   = useState(false);
   const [editandoLanc, setEditandoLanc] = useState<Lancamento | null>(null);
   const [tipoInicial, setTipoInicial]   = useState<'receita' | 'despesa'>(fixarTipo ?? 'despesa');
   const [filtroStatus, setFiltroStatus] = useState<FiltroStatus>('todos');
@@ -371,6 +373,15 @@ export function TabelaLancamentos({ fixarTipo, kpis, botoesHeader, mensagemVazio
             <ArrowDown className="w-4 h-4" /> + Despesa
           </button>
         )}
+        {!fixarTipo && (
+          <button
+            onClick={() => setTransfAberta(true)}
+            className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-1.5"
+          >
+            <ArrowLeftRight className="w-4 h-4" /> Transferência
+          </button>
+        )}
+        <ModalTransferencia aberto={transfAberta} onFechar={() => setTransfAberta(false)} />
 
         <input value={busca} onChange={e => setBusca(e.target.value)}
           placeholder="Buscar por descrição ou cliente..."
