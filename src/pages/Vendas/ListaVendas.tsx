@@ -3,6 +3,8 @@
 // Usado por: Pedidos.tsx, Historico.tsx, EmProducao.tsx, Entregues.tsx
 import { usePersistente } from '../../hooks/usePersistente';
 import { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '../../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { useVendas, useVendaItens } from '../../hooks/useVendas';
 import { useClientes } from '../../hooks/useClientes';
@@ -66,6 +68,17 @@ export function ListaVendas({
 }: ListaVendasProps) {
   const navigate = useNavigate();
   const { data: vendasTodas = [], isLoading, deletar } = useVendas();
+  // Vendas que nasceram de um pedido do site (loja virtual): mostram "Loja virtual" em vez de "Orç. #"
+  const { data: vendasLoja } = useQuery({
+    queryKey: ['vendas-da-loja'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('orcamentos').select('venda_id').eq('origem', 'loja').not('venda_id', 'is', null);
+      if (error) throw error;
+      return new Set((data ?? []).map((o: any) => o.venda_id as string));
+    },
+    staleTime: 60 * 1000,
+  });
+  const ehLoja = (v: { id: string }) => !!vendasLoja?.has(v.id);
   const { data: clientes = [] } = useClientes();
   const { data: cfg } = useConfiguracoes();
   const { confirmar, ConfirmModal } = useConfirm();
@@ -177,6 +190,7 @@ export function ListaVendas({
     { tipo: 'simnao', chave: 'atrasada', label: 'Entrega atrasada' },
     { tipo: 'simnao', chave: 'semData', label: 'Sem data de entrega' },
     { tipo: 'simnao', chave: 'orcamento', label: 'Veio de orçamento' },
+    { tipo: 'simnao', chave: 'loja', label: 'Veio da loja virtual' },
     { tipo: 'simnao', chave: 'cadastrado', label: 'Cliente cadastrado' },
     { tipo: 'simnao', chave: 'desconto', label: 'Com desconto' },
     { tipo: 'simnao', chave: 'frete', label: 'Com frete' },
@@ -209,7 +223,8 @@ export function ListaVendas({
       .filter(v => passaMulti(f.cidade, clientePorId.get(v.cliente_id ?? '')?.cidade ?? ''))
       .filter(v => passaSimNao(f.atrasada, !!v.data_entrega && v.data_entrega < hojeISO && !['entregue', 'cancelado'].includes(v.status)))
       .filter(v => passaSimNao(f.semData, !v.data_entrega))
-      .filter(v => passaSimNao(f.orcamento, !!v.orcamento_origem_id || !!v.orcamento_origem_numero))
+      .filter(v => passaSimNao(f.orcamento, !ehLoja(v) && (!!v.orcamento_origem_id || !!v.orcamento_origem_numero)))
+      .filter(v => passaSimNao(f.loja, ehLoja(v)))
       .filter(v => passaSimNao(f.cadastrado, !!v.cliente_id))
       .filter(v => passaSimNao(f.desconto, Number(v.desconto ?? 0) > 0 || Number(v.desconto_valor ?? 0) > 0))
       .filter(v => passaSimNao(f.frete, Number(v.frete ?? 0) > 0));
@@ -493,7 +508,11 @@ export function ListaVendas({
                     <td className="px-5 py-3 text-gray-500 font-mono text-xs">{v.numero ? `#${v.numero}` : '—'}</td>
                     <td className="px-5 py-3 font-medium text-white">
                       {v.cliente_nome || '—'}
-                      {v.orcamento_origem_numero ? (
+                      {ehLoja(v) ? (
+                        <span className="ml-2 align-middle text-[10px] font-bold px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-300 border border-sky-500/30 whitespace-nowrap" title="Pedido feito no site (loja virtual)">
+                          Loja virtual{v.orcamento_origem_numero ? ` #${v.orcamento_origem_numero}` : ''}
+                        </span>
+                      ) : v.orcamento_origem_numero ? (
                         <span className="ml-2 align-middle text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-500/15 text-purple-300 border border-purple-500/30 whitespace-nowrap" title="Venda criada a partir de um orçamento">
                           Orç. #{v.orcamento_origem_numero}
                         </span>

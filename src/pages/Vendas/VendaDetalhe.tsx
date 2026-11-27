@@ -97,6 +97,15 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
   const [form, setForm]   = useState({ ...NOVA_VENDA });
   const [itens, setItens] = useState<VendaItem[]>([]);
   const qc = useQueryClient();
+  const origemId = (form as any)?.orcamento_origem_id as string | undefined;
+  const { data: origemLoja = false } = useQuery({
+    queryKey: ['venda-origem-loja', origemId],
+    enabled: !!origemId,
+    queryFn: async () => {
+      const { data } = await supabase.from('orcamentos').select('origem').eq('id', origemId!).maybeSingle();
+      return data?.origem === 'loja';
+    },
+  });
   // Previsão de pagamento já salva (vencimento do lançamento pendente desta venda).
   const { data: vencSalvo, isLoading: carregandoVenc } = useQuery({
     queryKey: ['lancamentos', 'venc-venda', vendaId],
@@ -655,9 +664,9 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
               {isNovo ? 'Preencha os dados e salve' : 'Edite e salve as alterações'}
               {!isNovo && (form as any).orcamento_origem_id && (
                 <button type="button"
-                  onClick={() => navigate(`/orcamentos?abrir=${(form as any).orcamento_origem_id}`)}
+                  onClick={() => navigate(`${origemLoja ? '/loja-virtual' : '/orcamentos'}?abrir=${(form as any).orcamento_origem_id}`)}
                   className="ml-2 text-purple-300 hover:text-purple-200 underline text-xs font-bold">
-                  Veio do orçamento #{(form as any).orcamento_origem_numero ?? ''} — abrir
+                  {origemLoja ? 'Veio da loja virtual (pedido' : 'Veio do orçamento'} #{(form as any).orcamento_origem_numero ?? ''}{origemLoja ? ')' : ''} — abrir
                 </button>
               )}
             </p>
