@@ -34,33 +34,37 @@ type Pedido = {
   pagamentos: PagamentoRegistrado[];
 };
 
-type Situacao = 'novo' | 'aguardando' | 'pago' | 'venda' | 'recusado';
+type Situacao = 'novo' | 'aguardando' | 'pago' | 'venda' | 'concluido' | 'recusado';
 
 const situacaoDe = (p: Pedido): Situacao => {
   if (p.status === 'recusado') return 'recusado';
-  if (p.status === 'convertido' || p.venda_id) return 'venda';
+  if (p.status === 'convertido' || p.venda_id) return p.venda?.status === 'entregue' ? 'concluido' : 'venda';
   if (p.pagamento?.status === 'pago') return 'pago';
   if (p.pagamento?.status === 'aguardando') return 'aguardando';
   return 'novo';
 };
 
 /** Pedido recusado: mostra se foi o próprio cliente que cancelou no site. */
-const textoSituacao = (s: Situacao, p: { observacoes: string | null }) =>
-  s === 'recusado' && (p.observacoes ?? '').includes('CANCELADO PELO CLIENTE') ? 'Cancelado pelo cliente' : ROTULO[s].texto;
+const textoSituacao = (s: Situacao, p: { observacoes: string | null; venda?: { status: string } | null }) =>
+  s === 'recusado' && (p.observacoes ?? '').includes('CANCELADO PELO CLIENTE') ? 'Cancelado pelo cliente'
+  : s === 'venda' && p.venda?.status === 'pronto' ? 'Pronto — retirar/enviar'
+  : ROTULO[s].texto;
 
 const ROTULO: Record<Situacao, { texto: string; cor: string }> = {
   novo:       { texto: 'Novo',                 cor: 'bg-blue-500/15 text-blue-400 border-blue-500/30' },
   aguardando: { texto: 'Aguardando pagamento', cor: 'bg-amber-500/15 text-amber-400 border-amber-500/30' },
   pago:       { texto: 'Pago — aprovar',       cor: 'bg-green-500/15 text-green-400 border-green-500/30' },
-  venda:      { texto: 'Virou venda',          cor: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' },
+  venda:      { texto: 'Em produção',          cor: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' },
+  concluido:  { texto: 'Concluído',            cor: 'bg-gray-500/15 text-gray-300 border-gray-500/30' },
   recusado:   { texto: 'Recusado',             cor: 'bg-red-500/15 text-red-400 border-red-500/30' },
 };
 
-type Aba = 'abertos' | 'aguardando' | 'vendas' | 'recusados' | 'todos';
+type Aba = 'abertos' | 'aguardando' | 'concluidos' | 'recusados' | 'todos';
 const ABAS: { id: Aba; rotulo: string; passa: (s: Situacao) => boolean }[] = [
-  { id: 'abertos',    rotulo: 'Em aberto',            passa: s => s === 'novo' || s === 'aguardando' || s === 'pago' },
+  // Em aberto = tudo que ainda precisa de atenção: novos, pagos e vendas em produção/prontas. Só falta pagar? Aba própria.
+  { id: 'abertos',    rotulo: 'Em aberto',            passa: s => s === 'novo' || s === 'pago' || s === 'venda' },
   { id: 'aguardando', rotulo: 'Aguardando pagamento', passa: s => s === 'aguardando' },
-  { id: 'vendas',     rotulo: 'Viraram venda',        passa: s => s === 'venda' },
+  { id: 'concluidos', rotulo: 'Concluídos',           passa: s => s === 'concluido' },
   { id: 'recusados',  rotulo: 'Recusados',            passa: s => s === 'recusado' },
   { id: 'todos',      rotulo: 'Todos',                passa: () => true },
 ];
@@ -226,8 +230,9 @@ export function LojaVirtual() {
 
   const soma = (l: typeof comSituacao) => l.reduce((t, x) => t + Number(x.p.total ?? 0), 0);
   const emAberto = comSituacao.filter(x => ABAS[0].passa(x.s));
-  const viraramVenda = comSituacao.filter(x => x.s === 'venda');
-  const novos = comSituacao.filter(x => !x.p.loja_visto_em && (x.s === 'novo' || x.s === 'aguardando' || x.s === 'pago')).length;
+  const concluidos = comSituacao.filter(x => x.s === 'concluido');
+  // Balão: pedidos que ninguém abriu ainda, inclusive os pagos que já viraram venda sozinhos (só não conta recusado/concluído)
+  const novos = comSituacao.filter(x => !x.p.loja_visto_em && x.s !== 'recusado' && x.s !== 'concluido').length;
   const valor = (v: number) => moeda(v);
 
   const linhaRecebimento = (obs: string | null, prefixo: string) =>
@@ -250,7 +255,7 @@ export function LojaVirtual() {
         <div className="flex gap-2 flex-wrap">
           {([
             ['Em aberto', emAberto.length, soma(emAberto), Clock, 'text-amber-400'],
-            ['Viraram venda', viraramVenda.length, soma(viraramVenda), ShoppingCart, 'text-green-400'],
+            ['Concluídos', concluidos.length, soma(concluidos), ShoppingCart, 'text-green-400'],
           ] as const).map(([rot, qtd, tot, Icone, cor]) => (
             <div key={rot} className="bg-[#1f2937] border border-gray-700 rounded-lg px-3.5 py-2 min-w-[210px]">
               <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5 mb-1">
@@ -320,7 +325,7 @@ export function LojaVirtual() {
               <tr key={p.id} onClick={() => abrir(p)} className="border-b border-gray-800 last:border-0 hover:bg-gray-700/30 cursor-pointer transition-colors">
                 <td className="px-4 py-3 font-bold text-white whitespace-nowrap">
                   <span className="inline-flex items-center gap-2">
-                    {!p.loja_visto_em && s !== 'venda' && s !== 'recusado' && <span title="Pedido novo" className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-lg shadow-red-500/50 animate-pulse" />}
+                    {!p.loja_visto_em && s !== 'concluido' && s !== 'recusado' && <span title="Pedido novo" className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-lg shadow-red-500/50 animate-pulse" />}
                     #{p.numero ?? '—'}
                   </span>
                 </td>
@@ -335,7 +340,7 @@ export function LojaVirtual() {
                 <td className="px-4 py-3 text-right font-bold text-white whitespace-nowrap">{valor(Number(p.total ?? 0))}</td>
                 <td className="px-4 py-3">
                   <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border whitespace-nowrap ${ROTULO[s].cor}`}>{textoSituacao(s, p)}</span>
-                  {s === 'venda' && p.venda && (
+                  {(s === 'venda' || s === 'concluido') && p.venda && (
                     <span className="ml-2 text-[10px] text-gray-500">Venda #{p.venda.numero ?? '—'} · {STATUS_VENDA[p.venda.status as keyof typeof STATUS_VENDA]?.label ?? p.venda.status}</span>
                   )}
                 </td>
@@ -358,7 +363,7 @@ export function LojaVirtual() {
               <button onClick={() => { setModoContato('pedido'); setContatoAberto(true); }} className="px-3 py-2 rounded-lg text-sm font-bold text-green-300 hover:text-green-200 hover:bg-green-600/10 border border-green-500/30 flex items-center gap-1.5">
                 <MessageCircle className="w-4 h-4" /> Falar com o cliente
               </button>
-              {s === 'venda' && aberto.venda_id && (
+              {(s === 'venda' || s === 'concluido') && aberto.venda_id && (
                 <button onClick={() => navigate(`/vendas/nova/${aberto.venda_id}`)} className="px-4 py-2 rounded-lg text-sm font-bold bg-blue-600 hover:bg-blue-500 text-white flex items-center gap-1.5">
                   <ExternalLink className="w-4 h-4" /> Abrir a venda #{aberto.venda?.numero ?? ''}
                 </button>

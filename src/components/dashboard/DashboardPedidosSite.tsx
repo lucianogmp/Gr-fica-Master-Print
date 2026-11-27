@@ -52,7 +52,7 @@ export function DashboardPedidosSite({ data, className = '' }: { data: Dados; cl
           <button key={p.id} onClick={() => navigate(`/loja-virtual?abrir=${p.id}`)}
             className="w-full text-left text-[11px] flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-700/30 transition-colors">
             <span className="flex items-center gap-1.5 min-w-0">
-              {!p.loja_visto_em && p.status !== 'convertido' && <span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0" />}
+              {!p.loja_visto_em && p.status !== 'recusado' && <span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0" />}
               <span className="text-gray-300 truncate">#{p.numero ?? '—'} · {oculto ? MASCARA : p.cliente_nome}</span>
             </span>
             <span className="font-bold text-white flex-shrink-0">{fmtBRL(p.total)}</span>

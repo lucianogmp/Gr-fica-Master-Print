@@ -30,6 +30,13 @@ export function usePedidosSite(mes: string, ativo = true) {
         const d = new Date(iso);
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
       };
+      // Pedido já entregue (pedidos antigos) não é novidade
+      const vendaIds = todos.filter(p => !p.loja_visto_em && p.venda_id).map(p => p.venda_id as string);
+      const entregues = new Set<string>();
+      if (vendaIds.length) {
+        const { data: vs } = await supabase.from('vendas').select('id,status').in('id', vendaIds);
+        (vs ?? []).forEach((v: any) => { if (v.status === 'entregue') entregues.add(v.id); });
+      }
       const doMes = todos.filter(p => mesLocal(p.created_at) === mes);
       const convertidos = doMes.filter(p => p.status === 'convertido');
       const emAberto = doMes.filter(p => p.status !== 'convertido' && p.status !== 'recusado');
@@ -43,7 +50,7 @@ export function usePedidosSite(mes: string, ativo = true) {
         qtdEmAberto: emAberto.length,
         valorEmAberto: soma(emAberto),
         // Avisos: pedidos que ninguém abriu ainda (independe do mês).
-        novos: todos.filter(p => !p.loja_visto_em && p.status !== 'convertido' && p.status !== 'recusado'),
+        novos: todos.filter(p => !p.loja_visto_em && p.status !== 'recusado' && !entregues.has(p.venda_id ?? '')),
         recentes: doMes.slice(0, 4),
       };
     },
