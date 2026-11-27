@@ -44,6 +44,10 @@ const situacaoDe = (p: Pedido): Situacao => {
   return 'novo';
 };
 
+/** Pedido recusado: mostra se foi o próprio cliente que cancelou no site. */
+const textoSituacao = (s: Situacao, p: { observacoes: string | null }) =>
+  s === 'recusado' && (p.observacoes ?? '').includes('CANCELADO PELO CLIENTE') ? 'Cancelado pelo cliente' : ROTULO[s].texto;
+
 const ROTULO: Record<Situacao, { texto: string; cor: string }> = {
   novo:       { texto: 'Novo',                 cor: 'bg-blue-500/15 text-blue-400 border-blue-500/30' },
   aguardando: { texto: 'Aguardando pagamento', cor: 'bg-amber-500/15 text-amber-400 border-amber-500/30' },
@@ -272,7 +276,7 @@ export function LojaVirtual() {
         ))}
       </div>
 
-      {visao === 'relatorios' && <RelatorioLoja pedidos={comSituacao.map(({ p, s }) => ({ ...p, situacao: s, situacaoTexto: ROTULO[s].texto, recebimento: linhaRecebimento(p.observacoes, 'Recebimento: ') }))} />}
+      {visao === 'relatorios' && <RelatorioLoja pedidos={comSituacao.map(({ p, s }) => ({ ...p, situacao: s, situacaoTexto: textoSituacao(s, p), recebimento: linhaRecebimento(p.observacoes, 'Recebimento: ') }))} />}
 
       {visao === 'pedidos' && (<>
       <div className="flex gap-2 flex-wrap items-center">
@@ -330,7 +334,7 @@ export function LojaVirtual() {
                 </td>
                 <td className="px-4 py-3 text-right font-bold text-white whitespace-nowrap">{valor(Number(p.total ?? 0))}</td>
                 <td className="px-4 py-3">
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border whitespace-nowrap ${ROTULO[s].cor}`}>{ROTULO[s].texto}</span>
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border whitespace-nowrap ${ROTULO[s].cor}`}>{textoSituacao(s, p)}</span>
                   {s === 'venda' && p.venda && (
                     <span className="ml-2 text-[10px] text-gray-500">Venda #{p.venda.numero ?? '—'} · {STATUS_VENDA[p.venda.status as keyof typeof STATUS_VENDA]?.label ?? p.venda.status}</span>
                   )}
@@ -396,7 +400,7 @@ export function LojaVirtual() {
         {aberto && (
           <div className="space-y-4">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border ${ROTULO[situacaoDe(aberto)].cor}`}>{ROTULO[situacaoDe(aberto)].texto}</span>
+              <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border ${ROTULO[situacaoDe(aberto)].cor}`}>{textoSituacao(situacaoDe(aberto), aberto)}</span>
               {aberto.pagamentos.length > 0 && aberto.pagamento?.status !== 'pago' && (
                 <span className="text-xs text-green-400 flex items-center gap-1">
                   <CreditCard className="w-3.5 h-3.5" /> Pago: {resumoPagamento(aberto.pagamentos)} (lançado na venda)
@@ -472,7 +476,7 @@ export function LojaVirtual() {
         pedido={aberto ? {
           numero: aberto.numero, cliente_nome: aberto.cliente_nome, total: aberto.total, observacoes: aberto.observacoes,
           cliente_id: (aberto as any).cliente_id ?? null, codigoRastreio: aberto.codigo_rastreio,
-          situacaoTexto: ROTULO[situacaoDe(aberto)].texto, pagamentoTexto: resumoPagamento(aberto.pagamentos),
+          situacaoTexto: textoSituacao(situacaoDe(aberto), aberto), pagamentoTexto: resumoPagamento(aberto.pagamentos),
           vendaNumero: aberto.venda?.numero ?? null, vendaStatus: aberto.venda?.status ?? null,
         } : null}
       />
