@@ -867,7 +867,7 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
                 onClick={excluirVenda}
                 className="bg-red-500/15 hover:bg-red-500/25 text-red-400 border border-red-500/30 px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2"
               >
-                <Trash2 className="w-4 h-4" /> Excluir venda
+                <Trash2 className="w-4 h-4" /> Excluir
               </button>
             )}
             <button
