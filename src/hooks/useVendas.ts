@@ -196,7 +196,7 @@ export function useVendas() {
     criar:           criar.mutateAsync,
     atualizar:       atualizar.mutateAsync,
     atualizarStatus: atualizarStatus.mutate,
-    deletar:         deletar.mutate,
+    deletar:         deletar.mutate as (id: string, opts?: { onSuccess?: () => void }) => void,
     isSaving:        criar.isPending || atualizar.isPending,
   };
 }

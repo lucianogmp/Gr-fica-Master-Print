@@ -31,7 +31,7 @@ import { useConfirm } from '../../components/ui/ConfirmModal';
 import { useAuth } from '../../hooks/useAuth';
 import { useRole } from '../../hooks/useRole';
 import {
-  ArrowLeft, Save, Package, Settings, Printer, Calendar, AlertTriangle, Check, Download, Eye,
+  ArrowLeft, Save, Package, Settings, Printer, Calendar, AlertTriangle, Check, Download, Eye, Trash2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Modal } from '../../components/ui/Modal';
@@ -79,7 +79,7 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
   const location = useLocation();
   const { data: produtosCatalogo = [], isFetching: carregandoProdutos } = useProdutos();
 
-  const { data: vendas = [], criar, atualizar, atualizarStatus, isSaving } = useVendas();
+  const { data: vendas = [], criar, atualizar, atualizarStatus, deletar, isSaving } = useVendas();
   const { data: clientes = [] } = useClientes();
   const { data: cfg } = useConfiguracoes();
   const { criar: criarOP } = useProducao();
@@ -345,6 +345,15 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
     limparAlteracoesPendentes();
     const voltar = location.pathname + location.search;
     navigate(`/produtos/catalogo?novo=1&retorno=${encodeURIComponent(voltar)}`);
+  }
+
+  async function excluirVenda() {
+    if (!vendaId || vendaId === '__novo__') return;
+    const nome = form.cliente_nome || 'este cliente';
+    const num = (form as any).numero ? ` #${(form as any).numero}` : '';
+    if (!(await confirmar(`Excluir a venda${num} de "${nome}"? Os pagamentos e lançamentos ligados a ela também serão removidos. Esta ação não pode ser desfeita.`, 'Excluir venda'))) return;
+    limparAlteracoesPendentes();
+    deletar(vendaId, { onSuccess: () => navigate(rotaVoltar) });
   }
 
   function fechar() {
@@ -851,6 +860,14 @@ export function VendaDetalhe({ vendaId: vendaIdProp, rotaVoltar }: VendaDetalheP
                 className="bg-gray-700 hover:bg-gray-600 text-gray-300 px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2"
               >
                 <Download className="w-4 h-4" /> PDF de custos
+              </button>
+            )}
+            {!isNovo && (
+              <button
+                onClick={excluirVenda}
+                className="bg-red-500/15 hover:bg-red-500/25 text-red-400 border border-red-500/30 px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2"
+              >
+                <Trash2 className="w-4 h-4" /> Excluir venda
               </button>
             )}
             <button
