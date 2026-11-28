@@ -163,6 +163,7 @@ export function useVendas() {
       qc.invalidateQueries({ queryKey: ['vendas-filtro-pagamentos'] });
       qc.invalidateQueries({ queryKey: ['vendas-filtro-itens'] });
       qc.invalidateQueries({ queryKey: ['dashboard-metrics'] });
+      qc.invalidateQueries({ queryKey: ['producao'] });
     },
     onError: (e: any) => toast.error(e.message),
   });

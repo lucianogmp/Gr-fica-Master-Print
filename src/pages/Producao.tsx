@@ -1,12 +1,13 @@
 // src/pages/Producao.tsx
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useProducao } from '../hooks/useProducao';
 import { OrdemProducao, ETAPAS, PRIORIDADES, Etapa } from '../types/producao';
 import { ModalOrdem } from '../components/producao/ModalOrdem';
 import { KpiCard } from '../components/ui/KpiCard';
 import {
   Factory, ClipboardList, AlertCircle, AlarmClock, CheckCircle2,
-  Calendar, ShoppingCart, User, X, ArrowRight,
+  Calendar, ShoppingCart, User, X, ArrowRight, ExternalLink,
 } from 'lucide-react';
 
 const fmtData = (d?: string | null) =>
@@ -33,6 +34,7 @@ function infoEntregue(entregueEm?: string | null): { texto: string; cor: string 
 export function Producao() {
   const { data: ordens = [], isLoading, criar, moverEtapa, atualizar, deletar } = useProducao();
 
+  const navigate = useNavigate();
   const [modalOpen, setModalOpen]       = useState(false);
   const [editando, setEditando]         = useState<OrdemProducao | null>(null);
   const [etapaInicial, setEtapaInicial] = useState<string>('fila');
@@ -230,6 +232,15 @@ export function Producao() {
                               : ''}
                           </span>
                           <div className="flex gap-1">
+                            {ordem.venda_id && (
+                              <button
+                                onClick={e => { e.stopPropagation(); navigate(`/vendas/nova/${ordem.venda_id}`, { state: { from: '/producao' } }); }}
+                                title="Abrir a venda desta ordem"
+                                className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded bg-blue-500/15 hover:bg-blue-500/25 text-blue-300 border border-blue-500/30 transition-all"
+                              >
+                                <ExternalLink className="w-3 h-3" /> Venda
+                              </button>
+                            )}
                             <button
                               onClick={e => { e.stopPropagation(); abrirEditar(ordem); }}
                               className="text-[10px] px-2 py-0.5 rounded bg-gray-700 hover:bg-gray-600 text-gray-300 transition-all"
