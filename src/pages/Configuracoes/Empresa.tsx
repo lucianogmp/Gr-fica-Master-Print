@@ -96,7 +96,7 @@ export function Empresa() {
 
           <Section title="Logo do Sistema (Sidebar)" icon={MonitorCog}>
             <p className="text-[11px] text-gray-500 -mt-2">
-              Exibido no lugar do texto "MASTER PRINT" na barra lateral. Envie uma versão para cada tema.
+              Exibido na barra lateral, no login e na tela de carregamento. Envie uma versão para cada tema; se enviar só uma (ou só o Logo da Empresa), ela é usada nos dois.
             </p>
             <div className="space-y-3">
               <UploadLogo

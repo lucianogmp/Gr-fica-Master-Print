@@ -19,6 +19,7 @@ import { NotificacoesSino } from './NotificacoesSino';
 import { usePedidosSiteNovos } from '../hooks/usePedidosSiteNovos';
 import { useBloqueioInatividade } from '../hooks/useBloqueioInatividade';
 import { useConfiguracoes } from '../hooks/useConfiguracoes';
+import { lerLogoCache, salvarLogoCache, logosDaConfig } from '../lib/logoCache';
 import { useRealtimeSync } from '../hooks/useRealtimeSync';
 import { podeSairSemSalvar } from '../lib/unsavedChangesGuard';
 import { TrocarSenhaModal } from './TrocarSenhaModal';
@@ -238,6 +239,10 @@ export function Layout() {
   const { data: siteNovos = 0 } = usePedidosSiteNovos(pode('/loja-virtual'));
   const { isDark, toggleTheme } = useTheme();
   const { data: cfg } = useConfiguracoes();
+  // Logo da gráfica: usa o cache do aparelho enquanto a configuração carrega (sem piscar texto/logo antigo)
+  const logosCfg = cfg ? logosDaConfig(cfg) : null;
+  useEffect(() => { if (logosCfg) salvarLogoCache(logosCfg); }, [logosCfg?.escuro, logosCfg?.claro]);
+  const logoSidebar = (logosCfg ?? lerLogoCache())[isDark ? 'escuro' : 'claro'];
   const [menuOpen, setMenuOpen] = useState(false);
   const [trocarSenhaAberto, setTrocarSenhaAberto] = useState(false);
 
@@ -409,18 +414,18 @@ export function Layout() {
           {/* Botão de recolher/expandir foi pro rodapé, perto do usuário */}
 
           <div className={`flex flex-col items-center text-center gap-1.5 ${collapsed ? 'md:pt-1' : ''}`}>
-            {(isDark ? cfg?.sistema_logo_url : cfg?.sistema_logo_url_dark) ? (
+            {logoSidebar ? (
               <img
-                src={isDark ? cfg!.sistema_logo_url! : cfg!.sistema_logo_url_dark!}
-                alt="Master Print"
+                src={logoSidebar}
+                alt={cfg?.empresa_nome || 'Logo'}
                 className={`${collapsed ? 'md:h-8' : 'h-14'} w-auto object-contain transition-all`}
               />
-            ) : (
+            ) : cfg?.empresa_nome ? (
               <h1 className={`font-black tracking-tighter text-blue-500 ${collapsed ? 'md:text-sm' : 'text-xl'}`}>
-                {collapsed ? <span className="md:inline hidden">MP</span> : null}
-                <span className={collapsed ? 'md:hidden' : ''}>MASTER <span className="text-white">PRINT</span></span>
+                {collapsed ? <span className="md:inline hidden">{cfg.empresa_nome.slice(0, 2).toUpperCase()}</span> : null}
+                <span className={collapsed ? 'md:hidden' : ''}>{cfg.empresa_nome}</span>
               </h1>
-            )}
+            ) : null}
             <p className={`text-xs text-gray-400 ${collapsed ? 'md:hidden' : ''}`}>Sistema de Gestão</p>
           </div>
         </div>

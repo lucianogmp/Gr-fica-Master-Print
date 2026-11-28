@@ -1,6 +1,7 @@
 // src/routes/index.tsx
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
+import { lerLogoCache, temaAtualEscuro } from '../lib/logoCache';
 import { Layout }         from '../components/Layout';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 import { useAuth }        from '../hooks/useAuth';
@@ -129,14 +130,14 @@ function IndexRoute() {
 // ─── AppRoutes ───────────────────────────────────────────────────────────────
 export function AppRoutes() {
   const { user, loading } = useAuth();
+  const logoCarregando = (() => { const l = lerLogoCache(); return temaAtualEscuro() ? l.escuro : l.claro; })();
 
   if (loading) return (
     <div className="min-h-screen bg-[#111827] flex items-center justify-center">
       <div className="text-center">
-        <div className="text-3xl font-black mb-2">
-          <span className="text-blue-500">MASTER</span>
-          <span className="text-white"> PRINT</span>
-        </div>
+        {logoCarregando && (
+          <img src={logoCarregando} alt="" className="h-20 w-auto max-w-[70vw] object-contain mx-auto mb-3" />
+        )}
         <p className="text-gray-500 text-sm animate-pulse">Carregando...</p>
       </div>
     </div>

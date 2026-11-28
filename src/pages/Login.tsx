@@ -6,13 +6,13 @@ import { BookOpen, Moon, Sun, Clock } from 'lucide-react';
 import { versiculoDoDia } from '../lib/versiculos';
 import { lerEApagarMotivo, limparExpiracaoAoAbrir } from '../lib/sessaoInatividade';
 import { useTheme } from '../hooks/useTheme';
+import { lerLogoCache, salvarLogoCache } from '../lib/logoCache';
 
-const CHAVE_LOGO = 'mp-logo-cache';
 
 // Logo escolhido em Configurações. Fica guardado no aparelho para aparecer na hora, mesmo antes do login.
 function useLogoPublico() {
   const [logo, setLogo] = useState<{ escuro: string | null; claro: string | null }>(() => {
-    try { return JSON.parse(localStorage.getItem(CHAVE_LOGO) || '') ; } catch { return { escuro: null, claro: null }; }
+    return lerLogoCache();
   });
   useEffect(() => {
     supabase.rpc('logo_publico').then(({ data }) => {
@@ -20,7 +20,7 @@ function useLogoPublico() {
       if (!r) return;
       const novo = { escuro: r.logo_escuro ?? null, claro: r.logo_claro ?? null };
       setLogo(novo);
-      try { localStorage.setItem(CHAVE_LOGO, JSON.stringify(novo)); } catch { /* ignora */ }
+      salvarLogoCache(novo);
     });
   }, []);
   return logo;
@@ -85,12 +85,7 @@ export function Login() {
         <div className="text-center mb-8">
           {(isDark ? logo.escuro : logo.claro) ? (
             <img src={(isDark ? logo.escuro : logo.claro)!} alt="Master Print" className="h-24 w-auto max-w-full object-contain mx-auto" />
-          ) : (
-            <h1 className="text-3xl font-black tracking-tighter">
-              <span className="text-blue-500">MASTER</span>
-              <span className="text-white"> PRINT</span>
-            </h1>
-          )}
+          ) : null}
           <p className="text-gray-500 text-sm mt-2">Sistema de Gestão</p>
         </div>
 
