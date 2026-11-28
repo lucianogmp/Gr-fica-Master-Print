@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { MessageCircle, Globe, CheckCircle2, XCircle, ExternalLink, Search, CreditCard, ShoppingCart, Clock, Truck } from 'lucide-react';
+import { ChevronLeft, ChevronRight, MessageCircle, Globe, CheckCircle2, XCircle, ExternalLink, Search, CreditCard, ShoppingCart, Clock, Truck } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Modal } from '../components/ui/Modal';
 import { useConfirm } from '../components/ui/ConfirmModal';
@@ -14,11 +14,19 @@ import { correspondeABuscaEmCampos } from '../lib/buscaFlexivel';
 import { STATUS_VENDA } from '../types/venda';
 import { ContatoClienteModal } from './lojaVirtual/ContatoCliente';
 import { RelatorioLoja } from './lojaVirtual/RelatorioLoja';
+import { MonthInput } from '../components/ui/MonthInput';
+import { OrdenarMenu, aplicarOrdenacao, Ordenacao } from '../components/ui/OrdenarMenu';
+import { FiltroModal, CampoFiltro, FiltroValor, passaPeriodo, passaMulti, passaFaixa, passaSimNao, periodoAtivo, dataUsada } from '../components/ui/FiltroModal';
+import { usePersistente } from '../hooks/usePersistente';
+import { useClientes } from '../hooks/useClientes';
 import { formaDoMetodoOnline, resumoPagamento, type PagamentoRegistrado } from './lojaVirtual/pagamentoLoja';
 
 type Pedido = {
   id: string;
+  /** Descrições dos itens juntas (para o filtro por produto) */
+  itensTexto: string;
   numero: number | null;
+  cliente_id: string | null;
   cliente_nome: string;
   total: number | null;
   desconto: number | null;
@@ -69,6 +77,9 @@ const ABAS: { id: Aba; rotulo: string; passa: (s: Situacao) => boolean }[] = [
   { id: 'todos',      rotulo: 'Todos',                passa: () => true },
 ];
 
+/** Dia local (America/Sao_Paulo do navegador) de um instante ISO, como AAAA-MM-DD */
+const diaLocal = (iso: string) => { const d = new Date(iso); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+
 const METODOS: Record<string, string> = { credit_card: 'Cartão de crédito', debit_card: 'Cartão de débito', pix: 'Pix', boleto: 'Boleto' };
 // Valores desta tela sempre aparecem: o "ocultar valores" do Dashboard não vale aqui.
 const moeda = (v: number) => Number(v ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -89,11 +100,14 @@ function usePedidosLoja() {
       if (lista.length === 0) return [];
       const ids = lista.map(o => o.id);
       const vendaIds = lista.map(o => o.venda_id).filter(Boolean);
-      const [pg, vd, pv] = await Promise.all([
+      const [pg, vd, pv, it] = await Promise.all([
         supabase.from('loja_pagamentos').select('orcamento_id,status,metodo,parcelas,comprovante_url,pago_em,pago_centavos,valor_centavos').in('orcamento_id', ids),
         vendaIds.length ? supabase.from('vendas').select('id,numero,status').in('id', vendaIds) : Promise.resolve({ data: [] as any[] }),
         vendaIds.length ? supabase.from('pagamentos_venda').select('venda_id,forma_pagamento,valor,parcelas,observacoes').in('venda_id', vendaIds) : Promise.resolve({ data: [] as any[] }),
+        supabase.from('orcamento_itens').select('orcamento_id,descricao').in('orcamento_id', ids),
       ]);
+      const itensPor = new Map<string, string>();
+      for (const x of (it.data ?? []) as any[]) itensPor.set(x.orcamento_id, `${itensPor.get(x.orcamento_id) ?? ''} | ${x.descricao ?? ''}`);
       const pgPor = new Map((pg.data ?? []).map((g: any) => [g.orcamento_id, g]));
       const vdPor = new Map((vd.data ?? []).map((v: any) => [v.id, v]));
       const pvPor = new Map<string, PagamentoRegistrado[]>();
@@ -109,7 +123,7 @@ function usePedidosLoja() {
         if (pagamentos.length === 0 && g?.status === 'pago') {
           pagamentos = [{ forma: formaDoMetodoOnline(g.metodo), valor: Number(g.pago_centavos ?? g.valor_centavos ?? 0) / 100, parcelas: g.parcelas, origem: 'site' }];
         }
-        return { ...o, pagamento: g, pagamentos, venda: o.venda_id ? (vdPor.get(o.venda_id) ?? null) : null };
+        return { ...o, itensTexto: itensPor.get(o.id) ?? '', pagamento: g, pagamentos, venda: o.venda_id ? (vdPor.get(o.venda_id) ?? null) : null };
       });
     },
     staleTime: 0,
@@ -142,6 +156,19 @@ export function LojaVirtual() {
   const [visao, setVisao] = useState<'pedidos' | 'relatorios'>('pedidos');
   const [aba, setAba] = useState<Aba>('abertos');
   const [busca, setBusca] = useState('');
+  // Mês: abre no mês atual para não empilhar pedidos antigos (igual às vendas). Pesquisar ignora o mês.
+  const mesAtualYM = useMemo(() => { const h = new Date(); return `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, '0')}`; }, []);
+  const [mes, setMes] = useState<string | null>(mesAtualYM);
+  const [ordenacao, setOrdenacao] = useState<Ordenacao | null>({ campo: 'data', direcao: 'desc' });
+  const [filtrosAv, setFiltrosAv] = usePersistente<FiltroValor>('loja-filtros', {});
+  const { data: clientes = [] } = useClientes();
+  function deslocarMes(delta: number) {
+    setMes(atual => {
+      const [y, m] = (atual ?? mesAtualYM).split('-').map(Number);
+      const d = new Date(y, m - 1 + delta, 1);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    });
+  }
   const [abertoId, setAbertoId] = useState<string | null>(null);
   const [contatoAberto, setContatoAberto] = useState(false);
   const [modoContato, setModoContato] = useState<'pedido' | 'envio'>('pedido');
@@ -158,7 +185,7 @@ export function LojaVirtual() {
     if (!alvo || pedidos.length === 0) return;
     setSearchParams({}, { replace: true });
     const p = pedidos.find(x => x.id === alvo);
-    if (p) abrir(p);
+    if (p) { setMes(diaLocal(p.created_at).slice(0, 7)); abrir(p); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, pedidos]);
 
@@ -222,15 +249,78 @@ export function LojaVirtual() {
   });
 
   const comSituacao = useMemo(() => pedidos.map(p => ({ p, s: situacaoDe(p) })), [pedidos]);
-  const contagem = (a: Aba) => comSituacao.filter(x => ABAS.find(b => b.id === a)!.passa(x.s)).length;
+  const buscando = busca.trim() !== '';
+  const clientePorId = useMemo(() => new Map(clientes.map(c => [c.id, c])), [clientes]);
+
+  const linhaRec = (obs: string | null) => (obs ?? '').split('\n').find(l => l.startsWith('Recebimento: '))?.slice(13) ?? '';
+  const tipoRecebimento = (obs: string | null) => { const r = linhaRec(obs); return !r ? '__nd__' : /retirad/i.test(r) ? 'Retirada' : 'Entrega'; };
+  const formasDe = (p: Pedido) => { const f = [...new Set(p.pagamentos.map(x => x.forma).filter(Boolean))] as string[]; return f.length ? f : ['__nd__']; };
+
+  const camposFiltro = useMemo<CampoFiltro[]>(() => {
+    const uniq = (arr: (string | null | undefined)[]) => Array.from(new Set(arr.map(x => (x ?? '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    const op = (arr: string[]) => arr.map(x => ({ value: x, label: x }));
+    const cli = (p: Pedido) => clientePorId.get(p.cliente_id ?? '');
+    return [
+      { tipo: 'periodo', chave: 'periodo', label: 'Data', datas: [{ value: 'created_at', label: 'Data do pedido' }, { value: 'pago_em', label: 'Data do pagamento' }] },
+      { tipo: 'busca', chave: 'busca', label: 'Busca (cliente, nº do pedido, observações)', placeholder: 'Cliente, nº do pedido, palavra-chave...' },
+      { tipo: 'busca', chave: 'produto', label: 'Pedidos com o produto', placeholder: 'Nome do produto pedido' },
+      { tipo: 'faixa', chave: 'valor', label: 'Valor do pedido' },
+      { tipo: 'multi', chave: 'situacao', label: 'Situação', opcoes: (Object.keys(ROTULO) as Situacao[]).map(s => ({ value: s, label: ROTULO[s].texto })) },
+      { tipo: 'multi', chave: 'forma', label: 'Forma de pagamento', opcoes: [{ value: '__nd__', label: '— Sem pagamento registrado —' }, ...op(uniq(pedidos.flatMap(p => p.pagamentos.map(x => x.forma))))] },
+      { tipo: 'multi', chave: 'recebimento', label: 'Recebimento', opcoes: [{ value: 'Entrega', label: 'Entrega (Correios/envio)' }, { value: 'Retirada', label: 'Retirada na gráfica' }] },
+      { tipo: 'multi', chave: 'estado', label: 'Estado (do cliente)', opcoes: op(uniq(pedidos.map(p => cli(p)?.estado))) },
+      { tipo: 'multi', chave: 'cidade', label: 'Cidade (do cliente)', opcoes: op(uniq(pedidos.map(p => cli(p)?.cidade))) },
+      { tipo: 'simnao', chave: 'pagoOnline', label: 'Pago online (InfinitePay)' },
+      { tipo: 'simnao', chave: 'rastreio', label: 'Com código de rastreio' },
+      { tipo: 'simnao', chave: 'cancelCliente', label: 'Cancelado pelo cliente' },
+      { tipo: 'simnao', chave: 'naoVisto', label: 'Ainda não aberto (novo)' },
+      { tipo: 'simnao', chave: 'cadastrado', label: 'Cliente cadastrado' },
+      { tipo: 'simnao', chave: 'desconto', label: 'Com desconto (promoção)' },
+    ];
+  }, [pedidos, clientePorId]);
+
+  // Tudo que a tela mostra passa por aqui: mês (ou período dos filtros) + busca + filtro avançado. As abas só dividem o resultado.
+  const baseFiltrada = useMemo(() => {
+    const f = filtrosAv;
+    const usaPeriodo = periodoAtivo(f.periodo);
+    const campoData = dataUsada(f.periodo, 'created_at');
+    const buscaModal = String(f.busca ?? '').trim();
+    const prod = String(f.produto ?? '').trim().toLowerCase();
+    const lista = comSituacao
+      .filter(({ p }) => buscando || usaPeriodo || !mes || diaLocal(p.created_at).startsWith(mes))
+      .filter(({ p }) => correspondeABuscaEmCampos([p.cliente_nome, p.numero, p.observacoes], busca))
+      .filter(({ p }) => passaPeriodo(f.periodo, campoData === 'pago_em' ? p.pagamento?.pago_em : diaLocal(p.created_at)))
+      .filter(({ p }) => !buscaModal || correspondeABuscaEmCampos([p.cliente_nome, p.numero, p.observacoes], buscaModal))
+      .filter(({ p }) => !prod || p.itensTexto.toLowerCase().includes(prod))
+      .filter(({ p }) => passaFaixa(f.valor, p.total))
+      .filter(({ s }) => passaMulti(f.situacao, s))
+      .filter(({ p }) => passaMulti(f.forma, formasDe(p)))
+      .filter(({ p }) => passaMulti(f.recebimento, tipoRecebimento(p.observacoes)))
+      .filter(({ p }) => passaMulti(f.estado, clientePorId.get(p.cliente_id ?? '')?.estado ?? ''))
+      .filter(({ p }) => passaMulti(f.cidade, clientePorId.get(p.cliente_id ?? '')?.cidade ?? ''))
+      .filter(({ p }) => passaSimNao(f.pagoOnline, p.pagamento?.status === 'pago'))
+      .filter(({ p }) => passaSimNao(f.rastreio, !!p.codigo_rastreio))
+      .filter(({ p, s }) => passaSimNao(f.cancelCliente, s === 'recusado' && (p.observacoes ?? '').includes('CANCELADO PELO CLIENTE')))
+      .filter(({ p, s }) => passaSimNao(f.naoVisto, !p.loja_visto_em && s !== 'recusado' && s !== 'concluido'))
+      .filter(({ p }) => passaSimNao(f.cadastrado, !!p.cliente_id))
+      .filter(({ p }) => passaSimNao(f.desconto, Number(p.desconto ?? 0) > 0));
+    return aplicarOrdenacao(lista, ordenacao, {
+      data: x => x.p.created_at,
+      valor: x => Number(x.p.total ?? 0),
+      cliente: x => x.p.cliente_nome,
+      numero: x => Number(x.p.numero ?? 0),
+    });
+  }, [comSituacao, mes, busca, buscando, filtrosAv, ordenacao, clientePorId]);
+
+  const contagem = (a: Aba) => baseFiltrada.filter(x => ABAS.find(b => b.id === a)!.passa(x.s)).length;
   const filtrados = useMemo(() => {
     const passa = ABAS.find(b => b.id === aba)!.passa;
-    return comSituacao.filter(x => passa(x.s) && correspondeABuscaEmCampos([x.p.cliente_nome, x.p.numero, x.p.observacoes], busca));
-  }, [comSituacao, aba, busca]);
+    return baseFiltrada.filter(x => passa(x.s));
+  }, [baseFiltrada, aba]);
 
   const soma = (l: typeof comSituacao) => l.reduce((t, x) => t + Number(x.p.total ?? 0), 0);
-  const emAberto = comSituacao.filter(x => ABAS[0].passa(x.s));
-  const concluidos = comSituacao.filter(x => x.s === 'concluido');
+  const emAberto = baseFiltrada.filter(x => ABAS[0].passa(x.s));
+  const concluidos = baseFiltrada.filter(x => x.s === 'concluido');
   // Balão: pedidos que ninguém abriu ainda, inclusive os pagos que já viraram venda sozinhos (só não conta recusado/concluído)
   const novos = comSituacao.filter(x => !x.p.loja_visto_em && x.s !== 'recusado' && x.s !== 'concluido').length;
   const valor = (v: number) => moeda(v);
@@ -250,7 +340,7 @@ export function LojaVirtual() {
               </span>
             )}
           </h1>
-          <p className="text-xs text-gray-500">Pedidos feitos no site. Confira a arte e o pagamento e aprove para virar venda.</p>
+          <p className="text-xs text-gray-500">Pedidos feitos no site{mes ? ' neste mês' : ''}. Confira a arte e o pagamento e aprove para virar venda.</p>
         </div>
         <div className="flex gap-2 flex-wrap">
           {([
@@ -285,6 +375,22 @@ export function LojaVirtual() {
 
       {visao === 'pedidos' && (<>
       <div className="flex gap-2 flex-wrap items-center">
+        {/* Mês: abre no mês atual; "Ver todos os meses" mostra tudo; pesquisar procura em todos os meses */}
+        <div className="flex items-center gap-1 bg-[#1f2937] border border-gray-700 rounded-xl px-1.5 py-1.5 flex-shrink-0">
+          <button onClick={() => deslocarMes(-1)} title="Mês anterior" className="p-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 transition-colors">
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <MonthInput value={mes} onChange={v => setMes(v || null)}
+            className="bg-[#111827] border border-gray-700 rounded-lg px-3 py-1.5 text-white text-xs font-bold capitalize min-w-[132px]" />
+          <button onClick={() => deslocarMes(1)} title="Próximo mês" className="p-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 transition-colors">
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+        {mes ? (
+          <button onClick={() => setMes(null)} className="text-[11px] font-bold text-blue-400 hover:text-blue-300 underline flex-shrink-0">Ver todos os meses</button>
+        ) : (
+          <button onClick={() => setMes(mesAtualYM)} className="text-[11px] font-bold text-blue-400 hover:text-blue-300 underline flex-shrink-0">Voltar pro mês atual</button>
+        )}
         <div className="flex gap-1 bg-[#1f2937] border border-gray-700 rounded-xl p-1 flex-wrap">
           {ABAS.map(a => (
             <button key={a.id} onClick={() => setAba(a.id)}
@@ -301,7 +407,19 @@ export function LojaVirtual() {
           <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar cliente, nº do pedido..."
             className="!pl-10 w-full bg-[#1f2937] border border-gray-700 rounded-xl pr-4 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-blue-500" />
         </div>
+        <OrdenarMenu
+          valor={ordenacao}
+          onChange={setOrdenacao}
+          campos={[
+            { key: 'data',    label: 'Data',    labelAsc: 'Mais antigo primeiro', labelDesc: 'Mais recente primeiro' },
+            { key: 'valor',   label: 'Valor',   labelAsc: 'Menor primeiro',       labelDesc: 'Maior primeiro' },
+            { key: 'cliente', label: 'Cliente', labelAsc: 'A → Z',                labelDesc: 'Z → A' },
+            { key: 'numero',  label: 'Nº do pedido' },
+          ]}
+        />
+        <FiltroModal campos={camposFiltro} valor={filtrosAv} onChange={setFiltrosAv} titulo="Filtro avançado — Loja virtual" />
       </div>
+      {buscando && <p className="text-[11px] text-gray-500">Pesquisando em todos os meses: {filtrados.length} pedido(s) encontrado(s) nesta aba.</p>}
 
       <div className="bg-[#1f2937] border border-gray-700 rounded-xl overflow-hidden">
         <table className="w-full text-sm">
